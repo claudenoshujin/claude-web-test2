@@ -4177,8 +4177,23 @@ if (CLAUDE_ENABLED) {
     }
 
     /* 置顶的排前面，组内按最后一条消息倒序。 */
+    /* dateText 是服务端 last_mes 原样带过来的人类可读串，形如
+       "August 2, 2026 11:36am"。原来这里直接 localeCompare，等于按字母顺序排：
+       "August" 排在 "July" 前面纯属字母巧合，跨月直接乱；同一天里
+       "11:36am" 因为首字符 '1' < '6'，被排到 "6:08am" 后面。
+       真机实测，服务端返回的第一条（也就是最新的那条）在侧栏被排到了列表末尾，
+       表现出来就是"发了消息侧栏完全没反应"——其实数据是新的，只是排错了位置。
+       解析成时间戳再比。"11:36am" 中间没空格，Date.parse 认不出来，先补一个。
+       解析不出来的记 0 排到最后，并退回字符串比较做兜底，保证顺序稳定。 */
+    const timeOf = value => {
+      const text = String(value ?? '').replace(/(\d)\s*(am|pm)\b/i, '$1 $2');
+      const parsed = Date.parse(text);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
     entries.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      const diff = timeOf(b.dateText) - timeOf(a.dateText);
+      if (diff) return diff;
       return String(b.dateText).localeCompare(String(a.dateText));
     });
     return entries;
