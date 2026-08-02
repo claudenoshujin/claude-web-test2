@@ -6481,7 +6481,24 @@ if (CLAUDE_ENABLED) {
     const before = new Set(String(record.oldValue || '').split(/\s+/).filter(Boolean));
     const after = new Set(String(target.getAttribute('class') || '').split(/\s+/).filter(Boolean));
     const changed = new Set([...before, ...after].filter(name => before.has(name) !== after.has(name)));
-    return changed.size > 0 && [...changed].every(name => (
+    /* Bug 7 真根因：欢迎消息头像那条 (#chat > .mes.claude-welcome-clawd-assistant)
+       每次 refreshClawdInner() 都会被重新写一次 class 属性——不是用
+       classList.add/toggle（值不变时浏览器会自己判定 no-op、根本不产生
+       MutationObserver 记录），而是某处整串重新赋值，哪怕新值和旧值
+       完全相同也照样触发一条 class 属性变更记录。
+       这种"值没变但属性被重写"的记录，before/after 集合完全一样，
+       changed.size 是 0。改之前的逻辑在 changed.size === 0 时直接判定
+       "不算 cosmetic"（因为 `changed.size > 0 && ...` 这个前提不成立），
+       于是 mutationNeedsFullRefresh 把这种真正意义上"什么都没变"的记录
+       当成"需要整轮刷新"处理——refresh 又把这同一个元素的 class 原样重写
+       一遍，自己生成的记录又被判定成"需要刷新"，刷新完再重写……在真机上
+       实测是持续 ~15 次/秒的自循环，占了 8%+ 的 CPU，跟用户是否在操作
+       抽屉动画完全无关，是这套刷新过滤逻辑本身的一个洞。
+       语义上很清楚：class 属性被重新赋值但实际包含的 token 集合一个都
+       没变，就是彻头彻尾的空写，任何情况下都不该触发刷新——不需要判断
+       改动的是不是"认识的装饰类"，压根没有改动。 */
+    if (changed.size === 0) return true;
+    return [...changed].every(name => (
       OBSERVER_COSMETIC_CLASSES.has(name)
       || name.startsWith('clawd-react-')
       || name.startsWith('clawd-poke-')
