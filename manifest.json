@@ -1,11 +1,11 @@
 {
-    "display_name": "Claude Web 3.0",
+    "display_name": "Claude Web 2.0 (Test)",
     "loading_order": 100,
     "requires": [],
     "optional": [],
-    "js": "index.js",
+    "js": "loader-2.0.32.js",
     "author": "lulu",
-    "version": "3.0.0",
+    "version": "2.0.32",
     "homePage": "https://github.com/claudenoshujin/claude-web-test",
     "auto_update": true
 }

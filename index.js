@@ -1,4 +1,4 @@
-/* Claude Web 3.0 —— SillyTavern 扩展形态入口。
+/* Claude Web 2.0 —— SillyTavern 扩展形态入口。
  *
  * 这个文件由 tools/build-extension.js 生成，不要手改。
  * 真正的源码在仓库的 src/ 下，改完跑 node tools/build-extension.js 重出。
@@ -18,7 +18,7 @@ const CLAUDE_EXTENSION_BASE = new URL('.', import.meta.url).href;
 
 const CLAUDE_THEMES = {
   "day": {
-    "name": "Claude Web - Day 3.0 - Extension",
+    "name": "Claude Web - Day 2.0 - Extension",
     "blur_strength": 0,
     "shadow_color": "rgba(0, 0, 0, 0)",
     "shadow_width": 0,
@@ -60,7 +60,7 @@ const CLAUDE_THEMES = {
     "custom_css": ":root {\n  --cl-color-scheme:light;\n  --cl-canvas:#f8f8f6;\n  --cl-surface:#ffffff;\n  --cl-soft:#f4f4f1;\n  --cl-soft-hover:#efeeeb;\n  --cl-line:rgba(31,31,30,.15);\n  --cl-line-strong:rgba(31,31,30,.25);\n  --cl-hero:#373734;\n  --cl-ink:#121212;\n  --cl-muted:#7b7974;\n  --cl-control-muted:#686660;\n  --cl-icon:#0b0b0b;\n  --cl-rail-ink:#0b0b0b;\n  --cl-accent:#d97757;\n  --cl-accent-soft:#f3e0d8;\n  --cl-code:#f0eee6;\n  --cl-em-color:#6c6b66;\n  --cl-code-ink:#633a2e;\n  --cl-send-hover:#c6613f;\n  --cl-selection:#efcfc2;\n  --cl-scrollbar:#c9c5bc;\n  --cl-scrollbar-hover:#aaa59b;\n  --cl-dialog-shadow:0 12px 36px rgba(50,45,35,.12);\n  --cl-composer-shadow:0 10px 30px rgba(43,40,34,.10);\n  --cl-floating-shadow:0 14px 38px rgba(43,40,34,.11);\n  --cl-topbar-surface:rgba(248,248,246,.98);\n  --cl-body-weight:430;\n  --cl-clawd-eye:#000000;\n  --cl-clawd-eye-row-a:#000000;\n  --cl-clawd-eye-row-b:#d97757;\n  --cl-greeting-particle-shadow:39px 0 0 var(--cl-ink),42px 0 0 var(--cl-ink),45px 0 0 var(--cl-ink),45px 3px 0 var(--cl-ink),42px 6px 0 var(--cl-ink),21px 12px 0 var(--cl-ink),27px 12px 0 var(--cl-ink),33px 12px 0 var(--cl-ink),42px 12px 0 var(--cl-ink);\n  --cl-typing-float-animation:clawd-question-float 2.36s cubic-bezier(.37,0,.22,1) infinite;\n  --cl-greeting-particle-animation:clawd-question-float 2.83s cubic-bezier(.37,0,.22,1) .41s infinite;\n}"
   },
   "night": {
-    "name": "Claude Web - Night 3.0 - Extension",
+    "name": "Claude Web - Night 2.0 - Extension",
     "blur_strength": 0,
     "shadow_color": "rgba(0, 0, 0, 0)",
     "shadow_width": 0,
@@ -115,12 +115,104 @@ function claudeReadSetting(key, allowed, fallback) {
 /* 总开关。默认开；只有明确写过 'off' 才算关，
    读不到 localStorage（无痕、被云端宿主禁用）时不能把整个扩展关掉。 */
 const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
+const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
+const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'], 'on') !== 'off';
+/* 生成计时器默认开——是个实用小组件，不是装饰。
+   背景透传、毛玻璃默认关——都是外观改动，不该在没人要求的情况下
+   突然把原本的白底/黑底换成透明。
+   （侧栏图标开关已废弃移除：实测在真机上不生效，留着只会误导用户。） */
+const CLAUDE_GEN_TIMER_ENABLED = claudeReadSetting('genTimer', ['on', 'off'], 'on') !== 'off';
+const CLAUDE_BG_TRANSPARENT_ENABLED = claudeReadSetting('bgTransparent', ['on', 'off'], 'off') === 'on';
+const CLAUDE_BG_BLUR_ENABLED = claudeReadSetting('bgBlur', ['on', 'off'], 'off') === 'on';
+/* 毛玻璃浓度：8~60 之间的整数，表示 color-mix 里 --cw-surface-page 的占比。
+   数字越大越"糊"（底色更浓、越不透）；越小越接近纯透明。允许字符串是
+   开区间，这里手动做数值校验和夹取，claudeReadSetting 那套白名单机制
+   不适合连续数值。抽屉/弹层固定用同一个值上磨砂——它们不受
+   bgBlur/bgTransparent 开关控制，用户要的是"不管开不开，抽屉始终是磨砂"。 */
+const CLAUDE_BG_BLUR_OPACITY = (() => {
+  let raw = null;
+  try { raw = window.localStorage.getItem('claude-web:bgBlurOpacity'); } catch { /* 无痕/被禁用时用默认值 */ }
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return 22;
+  return Math.min(60, Math.max(8, Math.round(num)));
+})();
+/* 之前这里给到 68%，是想靠"颜色"硬压住底下的图案——反馈是"看着不像磨砂
+   玻璃，像涂了层灰漆"。真机测过：抽屉现在自己带了 backdrop-filter 模糊
+   （见下面 CSS），单靠模糊本身就能把底下的图案/色块糊成一片，可读性不
+   靠色调堆出来。这里把下限降下来，颜色只留一点点存在感（让磨砂面板跟
+   纯透明区分得出来），主要观感交给模糊，不是靠色调"糊脸"。 */
+const CLAUDE_DRAWER_TINT_OPACITY = Math.max(18, CLAUDE_BG_BLUR_OPACITY);
+/* 中性灰这条路走过一轮，反馈是"显脏"——纯中灰不亮不暗，跟大多数背景
+   混在一起都是浑浊感，不管日夜用同一个色号反而两头不讨好。改回跟主题走
+   （日间纸白、夜间近黑），但把浓度压得很低（18%起，比最早 68% 那版淡
+   得多）再配模糊，是常见磨砂玻璃的标准做法——玻璃本身只留一点点存在感，
+   主要靠底下的颜色透出来，不会再糊成一片白/一片黑。 */
+const CLAUDE_GLASS_BASE = 'var(--cw-surface-page)';
+/* 手机侧边栏（#top-settings-holder，导航列表那个抽屉）反馈"看着比别处
+   淡"——它挂的是主区域那根滑条（--claude-bg-blur-opacity，最低能到
+   8%），侧边栏一开还带着系统那层黑色遮罩（.clawd-mobile-scrim，见 CSS
+   文件那边），淡玻璃 + 黑遮罩叠在一起就是发暗发灰的根源。侧边栏是导航
+   主入口，不该跟着主区域那根"用户可能调得很低"的滑条走——单独给它一个
+   更高的浓度下限，其他抽屉/弹层不受影响。 */
+const CLAUDE_NAV_TINT_OPACITY = Math.max(58, CLAUDE_BG_BLUR_OPACITY);
 
-const CLAUDE_THEME_VARIANT = claudeReadSetting('variant', ['day', 'night'], 'day');
+document.documentElement.dataset.claudeMotion = CLAUDE_MOTION_ENABLED ? 'on' : 'off';
+document.documentElement.dataset.claudeDecorations = CLAUDE_DECORATIONS_ENABLED ? 'on' : 'off';
+document.documentElement.dataset.claudeGenTimer = CLAUDE_GEN_TIMER_ENABLED ? 'on' : 'off';
+document.documentElement.dataset.claudeBgTransparent = CLAUDE_BG_TRANSPARENT_ENABLED ? 'on' : 'off';
+document.documentElement.dataset.claudeBgBlur = CLAUDE_BG_BLUR_ENABLED ? 'on' : 'off';
+document.documentElement.style.setProperty('--claude-bg-blur-opacity', `${CLAUDE_BG_BLUR_OPACITY}%`);
+document.documentElement.style.setProperty('--claude-drawer-tint-opacity', `${CLAUDE_DRAWER_TINT_OPACITY}%`);
+document.documentElement.style.setProperty('--claude-glass-base', CLAUDE_GLASS_BASE);
+document.documentElement.style.setProperty('--claude-nav-tint-opacity', `${CLAUDE_NAV_TINT_OPACITY}%`);
+
+function claudeReadClockSetting(key, fallback) {
+  try {
+    const value = window.localStorage.getItem('claude-web:' + key);
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(value || '') ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function claudeClockMinutes(value) {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function claudeResolveThemeVariant() {
+  const manual = claudeReadSetting('variant', ['day', 'night'], 'day');
+  const mode = claudeReadSetting('theme-auto', ['manual', 'system', 'time'], 'manual');
+  if (mode === 'system') {
+    try { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day'; }
+    catch { return manual; }
+  }
+  if (mode === 'time') {
+    const dayStart = claudeClockMinutes(claudeReadClockSetting('theme-day-start', '07:00'));
+    const nightStart = claudeClockMinutes(claudeReadClockSetting('theme-night-start', '19:00'));
+    if (dayStart === nightStart) return manual;
+    const now = new Date();
+    const minute = now.getHours() * 60 + now.getMinutes();
+    const isDay = dayStart < nightStart
+      ? minute >= dayStart && minute < nightStart
+      : minute >= dayStart || minute < nightStart;
+    return isDay ? 'day' : 'night';
+  }
+  return manual;
+}
+
+const CLAUDE_THEME_VARIANT = claudeResolveThemeVariant();
+/* Preset families still read the effective scheme from localStorage. Keep the
+   resolved automatic value there too, so startup cannot pair night CSS with
+   the day palette (or vice versa) before the settings panel mounts. */
+if (claudeReadSetting('theme-auto', ['manual', 'system', 'time'], 'manual') !== 'manual') {
+  try { window.localStorage.setItem('claude-web:variant', CLAUDE_THEME_VARIANT); } catch { /* storage may be blocked */ }
+}
+
+const CLAUDE_LAYOUT_CHOICE = claudeReadSetting('layout', ['auto', 'pc', 'mobile'], 'auto');
 
 const CLAUDE_LAYOUT = (() => {
-  const choice = claudeReadSetting('layout', ['auto', 'pc', 'mobile'], 'auto');
-  if (choice !== 'auto') return choice;
+  if (CLAUDE_LAYOUT_CHOICE !== 'auto') return CLAUDE_LAYOUT_CHOICE;
   /* 和 CSS 里的主断点保持一致：700px 以下算手机。 */
   try {
     return window.matchMedia('(max-width:700px)').matches ? 'mobile' : 'pc';
@@ -129,6 +221,25 @@ const CLAUDE_LAYOUT = (() => {
   }
 })();
 
+/* 自动布局不能只在启动时判断一次。跨过主断点时自动刷新，让 JS 功能分支和
+   对应的 PC / 手机样式表一起切换；只改 CSS 会留下半桌面半手机的状态。 */
+if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
+  const layoutMedia = window.matchMedia('(max-width:700px)');
+  let layoutReloadTimer = 0;
+  const syncAutoLayout = () => {
+    window.clearTimeout(layoutReloadTimer);
+    layoutReloadTimer = window.setTimeout(() => {
+      const nextLayout = layoutMedia.matches ? 'mobile' : 'pc';
+      if (nextLayout !== CLAUDE_LAYOUT) window.location.reload();
+    }, 180);
+  };
+  if (typeof layoutMedia.addEventListener === 'function') {
+    layoutMedia.addEventListener('change', syncAutoLayout);
+  } else if (typeof layoutMedia.addListener === 'function') {
+    layoutMedia.addListener(syncAutoLayout);
+  }
+}
+
 const CLAUDE_FEATURES = {
   rail: true,
   welcome: true,
@@ -136,20 +247,26 @@ const CLAUDE_FEATURES = {
 };
 
 const CLAUDE_KEYBOARD_BUILD = {
-  id: '2026-07-29-r24-v3-release-split-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  /* 这个 id 是 CSS 的缓存破坏 key（见下面 CLAUDE_STYLE_URL 的 ?v=）。
+     只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
+     缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
+     以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
+  id: '2.0.32-mobile-thin-raster-icons-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
 /* 设置面板的「重新安装」要按地址重装，地址不能在面板里另写一份 ——
    写两处就有一天会对不上。这里从构建脚本的 REPO_URL 注入。 */
-const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web-test';
+const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web';
 
 const CLAUDE_THEME = CLAUDE_THEMES[CLAUDE_THEME_VARIANT];
 
-const CLAUDE_STYLE_HREF = new URL(
+const CLAUDE_STYLE_URL = new URL(
   'styles/' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '.css',
   CLAUDE_EXTENSION_BASE,
-).href;
+);
+CLAUDE_STYLE_URL.searchParams.set('v', CLAUDE_KEYBOARD_BUILD.id);
+const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 console.info(
   '[Claude Web] 扩展形态启动：' + CLAUDE_THEME_VARIANT + ' / ' + CLAUDE_LAYOUT
@@ -330,10 +447,9 @@ if (CLAUDE_ENABLED) {
      拆成两个维度之后，明暗只有一个来源，打不起来。 */
   const FAMILIES = [
     { id: 'classic', name: '经典', light: CLASSIC_LIGHT, dark: CLASSIC_DARK },
-    { id: 'archive', name: '档案', light: WARM_PAPER, dark: INK },
   ];
 
-  const BUILT_IN = [CLASSIC_LIGHT, CLASSIC_DARK, WARM_PAPER, INK];
+  const BUILT_IN = [CLASSIC_LIGHT, CLASSIC_DARK];
 
   function familyOf(presetId) {
     return FAMILIES.find(f => f.light.id === presetId || f.dark.id === presetId) ?? FAMILIES[0];
@@ -1159,63 +1275,6 @@ if (CLAUDE_ENABLED) {
 })();
 
 
-/* Claude Web 3.0 — V15 inline assets.
- *
- * Keep injected SVG and the rail's display glyphs in one place. Runtime code
- * chooses an asset by role; it does not duplicate drawing strings.
- */
-const AR3_ICONS = Object.freeze({
-  ruleSquare: '<svg viewBox="0 0 42 42" fill="currentColor" aria-hidden="true"><path d="M8 8H34M8 34H34M8 8V34M34 8V34" fill="none" stroke="currentColor" stroke-width="4.5"/><circle cx="8" cy="8" r="5.4"/><circle cx="34" cy="8" r="5.4"/><circle cx="8" cy="34" r="5.4"/><circle cx="34" cy="34" r="5.4"/></svg>',
-  ruleSignal: '<svg viewBox="0 0 42 42" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" aria-hidden="true"><path d="M21 36V12"/><path d="M9 30a12 12 0 0 1 24 0"/><path d="M13.5 33a7.5 7.5 0 0 1 15 0"/><path d="M4.5 27a16.5 16.5 0 0 1 33 0"/></svg>',
-  ruleClover: '<svg viewBox="0 0 42 42" fill="currentColor" class="is-solid" aria-hidden="true"><circle cx="14" cy="14" r="9"/><circle cx="28" cy="14" r="9"/><circle cx="14" cy="28" r="9"/><circle cx="28" cy="28" r="9"/><rect class="icon-cut" x="18.5" y="18.5" width="5" height="5"/></svg>',
-  ruleGrid: '<svg viewBox="0 0 42 42" fill="currentColor" class="is-solid" aria-hidden="true"><circle cx="11" cy="11" r="4.6"/><circle cx="21" cy="11" r="4.6"/><circle cx="31" cy="11" r="4.6"/><circle cx="11" cy="21" r="4.6"/><circle cx="21" cy="21" r="4.6"/><circle cx="31" cy="21" r="4.6"/><circle cx="11" cy="31" r="4.6"/><circle cx="21" cy="31" r="4.6"/><circle cx="31" cy="31" r="4.6"/></svg>',
-  nodeNet: '<svg class="clawd-node-net" viewBox="0 0 200 130" aria-hidden="true"><line x1="24" y1="86" x2="62" y2="52"/><line x1="62" y1="52" x2="100" y2="66"/><line x1="100" y1="66" x2="138" y2="38"/><line x1="100" y1="66" x2="126" y2="98"/><line x1="138" y1="38" x2="176" y2="92"/><circle cx="24" cy="86" r="5.5"/><circle cx="62" cy="52" r="5.5"/><circle cx="100" cy="66" r="9"/><circle cx="138" cy="38" r="5.5"/><circle cx="126" cy="98" r="5.5"/><circle cx="176" cy="92" r="5.5"/></svg>',
-  railGlyphs: Object.freeze({
-    '预设': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><g fill="none" stroke="#1A1A19" stroke-width="2.4" stroke-linecap="round"><path d="M15 12v24M24 12v24M33 12v24"/></g><circle cx="15" cy="30" r="3.2" fill="#F0EEE6" stroke="#1A1A19" stroke-width="2.4"/><circle cx="24" cy="18" r="3.2" fill="#D97757" stroke="#1A1A19" stroke-width="2.4"/><circle cx="33" cy="24" r="3.2" fill="#F0EEE6" stroke="#1A1A19" stroke-width="2.4"/></svg>',
-    'API': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><g fill="none" stroke="#1A1A19" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m16 21 5-5 11 11-5 5zM14 34l5-5M12 14l5 5M29 31l5 5"/></g><circle cx="31" cy="17" r="3" fill="#D97757" stroke="#1A1A19" stroke-width="2"/></svg>',
-    '格式化': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><g fill="none" stroke="#1A1A19" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m14 32 8-18 8 18M17.5 25h9"/></g><circle cx="33" cy="15" r="3" fill="#D97757" stroke="#1A1A19" stroke-width="2"/></svg>',
-    '世界书': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><g fill="none" stroke="#1A1A19" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 18c-4-3-9-3-12-1.5V33c3-1.5 8-1.5 12 1.5 4-3 9-3 12-1.5V16.5C33 15 28 15 24 18Z"/><path d="M24 18v16.5"/></g><circle cx="33" cy="12" r="3.4" fill="#D97757" stroke="#1A1A19" stroke-width="2"/><path d="M29 12h-5" stroke="#1A1A19" stroke-width="1.6" stroke-linecap="round"/></svg>',
-    '偏好设置': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><g stroke="#D97757" stroke-width="2.4" stroke-linecap="round"><path d="M24 24V13M24 24l-10-5.5M24 24l-10 5.5M24 24v11M24 24l10 5.5M24 24l10-5.5"/></g><g fill="#D97757"><circle cx="24" cy="13" r="3"/><circle cx="14" cy="18.5" r="3"/><circle cx="14" cy="29.5" r="3"/><circle cx="24" cy="35" r="3"/><circle cx="34" cy="29.5" r="3"/><circle cx="34" cy="18.5" r="3"/></g><circle cx="24" cy="24" r="4" fill="#1A1A19"/></svg>',
-    '背景': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><rect x="10" y="11" width="28" height="26" rx="3" fill="none" stroke="#1A1A19" stroke-width="2.4"/><circle cx="18" cy="19" r="3" fill="#D97757" stroke="#1A1A19" stroke-width="1.8"/><path d="m10 32 9-8 6 5 6-7 7 8v4.5c0 1.4-1.1 2.5-2.5 2.5h-23a2.5 2.5 0 0 1-2.5-2.5Z" fill="none" stroke="#1A1A19" stroke-width="2.4" stroke-linejoin="round"/></svg>',
-    '扩展': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><path d="M17 13h6v3.5a2.5 2.5 0 0 0 5 0V13h6v6h-3.5a2.5 2.5 0 0 0 0 5H34v6h-6v-2.5a2.5 2.5 0 0 0-5 0V30h-6v-6h-3.5a2.5 2.5 0 0 1 0-5H17Z" fill="none" stroke="#1A1A19" stroke-width="2.4" stroke-linejoin="round"/><circle cx="30.5" cy="21.5" r="2.4" fill="#D97757"/></svg>',
-    '玩家角色': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><rect x="9" y="12" width="30" height="24" rx="3" fill="none" stroke="#1A1A19" stroke-width="2.4"/><circle cx="19" cy="21" r="4" fill="none" stroke="#1A1A19" stroke-width="2.2"/><path d="M12.5 31c0-4.5 3.3-6 6.5-6s6.5 1.5 6.5 6M29 19h6M29 24h6" fill="none" stroke="#1A1A19" stroke-width="2.2" stroke-linecap="round"/><circle cx="34" cy="14" r="3.4" fill="#D97757" stroke="#1A1A19" stroke-width="1.8"/></svg>',
-    '角色卡': '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="11" fill="#F0EEE6"/><rect x="9" y="12" width="30" height="24" rx="3" fill="none" stroke="#1A1A19" stroke-width="2.4"/><circle cx="19" cy="21" r="4" fill="none" stroke="#1A1A19" stroke-width="2.2"/><path d="M12.5 31c0-4.5 3.3-6 6.5-6s6.5 1.5 6.5 6M29 19h6M29 24h6" fill="none" stroke="#1A1A19" stroke-width="2.2" stroke-linecap="round"/><circle cx="34" cy="14" r="3.4" fill="#D97757" stroke="#1A1A19" stroke-width="1.8"/></svg>',
-  }),
-});
-
-
-/* Claude Web 3.0 — V15 welcome-page copy helpers.
- *
- * Inputs are local time and the last locally known message time. No weather,
- * location permission, or remote request is involved.
- */
-const AR3_WELCOME_RUNTIME = Object.freeze({
-  visualStorageKey: 'claude-web:v3-welcome-visual',
-  slogans: Object.freeze({
-    deepnight: { hours: [0, 5], kicker: 'Private archive / Late pass', title: ['这一页还没合上。', '先写完再睡。'] },
-    dawn: { hours: [5, 8], kicker: 'Private archive / First light', title: ['天刚亮。', '昨晚那页还热着。'] },
-    morning: { hours: [8, 11], kicker: 'Private archive / Morning', title: ['继续记录。', '别急着归档。'] },
-    noon: { hours: [11, 14], kicker: 'Private archive / Midday', title: ['日头正中。', '档案先摊着。'] },
-    afternoon: { hours: [14, 17], kicker: 'Private archive / Afternoon', title: ['光斜过来了。', '接着上一段写。'] },
-    dusk: { hours: [17, 19], kicker: 'Private archive / Dusk', title: ['天色往下沉了。', '趁还看得见。'] },
-    night: { hours: [19, 24], kicker: 'Private archive / Night', title: ['灯下继续。', '今天还差一页。'] },
-  }),
-  currentBand(hour = new Date().getHours()) {
-    return Object.keys(this.slogans).find(key => {
-      const [start, end] = this.slogans[key].hours;
-      return hour >= start && hour < end;
-    }) || 'morning';
-  },
-  asideCopy(minutesSince, folio) {
-    if (minutesSince < 30) return ['刚才那页还没凉', `停在 ${folio}。接着往下写就行。`];
-    if (minutesSince < 240) return ['今天写过了', `${folio} 是最后一层。要续吗。`];
-    if (minutesSince < 1440) return ['现在可以做什么', `昨晚那一页停在 ${folio}。可以先续上，也可以放一张新图。`];
-    if (minutesSince < 4320) return ['搁了两三天', `${folio} 还在那里等。翻回去看一眼就想起来了。`];
-    return ['上次归档有点久了', `最后一层是 ${folio}。要不要从头翻一遍再决定写什么。`];
-  },
-});
-
-
 (() => {
   'use strict';
 
@@ -1240,6 +1299,13 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   const EMPTY_CLASS = 'claude-empty-assistant';
   const GENERATING_CLASS = 'claude-generation-active';
   const BUTTON_CLASS = 'clawd-signoff-button';
+  const LEG_BOUNCE_CLASS = 'clawd-leg-bounce';
+  const INPUT_ACTIVE_CLASS = 'clawd-input-active';
+  const INPUT_TEXT_CLASS = 'clawd-input-has-text';
+  /* D2：害羞（环境触发）与被冷落。两个都是常驻状态的 class，不是
+     一次性反应，所以单独命名，不进 BUTTON_REACTIONS 的洗牌袋。 */
+  const SHY_AMBIENT_CLASS = 'clawd-shy-ambient';
+  const NEGLECTED_CLASS = 'clawd-neglected';
   const LEFT_SWIPE_PROXY_CLASS = 'claude-swipe-left-proxy';
   const SWIPE_PROXY_CLASS = 'claude-swipe-right-proxy';
   const REROLL_CLASS = 'claude-reroll-button';
@@ -1254,37 +1320,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   const CHARACTER_MENU_CLASS = 'clawd-character-menu';
   const FAKE_MIC_CLASS = 'clawd-fake-mic';
   const LAST_CHARACTER_KEY = 'clawd-last-character-name';
-  const ARCHIVE_HERO_KEY_PREFIX = 'clawd-archive-hero:';
-  const ARCHIVE_AVATARS_KEY = 'claude-web:archive-avatars';
-  const STREAM_TIMER_KEY = 'claude-web:stream-timer';
-  const ARCHIVE_INTERLUDE_CLASS = 'clawd-archive-interlude';
-  const ARCHIVE_HEADER_CLASS = 'clawd-archive-chathead';
-  const RAIL_TOGGLES_CLASS = 'clawd-rail-toggles';
-  const STREAM_TIMER_CLASS = 'clawd-stream-timer';
-  const V3_WELCOME_CLASS = 'clawd-welcome-view';
-  const V3_TOPBAR_CLASS = 'clawd-archive-topbar';
-  const V3_COLLECTION_CLASS = 'clawd-rail-head';
-  /* Focused tests also evaluate this source directly. Production builds inject
-     the full V15 asset/runtime modules first; these tiny fallbacks keep the
-     interaction source independently executable without changing production. */
-  const archiveIcons = typeof AR3_ICONS !== 'undefined' ? AR3_ICONS : {
-    ruleSquare: '<svg viewBox="0 0 42 42" aria-hidden="true"></svg>',
-    ruleSignal: '<svg viewBox="0 0 42 42" aria-hidden="true"></svg>',
-    ruleClover: '<svg viewBox="0 0 42 42" aria-hidden="true"></svg>',
-    ruleGrid: '<svg viewBox="0 0 42 42" aria-hidden="true"></svg>',
-    nodeNet: '<svg class="clawd-node-net" viewBox="0 0 200 130" aria-hidden="true"></svg>',
-    railGlyphs: {},
-  };
-  const archiveWelcomeRuntime = typeof AR3_WELCOME_RUNTIME !== 'undefined'
-    ? AR3_WELCOME_RUNTIME
-    : {
-      visualStorageKey: 'claude-web:v3-welcome-visual',
-      slogans: {
-        morning: { kicker: 'Private archive / Morning', title: ['继续记录。', '别急着归档。'] },
-      },
-      currentBand: () => 'morning',
-      asideCopy: (_minutes, folio) => ['现在可以做什么', `最后一页停在 ${folio}。`],
-    };
+  const LAST_HERO_KEY = 'clawd-last-hero-line';
   const MOBILE_MENU_OPEN_CLASS = 'clawd-mobile-menu-open';
   const MOBILE_LAYOUT_CLASS = 'clawd-mobile-layout';
   const VIRTUAL_KEYBOARD_OVERLAY_CLASS = 'clawd-virtual-keyboard-overlay';
@@ -1330,8 +1366,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   let destroyed = false;
   let previousTypingActive = false;
   let generationEventActive = false;
-  let generationStartedAt = 0;
-  let streamTimerInterval = 0;
   const generationSubscriptions = [];
   let lastGenerationDoneAt = 0;
   let settlePending = false;
@@ -1366,13 +1400,10 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   let mobileNavHolder = null;
   let mobileNavCloseHandler = null;
   let composerResizeObserver = null;
-  let archiveComposerResizeObserver = null;
-  let observedArchiveComposerShell = null;
   let observedComposerShell = null;
   let composerInsetRaf = 0;
   let composerBottomRaf = 0;
   let lastComposerHeight = 0;
-  let recentEntriesCache = [];
   let mobileComposerTranslateRaf = 0;
   let viewportSettleTimer = 0;
   let lastViewportWidth = Math.round(hostWindow.visualViewport?.width || hostWindow.innerWidth || 0);
@@ -1539,6 +1570,330 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       button.${BUTTON_CLASS}.clawd-poke-tucked::before {
         animation: none !important;
         box-shadow: var(--clawd-f-tucked) !important;
+      }
+
+      /* D1: three quick clicks toggle a persistent sideways scuttle —
+         not a mirrored flip. Real crabs walk sideways without turning
+         their body around, and a static scale:-1 1 mirror made the face
+         pop to the other side the instant the mode switched on, which
+         read as a glitch rather than a walk. Movement stays on the
+         translate/rotate channel so it still composes with the
+         one-shot transform reactions instead of replacing them. */
+      button.${BUTTON_CLASS}.${LEG_BOUNCE_CLASS}:not(.clawd-sleeping)::before,
+      button.clawd-mobile-clawd-button.${LEG_BOUNCE_CLASS}::before {
+        animation: clawd-leg-bounce 640ms linear infinite !important;
+      }
+
+      button.${BUTTON_CLASS}.${INPUT_ACTIVE_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping),
+      button.clawd-mobile-clawd-button.${INPUT_ACTIVE_CLASS}:not(.${LEG_BOUNCE_CLASS}) {
+        translate: 0 -3px;
+      }
+
+      button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping)::before,
+      button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}:not(.${LEG_BOUNCE_CLASS})::before {
+        animation: clawd-compose-bob 900ms ease-in-out infinite !important;
+      }
+
+      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${LEG_BOUNCE_CLASS}::before,
+      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before {
+        animation: none !important;
+      }
+
+      /* D2 被冷落 / 害羞（环境触发）。跟 D1 一样只占 translate/rotate 通道，
+         不碰 transform（呼吸/打盹/入睡都在那条通道上），也用 :not() 让三击
+         踱步和入睡继续按既有优先级压过它们——这两条常驻状态谁都不该覆盖
+         已经更明确的用户操作（toggle）或更需要表达的「不在」（睡着）。
+         生成中（GENERATING_CLASS）也整体让位，避免跟专属动作抢注意力。 */
+      button.${BUTTON_CLASS}.${NEGLECTED_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping)::before,
+      button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}:not(.${LEG_BOUNCE_CLASS})::before {
+        animation: clawd-neglected-droop 3.4s ease-in-out infinite !important;
+      }
+
+      button.${BUTTON_CLASS}.${SHY_AMBIENT_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping)::before,
+      button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}:not(.${LEG_BOUNCE_CLASS})::before {
+        animation: clawd-shy-ambient-tilt 2.2s ease-in-out infinite !important;
+      }
+
+      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}::before,
+      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}::before {
+        animation: none !important;
+      }
+
+      /* 生成计时器：固定在输入区上方的小徽标，跟 clawd-cc-toast 同一套
+         视觉语言（surface-raised 背景 + hairline 边框），生成时数字跳动，
+         结束后定格几秒再淡出。html[data-claude-gen-timer="off"] 关闭时
+         直接不显示——JS 那边也不会建元素，这里是双保险。 */
+      .clawd-gen-timer {
+        position: fixed;
+        right: 16px;
+        bottom: 84px;
+        z-index: 10015;
+        padding: 4px 10px;
+        border-radius: 10px;
+        font-family: var(--cl-sans);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        color: var(--cw-text-body);
+        background: var(--cw-surface-raised);
+        border: 1px solid var(--cw-rule-hairline);
+        box-shadow: 0 6px 18px rgba(0,0,0,.18);
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 200ms ease, transform 200ms ease;
+        pointer-events: none;
+      }
+      .clawd-gen-timer.clawd-gen-timer-visible { opacity: .92; transform: translateY(0); }
+      .clawd-gen-timer.clawd-gen-timer-done { color: var(--cw-mark); }
+      html[data-claude-gen-timer="off"] .clawd-gen-timer { display: none !important; }
+      @media (prefers-reduced-motion: reduce) {
+        .clawd-gen-timer { transition: none !important; }
+      }
+
+      /* 背景透传：主题原本给 body/侧栏（#top-bar、#top-settings-holder）/
+         正文（#sheld、#chat，含 #chat::before 顶部遮罩条）/输入区整片刷了
+         不透明的 --cw-surface-page（也就是现在的白底/黑底），把酒馆自己的
+         背景图盖住了；欢迎语页面用的是同一批容器，一起覆盖到就不用再单独
+         处理。这里只清空这几层的背景色，不碰 background-image——酒馆的
+         背景图挂在更底层的元素上，本来就没被这几层挡住内容，挡住的只是
+         "看不看得见"。
+         注意 #foo#foo 的重复写法不是笔误：主题原样式里同名选择器很多是
+         "html body #foo" 这种三段式，优先级比这边挂在 html 属性选择器上的
+         单个 id 选择器更高，重复一次 id 才能确保稳赢，不必依赖样式表谁先
+         加载谁后加载。（上一版只覆盖了 body/#sheld/#chat/#send_form/
+         #form_sheld，漏了侧栏和 #chat::before，真机测出侧栏、正文区域、
+         欢迎语区域都还是不透的，就是因为这个。） */
+      html[data-claude-bg-transparent="on"],
+      html[data-claude-bg-transparent="on"] body,
+      html[data-claude-bg-transparent="on"] #top-bar#top-bar,
+      html[data-claude-bg-transparent="on"] #top-settings-holder#top-settings-holder,
+      html[data-claude-bg-transparent="on"] #sheld#sheld,
+      html[data-claude-bg-transparent="on"] #chat#chat,
+      html[data-claude-bg-transparent="on"] #form_sheld#form_sheld {
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+      }
+      html[data-claude-bg-transparent="on"] #chat#chat::before {
+        background: transparent !important;
+      }
+      /* 上一版把 #form_sheld 也单独打了层色调，本意是想解决"PC 端输入框
+         看着不透"的问题，结果打歪了：真机调试查了 #sheld 的实际渲染盒子
+         （position:absolute，铺满整个 #sheld 区域），发现它的模糊背景其实
+         已经完整盖到 #form_sheld 那块地方了，PC 端"不透"的锅根本不在
+         #sheld 有没有漏——是 #send_form 自己在 day-pc.css 里原本就有一份
+         不透明的 --cw-surface-raised 背景（做成"浮起的输入控件"故意跟
+         正文区分开），跟透传开关没关系。
+         #form_sheld 单独叠一层色调，等于在"#sheld 已经模糊过一次"的底子上
+         又摞了一层不同浓度的色调，跟旁边同样透出 #sheld 底色、但没有额外
+         色调的 #chat 交界处，亮度/浓度对不上，就刷出了聊天区和输入条之间
+         那道硬边——就是这次反馈的新 bug。
+         #form_sheld 退回去跟 #chat 一样纯透传，边界就消失了。真正需要
+         "看得见但要跟正文区分开"的其实只有 #send_form 那个圆角输入条本身
+         ——这本来就是原设计里唯一带独立底色的控件，边界是有意的（一个
+         圆角药丸形状的控件轮廓，不是贯穿整行的硬切线），不算视觉割裂。 */
+      html[data-claude-bg-transparent="on"] #send_form#send_form {
+        background: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+        background-color: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+        background-image: none !important;
+      }
+
+      /* 毛玻璃：在透传的基础上，给内容区（不含 html/body 这两层最外层）
+         补一层很浅的同色调半透明底 + 模糊，读起来是"隔着磨砂玻璃看背景"，
+         不是完全透明导致文字糊在背景图上看不清。设置面板里这个开关依赖
+         背景透传先开，两个都关掉时都不生效，不会出现"糊了但看不出透明"
+         的死角状态。
+
+         #top-bar / #top-settings-holder 单独拆出来、只给半透明底色、
+         不上 backdrop-filter —— 世界书/角色管理/扩展这些抽屉的
+         .drawer-content 就挂在 #top-settings-holder 底下。CSS 规则是
+         "给元素加 filter/backdrop-filter，这个元素就变成它内部
+         fixed/absolute 子元素的新参照系"，抽屉本来是要铺满整个视口的
+         fixed 面板，一旦祖先带上 backdrop-filter 就被摁进侧栏那个又窄
+         又裁切的盒子里，表现是点了打不开、开着的关不掉。之前那版侧栏
+         也叠了 blur，线上直接把抽屉全部糊死，是我漏测的坑。
+
+         模糊只上在 #sheld 这一层——#chat、#form_sheld（连带里面的
+         #send_form）都是 #sheld 的子元素，之前四个都各自叠了一层
+         color-mix + blur，子元素的盒子比父元素小一圈（欢迎页尤其明显，
+         问候语和输入框那块是居中的窄盒子），两层模糊叠在一起、且子盒子
+         边缘只有单层父级模糊，就在子盒子的四条边上刷出一圈实打实的
+         "描边"——用户反馈的欢迎语外框就是这个。#chat/#form_sheld/
+         #send_form 这里不再单独给背景和滤镜，留空之后background-transparent
+         那条规则已经把它们设成透明了，会自然透出 #sheld 这一层模糊后的
+         底色，不会再有二次模糊/二次描边。 */
+      /* #top-settings-holder 还是不能上 backdrop-filter——它是里面那些
+         fixed 抽屉的祖先，加了模糊就会变成抽屉的定位参照系，重蹈"抽屉挤扁
+         关不掉"的覆辙（这条坑之前踩过，见下面抽屉那段的说明）。
+         #top-bar 不一样：查过 DOM，它跟 #top-settings-holder 是平级，
+         底下也没有任何 fixed 定位的子元素，加模糊不会影响别的东西的定位，
+         真机点关各种抽屉都正常。之前图省事把两个写在一条规则里、都不加
+         模糊，代价是顶栏标题、图标全都直接铺在没模糊过的原图上——背景图
+         细节一多，图标和文字的对比度就没保障，这也是反馈"字看不清"的
+         一部分原因。这里把 #top-bar 拆出来单独给模糊，并且改用抽屉同一根
+         "浓度下限"变量（不再用主区域那根可能被拖到 8% 的滑条），保证顶栏
+         这种常驻功能区不会因为用户把主区域调得很透就跟着一起看不清。 */
+      html[data-claude-bg-blur="on"] #top-settings-holder#top-settings-holder {
+        background: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-nav-tint-opacity, 58%), transparent) !important;
+      }
+      html[data-claude-bg-blur="on"] #top-bar#top-bar {
+        background: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+        backdrop-filter: blur(16px) saturate(1.4) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;
+      }
+      html[data-claude-bg-blur="on"] #sheld#sheld {
+        background: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-bg-blur-opacity, 22%), transparent) !important;
+        backdrop-filter: blur(16px) saturate(1.4) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;
+      }
+      /* 消息区的次要文字（时间戳、"思考了一会"这类提示、操作图标）原来的
+         灰色是按"底下永远是纯色纸白/纸黑"校准的对比度，换成半透明background
+         露出背景图之后，这层灰经常卡在跟天空、云、浅色区域差不多的亮度，
+         看着就会"发灰看不清"——不是不透明度算错了，是文字颜色本身的对比度
+         保障没了。开了背景透传之后，把这个次要文字色朝主文字色（对比度
+         最高、每个主题下都验证过可读）拉近一截，不管日夜、不管背景图什么
+         内容，都能保住一个最低对比度。 */
+      /* 这里不能写成 var(--cw-text-muted) 55% 混自己——--cw-text-muted
+         自己就是这条规则要重新定义的目标，同一个变量在自己的定义里引用
+         自己，CSS 会判定为循环引用，直接判无效（invalid at computed-value
+         time），实测 getComputedStyle 读出来是空字符串，规则等于白写。
+         改成引用 --cw-ink-2——这是 --cw-text-muted 在主题里真正指向的
+         底层色号，跟目标变量不是同一个名字，就不会自我循环了。 */
+      html[data-claude-bg-transparent="on"] {
+        --cw-text-muted: color-mix(in srgb, var(--cw-ink-2) 55%, var(--cw-text-body) 45%) !important;
+      }
+
+      /* 抽屉/弹层磨砂：世界书、扩展、角色管理、User Settings 这些
+         .drawer-content/.popup 面板。这里原来是不受 bgBlur/bgTransparent
+         两个开关控制、常驻磨砂的——当时的顾虑是"背景透传关掉时它们又变回
+         纯色，跟旁边区域对不上"。但反馈是背景透传本来就关着（没人要透传）
+         的"常态"下，抽屉却硬带了一层磨砂感，不必要——用户没开这个功能，
+         抽屉就该是主题原本的纯色，不该有任何磨砂痕迹。这里改成跟主区域
+         一样受 data-claude-bg-transparent 控制，关闭时完全回退到主题
+         原生样式。
+         下面这两条规则现在都挂在 data-claude-bg-transparent="on" 底下，
+         关掉背景透传就完全不生效，抽屉/弹窗自动回到主题原生的纯色。
+         Prompt 管理二级弹层（#completion_prompt_manager_popup.openDrawer）
+         有自己专门的不透明规则、选择器带 id，优先级比这条高，不会被这里
+         的半透明覆盖掉——之前特意做成不透明就是防止列表和固定输入框从
+         底下透出来，这里不用重复处理。
+
+         这条规则第一版上线后实测完全没生效（真机截图侧栏抽屉还是纯白/纯
+         黑），backdrop plugin这里排查了很久：day-pc.css 里还有一条更具体的
+         "#top-settings-holder > .drawer > .drawer-content { background:
+         var(--cw-surface-page) !important; ... }"，选择器带一个 id 两个类，
+         优先级 (1,2,0)，比这条 :is(...) 单类选择器的 (0,1,1) 高得多，
+         哪怕后加载、哪怕 !important，也照样是它赢——具体到 CSS 里就是
+         "id 数量相同时比类的数量，类数量相同时比标签数量"这条比较规则，
+         我最早只对比了 :is(...) 那一条基础规则，漏看了这条专门给
+         "挂在侧栏rail 下的抽屉"加的更具体规则。下面单独给这条更具体的
+         选择器也补一份同样的半透明色，才能真正盖过去。
+
+         手机布局（day-mobile.css / night-mobile.css）比 PC 布局那条又多
+         叠了一个 ".openDrawer" 状态类——"html body #top-settings-holder >
+         .drawer > .drawer-content.openDrawer"，比上面这条 PC 端够用的
+         选择器又高一级（多一个类），手机窄屏下实测抽屉还是纯色，就是被
+         这条压过去了。这里把 .openDrawer 变体也一起列出来，两个布局
+         都能盖住，不用再赌“加载顺序刚好在后面”那种运气。 */
+      /* 光调浓度治标不治本：抽屉之前只有色调、没有模糊，浓度调到 68% 还是
+         能看出背后角色卡缩略图/聊天气泡的轮廓，本质是"给一层有色玻璃纸"，
+         不是"磨砂玻璃"。真机反馈"日间的字看不清、头像也糊没了"，根子在
+         这——背后内容细节越多（图片、卡片），同样浓度下能看清的东西越多，
+         纯调浓度只能靠堆到接近不透明才压得住，代价是完全看不见背景，跟
+         "透传"这个功能本身的诉求（看得见背景）矛盾。
+         这里给抽屉/弹窗自己直接加 backdrop-filter：这些面板本身就是
+         position:fixed 定位的元素，模糊算在它们自己身上，不影响它们自己
+         的定位（filter 影响的是"内部子元素"的定位基准，不影响元素自己）。
+         之前踩过的坑是把模糊加在 #top-settings-holder 这个"祖先容器"上，
+         把它变成了里面 fixed 抽屉的定位基准，导致抽屉挤扁/关不掉——这次
+         是直接加在抽屉本身，不是加在抽屉的祖先上，两者不是一回事，真机
+         测试开关各个抽屉正常。 */
+      html[data-claude-bg-transparent="on"] body #top-settings-holder > .drawer > .drawer-content,
+      html[data-claude-bg-transparent="on"] body #top-settings-holder > .drawer > .drawer-content.openDrawer {
+        background: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+        background-color: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+        backdrop-filter: blur(20px) saturate(1.25) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.25) !important;
+      }
+      html[data-claude-bg-transparent="on"] :is(.drawer-content, .popup, .popup-content) {
+        background: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+        background-color: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+        backdrop-filter: blur(20px) saturate(1.25) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.25) !important;
+      }
+      /* --SmartThemeBlurTintColor 是酒馆自己给"磨砂面板"准备的原生变量，
+         语义就是"配合模糊用的半透明底色"——不少第三方扩展（背景管理面板
+         自己的顶栏 #bg-header-fixed、酒馆助手的脚本列表行……）都直接拿
+         这个变量当背景，不吃我们主题的 --cw-surface-page。我们的主题没
+         重新定义过它，酒馆原生给的默认值偏深、还不透明，跟这些扩展自己
+         "半透明磨砂"的设计初衷本来就对不上，遇上我们的日间浅色主题更是
+         直接糊出一块黑条/黑块，跟旁边区域完全脱节。
+         这里不是挨个元素去堵，是从根上把这个变量重新定义成跟我们抽屉
+         同一色调、同一浓度的半透明色——凡是照着酒馆官方约定使用这个变量
+         的扩展（不只是背景面板和酒馆助手，任何遵循这个约定的三方扩展都
+         受益），背景会自动跟着我们的日夜色调和毛玻璃浓度滑条走，不用每
+         冒出一个新扩展就单独打一次补丁。 */
+      /* Bug 5：上面这条重定义之前是挂在裸 html 选择器上的，不受
+         data-claude-bg-transparent / data-claude-bg-blur 任何一个开关控制——
+         两个都关掉之后，这条半透明 color-mix 仍然原样生效。角色卡
+         Advanced Definitions 这类弹窗走的正是酒馆原生
+         --SmartThemeBlurTintColor 这条约定（不吃我们主题给 .popup 写的
+         那份不透明 --cw-surface-page，日间/夜间 CSS 里那份规则管不到它），
+         于是就算用户把透传和毛玻璃都关了，这些弹窗背后仍然是当初写死的
+         18% 浓度玻璃色，跟设置语义（都关闭 = 实体不透明背景）对不上。
+         这里拆成两条：默认（两个开关都关）时把这个变量还原成主题本身的
+         不透明 --cw-surface-page；只有背景透传打开时才切回半透明
+         color-mix。毛玻璃单独开、透传没开的组合不会走到这条规则——它依赖
+         透传先开这条既有约束在设置面板里已经保证（见 bgBlur 的 change
+         处理器，勾选毛玻璃会连带勾上透传）。 */
+      html {
+        --SmartThemeBlurTintColor: var(--cw-surface-page) !important;
+      }
+      html[data-claude-bg-transparent="on"] {
+        --SmartThemeBlurTintColor: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+      }
+
+      /* 真正在真实聊天页（非欢迎页）里把 #send_form 顶掉、让接缝 bug 复现的
+         另有其人：day-pc.css/day-mobile.css 里还定义了一条只在聊天页生效
+         的选择器 html body:not(.clawd-welcome) #form_sheld :is(#send_form,
+         form)，专门给输入条上了 --cl-composer-chat 这个变量（88% 正文底色
+         + 5% 文字色，接近不透明），本意是"聊天区里输入条要比正文更醒目"。
+         这条规则比我们上面给 #send_form#send_form 写的那条选择器还多两层
+         元素（html body），优先级压过我们，欢迎页不受影响（有 .clawd-welcome
+         挡着），一进真实聊天就现形——这才是"新bug"截图里那条硬边的真身，
+         不是简单的双层色调叠加。
+         用跟 --SmartThemeBlurTintColor 一样的思路根治：不跟它比优先级，
+         直接把它读的这个变量本身重新定义掉，开了背景透传之后聊天页输入条
+         也统一吃我们这根浓度滑条。 */
+      /* 光在 html 上重定义这个变量不够——day-pc.css 里 --cl-composer-chat
+         的原始定义写在 ":root, html body" 上，body 那份是直接扎在 body
+         元素自己身上的（哪怕没有 !important），CSS 自定义属性的继承规则
+         是"元素自己身上只要有声明就不再看祖先的继承值"，跟那份声明是不是
+         important 无关——important 只在同一个元素上争夺胜负时才起作用。
+         所以我们挂在 html 上的 !important 版本永远赢不过 body 自己那份，
+         必须直接把 body 也纳入选择器，声明才会落在 body 自己头上，盖掉
+         day-pc.css 那份。 */
+      html[data-claude-bg-transparent="on"],
+      html[data-claude-bg-transparent="on"] body {
+        --cl-composer-chat: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
+      }
+
+      html[data-claude-motion="off"] button.${BUTTON_CLASS},
+      html[data-claude-motion="off"] button.${BUTTON_CLASS}::before,
+      html[data-claude-motion="off"] button.clawd-mobile-clawd-button,
+      html[data-claude-motion="off"] button.clawd-mobile-clawd-button::before,
+      html[data-claude-motion="off"] #chat .typing_indicator::before,
+      html[data-claude-motion="off"] .clawd-typing-exit-ghost::before {
+        animation: none !important;
+        transition: none !important;
+        translate: 0 0 !important;
+      }
+
+      html[data-claude-decorations="off"] :is(
+        .clawd-click-particle,
+        .clawd-cc-toast,
+        .clawd-hi-toast
+      ) {
+        display: none !important;
       }
 
       .clawd-click-particle {
@@ -1856,6 +2211,45 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
         }
       }
 
+      /* D1 螃蟹横向踱步。像素画是单张 box-shadow 精灵，没有独立的"腿"
+         部件可以单独动，所以走路感不能靠换帧，只能靠位移的节奏来演。
+         第一版让整只 ::before 上下位移 2px，读出来是原地弹跳；改成左右
+         小抖（±1px）又太小、没有方向感，读成原地打颤/抽搐。
+         这版换成"停顿-快速切换-停顿"的四段节奏，而不是连续正弦滑动——
+         纯正弦滑动读出来是滑冰，不是走路。停顿段（0-40%、50-90%）身体
+         略微倾向落脚的一侧，快速切换段（40-50%、90-100%）模拟迈步时的
+         重心转移。不做镜像翻转：朝向来回跳变比原地抖腿更像故障，横着
+         走本来就该正脸不转身，靠位移和倾斜给方向感就够了。 */
+      @keyframes clawd-leg-bounce {
+        0% { translate: -3px 0; rotate: -2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
+        40% { translate: -3px 0; rotate: -2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
+        50% { translate: 3px 0; rotate: 2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
+        90% { translate: 3px 0; rotate: 2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
+        100% { translate: -3px 0; rotate: -2deg; }
+      }
+
+      @keyframes clawd-compose-bob {
+        0%, 100% { translate: 0 0; }
+        50% { translate: 0 -1px; }
+      }
+
+      /* D2 被冷落：慢、低幅度的下垂，读成「蔫了」，跟打盹的深呼吸区分开——
+         打盹是完全没人在，冷落是人在但没搭理它，所以幅度更小、节奏更快，
+         不该跟打盹看起来是同一件事。 */
+      @keyframes clawd-neglected-droop {
+        0%, 100% { rotate: 0deg; translate: 0 0; }
+        50% { rotate: -3deg; translate: 0 1px; }
+      }
+
+      /* D2 害羞（环境触发）：小幅左右扭动 + 轻微缩向一侧，比点击彩蛋的
+         clawd-react-shy 更收敛——那个是一次性大动作，这个是常驻小动作，
+         叠在一起会太吵。 */
+      @keyframes clawd-shy-ambient-tilt {
+        0%, 100% { translate: 0 0; rotate: 0deg; }
+        30% { translate: -1px 1px; rotate: -4deg; }
+        60% { translate: 1px 1px; rotate: 3deg; }
+      }
+
       @media (max-width: 700px) {
         button.${BUTTON_CLASS} {
           width: 38px !important;
@@ -1922,6 +2316,20 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
           transform: none !important;
         }
         .clawd-click-particle { animation-duration: 1ms !important; }
+        button.${BUTTON_CLASS}.${LEG_BOUNCE_CLASS}::before,
+        button.clawd-mobile-clawd-button.${LEG_BOUNCE_CLASS}::before,
+        button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}::before,
+        button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before,
+        button.${BUTTON_CLASS}.${NEGLECTED_CLASS}::before,
+        button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}::before,
+        button.${BUTTON_CLASS}.${SHY_AMBIENT_CLASS}::before,
+        button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}::before {
+          animation: none !important;
+        }
+        button.${BUTTON_CLASS}.${INPUT_ACTIVE_CLASS},
+        button.clawd-mobile-clawd-button.${INPUT_ACTIVE_CLASS} {
+          translate: 0 0;
+        }
       }
     `;
     hostDocument.head.append(style);
@@ -1950,103 +2358,66 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     return bridge ?? null;
   }
 
-  function readLocalToggle(key, fallback = true) {
-    try {
-      const raw = hostWindow.localStorage?.getItem(key);
-      if (raw === 'on' || raw === 'true') return true;
-      if (raw === 'off' || raw === 'false') return false;
-    } catch {}
-    return fallback;
+  /* D2 生成计时器：measures how long the current streaming reply has been
+     running. 用同一套 GENERATION_STARTED/ENDED/STOPPED 事件驱动，跟原生
+     的 typing indicator 进出场是同一个事实来源，不用自己猜生成有没有
+     结束。可开关（html[data-claude-gen-timer]），关掉时直接不建元素，
+     不占任何一帧。 */
+  let genTimerEl = null;
+  let genTimerRaf = 0;
+  let genTimerStartedAt = 0;
+  let genTimerLingerTimer = 0;
+  const GEN_TIMER_LINGER_MS = 4000;
+
+  function genTimerEnabled() {
+    return hostDocument.documentElement.dataset.claudeGenTimer !== 'off';
   }
 
-  function writeLocalToggle(key, enabled) {
-    try { hostWindow.localStorage?.setItem(key, enabled ? 'on' : 'off'); } catch {}
+  function ensureGenTimerEl() {
+    if (genTimerEl && genTimerEl.isConnected) return genTimerEl;
+    genTimerEl = hostDocument.createElement('div');
+    genTimerEl.className = 'clawd-gen-timer';
+    genTimerEl.setAttribute('aria-hidden', 'true');
+    hostDocument.body.append(genTimerEl);
+    return genTimerEl;
   }
 
-  function applyArchivePreferences() {
-    const root = hostDocument.documentElement;
-    root.dataset.claudeArchiveAvatars = readLocalToggle(ARCHIVE_AVATARS_KEY, true) ? 'on' : 'off';
-    root.dataset.claudeStreamTimer = readLocalToggle(STREAM_TIMER_KEY, false) ? 'on' : 'off';
+  function tickGenTimer() {
+    if (!genTimerEl || !genTimerStartedAt) return;
+    const elapsed = (hostWindow.performance.now() - genTimerStartedAt) / 1000;
+    genTimerEl.textContent = elapsed.toFixed(1) + 's';
+    genTimerRaf = hostWindow.requestAnimationFrame(tickGenTimer);
   }
 
-  function stableHash(value) {
-    let hash = 2166136261;
-    for (const char of String(value ?? '')) {
-      hash ^= char.codePointAt(0);
-      hash = Math.imul(hash, 16777619);
+  function startGenTimer() {
+    if (!genTimerEnabled()) return;
+    const el = ensureGenTimerEl();
+    if (genTimerLingerTimer) {
+      hostWindow.clearTimeout(genTimerLingerTimer);
+      genTimerLingerTimer = 0;
     }
-    return hash >>> 0;
+    if (genTimerRaf) hostWindow.cancelAnimationFrame(genTimerRaf);
+    genTimerStartedAt = hostWindow.performance.now();
+    el.classList.remove('clawd-gen-timer-done');
+    el.classList.add('clawd-gen-timer-visible');
+    tickGenTimer();
   }
 
-  function currentConversationKey(messages = []) {
-    const context = getContext();
-    const explicit = context?.chatId
-      ?? context?.chat_id
-      ?? context?.chatMetadata?.chat_id
-      ?? context?.chatMetadata?.file_name
-      ?? context?.chatMetadata?.create_date;
-    const owner = context?.groupId
-      ?? context?.group_id
-      ?? context?.characterId
-      ?? context?.character_id
-      ?? context?.name2
-      ?? 'archive';
-    const first = messages[0];
-    const firstId = first?.getAttribute?.('mesid') ?? 'empty';
-    const firstData = first ? getMessageData(first) : null;
-    const firstDate = firstData?.send_date ?? firstData?.gen_started ?? '';
-    return `${owner}|${explicit ?? firstDate}|${firstId}`;
-  }
-
-  function archiveHeroCandidates(cn) {
-    return cn
-      ? [
-        '把下一句留在潮水回来之前。',
-        '先记录，再决定它意味着什么。',
-        '别急着归档，故事还在呼吸。',
-        '灯亮一次，编号继续往下。',
-        '从这一页开始，保持一点偏航。',
-        '把重要的写清，把其余的留白。',
-        '今天的记录从一个小动作开始。',
-        '先听见回声，再写下答案。',
-        '继续往下。别替角色抢话。',
-        '新的一页，仍然允许意外发生。',
-      ]
-      : [
-        'Record first. Decide what it means later.',
-        'Leave the next line before the tide returns.',
-        'Keep going. Let the scene breathe.',
-        'One light, one pause, one more page.',
-        'Start small. Keep the signal clear.',
-        'Write the important part. Leave some air.',
-        'A fresh record, still open to surprise.',
-        'Listen for the echo before answering.',
-      ];
-  }
-
-  function archivePrefersChinese(messages = []) {
-    if (ccPrefersChinese()) return true;
-    const sample = messages
-      .slice(0, 6)
-      .map(message => message?.textContent ?? '')
-      .join('');
-    const context = getContext();
-    return /[\u3400-\u9fff]/.test(
-      sample + String(context?.name1 ?? '') + String(context?.name2 ?? ''),
-    );
-  }
-
-  function takeArchiveHero(messages) {
-    const key = currentConversationKey(messages);
-    const storageKey = ARCHIVE_HERO_KEY_PREFIX + stableHash(key).toString(36);
-    try {
-      const stored = hostWindow.localStorage?.getItem(storageKey);
-      if (stored) return stored;
-    } catch {}
-    const candidates = archiveHeroCandidates(archivePrefersChinese(messages));
-    const line = candidates[Math.floor(Math.random() * candidates.length)];
-    try { hostWindow.localStorage?.setItem(storageKey, line); } catch {}
-    return line;
+  function stopGenTimer() {
+    if (genTimerRaf) {
+      hostWindow.cancelAnimationFrame(genTimerRaf);
+      genTimerRaf = 0;
+    }
+    if (!genTimerStartedAt || !genTimerEl) return; // 没真的开始过（比如开关关闭时收到结束事件）
+    const elapsed = (hostWindow.performance.now() - genTimerStartedAt) / 1000;
+    genTimerEl.textContent = (ccPrefersChinese() ? '用时 ' : 'took ') + elapsed.toFixed(1) + 's';
+    genTimerEl.classList.add('clawd-gen-timer-done');
+    genTimerStartedAt = 0;
+    if (genTimerLingerTimer) hostWindow.clearTimeout(genTimerLingerTimer);
+    genTimerLingerTimer = hostWindow.setTimeout(() => {
+      genTimerEl?.classList.remove('clawd-gen-timer-visible');
+      genTimerLingerTimer = 0;
+    }, GEN_TIMER_LINGER_MS);
   }
 
   function watchGenerationEvents() {
@@ -2074,11 +2445,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
             .forEach(createTypingExitGhost);
         }
         generationEventActive = active;
-        if (active && !generationStartedAt) generationStartedAt = Date.now();
-        /* Timer appearance/removal should follow the native generation event
-           immediately. Waiting for the throttled DOM refresh leaves a stale
-           counter visible after Stop on slower WebViews. */
-        refreshStreamTimer(active);
+        if (active) startGenTimer(); else stopGenTimer();
         primeTypingTransition(active);
         scheduleRefresh();
       };
@@ -2523,6 +2890,8 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     button.className = BUTTON_CLASS;
     button.setAttribute('aria-label', 'Clawd');
     button.title = 'Clawd';
+    applyCcPersistentState(button);
+    applyCcComposerState(button);
     if (settle) {
       button.classList.add('clawd-button-settle');
       button.addEventListener('animationend', () => button.classList.remove('clawd-button-settle'), { once: true });
@@ -2531,6 +2900,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     button.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
+      if (handleCcCombo(button)) return;
       const reaction = animateButton(button);
       createParticle(button, reaction === 'clawd-react-shy' ? 'clawd-particle-heart' : '');
       if (reaction === 'clawd-react-hop' && Math.random() < .42) {
@@ -2539,7 +2909,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       if (reaction === 'clawd-react-peek') pulseCcPose(button, 'clawd-poke-look', 680);
       else if (reaction === 'clawd-react-shy') pulseCcPose(button, 'clawd-poke-tucked', 720);
       else if (reaction === 'clawd-react-nod') pulseCcPose(button, 'clawd-poke-blink', 360);
-      handleCcCombo(button);
     });
     return button;
   }
@@ -2597,10 +2966,20 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
 
   let ccComboCount = 0;
   let ccComboTimer = null;
+  let ccLegBounceEnabled = false;
   let ccSleeping = false;
   let ccHasBeenPoked = false;
   let ccReturnedAt = 0;
   let ccHiddenAt = 0;
+  /* D2 害羞（环境触发）：短时间内连续被戳（软戳，没有攒到三连击那种切换
+     抖腿的重击），读成「被摸得有点不好意思」。窗口内记录每一次软戳的
+     时间戳，超过阈值就触发一次有限时长的害羞姿势——跟点击彩蛋里那个
+     一次性的 clawd-react-shy 是两套 class，互不覆盖。 */
+  const SHY_TRIGGER_WINDOW_MS = 8000;
+  const SHY_TRIGGER_COUNT = 4;
+  const SHY_POSE_MS = 2600;
+  let shyPokeTimestamps = [];
+  const shyPoseTimers = new WeakMap();
   /* 每个 Clawd 按钮各自的姿势计时器。以前是单个全局变量：多个 Clawd（每条
      AI 消息一个）同时存在时，后一个 Clawd 眨眼会 clearTimeout 掉前一个的
      计时器，但不会摘掉前一个已经加上的 class —— 前一个就永久卡在眨眼/
@@ -2640,6 +3019,39 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       if (ccPoseTimers.get(button) === timer) ccPoseTimers.delete(button);
     }, duration);
     ccPoseTimers.set(button, timer);
+  }
+
+  /* D2 害羞（环境触发），有限时长的常驻姿势，走独立的按钮各自计时器
+     （跟本轮修的眨眼计时器同一个写法），避免共享计时器互相取消。
+     跟被冷落互斥：害羞期间直接压掉冷落状态，害羞退场后冷落会在下一次
+     refreshIdleSleep 里按最新条件重新判定，不会自动补回来。 */
+  function pulseShyAmbient(button) {
+    if (!button) return;
+    setNeglected(false);
+    // 只在真正「新进入」害羞时弹气泡——已经在害羞状态里被重新触发
+    // （计时器续期）不重复弹，否则连续戳的时候气泡会一直闪。
+    const wasActive = button.classList.contains(SHY_AMBIENT_CLASS);
+    const existing = shyPoseTimers.get(button);
+    if (existing) hostWindow.clearTimeout(existing);
+    button.classList.add(SHY_AMBIENT_CLASS);
+    if (!wasActive) {
+      showCcToast(button, ccEscapeHtml(ccPrefersChinese() ? '害羞了…别一直戳啦' : "shy… stop poking me"), 'hi');
+    }
+    const timer = hostWindow.setTimeout(() => {
+      button.classList.remove(SHY_AMBIENT_CLASS);
+      if (shyPoseTimers.get(button) === timer) shyPoseTimers.delete(button);
+    }, SHY_POSE_MS);
+    shyPoseTimers.set(button, timer);
+  }
+
+  function noteSoftPoke(button) {
+    const now = Date.now();
+    shyPokeTimestamps.push(now);
+    shyPokeTimestamps = shyPokeTimestamps.filter(t => now - t < SHY_TRIGGER_WINDOW_MS);
+    if (shyPokeTimestamps.length >= SHY_TRIGGER_COUNT && !isTypingActive() && !ccLegBounceEnabled) {
+      shyPokeTimestamps = [];
+      pulseShyAmbient(button);
+    }
   }
 
   function ccContextSlot() {
@@ -2694,13 +3106,47 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     return text.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
 
+  function ccInteractiveTargets() {
+    return hostDocument.querySelectorAll(
+      `button.${BUTTON_CLASS}, button.clawd-mobile-clawd-button`,
+    );
+  }
+
+  function applyCcPersistentState(button) {
+    if (!button) return;
+    button.classList.toggle(LEG_BOUNCE_CLASS, ccLegBounceEnabled);
+  }
+
+  function setCcLegBounce(on) {
+    ccLegBounceEnabled = Boolean(on);
+    ccInteractiveTargets().forEach(applyCcPersistentState);
+  }
+
+  function clearCcTransientFeedback(button) {
+    button?.classList.remove(...BUTTON_REACTIONS, 'clawd-button-pop');
+    button?.classList.remove('clawd-poke-blink', 'clawd-poke-look', 'clawd-poke-tucked');
+    hostDocument.querySelectorAll('.clawd-click-particle, .clawd-cc-toast, .clawd-hi-toast')
+      .forEach(element => element.remove());
+  }
+
+  /* 三击踱步的冷却：原来每凑够 3 击就无条件切换一次，手快的人连续点
+     会在几秒内把踱步开了又关、关了又开，肉眼只看到抖来抖去分不清是
+     开还是关。切换后短时间内再凑够 3 击，只提示"冷却中"、不切换，
+     逼着连点停一下再打下一组三连击。 */
+  const LEG_BOUNCE_TOGGLE_COOLDOWN_MS = 2500;
+  let lastLegBounceToggleAt = 0;
+
   function handleCcCombo(button) {
     // 睡着的时候戳它，回一句梦话就好，不进连点彩蛋的计数
-    if (!button) return;
+    if (!button) return true;
+    // 不管哪种戳法，都算「有人在搭理 Clawd」——冷落状态立即解除，
+    // 不用等下一次 refreshIdleSleep 的 5 秒轮询。
+    lastPokeAt = Date.now();
+    if (neglected) setNeglected(false);
     if (button.classList.contains('clawd-sleeping') || ccSleeping) {
       pulseCcPose(button, 'clawd-poke-blink', 620);
       showCcToast(button, ccEscapeHtml(takeCcLine('sleeping')), 'hi');
-      return;
+      return true;
     }
     ccComboCount += 1;
     if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
@@ -2708,35 +3154,38 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     if (ccComboCount <= 2) {
       const slot = ccContextSlot();
       ccHasBeenPoked = true;
+      noteSoftPoke(button);
       if (Math.random() < CC_SILENT_RATE) {
         hostDocument.querySelectorAll('.clawd-cc-toast, .clawd-hi-toast').forEach(el => el.remove());
         pulseCcPose(button, 'clawd-poke-blink');
       } else {
         showCcToast(button, ccEscapeHtml(takeCcLine(slot)), 'hi');
       }
+      return false;
     } else if (ccComboCount === 3) {
-      pulseCcPose(button, 'clawd-poke-look', 760);
-      showCcToast(button, ccEscapeHtml(takeCcLine('third')), 'hi');
-    } else if (ccComboCount === 4) {
-      pulseCcPose(button, 'clawd-poke-tucked', 900);
-      showCcToast(button, ccEscapeHtml(takeCcLine('fourth')), 'hi');
-    } else if (ccComboCount === 5) {
-      showCcToast(button, '<span class="asterisk">✳</span> Compacting conversation… (esc to interrupt)');
-    } else if (ccComboCount === 6) {
-      pulseCcPose(button, 'clawd-poke-tucked', 850);
-      showCcToast(button, 'Bash(poke clawd)&nbsp; ⎿&nbsp; permission denied');
-    } else if (ccComboCount === 7) {
-      showCcToast(button, 'context left: 3%');
-    } else if (ccComboCount >= 8) {
       ccComboCount = 0;
-      ccSleeping = true;
-      button.classList.add('clawd-sleeping');
-      showCcToast(button, 'usage limit reached · resets 3am');
-      hostWindow.setTimeout(() => {
-        button.classList.remove('clawd-sleeping');
-        ccSleeping = false;
-      }, 6000);
+      if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
+      ccComboTimer = null;
+      const now = Date.now();
+      if (now - lastLegBounceToggleAt < LEG_BOUNCE_TOGGLE_COOLDOWN_MS) {
+        showCcToast(button, ccEscapeHtml(ccPrefersChinese() ? '等等…刚切过' : 'hold on… just switched'), 'hi');
+        return true;
+      }
+      lastLegBounceToggleAt = now;
+      shyPokeTimestamps = [];
+      button.classList.remove(SHY_AMBIENT_CLASS);
+      clearCcTransientFeedback(button);
+      setCcLegBounce(!ccLegBounceEnabled);
+      showCcToast(
+        button,
+        ccLegBounceEnabled
+          ? (ccPrefersChinese() ? '抖腿模式：开' : 'leg bounce: on')
+          : (ccPrefersChinese() ? '抖腿模式：关' : 'leg bounce: off'),
+        'hi',
+      );
+      return true;
     }
+    return false;
   }
 
   /* ===== v1.7 ===== */
@@ -2747,17 +3196,30 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   // 阈值 1800 字，而酒馆的回复基本都超 —— 蜷缩变成了常态，
   // 还把左右看的规则盖住、跟上下看打架。
   // 跟之前那个「含代码块就眯眼」是同一类错误：内容驱动的姿势在酒馆里必然长期误触发。
-  /* 打盹：1 分钟没输入就睡，敲键盘就醒。
+  /* 打盹：3 分钟没输入就睡，敲键盘就醒。
      只认键盘，不认鼠标移动和滚动 —— 读长回复的时候鼠标和滚轮一直在动，
      但人其实没在「操作」，把那些算进来它就永远睡不着。
      连点 8 下的彩蛋走同一套 clawd-sleeping 类，两边不冲突：
-     彩蛋睡固定 6 秒，打盹睡到你回来为止。 */
-  const IDLE_SLEEP_MS = 60000;
+     彩蛋睡固定 6 秒，打盹睡到你回来为止。
+     阈值原来是 1 分钟，跟被冷落的窗口几乎重叠——冷落刚冒出来一小会儿
+     就被入睡盖过去，等于白做。改成 3 分钟，给冷落留出 1~2:15 的
+     显示窗口（drowsy 门槛是本值的 75%，会跟着一起挪，不用单独调）。 */
+  const IDLE_SLEEP_MS = 180000;
   let lastActivityAt = Date.now();
   let idleAsleep = false;
   // 打开酒馆挂在那儿不算「你在这段对话里停了一分钟」。
   // 要先在这个对话里有过一次输入，计时才开始 —— 否则一进来干等一分钟它就睡了。
   let hasChatActivity = false;
+
+  /* D2 被冷落：跟打盹是两条独立轴线。打盹看的是「页面有没有键盘活动」
+     （lastActivityAt），冷落看的是「有没有人戳过 Clawd 本体」
+     （lastPokeAt）——两者不共用同一个计时器，否则会互相打架。
+     判定要求「人还在活跃聊天」但「一直没搭理 Clawd」，跟打盹/入睡那种
+     「人也不在了」是相反的场景，所以额外要求 elapsed 没到 drowsy 的门槛。
+     阈值 1 分钟，比入睡短，保证冷落会先冒出来，不会被入睡直接盖掉。 */
+  const NEGLECT_POKE_MS = 60000;
+  let lastPokeAt = Date.now();
+  let neglected = false;
 
   function setSleeping(on) {
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS)
@@ -2767,6 +3229,16 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   function setDrowsy(on) {
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS)
       .forEach(button => button.classList.toggle('clawd-idle-drowsy', on));
+  }
+
+  function setNeglected(on) {
+    if (neglected === on) return;
+    neglected = on;
+    const buttons = hostDocument.querySelectorAll('button.' + BUTTON_CLASS);
+    buttons.forEach(button => button.classList.toggle(NEGLECTED_CLASS, on));
+    if (on && buttons.length) {
+      showCcToast(buttons[0], ccEscapeHtml(ccPrefersChinese() ? '有点被冷落了…' : 'feeling a bit ignored…'), 'hi');
+    }
   }
 
   /* 入睡前哈欠一下，呼吸动画晚 900ms 才接上——不然哈欠和呼吸两段 transform
@@ -2783,12 +3255,28 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   }
 
   function refreshIdleSleep() {
-    if (ccSleeping || !hasChatActivity) return;
+    if (ccSleeping || !hasChatActivity) {
+      if (neglected) setNeglected(false);
+      return;
+    }
     const elapsed = Date.now() - lastActivityAt;
     const idle = elapsed > IDLE_SLEEP_MS;
+    const drowsyOn = !idle && elapsed > IDLE_SLEEP_MS * .75;
     // 呼吸/睡觉两档中间原来是空的：入睡前最后 25% 的等待时间加一档
     // 「醒着但没人理」的东张西望，不再从静止直接跳到闭眼。
-    setDrowsy(!idle && elapsed > IDLE_SLEEP_MS * .75);
+    setDrowsy(drowsyOn);
+
+    /* 冷落只在「人还在活跃聊天」（elapsed 没到 drowsy 门槛）时判定——
+       快睡着 / 已经在打盹入睡的场景交给 drowsy/sleeping 表达，两者不重叠。
+       还要求生成不在进行中，且没有正处于害羞（环境触发）：害羞和冷落的
+       触发条件互斥，害羞优先，冷落让位。 */
+    const shouldBeNeglected = elapsed < IDLE_SLEEP_MS * .75
+      && !isTypingActive()
+      && !ccLegBounceEnabled
+      && !hostDocument.querySelector('button.' + BUTTON_CLASS + '.' + SHY_AMBIENT_CLASS)
+      && Date.now() - lastPokeAt > NEGLECT_POKE_MS;
+    setNeglected(shouldBeNeglected);
+
     if (idle === idleAsleep) {
       if (idle) setSleeping(true);
       return;
@@ -2798,6 +3286,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       setSleeping(false);
       return;
     }
+    setNeglected(false);
     setDrowsy(false);
     playSleepTransition();
     hostWindow.setTimeout(() => {
@@ -2933,6 +3422,8 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     welcomeStage = 'leaving';
     leavingSince = Date.now();
     hostDocument.body.classList.remove(WELCOME_CLASS);
+    hostDocument.querySelectorAll('.' + HERO_CLASS).forEach(el => el.remove());
+    heroLine = null;
     scheduleRefresh();
   }
 
@@ -2989,6 +3480,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       });
     }
   }
+  const HERO_CLASS = 'clawd-welcome-hero';
   const welcomeEnabled = typeof CLAUDE_FEATURES !== 'undefined' && CLAUDE_FEATURES.welcome;
   /* 手机版是独立构建。桌面完整版即使窗口很窄，也不再注入手机抽屉，
      避免桌面 rail / welcome 规则和手机控件同时接管同一批节点。 */
@@ -3321,296 +3813,57 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       || (groupId !== undefined && groupId !== null && groupId !== '');
   }
 
-  function formatArchiveFolio(index) {
-    return String(Math.min(Math.max(index + 1, 1), 999)).padStart(3, '0');
-  }
-
-  function archiveInterludeCandidates(cn) {
-    return cn
-      ? [
-        '潮声靠近，句子退后。',
-        '灯亮一次，停顿半拍。',
-        '风从左页翻到右页。',
-        '把空白留给下一句。',
-        '此处不解释，只换气。',
-        '两步之后，再说重点。',
-        '沙粒计数，海水删改。',
-        '夜色下沉，编号继续。',
-        '先听回声，再写答案。',
-        '把未说完的留在边上。',
-        '光线转弯，叙事不停。',
-        '停一拍。继续。',
-      ]
-      : [
-        'The tide comes closer. The sentence steps back.',
-        'One light. Half a beat.',
-        'Turn the page with the wind.',
-        'Leave the blank for the next line.',
-        'No explanation here. Just breathe.',
-        'Two steps, then the point.',
-        'Count the sand. Let the water edit.',
-        'Night falls. The numbers continue.',
-        'Hear the echo before the answer.',
-        'Pause once. Continue.',
+  /* 官网会在首页轮换一组短问候；截图已确认 Good morning / What's cooking，
+     其余沿用同一套简短、轻微个性化的语气。每次真正回到首页才抽一次，
+     refresh 的 DOM 循环不会让文案闪来闪去。 */
+  function heroCandidates(who, cn) {
+    const hour = new Date().getHours();
+    if (cn) {
+      const timeLine = hour < 5
+        ? (who ? `${who}，还没睡？` : '还没睡？')
+        : `${hour < 12 ? '早安' : hour < 18 ? '下午好' : '晚上好'}${who ? `，${who}` : ''}`;
+      return [
+        timeLine,
+        who ? `${who}，今天想做点什么？` : '今天想做点什么？',
+        who ? `在忙什么呢，${who}？` : '在忙什么呢？',
+        '今天 Claude 能帮你做什么？',
+        who ? `${who}，最近怎么样？` : '最近怎么样？',
+        who ? `从哪里开始，${who}？` : '从哪里开始？',
+        who ? `${who}，在想什么？` : '在想什么？',
+        who ? `准备好了就开始吧，${who}` : '准备好了就开始吧',
+        who ? `今天一起做点什么，${who}？` : '今天一起做点什么？',
+        '新的一页。写点什么？',
       ];
-  }
-
-  function removeArchiveDecorations() {
-    hostDocument.querySelectorAll(
-      `.${ARCHIVE_HEADER_CLASS}, .${ARCHIVE_INTERLUDE_CLASS}`,
-    ).forEach(node => node.remove());
-    hostDocument.querySelectorAll('#chat > .mes').forEach(message => {
-      delete message.dataset.archiveFolio;
-      delete message.dataset.archiveMark;
-      message.querySelectorAll('.clawd-mes-mark').forEach(mark => mark.remove());
-    });
-  }
-
-  function cleanArchiveTitle(value) {
-    let title = String(value ?? '').trim();
-    if (!title) return '';
-    title = title.replace(/\.jsonl?$/i, '');
-    title = title.replace(/\s*[-–—]\s*\d{4}-\d{1,2}-\d{1,2}(?:[@T ].*)?$/i, '');
-    title = title.replace(/\s*[-–—]\s*\d{10,}$/i, '');
-    return title.trim();
-  }
-
-  function archiveConversationTitle(context) {
-    const metadata = context?.chatMetadata ?? context?.chat_metadata ?? {};
-    let currentId = '';
-    try { currentId = context?.getCurrentChatId?.() ?? ''; } catch {}
-    const candidates = [
-      metadata.title,
-      metadata.name,
-      metadata.chat_name,
-      metadata.file_name,
-      context?.chatId,
-      context?.chat_id,
-      currentId,
+    }
+    const timeLine = hour < 5
+      ? (who ? `Still up, ${who}?` : 'Still up?')
+      : `${hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}${who ? `, ${who}` : ''}`;
+    return [
+      timeLine,
+      who ? `What's cooking, ${who}?` : "What's cooking?",
+      who ? `What are we working on, ${who}?` : 'What are we working on?',
+      'How can Claude help you today?',
+      who ? `How was your day, ${who}?` : 'How was your day?',
+      who ? `Where should we start, ${who}?` : 'Where should we start?',
+      who ? `What's on your mind, ${who}?` : "What's on your mind?",
+      who ? `Ready when you are, ${who}` : 'Ready when you are',
+      who ? `What shall we make, ${who}?` : 'What shall we make?',
+      'A fresh page. What goes on it?',
     ];
-    for (const candidate of candidates) {
-      const title = cleanArchiveTitle(candidate);
-      if (title && !/^\d+$/.test(title)) return title;
-    }
-    return cleanArchiveTitle(context?.name2)
-      || (archivePrefersChinese() ? '未命名档案' : 'Untitled archive');
   }
 
-  function archiveSceneLabel(messages) {
-    const latest = messages.at(-1);
-    const data = latest ? getMessageData(latest) : null;
-    const parsed = new Date(data?.send_date ?? data?.gen_started ?? Date.now());
-    const hour = Number.isNaN(parsed.getTime()) ? new Date().getHours() : parsed.getHours();
-    const cn = archivePrefersChinese(messages);
-    if (!cn) {
-      if (hour < 5) return 'Late night / continuing';
-      if (hour < 12) return 'Morning / continuing';
-      if (hour < 18) return 'Daylight / continuing';
-      return 'Nightfall / continuing';
-    }
-    if (hour < 5) return '深夜 · 续写';
-    if (hour < 12) return '晨间 · 续写';
-    if (hour < 18) return '日间 · 续写';
-    return '入夜 · 续写';
+  function takeHeroLine(who, cn) {
+    const candidates = heroCandidates(who, cn);
+    let last = '';
+    try { last = hostWindow.sessionStorage?.getItem(LAST_HERO_KEY) || ''; } catch {}
+    const available = candidates.filter(line => line !== last);
+    const pool = available.length ? available : candidates;
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    try { hostWindow.sessionStorage?.setItem(LAST_HERO_KEY, line); } catch {}
+    return line;
   }
 
-  function buildArchiveHeader(messages) {
-    const header = hostDocument.createElement('section');
-    header.className = ARCHIVE_HEADER_CLASS;
-    header.innerHTML = `
-      <div class="clawd-archive-heading">
-        <span class="clawd-archive-kicker"></span>
-        <h2></h2>
-        <p class="clawd-archive-motto"></p>
-      </div>
-      <div class="clawd-archive-network" aria-label="Archive signal">
-        <div class="clawd-archive-rules" aria-hidden="true">
-          ${archiveIcons.ruleSquare}${archiveIcons.ruleSignal}${archiveIcons.ruleClover}${archiveIcons.ruleGrid}
-        </div>
-        <span>Four rules / Field signal</span>
-      </div>
-      <div class="clawd-archive-meta">
-        <span><b>Date</b><i data-archive-meta="date"></i></span>
-        <span><b>Participants</b><i data-archive-meta="participants"></i></span>
-        <span><b>Scene</b><i data-archive-meta="scene"></i></span>
-        <span><b>Status</b><i data-archive-meta="status"></i></span>
-      </div>`;
-    hostDocument.querySelector('#chat')?.prepend(header);
-    return header;
-  }
-
-  function refreshArchiveDecorations() {
-    applyArchivePreferences();
-    const archiveOn = hostDocument.documentElement.dataset.claudeArchive === 'on';
-    /* refreshMessageStates() intentionally returns assistant messages only,
-       because its caller uses that list for swipe/reroll controls. Archive
-       folios are different: a "floor" is every real user or character
-       message. Read the chat rows directly so 001, 002, 003 never skip the
-       user's turns. */
-    const real = [...hostDocument.querySelectorAll('#chat > .mes')]
-      .filter(message => !isWelcomeSurfaceMessage(message))
-      .filter(message => !message.classList.contains(EMPTY_CLASS) && hasMessageContent(message));
-    if (!archiveOn || !real.length || hostDocument.body.classList.contains(WELCOME_CLASS)) {
-      removeArchiveDecorations();
-      return;
-    }
-
-    real.forEach((message, index) => {
-      const folio = formatArchiveFolio(index);
-      if (message.dataset.archiveFolio !== folio) message.dataset.archiveFolio = folio;
-      const mark = String((index % 6) + 1);
-      if (message.dataset.archiveMark !== mark) message.dataset.archiveMark = mark;
-      const nameRow = message.querySelector('.ch_name > .flex-container');
-      if (nameRow && !nameRow.querySelector(':scope > .clawd-mes-mark')) {
-        const markNode = hostDocument.createElement('i');
-        markNode.className = 'clawd-mes-mark';
-        markNode.setAttribute('aria-hidden', 'true');
-        nameRow.append(markNode);
-      }
-    });
-
-    const chat = hostDocument.querySelector('#chat');
-    if (!chat) return;
-    let header = chat.querySelector(`:scope > .${ARCHIVE_HEADER_CLASS}`);
-    if (!header) header = buildArchiveHeader(real);
-    if (chat.firstElementChild !== header) chat.prepend(header);
-
-    const context = getContext();
-    const character = String(context?.name2 || context?.name1 || '').trim();
-    const user = String(context?.name1 || '').trim();
-    const cn = archivePrefersChinese(real);
-    const kicker = header.querySelector('.clawd-archive-kicker');
-    const title = header.querySelector('h2');
-    const motto = header.querySelector('.clawd-archive-motto');
-    if (kicker) kicker.textContent = `Conversation archive / No. ${formatArchiveFolio(real.length - 1)}`;
-    if (title) title.textContent = archiveConversationTitle(context);
-    if (motto) motto.textContent = takeArchiveHero(real);
-    const firstData = getMessageData(real[0]);
-    const archiveDate = new Date(firstData?.send_date ?? firstData?.gen_started ?? Date.now());
-    const dateText = new Intl.DateTimeFormat(
-      cn ? 'zh-CN' : 'en',
-      { year: 'numeric', month: 'short', day: 'numeric' },
-    ).format(Number.isNaN(archiveDate.getTime()) ? new Date() : archiveDate);
-    const meta = {
-      date: dateText,
-      participants: [character, user].filter(Boolean).join(' / ') || '—',
-      scene: archiveSceneLabel(real),
-      status: isTypingActive()
-        ? (cn ? '流式记录中' : 'Streaming')
-        : (cn ? '持续记录' : 'Open'),
-    };
-    Object.entries(meta).forEach(([key, value]) => {
-      const node = header.querySelector(`[data-archive-meta="${key}"]`);
-      if (node && node.textContent !== value) node.textContent = value;
-    });
-
-    const phrases = archiveInterludeCandidates(cn);
-    const conversationKey = currentConversationKey(real);
-    const wanted = new Set();
-    real.forEach((message, index) => {
-      if ((index + 1) % 2 !== 0 || index >= real.length - 1) return;
-      const folio = formatArchiveFolio(index);
-      wanted.add(folio);
-      let divider = chat.querySelector(`:scope > .${ARCHIVE_INTERLUDE_CLASS}[data-after-folio="${folio}"]`);
-      if (!divider) {
-        divider = hostDocument.createElement('div');
-        divider.className = ARCHIVE_INTERLUDE_CLASS;
-        divider.dataset.afterFolio = folio;
-        divider.innerHTML = '<span class="clawd-archive-beat"></span><strong></strong><span class="clawd-archive-beat"></span>';
-      }
-      const phrase = phrases[stableHash(`${conversationKey}|${folio}`) % phrases.length];
-      const text = divider.querySelector('strong');
-      if (text && text.textContent !== phrase) text.textContent = phrase;
-      if (message.nextElementSibling !== divider) message.after(divider);
-    });
-    chat.querySelectorAll(`:scope > .${ARCHIVE_INTERLUDE_CLASS}`).forEach(divider => {
-      if (!wanted.has(divider.dataset.afterFolio || '')) divider.remove();
-    });
-  }
-
-  function formatStreamElapsed(ms) {
-    const tenths = Math.max(0, Math.floor(ms / 100));
-    const minutes = Math.floor(tenths / 600);
-    const seconds = Math.floor((tenths % 600) / 10);
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${tenths % 10}`;
-  }
-
-  function stopStreamTimer() {
-    if (streamTimerInterval) hostWindow.clearInterval(streamTimerInterval);
-    streamTimerInterval = 0;
-    generationStartedAt = 0;
-    hostDocument.querySelectorAll('.' + STREAM_TIMER_CLASS).forEach(node => node.remove());
-  }
-
-  function refreshStreamTimer(active) {
-    const enabled = readLocalToggle(STREAM_TIMER_KEY, false);
-    if (!active || !enabled) {
-      stopStreamTimer();
-      return;
-    }
-    if (!generationStartedAt) generationStartedAt = Date.now();
-    let timer = hostDocument.querySelector('.' + STREAM_TIMER_CLASS);
-    if (!timer) {
-      timer = hostDocument.createElement('div');
-      timer.className = STREAM_TIMER_CLASS;
-      timer.innerHTML = '<span>STREAM</span><b>00:00.0</b>';
-      hostDocument.body.append(timer);
-    }
-    const tick = () => {
-      const value = timer?.querySelector('b');
-      if (value) value.textContent = formatStreamElapsed(Date.now() - generationStartedAt);
-    };
-    tick();
-    if (!streamTimerInterval) streamTimerInterval = hostWindow.setInterval(tick, 100);
-  }
-
-  function buildRailToggle(label, key, fallback) {
-    const button = hostDocument.createElement('button');
-    button.type = 'button';
-    button.className = 'clawd-rail-toggle';
-    button.dataset.settingKey = key;
-    button.setAttribute('role', 'switch');
-    button.innerHTML = '<span></span><i aria-hidden="true"></i>';
-    button.querySelector('span').textContent = label;
-    const sync = () => button.setAttribute('aria-checked', String(readLocalToggle(key, fallback)));
-    sync();
-    button.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      const next = button.getAttribute('aria-checked') !== 'true';
-      writeLocalToggle(key, next);
-      sync();
-      applyArchivePreferences();
-      if (key === STREAM_TIMER_KEY) refreshStreamTimer(isTypingActive());
-    });
-    return button;
-  }
-
-  function refreshRailToggles() {
-    if (!railEnabled) return;
-    const holder = hostDocument.querySelector('#top-settings-holder');
-    if (!holder) return;
-    const all = [...hostDocument.querySelectorAll('.' + RAIL_TOGGLES_CLASS)];
-    for (const extra of all.slice(1)) extra.remove();
-    let panel = all[0] || null;
-    if (panel && panel.parentElement !== holder) { panel.remove(); panel = null; }
-    if (!panel) {
-      panel = hostDocument.createElement('div');
-      panel.className = RAIL_TOGGLES_CLASS;
-      panel.append(
-        buildRailToggle(ccPrefersChinese() ? '显示对话头像' : 'Message avatars', ARCHIVE_AVATARS_KEY, true),
-        buildRailToggle(ccPrefersChinese() ? '流式计时' : 'Stream timer', STREAM_TIMER_KEY, false),
-      );
-      const recents = holder.querySelector(':scope > .' + RAIL_RECENTS_CLASS);
-      if (recents) holder.insertBefore(panel, recents);
-      else holder.append(panel);
-    }
-    panel.querySelectorAll('.clawd-rail-toggle').forEach(button => {
-      const key = button.dataset.settingKey;
-      const fallback = key === ARCHIVE_AVATARS_KEY;
-      button.setAttribute('aria-checked', String(readLocalToggle(key, fallback)));
-    });
-  }
+  let heroLine = null;
 
   /* 思维链默认折叠。
      关掉酒馆的 reasoning_auto_expand 只管新渲染的，已经展开的那些还得自己收。
@@ -3683,13 +3936,55 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       hasChatActivity = false;
       idleAsleep = false;
       setSleeping(false);
+      setNeglected(false);
+      lastPokeAt = Date.now();
     }
 
+    const chat = hostDocument.querySelector('#chat');
+    // 全文档找，不只找 #chat 下面 —— 酒馆重建聊天区时旧的可能被挪到别处，
+    // 只在 #chat 里判重就会漏掉，然后又新建一个。
+    const strays = [...hostDocument.querySelectorAll('.' + HERO_CLASS)];
+
+    if (!isWelcome || !chat) {
+      for (const el of strays) el.remove();
+      heroLine = null;
+      return;
+    }
+    /* 正好一个、位置对、而且问候语文字还在（不是只剩图标），才算没事不用动。
+       之前只检查"数量对不对 + 挂对地方"：如果那句文字在别处被清空过
+       （怀疑跟 1.18.0 欢迎页改版有关——目前没能在那个版本上复现，只能先按
+       "文字丢了就重建"这条防线兜底），图标会一直立在那儿，问候语永远补不回来，
+       因为这条判断一直觉得"数量对、位置对，没必要动"。 */
+    if (strays.length === 1 && strays[0].parentElement === chat && strays[0].textContent.trim()) return;
+    for (const el of strays) el.remove();
+
+    // 每次进入欢迎态才重抽一句，刷新循环里不重抽，否则会一直闪
+    if (heroLine === null) {
+      const who = (getContext()?.name1 || '').trim();
+      const cn = ccPrefersChinese();
+      heroLine = takeHeroLine(who, cn);
+    }
+    const hero = hostDocument.createElement('div');
+    hero.className = HERO_CLASS;
+    hero.innerHTML = '<span class="asterisk"></span>';
+    hero.append(hostDocument.createTextNode(heroLine));
+    chat.prepend(hero);
+    /* 欢迎态下 #chat 是 flex:0 1 auto + overflow-y:auto，而酒馆载入时会把
+       聊天区滚到底。容器被压得比问候语矮时，滚到底的结果就是「顶部被切掉一截」。
+       扩展形态尤其容易撞上：样式表走 <link> 是异步加载的，酒馆有可能在我们的
+       CSS 生效之前就完成了那次滚动。插完问候语主动拉回顶部。 */
+    chat.scrollTop = 0;
+    hostWindow.requestAnimationFrame(() => {
+      if (!destroyed && chat.isConnected && hostDocument.body.classList.contains(WELCOME_CLASS)) {
+        chat.scrollTop = 0;
+      }
+    });
   }
 
   /* 侧栏品牌区 + Recents。只在完整版包里跑。 */
   const RAIL_BRAND_CLASS = 'clawd-rail-brand';
   const RAIL_RECENTS_CLASS = 'clawd-rail-recents';
+  const PC_TOP_ACTIONS_CLASS = 'clawd-pc-top-actions';
   // 侧栏的东西看 rail 开关，不是 welcome。写错的时候侧栏版（rail 开、welcome 关）
   // 会一条聊天记录都不显示，而完整版看着是好的 —— 很难注意到。
   const railEnabled = typeof CLAUDE_FEATURES !== 'undefined' && CLAUDE_FEATURES.rail;
@@ -3705,9 +4000,32 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     if (!brand) {
       brand = hostDocument.createElement('div');
       brand.className = RAIL_BRAND_CLASS;
-      brand.innerHTML = 'C <span>Laude</span>';
+      brand.textContent = 'Claude';
       holder.prepend(brand);
     }
+  }
+
+  function refreshPcTopActions() {
+    if (!railEnabled) return;
+    const holder = hostDocument.querySelector('#top-settings-holder');
+    if (!holder) return;
+    let existing = hostDocument.querySelector('.' + PC_TOP_ACTIONS_CLASS);
+    if (hostWindow.matchMedia('(max-width: 700px)').matches) {
+      existing?.remove();
+      return;
+    }
+    if (existing && existing.parentElement !== holder) {
+      existing.remove();
+      existing = null;
+    }
+    if (existing?.isConnected) return;
+    const actions = hostDocument.createElement('div');
+    actions.className = PC_TOP_ACTIONS_CLASS;
+    actions.setAttribute('aria-hidden', 'true');
+    actions.innerHTML =
+      '<span><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg></span>' +
+      '<span><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"></rect><path d="M9 4v16"></path></svg></span>';
+    holder.append(actions);
   }
 
   /* ===== 侧栏 Recents：自己渲染，不再搬酒馆的 DOM =====
@@ -4146,7 +4464,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
           hostWindow.setTimeout(() => refreshRailRecents({ force: true }), 600);
           return;
         }
-        recentEntriesCache = entries;
         recentLoadedOnce = true;
         /* 拉取期间数据被改过（多半是删除），这批结果已经过期，丢掉重来。 */
         if (versionAtFetch !== recentDataVersion) {
@@ -5098,10 +5415,14 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     clawd.type = 'button';
     clawd.className = 'clawd-mobile-clawd-button';
     clawd.setAttribute('aria-label', 'Clawd');
+    applyCcPersistentState(clawd);
+    applyCcComposerState(clawd);
     clawd.addEventListener('click', event => {
-      animateButton(clawd, 'clawd-hop');
-      createParticle(clawd, event);
-      handleCcCombo(clawd);
+      event.preventDefault();
+      event.stopPropagation();
+      if (handleCcCombo(clawd)) return;
+      animateButton(clawd);
+      createParticle(clawd);
     });
 
     const scrim = hostDocument.createElement('button');
@@ -5176,28 +5497,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   function scheduleMobileComposerInset() {
     if (composerInsetRaf || destroyed) return;
     composerInsetRaf = hostWindow.requestAnimationFrame(applyMobileComposerInset);
-  }
-
-  function applyArchiveComposerHeight() {
-    const shell = observedArchiveComposerShell?.isConnected
-      ? observedArchiveComposerShell
-      : hostDocument.querySelector('#form_sheld');
-    const height = Math.ceil(shell?.getBoundingClientRect?.().height || 0);
-    if (height) hostDocument.documentElement.style.setProperty('--clawd-composer-h', `${height}px`);
-  }
-
-  function refreshArchiveComposerHeight() {
-    const shell = hostDocument.querySelector('#form_sheld');
-    if (!shell) return;
-    if (shell !== observedArchiveComposerShell) {
-      archiveComposerResizeObserver?.disconnect();
-      observedArchiveComposerShell = shell;
-      if (hostWindow.ResizeObserver) {
-        archiveComposerResizeObserver = new hostWindow.ResizeObserver(applyArchiveComposerHeight);
-        archiveComposerResizeObserver.observe(shell);
-      }
-    }
-    applyArchiveComposerHeight();
   }
 
   function refreshMobileComposerInset() {
@@ -5280,283 +5579,43 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     } catch (error) { /* 忽略 */ }
   }
 
-  function clickNativeNewChat() {
-    const native = hostDocument.querySelector(
-      '#option_start_new_chat, #new_chat, #newChat, [data-i18n="New Chat"], [data-i18n="Start new chat"]',
-    );
-    native?.click();
-  }
-
-  function clickNativeCharacterImport() {
-    const input = hostDocument.querySelector(
-      '#character_import_file, #file_form_input, input[type="file"][accept*=".json"]',
-    );
-    input?.click();
-  }
-
-  function buildV3Topbar() {
-    const bar = hostDocument.createElement('header');
-    bar.className = V3_TOPBAR_CLASS;
-    bar.innerHTML = `
-      <div class="clawd-archive-masthead">
-        Archive <span class="claude-mark" aria-hidden="true"></span> Field Notes
-      </div>
-      <div class="clawd-view-state"></div>`;
-    hostDocument.body.append(bar);
-    return bar;
-  }
-
-  function buildV3Collection() {
-    const block = hostDocument.createElement('section');
-    block.className = V3_COLLECTION_CLASS;
-    block.innerHTML = `
-      <div>
-        <span class="clawd-rail-kicker">Private<br>collection</span>
-        <div class="clawd-rail-count">000</div>
-      </div>
-      ${archiveIcons.nodeNet}`;
-    const holder = hostDocument.querySelector('#top-settings-holder');
-    const brand = holder?.querySelector(':scope > .' + RAIL_BRAND_CLASS);
-    if (brand) brand.after(block);
-    else holder?.prepend(block);
-    return block;
-  }
-
-  function paintWelcomeVisual(surface, dataUrl, label = '') {
-    const card = surface.querySelector('.clawd-visual-upload');
-    if (!card || !dataUrl) return;
-    card.style.backgroundImage = `url("${String(dataUrl).replaceAll('"', '%22')}")`;
-    card.classList.add('has-image');
-    const title = card.querySelector('h3');
-    const note = card.querySelector('p');
-    if (title && label) title.textContent = label;
-    if (note) note.textContent = '只用于这次欢迎页预览，不写入档案。';
-  }
-
-  function restoreWelcomeVisual(surface) {
-    try {
-      const raw = hostWindow.localStorage.getItem(archiveWelcomeRuntime.visualStorageKey);
-      if (!raw) return;
-      const stored = JSON.parse(raw);
-      if (stored?.dataUrl) paintWelcomeVisual(surface, stored.dataUrl, stored.name);
-    } catch { /* storage disabled or an old malformed value */ }
-  }
-
-  function applyWelcomeVisual(surface, file) {
-    if (!file?.type?.startsWith('image/')) return;
-    const reader = new hostWindow.FileReader();
-    reader.addEventListener('load', () => {
-      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-      if (!dataUrl) return;
-      paintWelcomeVisual(surface, dataUrl, file.name);
-      try {
-        hostWindow.localStorage.setItem(
-          archiveWelcomeRuntime.visualStorageKey,
-          JSON.stringify({ name: file.name, dataUrl }),
-        );
-      } catch {
-        hostWindow.toastr?.warning?.('图片已显示，但太大或浏览器不允许本地保存。');
-      }
-    });
-    reader.readAsDataURL(file);
-  }
-
-  function v3EntryFolio(entry, index) {
-    const raw = entry?.record?.message_count
-      ?? entry?.record?.mes_count
-      ?? entry?.record?.chat_size
-      ?? index + 1;
-    const parsed = Number.parseInt(raw, 10);
-    return String(Number.isFinite(parsed) ? Math.max(1, Math.min(parsed, 999)) : index + 1).padStart(3, '0');
-  }
-
-  function v3EntryDate(entry) {
-    const record = entry?.record || {};
-    const candidates = [
-      record.last_mes,
-      record.last_message_date,
-      record.updated_at,
-      record.send_date,
-      entry?.dateText,
-    ];
-    for (const candidate of candidates) {
-      const parsed = new Date(candidate);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
-    }
-    return null;
-  }
-
-  function renderV3RecentIndex(surface) {
-    const list = surface.querySelector('.clawd-recent-index-list');
-    const total = surface.querySelector('.clawd-recent-index-head span');
-    if (!list || !total) return;
-    const signature = signatureOf(recentEntriesCache);
-    if (surface.dataset.recentSignature === signature) return;
-    surface.dataset.recentSignature = signature;
-    list.replaceChildren();
-    total.textContent = `${String(recentEntriesCache.length).padStart(2, '0')} records / updated locally`;
-    if (!recentEntriesCache.length) {
-      const empty = hostDocument.createElement('div');
-      empty.className = 'clawd-recent-empty';
-      empty.textContent = '还没有可继续的档案。';
-      list.append(empty);
-      return;
-    }
-    recentEntriesCache.slice(0, 8).forEach((entry, index) => {
-      const row = hostDocument.createElement('button');
-      row.type = 'button';
-      row.className = 'clawd-archive-row';
-      const date = v3EntryDate(entry);
-      const dateText = date
-        ? new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date)
-        : 'Local archive';
-      row.innerHTML = `
-        <span class="row-num"></span><strong></strong>
-        <span class="row-date"></span><span class="row-state">Open</span><span class="row-arrow">→</span>`;
-      row.querySelector('.row-num').textContent = v3EntryFolio(entry, index);
-      row.querySelector('strong').textContent = entry.name || entry.fileName || '未命名档案';
-      row.querySelector('.row-date').textContent = dateText;
-      row.addEventListener('click', () => void openRecentChat(entry));
-      list.append(row);
-    });
-  }
-
-  function updateV3WelcomeCopy(surface) {
-    const latest = recentEntriesCache[0];
-    const folio = latest ? v3EntryFolio(latest, 0) : '000';
-    const lastAt = v3EntryDate(latest);
-    const minutesSince = lastAt ? Math.max(0, (Date.now() - lastAt.getTime()) / 60000) : 4321;
-    const band = archiveWelcomeRuntime.slogans[archiveWelcomeRuntime.currentBand()];
-    const [asideLabel, asideText] = archiveWelcomeRuntime.asideCopy(minutesSince, folio);
-    const kicker = surface.querySelector('#indexKicker');
-    const title = surface.querySelector('#indexTitle');
-    const label = surface.querySelector('#indexAsideLabel');
-    const aside = surface.querySelector('#indexAside');
-    if (kicker) kicker.textContent = band.kicker;
-    if (title) title.replaceChildren(...band.title.flatMap((line, index) => {
-      const nodes = [hostDocument.createTextNode(line)];
-      if (index < band.title.length - 1) nodes.push(hostDocument.createElement('br'));
-      return nodes;
-    }));
-    if (label) label.textContent = asideLabel;
-    if (aside) aside.textContent = asideText;
-    const continueTitle = surface.querySelector('.clawd-quick-card--continue h3');
-    const continueCopy = surface.querySelector('.clawd-quick-card--continue p');
-    const continueButton = surface.querySelector('.clawd-quick-card--continue button');
-    if (continueTitle) continueTitle.textContent = latest?.name || latest?.fileName || '继续上一页';
-    if (continueCopy) continueCopy.textContent = latest
-      ? `最后编号 ${folio} · 最近更新的对话档案。`
-      : '还没有近期对话。可以另起一页。';
-    if (continueButton) {
-      continueButton.textContent = latest ? `继续 ${folio} →` : '暂无档案';
-      continueButton.disabled = !latest;
-    }
-  }
-
-  function buildV3WelcomeSurface(chat) {
-    const surface = hostDocument.createElement('section');
-    surface.className = V3_WELCOME_CLASS;
-    surface.innerHTML = `
-      <header class="clawd-index-intro">
-        <div>
-          <span class="clawd-archive-kicker" id="indexKicker"></span>
-          <h2 id="indexTitle"></h2>
-        </div>
-        <div class="clawd-index-aside">
-          <b id="indexAsideLabel"></b><p id="indexAside"></p>
-        </div>
-      </header>
-      <div class="clawd-home-actions">
-        <label class="clawd-visual-upload" tabindex="0">
-          <input type="file" accept="image/png,image/jpeg,image/webp">
-          <b>01 / Welcome visual</b>
-          ${archiveIcons.nodeNet}
-          <button class="clawd-upload-btn" type="button">上传图片 +</button>
-          <div class="clawd-upload-copy">
-            <h3>给今天放一张图。</h3>
-            <p>点击、拖入或粘贴图片。它只作为这次欢迎页的视觉，不会盖住档案。</p>
-          </div>
-        </label>
-        <div class="clawd-quick-stack">
-          <div class="clawd-quick-card clawd-quick-card--continue">
-            <b>02 / Continue</b><h3>继续上一页</h3><p>打开最近更新的对话档案。</p>
-            <div class="clawd-card-actions"><button type="button">继续 →</button></div>
-          </div>
-          <div class="clawd-quick-card clawd-quick-card--dark">
-            <b>03 / New or import</b><h3>另起一页</h3><p>新建空档案，或导入角色卡。</p>
-            <div class="clawd-card-actions">
-              <button type="button" data-action="new">新建 →</button>
-              <button type="button" data-action="import">导入 +</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <section class="clawd-recent-index" aria-label="最近档案">
-        <div class="clawd-recent-index-head"><h3>最近档案</h3><span></span></div>
-        <div class="clawd-recent-index-list"></div>
-      </section>`;
-    const input = surface.querySelector('.clawd-visual-upload input');
-    input?.addEventListener('change', () => applyWelcomeVisual(surface, input.files?.[0]));
-    surface.querySelector('.clawd-upload-btn')?.addEventListener('click', event => {
-      event.preventDefault();
-      input?.click();
-    });
-    surface.querySelector('.clawd-quick-card--continue button')?.addEventListener('click', () => {
-      const entry = recentEntriesCache[0];
-      if (entry) void openRecentChat(entry);
-    });
-    surface.querySelector('[data-action="new"]')?.addEventListener('click', clickNativeNewChat);
-    surface.querySelector('[data-action="import"]')?.addEventListener('click', clickNativeCharacterImport);
-    const upload = surface.querySelector('.clawd-visual-upload');
-    upload?.addEventListener('dragover', event => { event.preventDefault(); upload.classList.add('is-dragging'); });
-    upload?.addEventListener('dragleave', () => upload.classList.remove('is-dragging'));
-    upload?.addEventListener('drop', event => {
-      event.preventDefault();
-      upload.classList.remove('is-dragging');
-      applyWelcomeVisual(surface, event.dataTransfer?.files?.[0]);
-    });
-    upload?.addEventListener('paste', event => {
-      const file = [...(event.clipboardData?.files || [])].find(item => item.type?.startsWith('image/'));
-      if (file) applyWelcomeVisual(surface, file);
-    });
-    updateV3WelcomeCopy(surface);
-    renderV3RecentIndex(surface);
-    restoreWelcomeVisual(surface);
-    chat.prepend(surface);
-    return surface;
-  }
-
-  function refreshV3WelcomeSurface() {
+  /* 欢迎页那三个快捷按钮，官网的版式是在输入框下面。
+     酒馆把它们放在聊天区里，所以得搬。按钮文字认不出来就不动，
+     宁可位置不对也别把用户的入口弄丢。 */
+  function refreshWelcomeShortcuts() {
     if (!welcomeEnabled) return;
-    const bars = [...hostDocument.querySelectorAll('.' + V3_TOPBAR_CLASS)];
-    for (const extra of bars.slice(1)) extra.remove();
-    const bar = bars[0] || buildV3Topbar();
-    const state = bar.querySelector('.clawd-view-state');
-    if (state) state.textContent = hostDocument.body.classList.contains(WELCOME_CLASS) ? '档案索引' : '档案正文';
+    const form = hostDocument.querySelector('#form_sheld');
+    if (!form || !form.parentElement) return;
 
-    const collections = [...hostDocument.querySelectorAll('.' + V3_COLLECTION_CLASS)];
-    for (const extra of collections.slice(1)) extra.remove();
-    const collection = collections[0] || buildV3Collection();
-    const count = collection?.querySelector('.clawd-rail-count');
-    if (count) count.textContent = String(recentEntriesCache.length).padStart(3, '0').slice(-3);
+    const wraps = [...hostDocument.querySelectorAll('.clawd-welcome-shortcuts')];
 
-    const title = hostDocument.querySelector(`.${ARCHIVE_HEADER_CLASS} h2`);
-    if (title) title.lang = /[\u3400-\u9fff]/.test(title.textContent || '') ? 'zh-CN' : 'en';
-
-    const chat = hostDocument.querySelector('#chat');
-    const surfaces = [...hostDocument.querySelectorAll('.' + V3_WELCOME_CLASS)];
-    if (!hostDocument.body.classList.contains(WELCOME_CLASS) || !chat) {
-      surfaces.forEach(node => node.remove());
+    if (!hostDocument.body.classList.contains(WELCOME_CLASS)) {
+      // 离开欢迎态就把搬过来的东西还回去，别留在页面上
+      for (const w of wraps) w.remove();
       return;
     }
-    for (const extra of surfaces.slice(1)) extra.remove();
-    if (!surfaces[0] || surfaces[0].parentElement !== chat) {
-      surfaces.forEach(node => node.remove());
-      buildV3WelcomeSurface(chat);
-    } else {
-      updateV3WelcomeCopy(surfaces[0]);
-      renderV3RecentIndex(surfaces[0]);
-    }
+
+    // 已经搬好而且还在正确位置，就什么都不做
+    if (wraps.length === 1
+      && wraps[0].parentElement === form.parentElement
+      && wraps[0].querySelector('button, .menu_button')) return;
+
+    // 否则：先把以前造的全清掉，再重来一次。
+    // 幂等靠「先清后建」，不靠猜之前建过没有 —— 酒馆随时会重建聊天区，
+    // 一旦重建，之前那些「有没有建过」的判断全都会失准。
+    for (const w of wraps) w.remove();
+
+    const buttons = [...hostDocument.querySelectorAll('#chat button, #chat .menu_button, #chat a.menu_button')]
+      .filter(b => /API|Character|Extension|角色|扩展|连接/i.test(b.textContent || ''));
+    if (buttons.length < 2) return;
+
+    const holder = buttons[0].parentElement;
+    if (!holder || holder.children.length > 6) return;
+
+    const wrap = hostDocument.createElement('div');
+    wrap.className = 'clawd-welcome-shortcuts';
+    form.parentElement.insertBefore(wrap, form.nextSibling);
+    wrap.append(holder);
   }
 
   /* 这里曾经有个「把行内点击转发到图标」的函数，删了。
@@ -5575,22 +5634,8 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     const holder = hostDocument.querySelector('#top-settings-holder');
     if (!holder) return;
     holder.querySelectorAll(':scope > .drawer > .drawer-toggle').forEach(toggle => {
-      const installGlyph = label => {
-        if (toggle.querySelector(':scope > .clawd-rail-glyph')) return;
-        const glyph = hostDocument.createElement('span');
-        glyph.className = 'clawd-rail-glyph';
-        glyph.setAttribute('aria-hidden', 'true');
-        const iconMarkup = archiveIcons.railGlyphs[label.textContent];
-        if (iconMarkup) glyph.innerHTML = iconMarkup;
-        else glyph.textContent = '·';
-        toggle.insertBefore(glyph, label);
-      };
-      const existingLabel = toggle.querySelector(':scope > .clawd-rail-label');
-      if (existingLabel) {
-        installGlyph(existingLabel);
-        return;
-      }
       const icon = toggle.querySelector('.drawer-icon') ?? toggle;
+      if (toggle.querySelector(':scope > .clawd-rail-label')) return;
       const raw = (icon.getAttribute('title') || toggle.getAttribute('title') || '').trim();
       if (!raw) return;
       // 酒馆给的标题是整句，200px 的侧栏装不下，只能省略号。
@@ -5620,7 +5665,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       label.className = 'clawd-rail-label';
       label.textContent = text;
       toggle.append(label);
-      installGlyph(label);
     });
   }
 
@@ -5653,6 +5697,10 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       if (next === had) return;
 
       button.dataset.look = next;
+      // 真实鼠标接管了：清掉「这份朝向是环境张望设的」标记，
+      // 这样左右观察那边的收尾定时器就不会在鼠标已经改了朝向之后
+      // 把眼神错误地扳回中间。
+      delete button.dataset.clawdAmbientLook;
       // 像素画没有半格，眼珠只能整格跳，加不出中间帧。
       // 改用动画里的老办法：跳之前先眨一下，用眨眼盖住这一跳 ——
       // 人眼扫视时本来就会眨，所以这个遮掩读起来是自然的。
@@ -5665,24 +5713,101 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       }, 70);
     });
   }
+  let lastMouseMoveAt = Date.now();
   function handleLook(event) {
     lookX = event.clientX;
     lookY = event.clientY;
+    lastMouseMoveAt = Date.now();
     if (lookRaf) return;
     lookRaf = hostWindow.requestAnimationFrame(applyLook);
   }
+
+  /* D2 左右观察：没有真实 mousemove 一段时间后，偶尔自主看一眼再收回。
+     复用鼠标跟随那套 clawd-look-l/r 帧和 clawd-saccade 眨眼遮挡，
+     不用新画像素帧。用 dataset.clawdAmbientLook 标记「这份朝向是环境
+     张望设的」，收尾定时器到点时只在朝向没被真实鼠标顶替过才收回去，
+     避免收尾定时器把真实鼠标刚设好的朝向错误地扳回中间。 */
+  const SCAN_IDLE_MS = 8000;
+  const SCAN_HOLD_MS = 900;
+  // 眼神动作本身够轻，不用每次张望都弹气泡——太吵；每 20 秒最多提示一次，
+  // 主要是让人第一次注意到「这是在自主张望」，认出来之后就不用再提醒。
+  const SCAN_TOAST_COOLDOWN_MS = 20000;
+  let lastScanToastAt = 0;
+  function playAmbientGlance(button) {
+    if (!button || button.dataset.look) return; // 已经在看某个方向（真实或环境），不叠加
+    const dir = Math.random() < 0.5 ? 'l' : 'r';
+    button.dataset.look = dir;
+    button.dataset.clawdAmbientLook = dir;
+    const now = Date.now();
+    if (now - lastScanToastAt > SCAN_TOAST_COOLDOWN_MS) {
+      lastScanToastAt = now;
+      showCcToast(button, ccEscapeHtml(ccPrefersChinese() ? '张望一下～' : 'just looking around~'), 'hi');
+    }
+    button.classList.add('clawd-saccade');
+    hostWindow.setTimeout(() => {
+      button.classList.remove('clawd-saccade');
+      button.classList.add('clawd-look-' + dir);
+    }, 70);
+    hostWindow.setTimeout(() => {
+      // 期间没被真实鼠标顶替，才收回去；顶替过的话真实鼠标系统自己会管。
+      if (button.dataset.clawdAmbientLook !== dir) return;
+      delete button.dataset.clawdAmbientLook;
+      button.dataset.look = '';
+      button.classList.add('clawd-saccade');
+      hostWindow.setTimeout(() => {
+        button.classList.remove('clawd-saccade');
+        button.classList.remove('clawd-look-l', 'clawd-look-r');
+      }, 70);
+    }, SCAN_HOLD_MS);
+  }
+
+  function ccMaybeScan() {
+    if (destroyed) return;
+    if (Date.now() - lastMouseMoveAt < SCAN_IDLE_MS) return;
+    if (isTypingActive() || ccLegBounceEnabled || ccSleeping) return;
+    if (Math.random() > 0.18) return;
+    hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(button => {
+      if (button.classList.contains('clawd-sleeping')
+        || button.classList.contains(NEGLECTED_CLASS)
+        || button.classList.contains(SHY_AMBIENT_CLASS)) return;
+      playAmbientGlance(button);
+    });
+  }
+  const ccScanTimer = hostWindow.setInterval(ccMaybeScan, 6000);
 
   /* 3. 输入框聚焦时抬头 */
   function setPerk(on) {
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS)
       .forEach(button => button.classList.toggle('clawd-perk', on));
   }
+
+  function applyCcComposerState(button, focusedOverride) {
+    if (!button) return;
+    const box = hostDocument.querySelector('#send_textarea');
+    const focused = typeof focusedOverride === 'boolean'
+      ? focusedOverride
+      : Boolean(box && hostDocument.activeElement === box);
+    const hasText = Boolean(box?.value?.trim());
+    button.classList.toggle(INPUT_ACTIVE_CLASS, focused);
+    button.classList.toggle(INPUT_TEXT_CLASS, focused && hasText);
+  }
+
+  function syncCcComposerState(focusedOverride) {
+    ccInteractiveTargets().forEach(button => applyCcComposerState(button, focusedOverride));
+  }
+
+  const handleComposerInput = event => {
+    if (event.target?.id !== 'send_textarea') return;
+    noteActivity();
+    syncCcComposerState(true);
+  };
+
   let lastFocusReactionAt = 0;
   const handleFocusIn = event => {
     if (event.target?.id !== 'send_textarea') return;
     /* 聚焦输入框本身就是「人在」的信号，得跟敲键盘一样刷新打盹计时——
-       不然只播一次 320ms 的点头+眯眼，用户光盯着输入框想措辞、没按键，
-       一分钟计时器照样把 Clawd 睡倒在人眼皮底下。 */
+       不然 syncCcComposerState 只是切了一个视觉用的 class，用户光盯着
+       输入框想措辞、没按键，一分钟计时器照样把 Clawd 睡倒在人眼皮底下。 */
     noteActivity();
     if (isMobileLayout()) {
       /* focusin 通常早于系统键盘真正缩放视口；在这里锁定关闭键盘后应回到的底边。 */
@@ -5693,6 +5818,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       mobileKeyboardRecoveryActive = false;
     }
     scheduleMobileViewportSettle();
+    syncCcComposerState(true);
     /* 手机上聚焦输入框时不要触碰历史消息里的 Clawd 按钮。旧逻辑会给每一层
        按钮改 class，并逐个读取 offsetWidth 强制同步排版；重角色卡/长聊天因此
        正好在键盘弹出的关键帧冻结数秒。键盘避让不依赖这段装饰动画。 */
@@ -5714,6 +5840,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     /* 不等下一帧：WebView 随后若开始重排长聊天，rAF/定时器都会被主线程堵住。
        在 focusout 的同一任务内先把旧键盘偏移清零，避免输入框沿用抬高位置。 */
     scheduleMobileViewportSettle();
+    syncCcComposerState(false);
     if (isMobileLayout()) {
       /* schedule 先打开恢复窗口，reset 再同步计算正向高度补偿；顺序不能反。
          用户停留在输入框超过 840ms 时，反过来会把矮视口误记成新的稳定高度。 */
@@ -6311,6 +6438,11 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     'clawd-cheer',
     'clawd-button-settle',
     'clawd-button-press',
+    LEG_BOUNCE_CLASS,
+    INPUT_ACTIVE_CLASS,
+    INPUT_TEXT_CLASS,
+    NEGLECTED_CLASS,
+    SHY_AMBIENT_CLASS,
     'clawd-idle-drowsy',
     'clawd-sleep-transition',
     'clawd-wobble-sway',
@@ -6340,10 +6472,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     '.clawd-rail-brand',
     '.clawd-rail-label',
     '.clawd-rail-grip',
-    '.clawd-rail-toggles',
-    '.clawd-stream-timer',
-    '.clawd-archive-chathead',
-    '.clawd-archive-interlude',
+    '.clawd-welcome-hero',
     '.clawd-welcome-shortcuts',
   ].join(',');
 
@@ -6492,10 +6621,8 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     }
     previousTypingActive = typingActive;
     hostDocument.body.classList.toggle(GENERATING_CLASS, typingActive);
-    refreshStreamTimer(typingActive);
     refreshTypingInteractions(typingActive, generationJustEnded);
     applyMobileViewportMetrics();
-    refreshArchiveComposerHeight();
     refreshMobileComposerInset();
     preserveStreamingReasoning(typingActive);
     if (continuingGeneration) {
@@ -6523,15 +6650,14 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     // 这一轮该读的都读完了，脏标记清空；下一批 mutation 记录会重新标记
     dirtyMessages.clear();
     refreshWelcomeMode(messages);
-    refreshArchiveDecorations();
     refreshRailBrand();
+    refreshPcTopActions();
     refreshRailLabels();
-    refreshRailToggles();
     watchChatDeleted();   // 上下文晚于脚本就绪，所以每轮试一次，接上就不再重复
     watchUserSend();
     watchMessageFadeAnimation();
     refreshRailRecents();
-    refreshV3WelcomeSurface();
+    refreshWelcomeShortcuts();
     refreshCharacterSwitcher();
     refreshMobileChrome();
     refreshMobileNewChat();
@@ -6706,7 +6832,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   function start() {
     if (destroyed) return;
     installStyle();
-    applyArchivePreferences();
     hostWindow.console?.info?.('[Claude-Clawd] build:', KEYBOARD_BUILD.id);
     hostDocument.body.classList.add(READY_CLASS);
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
@@ -6757,6 +6882,7 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     hostWindow.addEventListener('resize', handleViewportChange, { passive: true });
     hostDocument.addEventListener('mousemove', handleLook, { passive: true });
     hostDocument.addEventListener('keydown', noteActivity, { passive: true });
+    hostDocument.addEventListener('input', handleComposerInput, true);
     hostDocument.addEventListener('visibilitychange', noteCcVisibility, { passive: true });
     hostDocument.addEventListener('focusin', handleFocusIn, true);
     hostDocument.addEventListener('focusout', handleFocusOut, true);
@@ -6769,12 +6895,15 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     hostWindow.clearInterval(ccCheerTimer);
     hostWindow.clearInterval(ccWobbleTimer);
     hostWindow.clearInterval(idleTimer);
+    hostWindow.clearInterval(ccScanTimer);
+    if (genTimerRaf) hostWindow.cancelAnimationFrame(genTimerRaf);
+    if (genTimerLingerTimer) hostWindow.clearTimeout(genTimerLingerTimer);
+    genTimerEl?.remove();
+    genTimerEl = null;
     if (reconcileTimer) hostWindow.clearTimeout(reconcileTimer);
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
-    stopStreamTimer();
-    removeArchiveDecorations();
     observer?.disconnect();
     // 借来的列表还回去，再摘掉事件监听
     restoreRecents();
@@ -6821,10 +6950,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     mobileChrome = null;
     composerResizeObserver?.disconnect();
     composerResizeObserver = null;
-    archiveComposerResizeObserver?.disconnect();
-    archiveComposerResizeObserver = null;
-    observedArchiveComposerShell = null;
-    hostDocument.documentElement.style.removeProperty('--clawd-composer-h');
     observedComposerShell?.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);
     observedComposerShell = null;
     lastComposerHeight = 0;
@@ -6838,15 +6963,14 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     stopKeyboardTrace();
     restoreVirtualKeyboardOverlay();
     hostDocument.querySelectorAll('.' + RAIL_BRAND_CLASS).forEach(brand => brand.remove());
-    hostDocument.querySelectorAll('.' + RAIL_TOGGLES_CLASS).forEach(panel => panel.remove());
+    hostDocument.querySelectorAll('.' + PC_TOP_ACTIONS_CLASS).forEach(actions => actions.remove());
     hostDocument.querySelectorAll('.' + CHARACTER_SWITCHER_CLASS).forEach(button => button.remove());
     hostDocument.querySelectorAll('.' + FAKE_MIC_CLASS).forEach(mic => mic.remove());
     hostDocument.querySelectorAll('.clawd-mobile-new-chat').forEach(button => button.remove());
-    hostDocument.querySelectorAll(`.${V3_WELCOME_CLASS}, .${V3_TOPBAR_CLASS}, .${V3_COLLECTION_CLASS}`)
-      .forEach(node => node.remove());
     hostWindow.removeEventListener('resize', handleViewportChange);
     hostDocument.removeEventListener('mousemove', handleLook);
     hostDocument.removeEventListener('keydown', noteActivity);
+    hostDocument.removeEventListener('input', handleComposerInput, true);
     hostDocument.removeEventListener('visibilitychange', noteCcVisibility);
     hostDocument.removeEventListener('focusin', handleFocusIn, true);
     hostDocument.removeEventListener('focusout', handleFocusOut, true);
@@ -6922,8 +7046,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     hostDocument.documentElement.style.removeProperty(MOBILE_COMPOSER_HEIGHT_PROPERTY);
     hostDocument.documentElement.style.removeProperty(MOBILE_VIEWPORT_HEIGHT_PROPERTY);
     hostDocument.documentElement.style.removeProperty(MOBILE_VIEWPORT_TOP_PROPERTY);
-    delete hostDocument.documentElement.dataset.claudeArchiveAvatars;
-    delete hostDocument.documentElement.dataset.claudeStreamTimer;
     if (hostWindow[INSTANCE_KEY] === api) delete hostWindow[INSTANCE_KEY];
   }
 
@@ -7027,15 +7149,9 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     { value: 'time', label: '按时间自动切换' },
   ];
   const LAYOUTS = [
-    { value: 'auto', label: '自动（按 700px 断点）' },
+    { value: 'auto', label: '自动（跨 700px 自动切换）' },
     { value: 'pc', label: '桌面' },
     { value: 'mobile', label: '手机' },
-  ];
-  /* 版式跟明暗/布局不一样，它不换样式表 —— 档案那套整份挂在
-     html[data-claude-archive] 下面，切换只是改一个属性，当场生效。 */
-  const STYLES = [
-    { value: 'classic', label: '经典（照官网）' },
-    { value: 'archive', label: '档案（标本册）' },
   ];
 
   function read(key, allowed, fallback) {
@@ -7066,6 +7182,21 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     }
   }
 
+  /* Bug 3：毛玻璃透明度初始化之前是不带 try/catch 直接读 localStorage，
+     隐私模式 / 禁第三方存储的 WebView / 部分云端宿主里 localStorage.getItem
+     本身就会抛异常，读取一炸就中断了 mount()，设置面板后面一截（预设、
+     版本号、更新按钮）全部不会挂载。这里补一个和 read()/readClock() 同风格
+     的安全读取函数，读不到就退回默认值，不让存储受限变成整个面板挂不上。 */
+  function readNumber(key, fallback, min, max) {
+    try {
+      const value = Number(window.localStorage.getItem(KEY_PREFIX + key));
+      if (!Number.isFinite(value)) return fallback;
+      return Math.min(max, Math.max(min, value));
+    } catch {
+      return fallback;
+    }
+  }
+
   function clockMinutes(value) {
     const [hours, minutes] = value.split(':').map(Number);
     return hours * 60 + minutes;
@@ -7090,29 +7221,21 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     return manual;
   }
 
-  /* 版式属性必须在模块求值时就设上，不能等面板挂载。
-     面板要轮询等酒馆的设置容器出现，最长 60 秒；真挂不上的时候（容器换了
-     选择器、或者用户根本没开设置面板）属性就永远设不上，档案版式等于没装。
-     这里先设一次，面板挂上之后再接管。 */
-  /* 总开关关掉时，面板照常挂（不然没地方开回来），但一个属性都不许设。 */
+  /* 2.0.1 撤下未完成的档案版式。升级用户可能还留着旧 localStorage，
+     启动时主动清掉，不能让已经从面板移除的功能继续暗中生效。 */
   const enabled = typeof CLAUDE_ENABLED === 'undefined' ? true : CLAUDE_ENABLED;
-
-  (function applyStoredStyle() {
-    if (!enabled) return;
+  (function retireArchiveStyle() {
+    const root = document.documentElement;
+    delete root.dataset.claudeArchive;
+    delete root.dataset.claudeArchiveGhost;
     try {
-      const root = document.documentElement;
-      if (read('style', ['classic', 'archive'], 'classic') === 'archive') {
-        root.dataset.claudeArchive = 'on';
+      if (window.localStorage.getItem(KEY_PREFIX + 'family') === 'archive') {
+        window.localStorage.setItem(KEY_PREFIX + 'family', 'classic');
       }
-      if (read('ghost', ['on', 'off'], 'off') === 'on') {
-        root.dataset.claudeArchiveGhost = 'on';
-      }
-      root.dataset.claudeArchiveAvatars =
-        read('archive-avatars', ['on', 'off'], 'on');
-      root.dataset.claudeStreamTimer =
-        read('stream-timer', ['on', 'off'], 'off');
-    } catch (error) {
-      console.warn('[Claude Web] 版式属性设置失败：', error);
+      window.localStorage.removeItem(KEY_PREFIX + 'style');
+      window.localStorage.removeItem(KEY_PREFIX + 'ghost');
+    } catch {
+      /* 无痕模式或受限宿主里清不掉也不影响：CSS 已经不再包含档案版式。 */
     }
   })();
 
@@ -7128,12 +7251,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
   /* 换日夜只是换一份样式表，能当场生效，不用刷新。
      换端型不行 —— CLAUDE_FEATURES.mobile 是启动时读一次的，
      一堆布局逻辑按它分叉，中途改会留下半新半旧的状态。 */
-  function hostToast(message) {
-    try {
-      window.toastr?.info?.(message, 'Claude Web');
-    } catch { /* toastr 不可用时静默，不阻断切换流程 */ }
-  }
-
   function applyVariantLive(variant) {
     const link = document.getElementById('claude-integrated-theme-live-style');
     if (!(link instanceof HTMLLinkElement)) return false;
@@ -7141,12 +7258,16 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
     const base = typeof CLAUDE_EXTENSION_BASE !== 'undefined'
       ? CLAUDE_EXTENSION_BASE
       : new URL('.', import.meta.url).href;
-    const styleUrl = new URL(`styles/${variant}-${layout}.css`, base).href;
+    const styleUrl = new URL(`styles/${variant}-${layout}.css`, base);
+    styleUrl.searchParams.set(
+      'v',
+      typeof CLAUDE_KEYBOARD_BUILD !== 'undefined' ? CLAUDE_KEYBOARD_BUILD.id : 'live',
+    );
 
-    /* Bug 2 修复：这里以前只换了 <link href> 和 dataset，酒馆自己的
-       powerUserSettings.theme / custom_css / SmartTheme 变量 / 主题下拉框
-       全都没跟着换，出现"界面已经是夜间，酒馆自己的主题记录还是日间"的
-       状态混合。
+    /* Bug 2 修复：这里以前只换了 <link href> 和 dataset，
+       酒馆自己的 powerUserSettings.theme / custom_css / SmartTheme 变量 /
+       主题下拉框全都没跟着换，出现"界面已经是夜间，酒馆自己的主题记录
+       还是日间"的状态混合。
        统一入口现在做两件事：
        1. 立刻调用主题运行时暴露的 applyVariant(variant)——它会现查
           CLAUDE_THEMES[variant]，重新走一遍写 powerUserSettings + CSS 变量
@@ -7162,15 +7283,21 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       if (previousHref) link.setAttribute('href', previousHref);
       document.documentElement.dataset.claudeIntegratedTheme = previousVariant;
       if (previousVariant) window.__claudeIntegratedTheme?.applyVariant?.(previousVariant);
-      hostToast('主题切换失败，已保留原主题。');
+      hostToast?.('主题切换失败，已保留原主题。');
     };
     link.addEventListener('error', revertOnFailure, { once: true });
     link.addEventListener('load', () => link.removeEventListener('error', revertOnFailure), { once: true });
 
-    link.setAttribute('href', styleUrl);
+    link.setAttribute('href', styleUrl.href);
     document.documentElement.dataset.claudeIntegratedTheme = variant;
     window.__claudeIntegratedTheme?.applyVariant?.(variant);
     return true;
+  }
+
+  function hostToast(message) {
+    try {
+      window.toastr?.info?.(message, 'Claude Web');
+    } catch { /* toastr 不可用时静默，不阻断切换流程 */ }
   }
 
   function buildPanel() {
@@ -7279,26 +7406,44 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
           <label for="claude-web-layout" style="margin-top:8px">布局</label>
           <select id="claude-web-layout" class="text_pole"></select>
 
-          <label for="claude-web-style" style="margin-top:8px">版式</label>
-          <select id="claude-web-style" class="text_pole"></select>
-
-          <label class="checkbox_label" style="margin-top:8px;display:flex;align-items:center;gap:6px">
-            <input id="claude-web-ghost" type="checkbox">
-            <span>档案版式：消息右上角显示巨大编号</span>
-          </label>
-
-          <label class="checkbox_label" style="margin-top:8px;display:flex;align-items:center;gap:6px">
-            <input id="claude-web-archive-avatars" type="checkbox">
-            <span>档案版式：显示消息头像</span>
-          </label>
-
-          <label class="checkbox_label" style="margin-top:8px;display:flex;align-items:center;gap:6px">
-            <input id="claude-web-stream-timer" type="checkbox">
-            <span>生成时显示流式计时</span>
-          </label>
-
           <div id="claude-web-hint"
                style="margin-top:8px;font-size:0.9em;opacity:.75;line-height:1.5"></div>
+
+          <hr style="margin:10px 0;opacity:.25">
+          <div style="font-weight:600;margin-bottom:6px">Clawd</div>
+          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
+            <input id="claude-web-motion" type="checkbox">
+            <span>启用状态动画</span>
+          </label>
+          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
+            <input id="claude-web-decorations" type="checkbox">
+            <span>启用粒子与提示气泡</span>
+          </label>
+          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
+            <input id="claude-web-gen-timer" type="checkbox">
+            <span>显示生成计时器</span>
+          </label>
+
+          <hr style="margin:10px 0;opacity:.25">
+          <div style="font-weight:600;margin-bottom:6px">界面</div>
+          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
+            <input id="claude-web-bg-transparent" type="checkbox">
+            <span>背景透传（显示酒馆背景，而不是白底/黑底）</span>
+          </label>
+          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
+            <input id="claude-web-bg-blur" type="checkbox">
+            <span>背景毛玻璃（需先开启背景透传）</span>
+          </label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:0.9em;opacity:.75;white-space:nowrap">毛玻璃浓度</span>
+            <input id="claude-web-bg-blur-opacity" type="range" min="8" max="60" step="1" style="flex:1">
+            <span id="claude-web-bg-blur-opacity-value" style="font-size:0.9em;opacity:.75;width:2.4em;text-align:right"></span>
+          </div>
+          <div style="font-size:0.85em;opacity:.6;line-height:1.5;margin-top:2px">
+            数字越大越糊、底色越浓；越小越透。世界书/角色管理这些抽屉面板
+            不跟着上面两个开关走，固定带浅浅的磨砂色调，浓度也吃这根滑条，
+            但有个可读性下限，不会被拖到看不清字。
+          </div>
 
           <hr style="margin:10px 0;opacity:.25">
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -7629,8 +7774,6 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
       const root = document.documentElement;
       delete root.dataset.claudeArchive;
       delete root.dataset.claudeArchiveGhost;
-      delete root.dataset.claudeArchiveAvatars;
-      delete root.dataset.claudeStreamTimer;
       delete root.dataset.claudeIntegratedTheme;
       /* 预设是往 documentElement 的 inline style 上设变量的，一并清掉。 */
       const api = window.__claudeWebPresets;
@@ -7787,58 +7930,74 @@ const AR3_WELCOME_RUNTIME = Object.freeze({
 
     layoutSelect.addEventListener('change', () => {
       if (!write('layout', layoutSelect.value)) return;
-      describe();
-      /* 端型是启动时读的，必须刷新。与其让用户自己猜，不如直接给个按钮。 */
-      hint.insertAdjacentHTML(
-        'beforeend',
-        ' <button id="claude-web-reload" class="menu_button" style="margin-left:6px">刷新生效</button>',
-      );
-      panel.querySelector('#claude-web-reload')
-        ?.addEventListener('click', () => window.location.reload(), { once: true });
+      hint.textContent = '正在切换布局…';
+      window.setTimeout(() => window.location.reload(), 120);
     });
 
-    /* 版式。不换样式表，只改 documentElement 上的属性 —— 档案那套整份
-       挂在 html[data-claude-archive="on"] 下，属性一改当场生效，不用刷新。 */
-    const styleSelect = panel.querySelector('#claude-web-style');
-    const ghostBox = panel.querySelector('#claude-web-ghost');
-    const avatarBox = panel.querySelector('#claude-web-archive-avatars');
-    const streamTimerBox = panel.querySelector('#claude-web-stream-timer');
-    fillSelect(styleSelect, STYLES, read('style', ['classic', 'archive'], 'classic'));
-    ghostBox.checked = read('ghost', ['on', 'off'], 'off') === 'on';
-    avatarBox.checked = read('archive-avatars', ['on', 'off'], 'on') === 'on';
-    streamTimerBox.checked = read('stream-timer', ['on', 'off'], 'off') === 'on';
+    const motionBox = panel.querySelector('#claude-web-motion');
+    const decorationsBox = panel.querySelector('#claude-web-decorations');
+    motionBox.checked = read('motion', ['on', 'off'], 'on') !== 'off';
+    decorationsBox.checked = read('decorations', ['on', 'off'], 'on') !== 'off';
+    motionBox.addEventListener('change', () => {
+      if (!write('motion', motionBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeMotion = motionBox.checked ? 'on' : 'off';
+    });
+    decorationsBox.addEventListener('change', () => {
+      if (!write('decorations', decorationsBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeDecorations = decorationsBox.checked ? 'on' : 'off';
+    });
 
-    const applyStyle = () => {
-      const root = document.documentElement;
-      if (styleSelect.value === 'archive') root.dataset.claudeArchive = 'on';
-      else delete root.dataset.claudeArchive;
-      if (ghostBox.checked) root.dataset.claudeArchiveGhost = 'on';
-      else delete root.dataset.claudeArchiveGhost;
-      root.dataset.claudeArchiveAvatars = avatarBox.checked ? 'on' : 'off';
-      root.dataset.claudeStreamTimer = streamTimerBox.checked ? 'on' : 'off';
-      /* 巨大编号只在档案版式里有意义，经典版式下把复选框灰掉，
-         免得勾了没反应让人以为坏了。 */
-      ghostBox.disabled = styleSelect.value !== 'archive';
-      window.__claudeClawdInteraction?.refresh?.();
+    const genTimerBox = panel.querySelector('#claude-web-gen-timer');
+    genTimerBox.checked = read('genTimer', ['on', 'off'], 'on') !== 'off';
+    genTimerBox.addEventListener('change', () => {
+      if (!write('genTimer', genTimerBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeGenTimer = genTimerBox.checked ? 'on' : 'off';
+    });
+
+    const bgTransparentBox = panel.querySelector('#claude-web-bg-transparent');
+    const bgBlurBox = panel.querySelector('#claude-web-bg-blur');
+    bgTransparentBox.checked = read('bgTransparent', ['on', 'off'], 'off') === 'on';
+    bgBlurBox.checked = read('bgBlur', ['on', 'off'], 'off') === 'on';
+    bgTransparentBox.addEventListener('change', () => {
+      if (!write('bgTransparent', bgTransparentBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeBgTransparent = bgTransparentBox.checked ? 'on' : 'off';
+      // 关掉透传时毛玻璃没有意义（没有可透的背景），一起关掉，
+      // 避免出现「毛玻璃开着但背景是纯色」这种看不出效果的死角状态。
+      if (!bgTransparentBox.checked && bgBlurBox.checked) {
+        bgBlurBox.checked = false;
+        write('bgBlur', 'off');
+        document.documentElement.dataset.claudeBgBlur = 'off';
+      }
+    });
+    bgBlurBox.addEventListener('change', () => {
+      if (!write('bgBlur', bgBlurBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeBgBlur = bgBlurBox.checked ? 'on' : 'off';
+      // 反过来也要联动：单开毛玻璃、不开透传，背景其实还是不透明的纯色，
+      // 毛玻璃在纯色上完全看不出效果，等于白开。开毛玻璃时顺手把透传也点上。
+      if (bgBlurBox.checked && !bgTransparentBox.checked) {
+        bgTransparentBox.checked = true;
+        write('bgTransparent', 'on');
+        document.documentElement.dataset.claudeBgTransparent = 'on';
+      }
+    });
+
+    const bgBlurOpacitySlider = panel.querySelector('#claude-web-bg-blur-opacity');
+    const bgBlurOpacityValue = panel.querySelector('#claude-web-bg-blur-opacity-value');
+    const applyBgBlurOpacity = (n) => {
+      const clamped = Math.min(60, Math.max(8, Math.round(n)));
+      document.documentElement.style.setProperty('--claude-bg-blur-opacity', `${clamped}%`);
+      document.documentElement.style.setProperty('--claude-drawer-tint-opacity', `${Math.max(18, clamped)}%`);
+      bgBlurOpacityValue.textContent = `${clamped}%`;
+      return clamped;
     };
-    applyStyle();
-
-    styleSelect.addEventListener('change', () => {
-      if (!write('style', styleSelect.value)) return;
-      applyStyle();
-    });
-    ghostBox.addEventListener('change', () => {
-      if (!write('ghost', ghostBox.checked ? 'on' : 'off')) return;
-      applyStyle();
-    });
-    avatarBox.addEventListener('change', () => {
-      if (!write('archive-avatars', avatarBox.checked ? 'on' : 'off')) return;
-      applyStyle();
-    });
-    streamTimerBox.addEventListener('change', () => {
-      if (!write('stream-timer', streamTimerBox.checked ? 'on' : 'off')) return;
-      applyStyle();
-      window.__claudeClawdInteraction?.refresh?.();
+    {
+      const initial = readNumber('bgBlurOpacity', 22, 8, 60);
+      bgBlurOpacitySlider.value = String(Math.round(initial));
+      applyBgBlurOpacity(Number(bgBlurOpacitySlider.value));
+    }
+    bgBlurOpacitySlider.addEventListener('input', () => {
+      const clamped = applyBgBlurOpacity(Number(bgBlurOpacitySlider.value));
+      write('bgBlurOpacity', String(clamped));
     });
 
     mountPresets(panel);
