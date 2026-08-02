@@ -2364,7 +2364,7 @@ if (CLAUDE_ENABLED) {
      结束。可开关（html[data-claude-gen-timer]），关掉时直接不建元素，
      不占任何一帧。 */
   let genTimerEl = null;
-  let genTimerRaf = 0;
+  let genTimerRaf = 0; /* 现在存的是 setInterval 的 id，不再是 rAF 句柄 */
   let genTimerStartedAt = 0;
   let genTimerLingerTimer = 0;
   const GEN_TIMER_LINGER_MS = 4000;
@@ -2385,16 +2385,8 @@ if (CLAUDE_ENABLED) {
   function tickGenTimer() {
     if (!genTimerEl || !genTimerStartedAt) return;
     const elapsed = (hostWindow.performance.now() - genTimerStartedAt) / 1000;
-    /* 这里每帧都跑，但显示只精确到 0.1 秒，所以一秒里只有 10 次是真的要改字。
-       原来无条件写 textContent：高刷屏上就是每秒 ~175 次 DOM 写，其中 165 次
-       写进去的字符串和原来一模一样。textContent 赋值不管值同不同，都会拆掉旧
-       文本节点再插一个新的，照样产生 childList 变更记录。实测 391 秒里这个元素
-       独自产生 1378 条记录，是所有记录里最多的一类，而且这个 rAF 循环只在生成
-       期间跑 —— 正好对上"平时不卡，一点发送等回复就卡"。
-       只在显示值真的变了才写，DOM 写入从 ~175 次/秒降到 10 次/秒。 */
     const nextText = elapsed.toFixed(1) + 's';
     if (genTimerEl.textContent !== nextText) genTimerEl.textContent = nextText;
-    genTimerRaf = hostWindow.requestAnimationFrame(tickGenTimer);
   }
 
   function startGenTimer() {
@@ -2404,16 +2396,25 @@ if (CLAUDE_ENABLED) {
       hostWindow.clearTimeout(genTimerLingerTimer);
       genTimerLingerTimer = 0;
     }
-    if (genTimerRaf) hostWindow.cancelAnimationFrame(genTimerRaf);
+    if (genTimerRaf) hostWindow.clearInterval(genTimerRaf);
     genTimerStartedAt = hostWindow.performance.now();
     el.classList.remove('clawd-gen-timer-done');
     el.classList.add('clawd-gen-timer-visible');
     tickGenTimer();
+    /* 计时器原来靠 requestAnimationFrame 递归自己跑，也就是每一帧醒一次：
+       高刷屏上是每秒 ~175 次。但显示只到 0.1 秒，一秒里只有 10 次是真要改字。
+       更麻烦的是 rAF 回调坐在渲染管线的关键路径上 —— 每帧都被唤醒一次，正好跟
+       流式正文抢同一个绘制通道；这个徽标还是 position:fixed + z-index:10015 +
+       18px 扩散的 box-shadow，每次重绘都要重新合成它底下那片输入区。
+       表现出来就是"关掉计时器不但不卡了，连出字的节奏都不一样"。
+       改成 100ms 定时器：显示精度一点不损失（本来就只有 0.1 秒），
+       唤醒次数从 ~175 次/秒降到 10 次/秒，而且离开了每帧渲染路径。 */
+    genTimerRaf = hostWindow.setInterval(tickGenTimer, 100);
   }
 
   function stopGenTimer() {
     if (genTimerRaf) {
-      hostWindow.cancelAnimationFrame(genTimerRaf);
+      hostWindow.clearInterval(genTimerRaf);
       genTimerRaf = 0;
     }
     if (!genTimerStartedAt || !genTimerEl) return; // 没真的开始过（比如开关关闭时收到结束事件）
@@ -6950,7 +6951,7 @@ if (CLAUDE_ENABLED) {
     hostWindow.clearInterval(ccWobbleTimer);
     hostWindow.clearInterval(idleTimer);
     hostWindow.clearInterval(ccScanTimer);
-    if (genTimerRaf) hostWindow.cancelAnimationFrame(genTimerRaf);
+    if (genTimerRaf) hostWindow.clearInterval(genTimerRaf);
     if (genTimerLingerTimer) hostWindow.clearTimeout(genTimerLingerTimer);
     genTimerEl?.remove();
     genTimerEl = null;
