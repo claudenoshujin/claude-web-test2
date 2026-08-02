@@ -103,7 +103,7 @@ Claude Web 的稳定 2.0 版本，已经整理成可直接安装的 SillyTavern 
 3. 粘贴下面的仓库地址：
 
 ```text
-https://github.com/claudenoshujin/claude-web
+https://github.com/claudenoshujin/claude-web-test2
 ```
 
 4. 安装完成后刷新页面。

@@ -6474,6 +6474,16 @@ if (CLAUDE_ENABLED) {
     '.clawd-rail-grip',
     '.clawd-welcome-hero',
     '.clawd-welcome-shortcuts',
+    /* 生成计时器是扩展自己创建、自己每 100ms 改一次文本的元素，
+       但它一直漏在这份"我的元素"名单外面。后果：每跳一秒，它自己写出来的
+       childList 记录都被当成"酒馆那边的外部改动"，换来一整轮全量刷新。
+       真机实测 426 秒里，.clawd-gen-timer 产生 1440 条记录，是所有记录里
+       最多的一类；同期全量刷新 836 次、平均 64.7ms，refreshClawd 独占
+       31.5 秒主线程，等于掉帧总量的四成。生成中计时器一直在跳，所以表现
+       就是"AI 回复时一顿一顿"，而且从 2.0.17 加进这个计时器那版开始出现。
+       3.0 那条源码线上这个元素已经改叫 clawd-stream-timer 并进了名单，
+       2.0 这条线漏掉了，补上。 */
+    '.clawd-gen-timer',
   ].join(',');
 
   function classMutationIsCosmetic(record, target) {
