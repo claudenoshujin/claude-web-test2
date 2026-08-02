@@ -2385,7 +2385,15 @@ if (CLAUDE_ENABLED) {
   function tickGenTimer() {
     if (!genTimerEl || !genTimerStartedAt) return;
     const elapsed = (hostWindow.performance.now() - genTimerStartedAt) / 1000;
-    genTimerEl.textContent = elapsed.toFixed(1) + 's';
+    /* 这里每帧都跑，但显示只精确到 0.1 秒，所以一秒里只有 10 次是真的要改字。
+       原来无条件写 textContent：高刷屏上就是每秒 ~175 次 DOM 写，其中 165 次
+       写进去的字符串和原来一模一样。textContent 赋值不管值同不同，都会拆掉旧
+       文本节点再插一个新的，照样产生 childList 变更记录。实测 391 秒里这个元素
+       独自产生 1378 条记录，是所有记录里最多的一类，而且这个 rAF 循环只在生成
+       期间跑 —— 正好对上"平时不卡，一点发送等回复就卡"。
+       只在显示值真的变了才写，DOM 写入从 ~175 次/秒降到 10 次/秒。 */
+    const nextText = elapsed.toFixed(1) + 's';
+    if (genTimerEl.textContent !== nextText) genTimerEl.textContent = nextText;
     genTimerRaf = hostWindow.requestAnimationFrame(tickGenTimer);
   }
 
