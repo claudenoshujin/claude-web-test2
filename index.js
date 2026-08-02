@@ -3324,6 +3324,14 @@ if (CLAUDE_ENABLED) {
   function trackSwipeArrows() {
     swipeTrackRaf = 0;
     if (destroyed) return;
+    /* 生成期间整个暂停跟随。
+       下面那些 getBoundingClientRect() 会强制浏览器立刻重算整页布局；平时不贵，
+       但生成时正文每帧都在长，DOM 一直是脏的，于是每一次读取都摊上一次完整重排。
+       真机实测：生成期间这个函数吃掉 3823ms，是该时段第二大的阻塞源；
+       而整体 88% 的卡顿都发生在生成期间（生成中掉帧 72961ms vs 平时 9794ms）。
+       生成中用户也不会去点左右翻页，箭头停在原地没有代价，
+       生成一结束由 generationJustEnded 那轮补排一次，立刻归位。 */
+    if (isTypingActive()) return;
     if (isMobileLayout()) {
       observedSwipeMessages.forEach(message => {
         message.querySelectorAll(`:scope > button.${LEFT_SWIPE_PROXY_CLASS}, :scope > button.${SWIPE_PROXY_CLASS}`)
@@ -6566,6 +6574,14 @@ if (CLAUDE_ENABLED) {
       return false;
     }
 
+    /* 提示词管理器的条目列表：87 个 li 躺在一个「关着的」左侧设置抽屉里
+       (#completion_prompt_manager → #openai_settings → #left-nav-panel)，
+       每次组装 prompt 都会被整体重写一遍 class。它跟聊天界面长什么样毫无关系，
+       这个扩展也从不给它套样式，但每条记录都换来一轮全量刷新。
+       真机实测：生成期间它产生 1566 条记录，是全场最多的一类，比第二名还多 57%。
+       整个 #completion_prompt_manager 子树直接不参与刷新判断。 */
+    if (target.closest('#completion_prompt_manager')) return false;
+
     if (target.matches(OWNED_MUTATION_SELECTOR) || target.closest(OWNED_MUTATION_SELECTOR)) return false;
     if (record.type === 'attributes' && classMutationIsCosmetic(record, target)) return false;
 
@@ -6681,6 +6697,9 @@ if (CLAUDE_ENABLED) {
          replaying the settle/pop animation on the previous real answer; that
          was the visible one-frame "tremble" reported for blank replies. */
       if (!latestAssistant || !hasMessageContent(latestAssistant)) settlePending = false;
+      /* 生成期间 trackSwipeArrows 是整个跳过的（见那里的注释），
+         这里补排一次，让翻页箭头在回复落地的同一轮里归位。 */
+      if (!isMobileLayout()) scheduleSwipeTrack();
     }
     // 这一轮该读的都读完了，脏标记清空；下一批 mutation 记录会重新标记
     dirtyMessages.clear();
