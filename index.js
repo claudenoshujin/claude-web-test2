@@ -117,11 +117,15 @@ function claudeReadSetting(key, allowed, fallback) {
 const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
 const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
 const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'], 'on') !== 'off';
-/* 生成计时器默认开——是个实用小组件，不是装饰。
+/* 生成计时器默认关（2.0.33 起改的，原来默认开）。
+   原因是性能：这个徽标是 position:fixed + z-index:10015 + 18px 扩散阴影，
+   而且计时循环只在生成期间跑，正好压在流式出字的绘制通道上。真机实测，
+   开着它的时候不但掉帧，连正文出字的节奏都跟关掉时不一样。已经把每帧 rAF
+   换成 100ms 定时器，但收益还没验够，暂时默认关掉，想要的人自己去设置里开。
    背景透传、毛玻璃默认关——都是外观改动，不该在没人要求的情况下
    突然把原本的白底/黑底换成透明。
    （侧栏图标开关已废弃移除：实测在真机上不生效，留着只会误导用户。） */
-const CLAUDE_GEN_TIMER_ENABLED = claudeReadSetting('genTimer', ['on', 'off'], 'on') !== 'off';
+const CLAUDE_GEN_TIMER_ENABLED = claudeReadSetting('genTimer', ['on', 'off'], 'off') !== 'off';
 const CLAUDE_BG_TRANSPARENT_ENABLED = claudeReadSetting('bgTransparent', ['on', 'off'], 'off') === 'on';
 const CLAUDE_BG_BLUR_ENABLED = claudeReadSetting('bgBlur', ['on', 'off'], 'off') === 'on';
 /* 毛玻璃浓度：8~60 之间的整数，表示 color-mix 里 --cw-surface-page 的占比。
@@ -4450,9 +4454,13 @@ if (CLAUDE_ENABLED) {
   function shouldFetchRecents(force, now) {
     if (force) return true;
     if (!recentLoadedOnce) return true;
-    /* 用户没在看这个列表的时候不刷 —— 侧栏在聊天页是收着的，
-       刷了也没人看，纯粹是白花一次往返。 */
-    if (!hostDocument.body.classList.contains(WELCOME_CLASS)) return false;
+    /* 原来这里写的是「不是欢迎页就不刷」，理由是"侧栏在聊天页是收着的，
+       刷了也没人看"。这个前提不成立：侧栏在聊天页照样可以是展开的，
+       用户实测就是"聊天时左边历史列表明明在眼前，却一直不更新"。
+       改成直接问列表本身可不可见。getClientRects().length 对 display:none、
+       祖先隐藏、position:fixed 都判得准，比 offsetParent 可靠。 */
+    const slot = hostDocument.querySelector('.' + RAIL_RECENTS_CLASS);
+    if (!slot || !slot.getClientRects().length) return false;
     return now - recentFetchedAt > RECENT_FETCH_TTL;
   }
 
