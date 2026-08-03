@@ -255,7 +255,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.41-poke-lines-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.42-anthropic-palette-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -445,15 +445,80 @@ if (CLAUDE_ENABLED) {
     },
   };
 
+  /* 官网配色（FR-2）。色值不是从需求文档抄的近似值，是 2026-08-03 从
+     www.anthropic.com 的 --swatch--* / --_color-theme---* 直接读出来的官方
+     brand token，下面每一行都标了它在官网叫什么名字。
+
+     跟需求文档对不上的两处，以官网为准：
+     - 文档把 Canvas 写成 #F0EEE6、Surface 写成 #FAF9F5，但官网自己的命名是
+       background=#faf9f5、background-secondary=#f0eee6，正好反过来。这里按
+       「页面底用暖的那个、卡片浮起来用浅的那个」取，读起来层次更清楚。
+     - 文档的 Coral hover 写 #C96645，官网 --swatch--accent 实际是 #c6613f。
+
+     只有深色那半的 paper-1/2/3 是推的 —— 官网基本是浅色站，深色区块只给了
+     背景 #141413 和边框透明度，没有完整的表面阶梯。推的那三个都标了「推」。 */
+  const ANTHROPIC_LIGHT = {
+    id: 'anthropic-light',
+    name: '官网 · 日间',
+    scheme: 'light',
+    core: {
+      '--cw-paper-0': '#f0eee6',  /* swatch--ivory-medium  页面底 */
+      '--cw-paper-1': '#faf9f5',  /* swatch--ivory-light   卡片 / 抽屉 / 弹窗 */
+      '--cw-paper-2': '#e8e6dc',  /* swatch--ivory-dark    输入框 */
+      '--cw-paper-3': '#e3dacc',  /* swatch--oat           悬停 */
+      '--cw-ink-0': '#141413',    /* swatch--slate-dark    正文 */
+      '--cw-ink-1': '#5e5d59',    /* swatch--slate-light   次文字 */
+      '--cw-ink-2': '#87867f',    /* swatch--cloud-dark    弱文字 */
+      '--cw-ink-3': '#d1cfc5',    /* swatch--cloud-light   极弱 / 分隔线 */
+      '--cw-clay': '#d97757',     /* swatch--clay          强调 */
+    },
+    /* 这三条 derive() 推得出来但推不准，官网有精确值就用精确值：
+       边框官网是 10% / 20%（slate-faded-10/20），derive 一律 15% / 25%；
+       clay-strong 官网是另调的一个更红的橙，derive 只会把 clay 压暗，发浑。 */
+    extra: {
+      '--cw-line': 'rgba(20,20,19,.10)',        /* swatch--slate-faded-10 #1414131a */
+      '--cw-line-strong': 'rgba(20,20,19,.20)', /* swatch--slate-faded-20 #14141333 */
+      '--cw-clay-strong': '#c6613f',            /* swatch--accent */
+    },
+  };
+
+  const ANTHROPIC_DARK = {
+    id: 'anthropic-dark',
+    name: '官网 · 夜间',
+    scheme: 'dark',
+    core: {
+      '--cw-paper-0': '#141413',  /* swatch--slate-dark    页面底（官网深色区块底色） */
+      '--cw-paper-1': '#1f1f1e',  /* 推：官网没给深色表面阶梯 */
+      '--cw-paper-2': '#262625',  /* 推 */
+      '--cw-paper-3': '#333230',  /* 推 */
+      '--cw-ink-0': '#faf9f5',    /* swatch--ivory-light   正文（官网深底上的字） */
+      '--cw-ink-1': '#d1cfc5',    /* swatch--cloud-light   次文字 */
+      '--cw-ink-2': '#b0aea5',    /* swatch--cloud-medium  弱文字（官网 text-agate 就是它） */
+      '--cw-ink-3': '#3d3d3a',    /* swatch--slate-medium  极弱 / 分隔线 */
+      '--cw-clay': '#d97757',     /* swatch--clay */
+    },
+    extra: {
+      '--cw-line': 'rgba(250,249,245,.10)',        /* swatch--ivory-faded-10 #faf9f51a */
+      '--cw-line-strong': 'rgba(250,249,245,.20)', /* swatch--ivory-faded-20 #faf9f533 */
+      '--cw-clay-strong': '#c6613f',               /* swatch--accent */
+    },
+  };
+
   /* 按「家族 × 明暗」组织，而不是把四套平铺成一个下拉。
      平铺的问题：样式表的明暗（CLAUDE_THEME_VARIANT）和预设自带的明暗是两个
      独立选择，用户可以选出「浅色配色 + 深色样式表」这种半新半旧的组合。
      拆成两个维度之后，明暗只有一个来源，打不起来。 */
   const FAMILIES = [
     { id: 'classic', name: '经典', light: CLASSIC_LIGHT, dark: CLASSIC_DARK },
+    /* 「暖纸」和「墨」上一轮写好了却没注册进这个数组，两套配色躺在代码里
+       谁都选不到（下拉只读 FAMILIES）。它们本来就是配对写的：暖纸是浅色半，
+       墨是深色半，所以合成一个家族，而不是各自占一格 —— 各占一格的话每套
+       都缺另一半，切明暗会掉回经典。 */
+    { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },
+    { id: 'anthropic', name: '官网', light: ANTHROPIC_LIGHT, dark: ANTHROPIC_DARK },
   ];
 
-  const BUILT_IN = [CLASSIC_LIGHT, CLASSIC_DARK];
+  const BUILT_IN = [CLASSIC_LIGHT, CLASSIC_DARK, WARM_PAPER, INK, ANTHROPIC_LIGHT, ANTHROPIC_DARK];
 
   function familyOf(presetId) {
     return FAMILIES.find(f => f.light.id === presetId || f.dark.id === presetId) ?? FAMILIES[0];
