@@ -4719,31 +4719,35 @@ html body.claude-generation-active #rightSendForm #send_but::after {
  */
 
 :root {
-  --cw-paper-0: #1f1f1e;
-  --cw-paper-1: #2c2c2a;
-  --cw-paper-2: #2c2c2a;
-  --cw-paper-3: #373734;
-  --cw-ink-0: #f8f8f6;
-  --cw-ink-1: #b8b6ae;
-  --cw-ink-2: #97958c;
-  --cw-ink-3: #44423d;
+  /* 调色板层 = 「官网」预设的解析结果，逐值对齐（2.0.43）。
+     色值来自 www.anthropic.com 的 brand token，推导值按 presets 的 derive()
+     同一套公式算出来，所以 JS 起来前后不会有一次配色跳变。
+     改这里没用 —— 预设是靠 inline style 覆盖的，要改配色去改预设。 */
+  --cw-paper-0: #141413;
+  --cw-paper-1: #1f1f1e;
+  --cw-paper-2: #262625;
+  --cw-paper-3: #333230;
+  --cw-ink-0: #faf9f5;
+  --cw-ink-1: #d1cfc5;
+  --cw-ink-2: #b0aea5;
+  --cw-ink-3: #3d3d3a;
   --cw-clay: #d97757;
-  --cw-line: rgba(226,225,218,.15);
-  --cw-line-strong: rgba(226,225,218,.25);
-  --cw-hero: #c3c2b7;
-  --cw-icon: #ffffff;
-  --cw-clay-soft: #3a2a22;
+  --cw-line: rgba(250,249,245,.10);
+  --cw-line-strong: rgba(250,249,245,.20);
+  --cw-hero: #d5d4d1;
+  --cw-icon: #faf9f5;
+  --cw-clay-soft: #3f2a22;
   --cw-clay-strong: #c6613f;
-  --cw-code-surface: #131211;
-  --cw-code-ink: #e6a58c;
-  --cw-em: #c3c2b7;
-  --cw-selection: #5a3a2c;
-  --cw-scrollbar: #44423d;
-  --cw-scrollbar-hover: #55534c;
+  --cw-code-surface: #262625;
+  --cw-code-ink: #e39e86;
+  --cw-em: #d1cfc5;
+  --cw-selection: #57362a;
+  --cw-scrollbar: #3d3d3a;
+  --cw-scrollbar-hover: #b0aea5;
   --cw-shadow-dialog: 0 12px 36px rgba(0,0,0,.55);
   --cw-shadow-composer: 0 12px 34px rgba(0,0,0,.38);
   --cw-shadow-floating: 0 16px 42px rgba(0,0,0,.44);
-  --cw-topbar-surface: rgba(31,31,30,.98);
+  --cw-topbar-surface: #141413;
   --cw-body-weight: 400;
   --cw-color-scheme: dark;
 }
@@ -4771,8 +4775,8 @@ html body.claude-generation-active #rightSendForm #send_but::after {
   /* 字符网格用它配合 opacity，不要直接给它带透明度的值 ——
      深色预设下要单独调密度和不透明度，分开更好控。 */
   --cw-grid-char       : var(--cw-ink-0);
-  --cw-grid-opacity    : .075;
-  --cw-grid-step       : 34px;
+  --cw-grid-opacity    : .05;
+  --cw-grid-step       : 38px;
 
   /* ---------- 尺寸层 ----------
      原计划做「三档密度」，看完 C-2 断点普查（docs/断点普查.md）改成流体。

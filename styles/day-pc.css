@@ -4722,31 +4722,35 @@ html body.claude-generation-active #rightSendForm #send_but::after {
  */
 
 :root {
-  --cw-paper-0: #f8f8f6;
-  --cw-paper-1: #ffffff;
-  --cw-paper-2: #f4f4f1;
-  --cw-paper-3: #efeeeb;
-  --cw-ink-0: #121212;
-  --cw-ink-1: #686660;
-  --cw-ink-2: #7b7974;
-  --cw-ink-3: #c9c5bc;
+  /* 调色板层 = 「官网」预设的解析结果，逐值对齐（2.0.43）。
+     色值来自 www.anthropic.com 的 brand token，推导值按 presets 的 derive()
+     同一套公式算出来，所以 JS 起来前后不会有一次配色跳变。
+     改这里没用 —— 预设是靠 inline style 覆盖的，要改配色去改预设。 */
+  --cw-paper-0: #f0eee6;
+  --cw-paper-1: #faf9f5;
+  --cw-paper-2: #e8e6dc;
+  --cw-paper-3: #e3dacc;
+  --cw-ink-0: #141413;
+  --cw-ink-1: #5e5d59;
+  --cw-ink-2: #87867f;
+  --cw-ink-3: #d1cfc5;
   --cw-clay: #d97757;
-  --cw-line: rgba(31,31,30,.15);
-  --cw-line-strong: rgba(31,31,30,.25);
-  --cw-hero: #373734;
-  --cw-icon: #0b0b0b;
-  --cw-clay-soft: #f3e0d8;
+  --cw-line: rgba(20,20,19,.10);
+  --cw-line-strong: rgba(20,20,19,.20);
+  --cw-hero: #373735;
+  --cw-icon: #141413;
+  --cw-clay-soft: #ecd9cc;
   --cw-clay-strong: #c6613f;
-  --cw-code-surface: #f0eee6;
-  --cw-code-ink: #633a2e;
-  --cw-em: #6c6b66;
-  --cw-selection: #efcfc2;
-  --cw-scrollbar: #c9c5bc;
-  --cw-scrollbar-hover: #aaa59b;
+  --cw-code-surface: #e8e6dc;
+  --cw-code-ink: #9e5943;
+  --cw-em: #5e5d59;
+  --cw-selection: #e8c6b5;
+  --cw-scrollbar: #d1cfc5;
+  --cw-scrollbar-hover: #87867f;
   --cw-shadow-dialog: 0 12px 36px rgba(50,45,35,.12);
   --cw-shadow-composer: 0 10px 30px rgba(43,40,34,.10);
   --cw-shadow-floating: 0 14px 38px rgba(43,40,34,.11);
-  --cw-topbar-surface: rgba(248,248,246,.98);
+  --cw-topbar-surface: #f0eee6;
   --cw-body-weight: 430;
   --cw-color-scheme: light;
 }

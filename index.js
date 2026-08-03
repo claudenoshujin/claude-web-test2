@@ -255,7 +255,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.42-anthropic-palette-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.43-drop-classic-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -287,8 +287,8 @@ if (CLAUDE_ENABLED) {
  *
  * 预设的形状：
  *   core   9 个色 + scheme 标记。**社区作者只需要填这 9 个。**
- *   extra  可选的精确覆盖。classic 两套用它把当前主题的取值一字不差地搬过来，
- *          保证「上了令牌层但看起来没变」。社区预设不用管这个字段。
+ *   extra  可选的精确覆盖。「官网」用它钉死官方给了精确值、而 derive() 推
+ *          不准的那几条。社区预设不用管这个字段。
  *
  * 应用方式只有一种：往 documentElement 的 inline style 上设 CSS 变量。
  * **绝不换 stylesheet** —— Moonlit 的 README 自己写了手机上切主题会卡几秒，
@@ -305,7 +305,7 @@ if (CLAUDE_ENABLED) {
      1.x 存的是扁平令牌表，读的时候迁移到当前明暗那一半。 */
   const STORAGE_CUSTOM = 'claude-web:custom';
   /* 自定义的取值起点。用户从哪个家族点进调色，就从那套色开始改，
-     而不是从空白或者写死的 classic 开始。 */
+     而不是从空白或者写死的某一套开始。 */
   const STORAGE_BASE = 'claude-web:custom-base';
   const CUSTOM_ID = 'custom';
   const CUSTOM_NAME = '我的配色';
@@ -318,7 +318,8 @@ if (CLAUDE_ENABLED) {
     '--cw-clay',
   ];
 
-  /* extra 里允许的键。都是能从 core 推导、但 classic 需要精确值的那些。 */
+  /* extra 里允许的键。都是能从 core 推导、但某些预设需要精确值的那些
+     （比如「官网」的边框透明度和 clay hover，推导值跟官方取值对不上）。 */
   const EXTRA_KEYS = [
     '--cw-line', '--cw-line-strong', '--cw-hero', '--cw-icon',
     '--cw-clay-soft', '--cw-clay-strong', '--cw-code-surface', '--cw-code-ink',
@@ -331,83 +332,6 @@ if (CLAUDE_ENABLED) {
   const ALLOWED = new Set([...CORE_KEYS, ...EXTRA_KEYS]);
 
   /* ---------- 内置预设 ---------- */
-
-  /* classic 两套 = 现在 theme-day.css / theme-night.css 的原值，一字不改。
-     它们存在的意义是「换上令牌层之后界面看起来完全没变」，
-     是这一步的验收基准，不是给人日常用的漂亮预设。 */
-  const CLASSIC_LIGHT = {
-    id: 'classic-light',
-    name: '经典 · 日间',
-    scheme: 'light',
-    core: {
-      '--cw-paper-0': '#f8f8f6',
-      '--cw-paper-1': '#ffffff',
-      '--cw-paper-2': '#f4f4f1',
-      '--cw-paper-3': '#efeeeb',
-      '--cw-ink-0': '#121212',
-      '--cw-ink-1': '#686660',
-      '--cw-ink-2': '#7b7974',
-      '--cw-ink-3': '#c9c5bc',
-      '--cw-clay': '#d97757',
-    },
-    extra: {
-      '--cw-line': 'rgba(31,31,30,.15)',
-      '--cw-line-strong': 'rgba(31,31,30,.25)',
-      '--cw-hero': '#373734',
-      '--cw-icon': '#0b0b0b',
-      '--cw-clay-soft': '#f3e0d8',
-      '--cw-clay-strong': '#c6613f',
-      '--cw-code-surface': '#f0eee6',
-      '--cw-code-ink': '#633a2e',
-      '--cw-em': '#6c6b66',
-      '--cw-selection': '#efcfc2',
-      '--cw-scrollbar': '#c9c5bc',
-      '--cw-scrollbar-hover': '#aaa59b',
-      '--cw-shadow-dialog': '0 12px 36px rgba(50,45,35,.12)',
-      '--cw-shadow-composer': '0 10px 30px rgba(43,40,34,.10)',
-      '--cw-shadow-floating': '0 14px 38px rgba(43,40,34,.11)',
-      '--cw-topbar-surface': 'rgba(248,248,246,.98)',
-      '--cw-body-weight': '430',
-      '--cw-color-scheme': 'light',
-    },
-  };
-
-  const CLASSIC_DARK = {
-    id: 'classic-dark',
-    name: '经典 · 夜间',
-    scheme: 'dark',
-    core: {
-      '--cw-paper-0': '#1f1f1e',
-      '--cw-paper-1': '#2c2c2a',
-      '--cw-paper-2': '#2c2c2a',
-      '--cw-paper-3': '#373734',
-      '--cw-ink-0': '#f8f8f6',
-      '--cw-ink-1': '#b8b6ae',
-      '--cw-ink-2': '#97958c',
-      '--cw-ink-3': '#44423d',
-      '--cw-clay': '#d97757',
-    },
-    extra: {
-      '--cw-line': 'rgba(226,225,218,.15)',
-      '--cw-line-strong': 'rgba(226,225,218,.25)',
-      '--cw-hero': '#c3c2b7',
-      '--cw-icon': '#ffffff',
-      '--cw-clay-soft': '#3a2a22',
-      '--cw-clay-strong': '#c6613f',
-      '--cw-code-surface': '#131211',
-      '--cw-code-ink': '#e6a58c',
-      '--cw-em': '#c3c2b7',
-      '--cw-selection': '#5a3a2c',
-      '--cw-scrollbar': '#44423d',
-      '--cw-scrollbar-hover': '#55534c',
-      '--cw-shadow-dialog': '0 12px 36px rgba(0,0,0,.55)',
-      '--cw-shadow-composer': '0 12px 34px rgba(0,0,0,.38)',
-      '--cw-shadow-floating': '0 16px 42px rgba(0,0,0,.44)',
-      '--cw-topbar-surface': 'rgba(31,31,30,.98)',
-      '--cw-body-weight': '400',
-      '--cw-color-scheme': 'dark',
-    },
-  };
 
   /* 暖纸 = 标本册那版设计的取色。只填 9 个核心色，其余靠推导 ——
      这也是给社区看的样板：一个预设长这么大就够了。 */
@@ -508,17 +432,17 @@ if (CLAUDE_ENABLED) {
      平铺的问题：样式表的明暗（CLAUDE_THEME_VARIANT）和预设自带的明暗是两个
      独立选择，用户可以选出「浅色配色 + 深色样式表」这种半新半旧的组合。
      拆成两个维度之后，明暗只有一个来源，打不起来。 */
+  /* 「官网」放第一位不是排版顺手 —— defaultPresetId() 取的就是 FAMILIES[0]，
+     所以第一项即默认配色。2.0.43 删掉「经典」之后由它接任。
+
+     「暖纸」和「墨」本来就是配对写的（暖纸是浅色半、墨是深色半），合成一个
+     家族而不是各占一格 —— 各占一格的话每套都缺另一半，切明暗会掉回默认。 */
   const FAMILIES = [
-    { id: 'classic', name: '经典', light: CLASSIC_LIGHT, dark: CLASSIC_DARK },
-    /* 「暖纸」和「墨」上一轮写好了却没注册进这个数组，两套配色躺在代码里
-       谁都选不到（下拉只读 FAMILIES）。它们本来就是配对写的：暖纸是浅色半，
-       墨是深色半，所以合成一个家族，而不是各自占一格 —— 各占一格的话每套
-       都缺另一半，切明暗会掉回经典。 */
-    { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },
     { id: 'anthropic', name: '官网', light: ANTHROPIC_LIGHT, dark: ANTHROPIC_DARK },
+    { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },
   ];
 
-  const BUILT_IN = [CLASSIC_LIGHT, CLASSIC_DARK, WARM_PAPER, INK, ANTHROPIC_LIGHT, ANTHROPIC_DARK];
+  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK];
 
   function familyOf(presetId) {
     return FAMILIES.find(f => f.light.id === presetId || f.dark.id === presetId) ?? FAMILIES[0];
@@ -613,18 +537,22 @@ if (CLAUDE_ENABLED) {
     }
   }
 
-  /* 没选过预设时按 variant 回落到 classic，保证「装上之后和以前一样」。 */
+  /* 没选过预设时回落到 FAMILIES[0]，也就是「官网」。 */
   function defaultPresetId() {
     return FAMILIES[0][currentScheme()].id;
   }
 
-  /* 存的是家族 id，不是具体预设 id —— 这样切换明暗时配色家族保持不变。 */
+  /* 存的是家族 id，不是具体预设 id —— 这样切换明暗时配色家族保持不变。
+
+     要校验存的 id 现在还存不存在：2.0.43 删掉了「经典」，之前选过它的人
+     localStorage 里还是 'classic'。不校验的话下拉会空选（找不到匹配项），
+     而 activateFamily 那边有 ?? FAMILIES[0] 兜底、实际用的是默认配色 ——
+     于是「显示的」和「生效的」对不上。 */
   function currentFamilyId() {
-    try {
-      return window.localStorage.getItem('claude-web:family') || 'classic';
-    } catch {
-      return 'classic';
-    }
+    let stored = null;
+    try { stored = window.localStorage.getItem('claude-web:family'); } catch { /* 无痕 */ }
+    if (stored === CUSTOM_ID) return stored;
+    return FAMILIES.some(f => f.id === stored) ? stored : FAMILIES[0].id;
   }
 
   /* ---------- 自定义配色 ---------- */
@@ -7336,7 +7264,7 @@ if (CLAUDE_ENABLED) {
     delete root.dataset.claudeArchiveGhost;
     try {
       if (window.localStorage.getItem(KEY_PREFIX + 'family') === 'archive') {
-        window.localStorage.setItem(KEY_PREFIX + 'family', 'classic');
+        window.localStorage.setItem(KEY_PREFIX + 'family', 'anthropic');
       }
       window.localStorage.removeItem(KEY_PREFIX + 'style');
       window.localStorage.removeItem(KEY_PREFIX + 'ghost');
