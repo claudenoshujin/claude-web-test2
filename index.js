@@ -255,7 +255,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.39-no-faux-bold-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.40-clawd-symbols-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -1303,7 +1303,6 @@ if (CLAUDE_ENABLED) {
   const EMPTY_CLASS = 'claude-empty-assistant';
   const GENERATING_CLASS = 'claude-generation-active';
   const BUTTON_CLASS = 'clawd-signoff-button';
-  const LEG_BOUNCE_CLASS = 'clawd-leg-bounce';
   const INPUT_ACTIVE_CLASS = 'clawd-input-active';
   const INPUT_TEXT_CLASS = 'clawd-input-has-text';
   /* D2：害羞（环境触发）与被冷落。两个都是常驻状态的 class，不是
@@ -1576,45 +1575,32 @@ if (CLAUDE_ENABLED) {
         box-shadow: var(--clawd-f-tucked) !important;
       }
 
-      /* D1: three quick clicks toggle a persistent sideways scuttle —
-         not a mirrored flip. Real crabs walk sideways without turning
-         their body around, and a static scale:-1 1 mirror made the face
-         pop to the other side the instant the mode switched on, which
-         read as a glitch rather than a walk. Movement stays on the
-         translate/rotate channel so it still composes with the
-         one-shot transform reactions instead of replacing them. */
-      button.${BUTTON_CLASS}.${LEG_BOUNCE_CLASS}:not(.clawd-sleeping)::before,
-      button.clawd-mobile-clawd-button.${LEG_BOUNCE_CLASS}::before {
-        animation: clawd-leg-bounce 640ms linear infinite !important;
-      }
-
-      button.${BUTTON_CLASS}.${INPUT_ACTIVE_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping),
-      button.clawd-mobile-clawd-button.${INPUT_ACTIVE_CLASS}:not(.${LEG_BOUNCE_CLASS}) {
+      button.${BUTTON_CLASS}.${INPUT_ACTIVE_CLASS}:not(.clawd-sleeping),
+      button.clawd-mobile-clawd-button.${INPUT_ACTIVE_CLASS} {
         translate: 0 -3px;
       }
 
-      button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping)::before,
-      button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}:not(.${LEG_BOUNCE_CLASS})::before {
+      button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}:not(.clawd-sleeping)::before,
+      button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before {
         animation: clawd-compose-bob 900ms ease-in-out infinite !important;
       }
 
-      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${LEG_BOUNCE_CLASS}::before,
       body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before {
         animation: none !important;
       }
 
-      /* D2 被冷落 / 害羞（环境触发）。跟 D1 一样只占 translate/rotate 通道，
-         不碰 transform（呼吸/打盹/入睡都在那条通道上），也用 :not() 让三击
-         踱步和入睡继续按既有优先级压过它们——这两条常驻状态谁都不该覆盖
-         已经更明确的用户操作（toggle）或更需要表达的「不在」（睡着）。
-         生成中（GENERATING_CLASS）也整体让位，避免跟专属动作抢注意力。 */
-      button.${BUTTON_CLASS}.${NEGLECTED_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping)::before,
-      button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}:not(.${LEG_BOUNCE_CLASS})::before {
+      /* D2 被冷落 / 害羞（环境触发）。只占 translate/rotate 通道，不碰
+         transform（呼吸/打盹/入睡都在那条通道上），并用 :not(.clawd-sleeping)
+         让入睡压过它们——「不在」比「没被搭理」更该被表达。
+         生成中（GENERATING_CLASS）也整体让位，避免跟专属动作抢注意力。
+         （原来这里还要让位给三击踱步，踱步已在 2.0.40 删除。） */
+      button.${BUTTON_CLASS}.${NEGLECTED_CLASS}:not(.clawd-sleeping)::before,
+      button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}::before {
         animation: clawd-neglected-droop 3.4s ease-in-out infinite !important;
       }
 
-      button.${BUTTON_CLASS}.${SHY_AMBIENT_CLASS}:not(.${LEG_BOUNCE_CLASS}):not(.clawd-sleeping)::before,
-      button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}:not(.${LEG_BOUNCE_CLASS})::before {
+      button.${BUTTON_CLASS}.${SHY_AMBIENT_CLASS}:not(.clawd-sleeping)::before,
+      button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}::before {
         animation: clawd-shy-ambient-tilt 2.2s ease-in-out infinite !important;
       }
 
@@ -2229,23 +2215,6 @@ if (CLAUDE_ENABLED) {
         }
       }
 
-      /* D1 螃蟹横向踱步。像素画是单张 box-shadow 精灵，没有独立的"腿"
-         部件可以单独动，所以走路感不能靠换帧，只能靠位移的节奏来演。
-         第一版让整只 ::before 上下位移 2px，读出来是原地弹跳；改成左右
-         小抖（±1px）又太小、没有方向感，读成原地打颤/抽搐。
-         这版换成"停顿-快速切换-停顿"的四段节奏，而不是连续正弦滑动——
-         纯正弦滑动读出来是滑冰，不是走路。停顿段（0-40%、50-90%）身体
-         略微倾向落脚的一侧，快速切换段（40-50%、90-100%）模拟迈步时的
-         重心转移。不做镜像翻转：朝向来回跳变比原地抖腿更像故障，横着
-         走本来就该正脸不转身，靠位移和倾斜给方向感就够了。 */
-      @keyframes clawd-leg-bounce {
-        0% { translate: -3px 0; rotate: -2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
-        40% { translate: -3px 0; rotate: -2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
-        50% { translate: 3px 0; rotate: 2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
-        90% { translate: 3px 0; rotate: 2deg; animation-timing-function: cubic-bezier(.3,0,.7,1); }
-        100% { translate: -3px 0; rotate: -2deg; }
-      }
-
       @keyframes clawd-compose-bob {
         0%, 100% { translate: 0 0; }
         50% { translate: 0 -1px; }
@@ -2334,8 +2303,6 @@ if (CLAUDE_ENABLED) {
           transform: none !important;
         }
         .clawd-click-particle { animation-duration: 1ms !important; }
-        button.${BUTTON_CLASS}.${LEG_BOUNCE_CLASS}::before,
-        button.clawd-mobile-clawd-button.${LEG_BOUNCE_CLASS}::before,
         button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}::before,
         button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before,
         button.${BUTTON_CLASS}.${NEGLECTED_CLASS}::before,
@@ -2917,7 +2884,6 @@ if (CLAUDE_ENABLED) {
     button.className = BUTTON_CLASS;
     button.setAttribute('aria-label', 'Clawd');
     button.title = 'Clawd';
-    applyCcPersistentState(button);
     applyCcComposerState(button);
     if (settle) {
       button.classList.add('clawd-button-settle');
@@ -2993,15 +2959,13 @@ if (CLAUDE_ENABLED) {
 
   let ccComboCount = 0;
   let ccComboTimer = null;
-  let ccLegBounceEnabled = false;
   let ccSleeping = false;
   let ccHasBeenPoked = false;
   let ccReturnedAt = 0;
   let ccHiddenAt = 0;
-  /* D2 害羞（环境触发）：短时间内连续被戳（软戳，没有攒到三连击那种切换
-     抖腿的重击），读成「被摸得有点不好意思」。窗口内记录每一次软戳的
-     时间戳，超过阈值就触发一次有限时长的害羞姿势——跟点击彩蛋里那个
-     一次性的 clawd-react-shy 是两套 class，互不覆盖。 */
+  /* D2 害羞（环境触发）：短时间内被连续轻戳，读成「被摸得有点不好意思」。
+     窗口内记录每一次软戳的时间戳，超过阈值就触发一次有限时长的害羞姿势
+     ——跟点击彩蛋里那个一次性的 clawd-react-shy 是两套 class，互不覆盖。 */
   const SHY_TRIGGER_WINDOW_MS = 8000;
   const SHY_TRIGGER_COUNT = 4;
   const SHY_POSE_MS = 2600;
@@ -3075,7 +3039,7 @@ if (CLAUDE_ENABLED) {
     const now = Date.now();
     shyPokeTimestamps.push(now);
     shyPokeTimestamps = shyPokeTimestamps.filter(t => now - t < SHY_TRIGGER_WINDOW_MS);
-    if (shyPokeTimestamps.length >= SHY_TRIGGER_COUNT && !isTypingActive() && !ccLegBounceEnabled) {
+    if (shyPokeTimestamps.length >= SHY_TRIGGER_COUNT && !isTypingActive()) {
       shyPokeTimestamps = [];
       pulseShyAmbient(button);
     }
@@ -3139,29 +3103,12 @@ if (CLAUDE_ENABLED) {
     );
   }
 
-  function applyCcPersistentState(button) {
-    if (!button) return;
-    button.classList.toggle(LEG_BOUNCE_CLASS, ccLegBounceEnabled);
-  }
-
-  function setCcLegBounce(on) {
-    ccLegBounceEnabled = Boolean(on);
-    ccInteractiveTargets().forEach(applyCcPersistentState);
-  }
-
   function clearCcTransientFeedback(button) {
     button?.classList.remove(...BUTTON_REACTIONS, 'clawd-button-pop');
     button?.classList.remove('clawd-poke-blink', 'clawd-poke-look', 'clawd-poke-tucked');
     hostDocument.querySelectorAll('.clawd-click-particle, .clawd-cc-toast, .clawd-hi-toast')
       .forEach(element => element.remove());
   }
-
-  /* 三击踱步的冷却：原来每凑够 3 击就无条件切换一次，手快的人连续点
-     会在几秒内把踱步开了又关、关了又开，肉眼只看到抖来抖去分不清是
-     开还是关。切换后短时间内再凑够 3 击，只提示"冷却中"、不切换，
-     逼着连点停一下再打下一组三连击。 */
-  const LEG_BOUNCE_TOGGLE_COOLDOWN_MS = 2500;
-  let lastLegBounceToggleAt = 0;
 
   function handleCcCombo(button) {
     // 睡着的时候戳它，回一句梦话就好，不进连点彩蛋的计数
@@ -3189,29 +3136,16 @@ if (CLAUDE_ENABLED) {
         showCcToast(button, ccEscapeHtml(takeCcLine(slot)), 'hi');
       }
       return false;
-    } else if (ccComboCount === 3) {
-      ccComboCount = 0;
-      if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
-      ccComboTimer = null;
-      const now = Date.now();
-      if (now - lastLegBounceToggleAt < LEG_BOUNCE_TOGGLE_COOLDOWN_MS) {
-        showCcToast(button, ccEscapeHtml(ccPrefersChinese() ? '等等…刚切过' : 'hold on… just switched'), 'hi');
-        return true;
-      }
-      lastLegBounceToggleAt = now;
-      shyPokeTimestamps = [];
-      button.classList.remove(SHY_AMBIENT_CLASS);
-      clearCcTransientFeedback(button);
-      setCcLegBounce(!ccLegBounceEnabled);
-      showCcToast(
-        button,
-        ccLegBounceEnabled
-          ? (ccPrefersChinese() ? '抖腿模式：开' : 'leg bounce: on')
-          : (ccPrefersChinese() ? '抖腿模式：关' : 'leg bounce: off'),
-        'hi',
-      );
-      return true;
     }
+    /* 连点第三下起：只眨一下眼，不弹气泡。
+       原来这里是「三击切换踱步」—— 一个可开关的持久摇摆。去掉了，两个原因：
+       一是它不表达任何状态，纯装饰，而持久高频的动静在余光里就是噪音
+       （同样的教训在 ccMaybeCheer 那里已经吃过一次，见那段注释）；
+       二是「三下」和「踱步」之间没有意义关联，记不住。
+       现在连点的语义是「它被戳烦了，懒得回话」—— 安静，也天然防住气泡刷屏。
+       返回 true 吞掉默认反应，别再叠一层动作上去。 */
+    pulseCcPose(button, 'clawd-poke-blink', 320);
+    return true;
     return false;
   }
 
@@ -3226,8 +3160,8 @@ if (CLAUDE_ENABLED) {
   /* 打盹：3 分钟没输入就睡，敲键盘就醒。
      只认键盘，不认鼠标移动和滚动 —— 读长回复的时候鼠标和滚轮一直在动，
      但人其实没在「操作」，把那些算进来它就永远睡不着。
-     连点 8 下的彩蛋走同一套 clawd-sleeping 类，两边不冲突：
-     彩蛋睡固定 6 秒，打盹睡到你回来为止。
+     （曾经有个「连点 8 下睡 6 秒」的彩蛋，早已移除；ccSleeping 现在恒为
+     false，留着只是给 handleCcCombo 的梦话分支当哨兵。）
      阈值原来是 1 分钟，跟被冷落的窗口几乎重叠——冷落刚冒出来一小会儿
      就被入睡盖过去，等于白做。改成 3 分钟，给冷落留出 1~2:15 的
      显示窗口（drowsy 门槛是本值的 75%，会跟着一起挪，不用单独调）。 */
@@ -3248,20 +3182,23 @@ if (CLAUDE_ENABLED) {
   let lastPokeAt = Date.now();
   let neglected = false;
 
+  /* 这三个 set* 原来只查 BUTTON_CLASS（PC 那只），手机端的
+     .clawd-mobile-clawd-button 从来拿不到这些 class —— 于是它永远不睡、
+     不打盹、也不会被冷落，而 CSS 里给它写好的规则一直是死的。
+     改用 ccInteractiveTargets() 把两只都覆盖到。两种布局同时只存在一只，
+     所以不会互相干扰。 */
   function setSleeping(on) {
-    hostDocument.querySelectorAll('button.' + BUTTON_CLASS)
-      .forEach(button => button.classList.toggle('clawd-sleeping', on));
+    ccInteractiveTargets().forEach(button => button.classList.toggle('clawd-sleeping', on));
   }
 
   function setDrowsy(on) {
-    hostDocument.querySelectorAll('button.' + BUTTON_CLASS)
-      .forEach(button => button.classList.toggle('clawd-idle-drowsy', on));
+    ccInteractiveTargets().forEach(button => button.classList.toggle('clawd-idle-drowsy', on));
   }
 
   function setNeglected(on) {
     if (neglected === on) return;
     neglected = on;
-    const buttons = hostDocument.querySelectorAll('button.' + BUTTON_CLASS);
+    const buttons = ccInteractiveTargets();
     buttons.forEach(button => button.classList.toggle(NEGLECTED_CLASS, on));
     if (on && buttons.length) {
       showCcToast(buttons[0], ccEscapeHtml(ccPrefersChinese() ? '有点被冷落了…' : 'feeling a bit ignored…'), 'hi');
@@ -3299,7 +3236,6 @@ if (CLAUDE_ENABLED) {
        触发条件互斥，害羞优先，冷落让位。 */
     const shouldBeNeglected = elapsed < IDLE_SLEEP_MS * .75
       && !isTypingActive()
-      && !ccLegBounceEnabled
       && !hostDocument.querySelector('button.' + BUTTON_CLASS + '.' + SHY_AMBIENT_CLASS)
       && Date.now() - lastPokeAt > NEGLECT_POKE_MS;
     setNeglected(shouldBeNeglected);
@@ -5469,7 +5405,6 @@ if (CLAUDE_ENABLED) {
     clawd.type = 'button';
     clawd.className = 'clawd-mobile-clawd-button';
     clawd.setAttribute('aria-label', 'Clawd');
-    applyCcPersistentState(clawd);
     applyCcComposerState(clawd);
     clawd.addEventListener('click', event => {
       event.preventDefault();
@@ -5818,7 +5753,7 @@ if (CLAUDE_ENABLED) {
   function ccMaybeScan() {
     if (destroyed) return;
     if (Date.now() - lastMouseMoveAt < SCAN_IDLE_MS) return;
-    if (isTypingActive() || ccLegBounceEnabled || ccSleeping) return;
+    if (isTypingActive() || ccSleeping) return;
     if (Math.random() > 0.18) return;
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(button => {
       if (button.classList.contains('clawd-sleeping')
@@ -6492,7 +6427,6 @@ if (CLAUDE_ENABLED) {
     'clawd-cheer',
     'clawd-button-settle',
     'clawd-button-press',
-    LEG_BOUNCE_CLASS,
     INPUT_ACTIVE_CLASS,
     INPUT_TEXT_CLASS,
     NEGLECTED_CLASS,

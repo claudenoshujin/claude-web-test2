@@ -3075,6 +3075,89 @@ button.clawd-signoff-button.clawd-sleeping::after {
   pointer-events:none;
   animation:clawd-sleep-z 2.6s ease-in-out infinite;
 }
+
+/* ===== 2.0.40 状态符号 =====
+   为什么用符号而不是继续做表情：Clawd 是 16×16 点阵（3px 一格、48px 见方），
+   眼睛只占 4 个像素。现有 15 套精灵里 14 套都在改脸，睁眼和半闭眼的差别是
+   两个像素换颜色 —— 在侧栏边缘用余光看，分辨不出来是必然的，不是画得不够
+   用力。脸上的表达空间已经用尽了。
+
+   符号挂在 ::after 上，好处是：不受点阵分辨率限制；不用 JS 定位；class 一
+   移除就消失，不需要任何清理代码（睡觉那个 z 本来就是这么做的，这里只是把
+   同一套办法铺到其余状态）。
+
+   四个状态在代码里是互斥的（sleeping 压过一切，害羞优先于冷落），所以同一
+   时刻最多只有一个符号，不会堆在一起。
+
+   除睡觉外一律静态：常驻状态用常驻符号。持久的动画在余光里会变成噪音 ——
+   这个教训在 ccMaybeCheer 的注释里吃过一次，2.0.40 删掉踱步是第二次。
+   位置全部对齐睡觉那个 z（left:34px），四个符号共用同一个"槽"，读起来是
+   同一件事的不同取值，而不是四个各自为政的装饰。 */
+
+/* 快睡着了：比 z 弱一档，不飘。 */
+button.clawd-signoff-button.clawd-idle-drowsy:not(.clawd-sleeping)::after,
+button.clawd-mobile-clawd-button.clawd-idle-drowsy:not(.clawd-sleeping)::after {
+  content:'z';
+  position:absolute;
+  left:34px;
+  top:1px;
+  font-family:var(--cl-sans);
+  font-size:9px;
+  font-weight:500;
+  color:var(--cw-mark);
+  opacity:.4;
+  pointer-events:none;
+}
+
+/* 害羞：沿用点击彩蛋里已经在用的"心"这个语汇，不另造符号。 */
+button.clawd-signoff-button.clawd-shy-ambient:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after,
+button.clawd-mobile-clawd-button.clawd-shy-ambient:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after {
+  content:'\2665';
+  position:absolute;
+  left:34px;
+  top:-1px;
+  font-size:9px;
+  line-height:1;
+  color:var(--cw-mark);
+  opacity:.62;
+  pointer-events:none;
+}
+
+/* 被冷落：一直没人戳它。muted 色，比强调色更"没被看见"。 */
+button.clawd-signoff-button.clawd-neglected:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after,
+button.clawd-mobile-clawd-button.clawd-neglected:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after {
+  content:'?';
+  position:absolute;
+  left:34px;
+  top:-2px;
+  font-family:var(--cl-sans);
+  font-size:11px;
+  font-weight:500;
+  color:var(--cw-text-muted);
+  opacity:.55;
+  pointer-events:none;
+}
+
+/* 手机端睡觉也要有 z —— 之前只有 PC 那只有。 */
+button.clawd-mobile-clawd-button.clawd-sleeping::after {
+  content:'z';
+  position:absolute;
+  left:34px;
+  top:-2px;
+  font-family:var(--cl-sans);
+  font-size:11px;
+  font-weight:500;
+  color:var(--cw-mark);
+  opacity:0;
+  pointer-events:none;
+  animation:clawd-sleep-z 2.6s ease-in-out infinite;
+}
+
+/* 生成中整体让位：人这时候在看回复，别在侧栏边上放符号抢注意力。 */
+body.claude-generation-active button.clawd-signoff-button::after,
+body.claude-generation-active button.clawd-mobile-clawd-button::after {
+  content:none !important;
+}
 @keyframes clawd-sleep-breath {
   0%, 100% { transform:scale(.85,.828) translateY(1.5px); }
   50%      { transform:scale(.862,.812) translateY(2.4px); }
@@ -3109,7 +3192,8 @@ button.clawd-signoff-button.clawd-sleep-transition::before {
 }
 @media (prefers-reduced-motion:reduce) {
   button.clawd-signoff-button.clawd-sleeping::before { animation:none !important; }
-  button.clawd-signoff-button.clawd-sleeping::after { display:none !important; }
+  button.clawd-signoff-button.clawd-sleeping::after,
+  button.clawd-mobile-clawd-button.clawd-sleeping::after { animation:none !important; opacity:.55 !important; }
   button.clawd-signoff-button.clawd-idle-drowsy::before { animation:none !important; }
   button.clawd-signoff-button.clawd-sleep-transition::before { animation:none !important; }
 }
