@@ -255,7 +255,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.43-drop-classic-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.44-lighter-day-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -374,10 +374,12 @@ if (CLAUDE_ENABLED) {
      brand token，下面每一行都标了它在官网叫什么名字。
 
      跟需求文档对不上的两处，以官网为准：
-     - 文档把 Canvas 写成 #F0EEE6、Surface 写成 #FAF9F5，但官网自己的命名是
-       background=#faf9f5、background-secondary=#f0eee6，正好反过来。这里按
-       「页面底用暖的那个、卡片浮起来用浅的那个」取，读起来层次更清楚。
      - 文档的 Coral hover 写 #C96645，官网 --swatch--accent 实际是 #c6613f。
+     - 文档把 Canvas 写成 #F0EEE6，但官网自己的 background 是 #faf9f5，
+       #f0eee6 是 background-secondary。2.0.43 曾按文档取，整个日间偏黄；
+       2.0.44 改回官网的层级：页面底 ivory-light、卡片 white、输入框
+       ivory-medium、悬停 ivory-dark。四层依然全部是官网 swatch，只是整体
+       白了一档。oat(#e3dacc) 退出 —— 它在官网是卡片底色，当悬停太重。
 
      只有深色那半的 paper-1/2/3 是推的 —— 官网基本是浅色站，深色区块只给了
      背景 #141413 和边框透明度，没有完整的表面阶梯。推的那三个都标了「推」。 */
@@ -386,10 +388,10 @@ if (CLAUDE_ENABLED) {
     name: '官网 · 日间',
     scheme: 'light',
     core: {
-      '--cw-paper-0': '#f0eee6',  /* swatch--ivory-medium  页面底 */
-      '--cw-paper-1': '#faf9f5',  /* swatch--ivory-light   卡片 / 抽屉 / 弹窗 */
-      '--cw-paper-2': '#e8e6dc',  /* swatch--ivory-dark    输入框 */
-      '--cw-paper-3': '#e3dacc',  /* swatch--oat           悬停 */
+      '--cw-paper-0': '#faf9f5',  /* swatch--ivory-light   页面底 */
+      '--cw-paper-1': '#ffffff',  /* swatch--white         卡片 / 抽屉 / 弹窗 */
+      '--cw-paper-2': '#f0eee6',  /* swatch--ivory-medium  输入框 */
+      '--cw-paper-3': '#e8e6dc',  /* swatch--ivory-dark    悬停 */
       '--cw-ink-0': '#141413',    /* swatch--slate-dark    正文 */
       '--cw-ink-1': '#5e5d59',    /* swatch--slate-light   次文字 */
       '--cw-ink-2': '#87867f',    /* swatch--cloud-dark    弱文字 */
