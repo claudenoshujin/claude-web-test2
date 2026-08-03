@@ -255,7 +255,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.40-clawd-symbols-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.41-poke-lines-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -3137,16 +3137,22 @@ if (CLAUDE_ENABLED) {
       }
       return false;
     }
-    /* 连点第三下起：只眨一下眼，不弹气泡。
+    /* 连点第三下：只眨一下眼，不弹气泡，然后把计数清零。
        原来这里是「三击切换踱步」—— 一个可开关的持久摇摆。去掉了，两个原因：
        一是它不表达任何状态，纯装饰，而持久高频的动静在余光里就是噪音
        （同样的教训在 ccMaybeCheer 那里已经吃过一次，见那段注释）；
        二是「三下」和「踱步」之间没有意义关联，记不住。
-       现在连点的语义是「它被戳烦了，懒得回话」—— 安静，也天然防住气泡刷屏。
-       返回 true 吞掉默认反应，别再叠一层动作上去。 */
+       现在连点的语义是「它被戳烦了，懒得回话」。
+
+       清零这一步不能省。旧代码在这个分支里做过 ccComboCount = 0，
+       2.0.40 换掉整段时把它一起删了 —— 结果只要点击间隔小于 1400ms，
+       计数就一路往上加，永远进不了上面 <= 2 那条分支，Clawd 从第三下起
+       再也不说话。节奏应当是「说、说、静一下、再说」，不是「说两句就哑」。 */
+    ccComboCount = 0;
+    if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
+    ccComboTimer = null;
     pulseCcPose(button, 'clawd-poke-blink', 320);
     return true;
-    return false;
   }
 
   /* ===== v1.7 ===== */
@@ -3236,7 +3242,7 @@ if (CLAUDE_ENABLED) {
        触发条件互斥，害羞优先，冷落让位。 */
     const shouldBeNeglected = elapsed < IDLE_SLEEP_MS * .75
       && !isTypingActive()
-      && !hostDocument.querySelector('button.' + BUTTON_CLASS + '.' + SHY_AMBIENT_CLASS)
+      && ![...ccInteractiveTargets()].some(b => b.classList.contains(SHY_AMBIENT_CLASS))
       && Date.now() - lastPokeAt > NEGLECT_POKE_MS;
     setNeglected(shouldBeNeglected);
 
