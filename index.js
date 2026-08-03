@@ -1649,6 +1649,20 @@ if (CLAUDE_ENABLED) {
       .clawd-gen-timer.clawd-gen-timer-visible { opacity: .92; transform: translateY(0); }
       .clawd-gen-timer.clawd-gen-timer-done { color: var(--cw-mark); }
       html[data-claude-gen-timer="off"] .clawd-gen-timer { display: none !important; }
+
+      /* 欢迎内容的兜底遮挡。
+         酒馆的欢迎面板（#chat > .welcomePanel）和欢迎助手那条消息本来应该由酒馆
+         自己在切换对话时清掉；PC 上实测四次都清得干净，手机上却会留在 #chat 里，
+         跟真实的角色消息排成一列——用户看到的是"上面三条是欢迎页，往下划才是对话"。
+         这里不去删别人的节点（删了可能打断酒馆自己的重建逻辑），只在「已经不是
+         欢迎态」时把它们藏起来。body.clawd-welcome 由 refreshWelcomeMode 维护，
+         实测在 PC 上四次进对话都被正确 toggle(false)，可以作为判据。
+         纯 CSS 兜底，不管酒馆那边清不清、清得及不及时，都不会露出来。 */
+      body:not(.clawd-welcome) #chat > .welcomePanel,
+      body:not(.clawd-welcome) #chat > .mes.claude-welcome-clawd-assistant,
+      body:not(.clawd-welcome) #chat > .mes.claude-welcome-prompt {
+        display: none !important;
+      }
       @media (prefers-reduced-motion: reduce) {
         .clawd-gen-timer { transition: none !important; }
       }
