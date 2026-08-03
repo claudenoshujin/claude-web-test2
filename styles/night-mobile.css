@@ -4937,7 +4937,7 @@ html body.claude-generation-active #rightSendForm #send_but::after {
     padding-right:8px !important;
   }
   html body:not(.clawd-welcome) #chat > .mes :is(.mes_text,.mes_reasoning) {
-    font-size:var(--cl-mobile-font-size, .9rem) !important;
+    font-size:calc(var(--cl-mobile-font-size, .9rem) * var(--fontScale, 1)) !important;
     line-height:1.62 !important;
   }
 
