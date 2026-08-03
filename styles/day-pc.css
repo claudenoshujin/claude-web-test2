@@ -5279,18 +5279,18 @@ html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-butt
 /* ===== 站在输入框上沿的生成状态 Clawd（2.0.46）=====
    参考 Cowork 的做法：蟹站在输入框顶边上，右对齐，不压住任何控件。
 
-   它不是按钮，是 #send_form 的伪元素 —— 天生不可点、不进 tab 序、不需要
-   任何创建和清理代码。屏幕上已经有一只可点的落款蟹，再放一只长得一样却
-   点不动的真元素，用户一定会去戳。伪元素连 hover 都没有，不读作控件。
+   **用的是另一只蟹，跟落款蟹形状不同**，这是有意的：
+   落款蟹可以点，这只不能。两只长一样的话，用户一定会去戳这只然后发现
+   没反应。靠形状区分比靠透明度或大小区分可靠得多 —— 后者在余光里读不出来。
+   这只是官方和 Cowork 在用的那个更扁的版本（icons/clawd.png）。
 
-   图形直接用 --clawd-signoff-image：index.js 里已经内嵌了这只蟹
-   （100×100、461 字节的 base64），落款蟹用的就是它，卸载时也已经有清理。
-   往 icons/ 里再放一张 PNG 等于同一个图形存两份，迟早对不上。
-   不用 mask 着色是因为它的眼睛是实心黑 —— mask 只看 alpha，会把眼睛
-   一起填成橙色，脸就没了。
+   它是 #send_form 的伪元素，不是真元素 —— 天生不可点、不进 tab 序、
+   不需要任何创建和清理代码。连 hover 都没有，不读作控件。
 
-   bottom:100% 让底边贴着输入框上沿，再用负 margin 把脚陷进边框几像素，
-   读起来是「站在上面」而不是「飘在上方」。 */
+   图片已经裁掉四周留白（108×72，364 字节），图形正好填满画布。
+   所以 bottom:100% 就是「脚踩在输入框上沿」，不需要靠负 margin 去猜留白
+   有多厚 —— 原图 400×400 里图形只占中间一块，不裁的话这个数只能试出来。
+   -1px 是让脚陷进边框一像素，读作站着而不是浮着。 */
 html body #form_sheld :is(#send_form, form) {
   position:relative !important;
   overflow:visible !important;
@@ -5301,12 +5301,11 @@ html body #send_form::after {
   bottom:100%;
   right:18px;
   z-index:2;
-  /* 源图四周自带留白，蟹脚大约在 86% 高度处；-4px 让脚正好落在边框上。
-     觉得高了低了只调这一个数。 */
-  margin-bottom:-4px;
-  width:34px;
-  height:34px;
-  background:var(--clawd-signoff-image) center / contain no-repeat;
+  margin-bottom:-1px;
+  /* 图片是 108×72，3:2。改大小时两个数一起改，别只改一个。 */
+  width:36px;
+  height:24px;
+  background:url("../icons/clawd.png") center / contain no-repeat;
   opacity:.85;
   pointer-events:none;
   transition:opacity 220ms ease;
