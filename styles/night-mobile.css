@@ -5899,3 +5899,34 @@ html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-butt
     background-color:var(--cl-accent,#d97757) !important;
   }
 }
+
+/* ===== 2.0.39：iOS 上设置面板标题的合成粗体 =====
+
+   现象：手机端酒馆的扩展面板、设置抽屉里，中文标题明显过粗、边缘发糊；
+   同一排里的拉丁文（TTS、Claude Web）却是正常粗细。
+   电脑上无论用 PC 布局还是手机布局都不复现 —— CSS 是同一份，差别在设备，
+   所以这是渲染层的问题，不是层叠问题。
+
+   推断的机制：这些标题是 font-weight:600，字体栈是
+   "Hanken Grotesk", -apple-system, "Segoe UI", …, "PingFang SC", …
+   拉丁命中 Hanken Grotesk，它有真的 600。
+   中文命中不了前面几个，而 iOS 上 -apple-system 会先用它自己的中文回落
+   接住这个字，轮不到后面显式写的 "PingFang SC"。那条回落没有 600 的字面，
+   Safari 就合成粗体 —— 把字形整体往外描一圈，于是又粗又糊。
+   Windows 上 -apple-system 根本不存在，直接落到显式的中文字体，有真 Semibold，
+   所以电脑上看不到。
+
+   两道保险，都不改视觉意图：
+   1. font-synthesis-weight:none —— 直接禁止合成，让浏览器退回最接近的真字面。
+      Safari 16.4 起支持；旧版忽略这一行，由第 2 条兜底。
+   2. 字重 600 → 500 —— PingFang Medium 是真实存在的字面，一定不会触发合成。
+      中文在 14px 上 500 和 600 的观感差别很小，拉丁那几个词会轻一点点。
+
+   如果换了之后中文还是过粗，说明推断错了，粗体不是从这条规则来的，
+   下一个怀疑对象是酒馆本体或另一个扩展，别继续在这里加权重。 */
+:is(.drawer-content,.inline-drawer-content,.popup,.popup-content)
+  :is(h1,h2,h3,h4,h5,.drawer-header,.inline-drawer-header,.popup-title,.standoutHeader) {
+  font-synthesis-weight:none !important;
+  font-synthesis:none !important;
+  font-weight:500 !important;
+}
