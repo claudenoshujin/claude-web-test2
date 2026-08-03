@@ -728,33 +728,6 @@ hr {
   top:-6px !important;
   animation:var(--cl-greeting-particle-animation) !important;
 }
-/* 中文字面缩到跟拉丁齐平 —— 只调尺寸，不换字体。
-
-   问题：中文是方块字，撑满 em 框；拉丁小写只占 x-height，大约是 em 的一半多。
-   同一个 font-size 下，中文永远比紧挨着的英文显得大一圈。
-   在欢迎页 "How was your day, 零?" 这种中英并排的地方最明显。
-
-   这不是字体族的问题 —— 换成宋体、楷体，大小关系一模一样。
-   所以先修尺寸，别急着换族。
-
-   做法：把原来那串系统中文字体包进一个 @font-face，加 size-adjust:90%。
-   unicode-range 把它限定在汉字和中文标点上，拉丁字母不受影响
-   （PingFang、雅黑自己也带拉丁字形，不限定的话英文会跟着一起缩）。
-
-   90% 是在真机上试出来的，不是算出来的。嫌大改小、嫌小改大，只动这一个数。
-
-   降级路径：size-adjust 是 Safari 17 起支持的。旧浏览器会忽略这个描述符，
-   按 100% 渲染 —— 也就是现在的样子，不会坏。
-   万一 local() 在某些系统上匹配不到，--cl-cjk 后面还留着原来那串完整回落。 */
-@font-face {
-  font-family:"CJK Optical";
-  src:local("PingFang SC"), local("Microsoft YaHei"), local("Hiragino Sans GB"),
-      local("Noto Sans CJK SC"), local("Source Han Sans SC"), local("Heiti SC");
-  unicode-range:U+2E80-2EFF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
-  size-adjust:90%;
-  font-display:swap;
-}
-
 :root {
   /* 1.1 public tuning controls */
   --cl-pc-font-size:.94em;
@@ -769,9 +742,7 @@ hr {
      官网自己的字体栈也是这么逐个列的。
      另外官网衬线栈里的中文回落全是黑体，不是宋体：英文衬线 + 中文黑体是它的原样，
      之前用 Noto Serif SC 让中文变成宋体，跟英文对不上，是标题读着别扭的主因。 */
-  /* "CJK Optical" 见文件上方的 @font-face —— 同一串字体，字面缩到 90%。
-     后面那串原样保留：@font-face 万一没匹配上，回落到今天的行为。 */
-  --cl-cjk:"CJK Optical","PingFang SC","Microsoft YaHei","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC","Heiti SC",sans-serif;
+  --cl-cjk:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC","Heiti SC",sans-serif;
   --cl-serif:"Newsreader",Georgia,"Times New Roman",Times,var(--cl-cjk);
   --cl-sans:"Hanken Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,var(--cl-cjk);
   /* ---- 字体层级（FR-4 第一步）----
@@ -788,16 +759,24 @@ hr {
   /* 六档界面字号。取值全部是从现有代码里已经在用的数归纳出来的，
      不是从需求文档抄的区间，所以替换后渲染结果逐像素不变。
 
-     聊天正文不在这套档位里 —— 它归 --cl-pc-font-size /
-     --cl-mobile-font-size 管，因为只有正文要乘酒馆的 --fontScale。
-     把正文塞进这里会让滑杆再次失效。 */
+     每一档都乘了 --fontScale。酒馆自带的「字体缩放」滑杆是用户唯一
+     能调字号的入口，界面文字不接上去，侧栏嫌小就只能改代码。
+
+     聊天正文仍然不在这套档位里：它归 --cl-pc-font-size /
+     --cl-mobile-font-size 管，那两条自己已经乘过 --fontScale。
+
+     --cl-fs-display 故意没乘：它是 clamp(26px, 3.1vw, 40px)，已经跟着
+     视口走，再乘一次会把上下限一起顶飞。
+
+     放大后侧栏标签会更早触发 ellipsis 截断，那是预期行为。
+     别为此给容器加宽度 —— 宽度是按图标网格定的。 */
   --cl-fs-display:clamp(26px, 3.1vw, 40px);  /* 欢迎页大标题 */
-  --cl-fs-lg:16px;                           /* 问候 toast */
-  --cl-fs-md:15px;                           /* 侧栏抽屉标签 */
-  --cl-fs-sm:14px;                           /* 抽屉内容、菜单项 */
-  --cl-fs-xs:13px;                           /* 用户名、空态提示 */
-  --cl-fs-meta:12px;                         /* 时间、次级操作 */
-  --cl-fs-micro:11px;                        /* 最小标签、代码条 */
+  --cl-fs-lg:calc(16px * var(--fontScale, 1));                           /* 问候 toast */
+  --cl-fs-md:calc(15px * var(--fontScale, 1));                           /* 侧栏抽屉标签 */
+  --cl-fs-sm:calc(14px * var(--fontScale, 1));                           /* 抽屉内容、菜单项 */
+  --cl-fs-xs:calc(13px * var(--fontScale, 1));                           /* 用户名、空态提示 */
+  --cl-fs-meta:calc(12px * var(--fontScale, 1));                         /* 时间、次级操作 */
+  --cl-fs-micro:calc(11px * var(--fontScale, 1));                        /* 最小标签、代码条 */
 
   /* 注意：代码里还有一批 px 型 font-size 是 Font Awesome 字形尺寸，
      不是文字 —— #send_but(14px)、.mes_button(12px)、badge(9px) 等。
