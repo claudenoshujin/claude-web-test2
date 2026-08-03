@@ -5276,19 +5276,21 @@ html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-butt
   }
 }
 
-/* ===== 输入框右上角的生成状态 Clawd（2.0.45）=====
-   跨坐在输入框边缘，等回复时才动，平时静止。
+/* ===== 站在输入框上沿的生成状态 Clawd（2.0.46）=====
+   参考 Cowork 的做法：蟹站在输入框顶边上，右对齐，不压住任何控件。
 
-   它不是按钮，是 #send_form 的伪元素 —— 这样天生不可点、不进 tab 序、
-   不需要任何创建和清理代码。屏幕上已经有一只可点的落款蟹，再放一只
-   长得一样但点不动的真元素，用户一定会去戳。伪元素连 hover 都没有，
-   读起来就不像控件。
+   它不是按钮，是 #send_form 的伪元素 —— 天生不可点、不进 tab 序、不需要
+   任何创建和清理代码。屏幕上已经有一只可点的落款蟹，再放一只长得一样却
+   点不动的真元素，用户一定会去戳。伪元素连 hover 都没有，不读作控件。
 
-   为什么值得单独放一只：生成状态原来只在消息流里的 typing_indicator 上，
-   而你等回复时眼睛在输入框附近。挪一只过来，视线不用来回跑。
+   图形直接用 --clawd-signoff-image：index.js 里已经内嵌了这只蟹
+   （100×100、461 字节的 base64），落款蟹用的就是它，卸载时也已经有清理。
+   往 icons/ 里再放一张 PNG 等于同一个图形存两份，迟早对不上。
+   不用 mask 着色是因为它的眼睛是实心黑 —— mask 只看 alpha，会把眼睛
+   一起填成橙色，脸就没了。
 
-   位移走 translate、缩放走 transform，两条通道分开 —— 跟落款蟹那边同一个
-   约定，动画才能叠加而不是互相覆盖（见 index.js 里 D1/D2 那几段注释）。 */
+   bottom:100% 让底边贴着输入框上沿，再用负 margin 把脚陷进边框几像素，
+   读起来是「站在上面」而不是「飘在上方」。 */
 html body #form_sheld :is(#send_form, form) {
   position:relative !important;
   overflow:visible !important;
@@ -5296,22 +5298,26 @@ html body #form_sheld :is(#send_form, form) {
 html body #send_form::after {
   content:'';
   position:absolute;
-  top:-26px;
+  bottom:100%;
   right:18px;
   z-index:2;
-  width:3px;
-  height:3px;
-  background:transparent;
-  box-shadow:var(--clawd-f-open);
-  transform:scale(.52);
-  transform-origin:24px 48px;
-  opacity:.5;
+  /* 源图四周自带留白，蟹脚大约在 86% 高度处；-4px 让脚正好落在边框上。
+     觉得高了低了只调这一个数。 */
+  margin-bottom:-4px;
+  width:34px;
+  height:34px;
+  background:var(--clawd-signoff-image) center / contain no-repeat;
+  opacity:.85;
   pointer-events:none;
   transition:opacity 220ms ease;
 }
 body.claude-generation-active #send_form::after {
   opacity:1;
-  animation:clawd-idle-frames 3s step-end infinite, clawd-compose-bob 900ms ease-in-out infinite;
+  animation:clawd-composer-bob 780ms ease-in-out infinite;
+}
+@keyframes clawd-composer-bob {
+  0%, 100% { translate:0 0; }
+  50%      { translate:0 -3px; }
 }
 html[data-claude-motion="off"] #send_form::after,
 html[data-claude-decorations="off"] #send_form::after {
