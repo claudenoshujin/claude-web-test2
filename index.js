@@ -160,6 +160,28 @@ const CLAUDE_GLASS_BASE = 'var(--cw-surface-page)';
    更高的浓度下限，其他抽屉/弹层不受影响。 */
 const CLAUDE_NAV_TINT_OPACITY = Math.max(58, CLAUDE_BG_BLUR_OPACITY);
 
+/* FR-1 背景图模糊。跟「背景透传」「毛玻璃」是三个独立开关，别合并：
+   - 透传：把我们自己的不透明底色清掉，让酒馆的背景图露出来
+   - 毛玻璃：给前景面板上 backdrop-filter
+   - 这个：只糊背景图那一层，前景一律不碰
+   合并的话就没法「背景糊、文字清楚」——而那正是它存在的理由。
+
+   实现上不新建图层：酒馆自己的 #bg1 / #bg_custom 已经是铺满视口的固定层，
+   直接对它上 filter 就行。自己再糊一层意味着要跟着酒馆同步背景图地址、
+   淡入淡出、切换动画，多一份必然要坏的复制品。
+
+   默认关。开着才有意义的功能不该在没人要求时改变别人的界面。 */
+const CLAUDE_BG_IMAGE_BLUR_ENABLED = claudeReadSetting('bgImageBlur', ['on', 'off'], 'off') !== 'off';
+function claudeReadNumberSetting(key, fallback, min, max) {
+  let raw = null;
+  try { raw = window.localStorage.getItem('claude-web:' + key); } catch { /* 无痕或被禁用 */ }
+  const num = Number(raw);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(num)));
+}
+const CLAUDE_BG_IMAGE_BLUR = claudeReadNumberSetting('bgImageBlurRadius', 12, 0, 32);
+const CLAUDE_BG_IMAGE_DIM = claudeReadNumberSetting('bgImageDim', 28, 0, 70);
+
 document.documentElement.dataset.claudeMotion = CLAUDE_MOTION_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeDecorations = CLAUDE_DECORATIONS_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeGenTimer = CLAUDE_GEN_TIMER_ENABLED ? 'on' : 'off';
@@ -169,6 +191,9 @@ document.documentElement.style.setProperty('--claude-bg-blur-opacity', `${CLAUDE
 document.documentElement.style.setProperty('--claude-drawer-tint-opacity', `${CLAUDE_DRAWER_TINT_OPACITY}%`);
 document.documentElement.style.setProperty('--claude-glass-base', CLAUDE_GLASS_BASE);
 document.documentElement.style.setProperty('--claude-nav-tint-opacity', `${CLAUDE_NAV_TINT_OPACITY}%`);
+document.documentElement.dataset.claudeBgImageBlur = CLAUDE_BG_IMAGE_BLUR_ENABLED ? 'on' : 'off';
+document.documentElement.style.setProperty('--claude-bg-image-blur', `${CLAUDE_BG_IMAGE_BLUR}px`);
+document.documentElement.style.setProperty('--claude-bg-image-dim', String(CLAUDE_BG_IMAGE_DIM / 100));
 
 function claudeReadClockSetting(key, fallback) {
   try {
@@ -255,7 +280,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.44-lighter-day-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.45-bg-blur-crab-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -1674,6 +1699,28 @@ if (CLAUDE_ENABLED) {
       }
       html[data-claude-bg-transparent="on"] #chat#chat::before {
         background: transparent !important;
+      }
+
+      /* FR-1 背景图模糊。只作用在酒馆自己的背景层上，前景一个都不碰 ——
+         需求文档特别强调「不要对聊天内容容器用 filter」，理由不只是观感：
+         给元素上 filter 会让它变成后代 position:fixed 的包含块，抽屉、
+         弹层、浮动菜单会被摁进那个盒子里。这个坑毛玻璃那边已经踩过一次
+         （见下面 #top-settings-holder 那段注释）。
+
+         scale(1.08) 是必须的，不是保险：blur 会让边缘像素向外采样到透明，
+         不放大的话四周会露出一圈渐隐的缝。放大比例要够覆盖模糊半径，
+         32px 的上限对应约 8% 的外扩。
+
+         压暗用 inset box-shadow 铺满，不另加元素 —— 加元素就要考虑它的
+         层级、指针事件、以及卸载时的清理。 */
+      html[data-claude-bg-image-blur="on"] :is(#bg1, #bg_custom, #bg_animation) {
+        filter: blur(var(--claude-bg-image-blur, 12px)) !important;
+        transform: scale(1.08) !important;
+        transform-origin: center center !important;
+        box-shadow: inset 0 0 0 100vmax rgb(20 20 19 / var(--claude-bg-image-dim, .28)) !important;
+      }
+      html[data-claude-bg-image-blur="on"][data-claude-motion="off"] :is(#bg1, #bg_custom, #bg_animation) {
+        transition: none !important;
       }
       /* 上一版把 #form_sheld 也单独打了层色调，本意是想解决"PC 端输入框
          看着不透"的问题，结果打歪了：真机调试查了 #sheld 的实际渲染盒子
@@ -7481,6 +7528,25 @@ if (CLAUDE_ENABLED) {
             但有个可读性下限，不会被拖到看不清字。
           </div>
 
+          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px;margin-top:10px">
+            <input id="claude-web-bg-image-blur" type="checkbox">
+            <span>背景图模糊</span>
+          </label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:0.9em;opacity:.75;white-space:nowrap">模糊半径</span>
+            <input id="claude-web-bg-image-blur-radius" type="range" min="0" max="32" step="1" style="flex:1">
+            <span id="claude-web-bg-image-blur-radius-value" style="font-size:0.9em;opacity:.75;width:2.8em;text-align:right"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:0.9em;opacity:.75;white-space:nowrap">背景压暗</span>
+            <input id="claude-web-bg-image-dim" type="range" min="0" max="70" step="1" style="flex:1">
+            <span id="claude-web-bg-image-dim-value" style="font-size:0.9em;opacity:.75;width:2.8em;text-align:right"></span>
+          </div>
+          <div style="font-size:0.85em;opacity:.6;line-height:1.5;margin-top:2px">
+            只糊背景图，文字、角色列表、弹窗都保持清晰 —— 跟上面的毛玻璃是
+            两回事，可以单独开。要看得见背景图，得先开「背景透传」。
+          </div>
+
           <hr style="margin:10px 0;opacity:.25">
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button id="claude-web-update" class="menu_button">检查更新</button>
@@ -8034,6 +8100,45 @@ if (CLAUDE_ENABLED) {
     bgBlurOpacitySlider.addEventListener('input', () => {
       const clamped = applyBgBlurOpacity(Number(bgBlurOpacitySlider.value));
       write('bgBlurOpacity', String(clamped));
+    });
+
+    /* FR-1 背景图模糊。两根滑杆即使在开关关着的时候也照常写值和写 CSS 变量：
+       变量本身不产生任何效果（选择器上有 [data-claude-bg-image-blur="on"] 把着），
+       但这样用户可以先调好再打开，而不是开了之后对着默认值现调。 */
+    const bgImageBlurBox = panel.querySelector('#claude-web-bg-image-blur');
+    bgImageBlurBox.checked = read('bgImageBlur', ['on', 'off'], 'off') !== 'off';
+    document.documentElement.dataset.claudeBgImageBlur = bgImageBlurBox.checked ? 'on' : 'off';
+    bgImageBlurBox.addEventListener('change', () => {
+      if (!write('bgImageBlur', bgImageBlurBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeBgImageBlur = bgImageBlurBox.checked ? 'on' : 'off';
+    });
+
+    const bgImageRadius = panel.querySelector('#claude-web-bg-image-blur-radius');
+    const bgImageRadiusValue = panel.querySelector('#claude-web-bg-image-blur-radius-value');
+    const applyBgImageRadius = (n) => {
+      const clamped = Math.min(32, Math.max(0, Math.round(n)));
+      document.documentElement.style.setProperty('--claude-bg-image-blur', `${clamped}px`);
+      bgImageRadiusValue.textContent = `${clamped}px`;
+      return clamped;
+    };
+    bgImageRadius.value = String(readNumber('bgImageBlurRadius', 12, 0, 32));
+    applyBgImageRadius(Number(bgImageRadius.value));
+    bgImageRadius.addEventListener('input', () => {
+      write('bgImageBlurRadius', String(applyBgImageRadius(Number(bgImageRadius.value))));
+    });
+
+    const bgImageDim = panel.querySelector('#claude-web-bg-image-dim');
+    const bgImageDimValue = panel.querySelector('#claude-web-bg-image-dim-value');
+    const applyBgImageDim = (n) => {
+      const clamped = Math.min(70, Math.max(0, Math.round(n)));
+      document.documentElement.style.setProperty('--claude-bg-image-dim', String(clamped / 100));
+      bgImageDimValue.textContent = `${clamped}%`;
+      return clamped;
+    };
+    bgImageDim.value = String(readNumber('bgImageDim', 28, 0, 70));
+    applyBgImageDim(Number(bgImageDim.value));
+    bgImageDim.addEventListener('input', () => {
+      write('bgImageDim', String(applyBgImageDim(Number(bgImageDim.value))));
     });
 
     mountPresets(panel);

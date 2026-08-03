@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400..600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400..600&family=Noto+Serif+SC:wght@300&display=swap");
 
 /* Claude / Clawd 1.1 — shared theme structure */
 :root {
@@ -672,6 +672,13 @@ hr {
   --cl-cjk:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC","Heiti SC",sans-serif;
   --cl-serif:"Newsreader",Georgia,"Times New Roman",Times,var(--cl-cjk);
   --cl-sans:"Hanken Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,var(--cl-cjk);
+  /* 只给欢迎页大标题用。正文不换字体族，理由在交接文档第四节 A：
+     宋体的辨识特征全在笔画末端，17px 上先被渲染抹平，收益接近零；
+     而 31px 的 hero 上差别一眼可见。
+     成本也只有大字号才划得来 —— Google Fonts 的中文按 unicode-range
+     分包，hero 只有五六个字，浏览器只会下 1~2 片；正文要下几十片。
+     Newsreader 在前，所以拉丁仍走 Newsreader，只有汉字落到思源宋体。 */
+  --cl-serif-hero:"Newsreader",Georgia,"Noto Serif SC",var(--cl-cjk);
   /* ---- 字体层级（FR-4 第一步）----
      这一轮只建词汇表，不换字体族、不动任何一个尺寸。
 
@@ -4294,7 +4301,7 @@ html body.clawd-welcome #send_form > :not(#nonQRFormItems) { display:none !impor
        cssstyle 解析不出来，整条声明被丢掉（回归工具量到 max-width:none）。
        同一份 CSS 里 min(var(--cw-composer),100%) 就正常，差别只有顺序。 */
     max-width:min(var(--cw-column), 100%);
-    font-family:var(--cl-serif);
+    font-family:var(--cl-serif-hero);
     font-size:var(--cl-fs-display);
     font-weight:300;
     line-height:1.5;
@@ -5262,4 +5269,49 @@ html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-butt
   html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#backgrounds-button,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon.openIcon {
     background-color:var(--cl-accent,#d97757) !important;
   }
+}
+
+/* ===== 输入框右上角的生成状态 Clawd（2.0.45）=====
+   跨坐在输入框边缘，等回复时才动，平时静止。
+
+   它不是按钮，是 #send_form 的伪元素 —— 这样天生不可点、不进 tab 序、
+   不需要任何创建和清理代码。屏幕上已经有一只可点的落款蟹，再放一只
+   长得一样但点不动的真元素，用户一定会去戳。伪元素连 hover 都没有，
+   读起来就不像控件。
+
+   为什么值得单独放一只：生成状态原来只在消息流里的 typing_indicator 上，
+   而你等回复时眼睛在输入框附近。挪一只过来，视线不用来回跑。
+
+   位移走 translate、缩放走 transform，两条通道分开 —— 跟落款蟹那边同一个
+   约定，动画才能叠加而不是互相覆盖（见 index.js 里 D1/D2 那几段注释）。 */
+html body #form_sheld :is(#send_form, form) {
+  position:relative !important;
+  overflow:visible !important;
+}
+html body #send_form::after {
+  content:'';
+  position:absolute;
+  top:-26px;
+  right:18px;
+  z-index:2;
+  width:3px;
+  height:3px;
+  background:transparent;
+  box-shadow:var(--clawd-f-open);
+  transform:scale(.52);
+  transform-origin:24px 48px;
+  opacity:.5;
+  pointer-events:none;
+  transition:opacity 220ms ease;
+}
+body.claude-generation-active #send_form::after {
+  opacity:1;
+  animation:clawd-idle-frames 3s step-end infinite, clawd-compose-bob 900ms ease-in-out infinite;
+}
+html[data-claude-motion="off"] #send_form::after,
+html[data-claude-decorations="off"] #send_form::after {
+  content:none !important;
+}
+@media (prefers-reduced-motion:reduce) {
+  body.claude-generation-active #send_form::after { animation:none !important; }
 }
