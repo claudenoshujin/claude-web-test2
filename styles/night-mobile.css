@@ -5820,11 +5820,17 @@ html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-butt
 
 
 /* 图标选中态。
-   图标改用 mask 之后，图形是形状、颜色由 background-color 决定，所以“当前打开的
-   抽屉显示为橙色”只要换一个颜色值，不需要第二套图形文件——这也是把原来那八颗
-   装饰性橙点撤掉之后，橙色真正该出现的地方：状态，不是装饰。
-   选择器里把十个 id 用 :is() 列全，是为了让权重压过上面那批按 id 写的图标规则。 */
-html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#backgrounds-button,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon.openIcon::before,
-html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#backgrounds-button,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon.openIcon {
-  background-color:var(--cl-accent,#d97757) !important;
+   必须按布局分开写：PC 把图标画在 ::before 上，手机画在 .drawer-icon 本体上
+   （见上面 2.0.31 那段注释的原因）。第一版两个都设了 background-color，
+   结果在 PC 上给「没有 mask 的本体」刷了一层橙底，整块橙色方块盖住图标。
+   谁承载 mask，就只给谁上色。 */
+@media (min-width:701px) {
+  html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#backgrounds-button,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon.openIcon::before {
+    background-color:var(--cl-accent,#d97757) !important;
+  }
+}
+@media (max-width:700px) {
+  html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#backgrounds-button,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon.openIcon {
+    background-color:var(--cl-accent,#d97757) !important;
+  }
 }
