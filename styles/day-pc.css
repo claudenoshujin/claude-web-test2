@@ -5023,15 +5023,15 @@ html body.clawd-welcome #rightSendForm > * {
   }
 }
 /* 2.0.19: colored rail assets render directly; never treat their background plates as masks. */
-html body #top-settings-holder > .drawer#ai-config-button > .drawer-toggle > .drawer-icon::before{background:url("../icons/01-presets.svg") center/30px 30px no-repeat!important}
-html body #top-settings-holder > .drawer#sys-settings-button > .drawer-toggle > .drawer-icon::before{background:url("../icons/02-api-connections.svg") center/30px 30px no-repeat!important}
-html body #top-settings-holder > .drawer#advanced-formatting-button > .drawer-toggle > .drawer-icon::before{background:url("../icons/03-format.svg") center/30px 30px no-repeat!important}
-html body #top-settings-holder > .drawer#WI-SP-button > .drawer-toggle > .drawer-icon::before{background:url("../icons/04-world-book.svg") center/30px 30px no-repeat!important}
-html body #top-settings-holder > .drawer#user-settings-button > .drawer-toggle > .drawer-icon::before{background:url("../icons/05-preferences.svg") center/30px 30px no-repeat!important}
-html body #top-settings-holder > .drawer#logo_block > .drawer-toggle > .drawer-icon::before{background:url("../icons/06-background.svg") center/30px 30px no-repeat!important}
-html body #top-settings-holder > .drawer > .drawer-toggle > .drawer-icon:is(.fa-panorama,.fa-image,.fa-images)::before{width:30px!important;height:30px!important;background:url("../icons/06-background.svg") center/30px 30px no-repeat!important;-webkit-mask:none!important;mask:none!important}
-html body #top-settings-holder > .drawer#extensions-settings-button > .drawer-toggle > .drawer-icon::before{background:url("../icons/07-extensions.svg") center/30px 30px no-repeat!important}
-html body #top-settings-holder > .drawer:is(#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon::before{background:url("../icons/08-character-card.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer#ai-config-button > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/01-presets.svg") center/30px 30px no-repeat!important;mask:url("../icons/01-presets.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer#sys-settings-button > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/02-api-connections.svg") center/30px 30px no-repeat!important;mask:url("../icons/02-api-connections.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer#advanced-formatting-button > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/03-format.svg") center/30px 30px no-repeat!important;mask:url("../icons/03-format.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer#WI-SP-button > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/04-world-book.svg") center/30px 30px no-repeat!important;mask:url("../icons/04-world-book.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer#user-settings-button > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/05-preferences.svg") center/30px 30px no-repeat!important;mask:url("../icons/05-preferences.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer#logo_block > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/06-background.svg") center/30px 30px no-repeat!important;mask:url("../icons/06-background.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer > .drawer-toggle > .drawer-icon:is(.fa-panorama,.fa-image,.fa-images)::before{width:30px!important;height:30px!important;background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/06-background.svg") center/30px 30px no-repeat!important;mask:url("../icons/06-background.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer#extensions-settings-button > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/07-extensions.svg") center/30px 30px no-repeat!important;mask:url("../icons/07-extensions.svg") center/30px 30px no-repeat!important}
+html body #top-settings-holder > .drawer:is(#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon::before{background-color:var(--cl-rail-icon,currentColor)!important;background-image:none!important;-webkit-mask:url("../icons/08-character-card.svg") center/30px 30px no-repeat!important;mask:url("../icons/08-character-card.svg") center/30px 30px no-repeat!important}
 html body #top-settings-holder > .drawer > .drawer-toggle > .drawer-icon::before{width:30px!important;height:30px!important;-webkit-mask:none!important;mask:none!important;background-color:transparent!important}
 html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon::before{width:30px!important;height:30px!important}
 
@@ -5109,4 +5109,15 @@ html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-butt
   stroke-width:1.9;
   stroke-linecap:round;
   stroke-linejoin:round;
+}
+
+
+/* 图标选中态。
+   图标改用 mask 之后，图形是形状、颜色由 background-color 决定，所以“当前打开的
+   抽屉显示为橙色”只要换一个颜色值，不需要第二套图形文件——这也是把原来那八颗
+   装饰性橙点撤掉之后，橙色真正该出现的地方：状态，不是装饰。
+   选择器里把十个 id 用 :is() 列全，是为了让权重压过上面那批按 id 写的图标规则。 */
+html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#backgrounds-button,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon.openIcon::before,
+html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-button,#advanced-formatting-button,#WI-SP-button,#user-settings-button,#logo_block,#backgrounds-button,#extensions-settings-button,#persona-management-button,#rightNavHolder) > .drawer-toggle > .drawer-icon.openIcon {
+  background-color:var(--cl-accent,#d97757) !important;
 }
