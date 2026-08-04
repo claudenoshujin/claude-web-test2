@@ -191,6 +191,9 @@ document.documentElement.style.setProperty('--claude-bg-blur-opacity', `${CLAUDE
 document.documentElement.style.setProperty('--claude-drawer-tint-opacity', `${CLAUDE_DRAWER_TINT_OPACITY}%`);
 document.documentElement.style.setProperty('--claude-glass-base', CLAUDE_GLASS_BASE);
 document.documentElement.style.setProperty('--claude-nav-tint-opacity', `${CLAUDE_NAV_TINT_OPACITY}%`);
+/* 字体必须在这里就套上 —— 等设置面板挂载太晚，中间会闪一帧默认字。 */
+const CLAUDE_FONT = claudeReadSetting('font', ['follow','songti','heiti','system','native'], 'follow');
+document.documentElement.dataset.claudeFont = CLAUDE_FONT;
 document.documentElement.dataset.claudeBgImageBlur = CLAUDE_BG_IMAGE_BLUR_ENABLED ? 'on' : 'off';
 document.documentElement.style.setProperty('--claude-bg-image-blur', `${CLAUDE_BG_IMAGE_BLUR}px`);
 document.documentElement.style.setProperty('--claude-bg-image-dim', String(CLAUDE_BG_IMAGE_DIM / 100));
@@ -280,7 +283,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.47-arena-radius-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.48-font-axis-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -355,6 +358,9 @@ if (CLAUDE_ENABLED) {
     /* 形状（2.0.47）。只开倍率和圆形两个键，不开 --cw-radius-8 那一串档位 ——
        放开档位等于让配色预设去改设计比例，那是版式层的事，不是配色的事。 */
     '--cw-radius-scale', '--cw-radius-circle',
+    /* 皮肤字体（2.0.47）。只在「字体 = 跟风格」时生效，
+       见 styles 里 html[data-claude-font="follow"] 那段。 */
+    '--cw-skin-serif', '--cw-skin-sans',
   ];
 
   const ALLOWED = new Set([...CORE_KEYS, ...EXTRA_KEYS]);
@@ -514,6 +520,10 @@ if (CLAUDE_ENABLED) {
       '--cw-body-weight': '400',
       '--cw-color-scheme': 'light',
       '--cw-radius-scale': '0',
+      /* Are.na 是纯 grotesk，正文不用衬线 —— 这是这个风格的骨头之一。
+         只在「字体 = 跟风格」时生效；用户手选了字体就以用户为准。 */
+      '--cw-skin-serif': "'Hanken Grotesk', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, var(--cl-cjk)",
+      '--cw-skin-sans': "'Hanken Grotesk', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, var(--cl-cjk)",
     },
   };
 
@@ -556,6 +566,10 @@ if (CLAUDE_ENABLED) {
       '--cw-body-weight': '400',
       '--cw-color-scheme': 'dark',
       '--cw-radius-scale': '0',
+      /* Are.na 是纯 grotesk，正文不用衬线 —— 这是这个风格的骨头之一。
+         只在「字体 = 跟风格」时生效；用户手选了字体就以用户为准。 */
+      '--cw-skin-serif': "'Hanken Grotesk', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, var(--cl-cjk)",
+      '--cw-skin-sans': "'Hanken Grotesk', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, var(--cl-cjk)",
     },
   };
 
@@ -7327,6 +7341,16 @@ if (CLAUDE_ENABLED) {
     { value: 'system', label: '跟随手机系统' },
     { value: 'time', label: '按时间自动切换' },
   ];
+  /* 字体自成一轴，不绑结构也不绑风格 —— 绑死的话「要 Are.na 的排版
+     但留着官网的宋体」这种组合就选不出来。默认 follow 表示跟风格走。 */
+  const FONTS = [
+    { value: 'follow', label: '跟风格（默认）' },
+    { value: 'songti', label: '思源宋（正文衬线）' },
+    { value: 'heiti',  label: '思源黑（全站黑体）' },
+    { value: 'system', label: '系统无衬线（不加载网络字体）' },
+    { value: 'native', label: '关掉（用酒馆原生字体）' },
+  ];
+
   const LAYOUTS = [
     { value: 'auto', label: '自动（跨 700px 自动切换）' },
     { value: 'pc', label: '桌面' },
@@ -7584,6 +7608,9 @@ if (CLAUDE_ENABLED) {
 
           <label for="claude-web-layout" style="margin-top:8px">布局</label>
           <select id="claude-web-layout" class="text_pole"></select>
+
+          <label for="claude-web-font" style="margin-top:8px">字体</label>
+          <select id="claude-web-font" class="text_pole"></select>
 
           <div id="claude-web-hint"
                style="margin-top:8px;font-size:0.9em;opacity:.75;line-height:1.5"></div>
@@ -8125,6 +8152,16 @@ if (CLAUDE_ENABLED) {
       if (autoSelect.value === 'time') syncAutomaticTheme();
     }, 30000);
     syncAutomaticTheme();
+
+    const fontSelect = panel.querySelector('#claude-web-font');
+    fillSelect(fontSelect, FONTS, read('font', FONTS.map(f => f.value), 'follow'));
+    fontSelect.addEventListener('change', () => {
+      if (!write('font', fontSelect.value)) return;
+      /* 只改一个属性，五个字体变量跟着重算 —— 不用重载页面。 */
+      document.documentElement.dataset.claudeFont = fontSelect.value;
+      const hit = FONTS.find(f => f.value === fontSelect.value);
+      hint.textContent = '字体已切到「' + (hit ? hit.label : fontSelect.value) + '」。';
+    });
 
     layoutSelect.addEventListener('change', () => {
       if (!write('layout', layoutSelect.value)) return;

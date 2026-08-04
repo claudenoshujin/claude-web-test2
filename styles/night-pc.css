@@ -5352,3 +5352,62 @@ html[data-claude-decorations="off"] #send_form::after {
 @media (prefers-reduced-motion:reduce) {
   body.claude-generation-active #send_form::after { animation:none !important; }
 }
+
+
+/* ===================== 字体层（2.0.47）=====================
+ *
+ * 为什么要单开一个轴：排版是视觉印象的大头，但**配色预设一处都改不动** ——
+ * font-family 70 处、font-size 102 处只 15 处走变量、font-weight 52 处只 1 处、
+ * line-height 43 处**零处**。换个配色只换颜色，字还是原来的字，
+ * 所以换上 Are.na 之后会觉得「变化不大」。
+ *
+ * 全站真正可控的只有五个变量（其余 11 处 font-family 是 Font Awesome 图标字，
+ * 动了图标会变成方框，一律不碰）：
+ *   --cl-sans        45 处
+ *   --cl-serif        6 处
+ *   --cl-font-ui      3 处（本来就 = --cl-sans）
+ *   --cl-font-reading 2 处（本来就 = --cl-serif）
+ *   --cl-serif-hero   1 处
+ * 只要改这五个就能换掉整套排版。
+ *
+ * 默认档 follow 不写任何规则 —— 没有属性时用样式表原值，
+ * 所以这一层对现有用户零影响，不选就等于不存在。
+ */
+
+/* 跟风格：Are.na 家族全站 grotesk，官网家族保持衬线正文。
+   靠预设写进来的 --cw-skin-font 判别，预设没给就是官网那套。 */
+html[data-claude-font="follow"] {
+  --cl-serif      : var(--cw-skin-serif, "Newsreader", Georgia, "Times New Roman", Times, var(--cl-cjk));
+  --cl-sans       : var(--cw-skin-sans,  "Hanken Grotesk", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cl-cjk));
+  --cl-serif-hero : var(--cw-skin-serif, "Newsreader", Georgia, "Noto Serif SC", var(--cl-cjk));
+}
+
+/* 思源宋：正文衬线，界面仍用无衬线 —— 界面也上宋体会糊。 */
+html[data-claude-font="songti"] {
+  --cl-serif      : "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --cl-serif-hero : "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+}
+
+/* 思源黑：全站黑体，正文也不用衬线。 */
+html[data-claude-font="heiti"] {
+  --cl-serif      : var(--cl-cjk);
+  --cl-sans       : var(--cl-cjk);
+  --cl-serif-hero : var(--cl-cjk);
+}
+
+/* 系统无衬线：不加载任何网络字体，最快，也最不挑设备。 */
+html[data-claude-font="system"] {
+  --cl-serif      : -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cl-cjk);
+  --cl-sans       : -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cl-cjk);
+  --cl-serif-hero : -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cl-cjk);
+}
+
+/* 关掉：把五个变量全交还给酒馆自己的 --mainFontFamily。
+   ST 1.18 在 :root 上定义它；取不到时退回 sans-serif，不退回 inherit ——
+   html 上 inherit 没有父级可继承，会掉到浏览器默认的 Times。 */
+html[data-claude-font="native"] {
+  --cl-serif      : var(--mainFontFamily, sans-serif);
+  --cl-sans       : var(--mainFontFamily, sans-serif);
+  --cl-serif-hero : var(--mainFontFamily, sans-serif);
+  --cl-cjk        : var(--mainFontFamily, sans-serif);
+}
