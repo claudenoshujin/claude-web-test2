@@ -192,8 +192,13 @@ document.documentElement.style.setProperty('--claude-drawer-tint-opacity', `${CL
 document.documentElement.style.setProperty('--claude-glass-base', CLAUDE_GLASS_BASE);
 document.documentElement.style.setProperty('--claude-nav-tint-opacity', `${CLAUDE_NAV_TINT_OPACITY}%`);
 /* 字体必须在这里就套上 —— 等设置面板挂载太晚，中间会闪一帧默认字。 */
-const CLAUDE_FONT = claudeReadSetting('font', ['follow','songti','heiti','system','native'], 'follow');
+const CLAUDE_FONT = claudeReadSetting('font', ['follow','songti','heiti','system','device','custom','native'], 'follow');
 document.documentElement.dataset.claudeFont = CLAUDE_FONT;
+document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');
+try {
+  const cf = window.localStorage.getItem('claude-web:fontCustom');
+  if (cf) document.documentElement.style.setProperty('--cw-font-custom', cf);
+} catch { /* 无痕或被禁用 */ }
 document.documentElement.dataset.claudeBgImageBlur = CLAUDE_BG_IMAGE_BLUR_ENABLED ? 'on' : 'off';
 document.documentElement.style.setProperty('--claude-bg-image-blur', `${CLAUDE_BG_IMAGE_BLUR}px`);
 document.documentElement.style.setProperty('--claude-bg-image-dim', String(CLAUDE_BG_IMAGE_DIM / 100));
@@ -283,7 +288,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.48-font-axis-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.49-linear-structure-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -360,7 +365,7 @@ if (CLAUDE_ENABLED) {
     '--cw-radius-scale', '--cw-radius-circle',
     /* 皮肤字体（2.0.47）。只在「字体 = 跟风格」时生效，
        见 styles 里 html[data-claude-font="follow"] 那段。 */
-    '--cw-skin-serif', '--cw-skin-sans',
+    '--cw-skin-serif', '--cw-skin-sans', '--cw-font-custom',
   ];
 
   const ALLOWED = new Set([...CORE_KEYS, ...EXTRA_KEYS]);
@@ -7348,8 +7353,40 @@ if (CLAUDE_ENABLED) {
     { value: 'songti', label: '思源宋（正文衬线）' },
     { value: 'heiti',  label: '思源黑（全站黑体）' },
     { value: 'system', label: '系统无衬线（不加载网络字体）' },
+    { value: 'device', label: '跟随设备/系统' },
+    { value: 'custom', label: '自定义（下方填写）' },
     { value: 'native', label: '关掉（用酒馆原生字体）' },
   ];
+  const FONT_VALUES = FONTS.map(f => f.value);
+
+  /* 结构轴。只有桌面有 —— 手机端还没有对得上的现代化参考，
+     CSS 里那段外面套了 min-width:1100px，窄屏自动退回侧边栏。 */
+  const STRUCTURES = [
+    { value: 'rail',   label: '侧边栏（默认）' },
+    { value: 'linear', label: 'Linear 四栏（仅桌面）' },
+  ];
+  const STRUCTURE_VALUES = STRUCTURES.map(s => s.value);
+
+  /* 第四列的节点。CSS 只负责排版，DOM 得有人建 ——
+     酒馆本身没有任何「属性栏」概念，没有现成节点可以借。
+     内容先接能直接读到的三项；token / 消息数要挂 ST 事件，留到下一版。 */
+  function ensureAside() {
+    if (document.documentElement.dataset.claudeStructure !== 'linear') return;
+    let el = document.getElementById('clawd-aside');
+    if (!el) {
+      el = document.createElement('aside');
+      el.id = 'clawd-aside';
+      document.body.appendChild(el);
+    }
+    const txt = sel => (document.querySelector(sel)?.textContent || '').trim() || '—';
+    el.innerHTML =
+      '<div class="cw-g"><div class="cw-h">演职员</div>'
+      + '<div class="cw-r"><span>角色</span><b>' + txt('#rm_button_selected_ch h2') + '</b></div>'
+      + '<div class="cw-r"><span>用户</span><b>' + txt('#persona_name_field, .persona_name') + '</b></div>'
+      + '<div class="cw-r"><span>模型</span><b>' + txt('#claude-model-label, #model_select option:checked') + '</b></div></div>'
+      + '<div class="cw-g"><div class="cw-h">本场</div>'
+      + '<div class="cw-r"><span>消息数</span><b>' + document.querySelectorAll('#chat .mes').length + '</b></div></div>';
+  }
 
   const LAYOUTS = [
     { value: 'auto', label: '自动（跨 700px 自动切换）' },
@@ -7609,8 +7646,13 @@ if (CLAUDE_ENABLED) {
           <label for="claude-web-layout" style="margin-top:8px">布局</label>
           <select id="claude-web-layout" class="text_pole"></select>
 
+          <label for="claude-web-structure" style="margin-top:8px">结构</label>
+          <select id="claude-web-structure" class="text_pole"></select>
+
           <label for="claude-web-font" style="margin-top:8px">字体</label>
           <select id="claude-web-font" class="text_pole"></select>
+          <input id="claude-web-font-custom" class="text_pole" style="margin-top:6px;display:none"
+                 placeholder='自定义 font-family，例如："LXGW WenKai", serif'>
 
           <div id="claude-web-hint"
                style="margin-top:8px;font-size:0.9em;opacity:.75;line-height:1.5"></div>
@@ -8153,14 +8195,37 @@ if (CLAUDE_ENABLED) {
     }, 30000);
     syncAutomaticTheme();
 
+    const structureSelect = panel.querySelector('#claude-web-structure');
+    fillSelect(structureSelect, STRUCTURES, read('structure', STRUCTURE_VALUES, 'rail'));
+    structureSelect.addEventListener('change', () => {
+      if (!write('structure', structureSelect.value)) return;
+      /* 纯 CSS 切换，不动 DOM，所以也不用重载。 */
+      document.documentElement.dataset.claudeStructure = structureSelect.value;
+      ensureAside();
+      hint.textContent = structureSelect.value === 'linear'
+        ? '已切到 Linear 四栏。窄于 1100px 会自动退回侧边栏。'
+        : '已切回侧边栏。';
+    });
+
     const fontSelect = panel.querySelector('#claude-web-font');
-    fillSelect(fontSelect, FONTS, read('font', FONTS.map(f => f.value), 'follow'));
+    const fontCustom = panel.querySelector('#claude-web-font-custom');
+    const syncCustomBox = () => { fontCustom.style.display = fontSelect.value === 'custom' ? '' : 'none'; };
+    fillSelect(fontSelect, FONTS, read('font', FONT_VALUES, 'follow'));
+    try { fontCustom.value = window.localStorage.getItem('claude-web:fontCustom') || ''; } catch { /* 无痕 */ }
+    syncCustomBox();
     fontSelect.addEventListener('change', () => {
       if (!write('font', fontSelect.value)) return;
       /* 只改一个属性，五个字体变量跟着重算 —— 不用重载页面。 */
       document.documentElement.dataset.claudeFont = fontSelect.value;
+      syncCustomBox();
       const hit = FONTS.find(f => f.value === fontSelect.value);
       hint.textContent = '字体已切到「' + (hit ? hit.label : fontSelect.value) + '」。';
+    });
+    fontCustom.addEventListener('input', () => {
+      const v = fontCustom.value.trim();
+      try { window.localStorage.setItem('claude-web:fontCustom', v); } catch { /* 无痕 */ }
+      if (v) document.documentElement.style.setProperty('--cw-font-custom', v);
+      else document.documentElement.style.removeProperty('--cw-font-custom');
     });
 
     layoutSelect.addEventListener('change', () => {

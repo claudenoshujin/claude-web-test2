@@ -5416,3 +5416,126 @@ html[data-claude-font="native"] {
   --cl-serif-hero : var(--mainFontFamily, sans-serif);
   --cl-cjk        : var(--mainFontFamily, sans-serif);
 }
+
+
+/* 跟随设备/系统字体（2.0.49）：用 CSS 通用族，由操作系统决定具体字体。
+   跟「关掉」的区别 —— 关掉是交还给酒馆的 --mainFontFamily（用户在酒馆里设的），
+   这个是绕过酒馆直接问系统要。两者在用户没配过酒馆字体时才碰巧一样。 */
+html[data-claude-font="device"] {
+  --cl-serif      : system-ui, sans-serif;
+  --cl-sans       : system-ui, sans-serif;
+  --cl-serif-hero : system-ui, sans-serif;
+  --cl-cjk        : system-ui, sans-serif;
+}
+/* 自定义：把 --cw-font-custom 填成任意 font-family 值即可（设置面板里的输入框）。
+   没填时回退到 system-ui，不会塌成 Times。 */
+html[data-claude-font="custom"] {
+  --cl-serif      : var(--cw-font-custom, system-ui, sans-serif);
+  --cl-sans       : var(--cw-font-custom, system-ui, sans-serif);
+  --cl-serif-hero : var(--cw-font-custom, system-ui, sans-serif);
+  --cl-cjk        : var(--cw-font-custom, system-ui, sans-serif);
+}
+
+
+/* ===================== 结构层 · Linear 四栏（2.0.49，仅桌面）=====================
+ *
+ * 只在 day-pc / night-pc 里有意义 —— 手机端没有对得上的现代化参考，
+ * 保持原侧边栏形态。所以这段外面套了 min-width 断点。
+ *
+ * 机制是现成的：rail 本来就是 position:fixed;left:0;width:280px，
+ * #chat 靠 padding-left:308px 让位。四栏只是把这两个数换掉，
+ * 再把 Recents 从 rail 里抽出来做成第二列 —— 不移动任何 DOM 节点。
+ *
+ *   导航 210 | 会话列表 300 | 对话流 | 演职员 248
+ *
+ * 实测记录（在真实酒馆里逐条验过，不是推的）：
+ *  · .recentChat 是 grid，头像 display:none 之后那一列**还占着位**，
+ *    列表左边会留一条 9px 空槽 —— 必须显式收成单列并把 info 拉到 1/-1。
+ *  · `#top-settings-holder > *` 带 id，特异性压过 `.clawd-rail-recents`，
+ *    会把列表列拉成整屏宽。必须 :not() 排除掉。
+ */
+@media (min-width:1100px){
+  html[data-claude-structure="linear"] #top-settings-holder{
+    width:210px !important; max-width:210px !important;
+    padding-left:14px !important; padding-right:8px !important;
+  }
+  html[data-claude-structure="linear"] #top-settings-holder > *:not(.clawd-rail-recents){
+    max-width:100% !important; box-sizing:border-box !important;
+  }
+  /* 品牌行是按 280px rail 排的，收窄后会顶出去，裁掉而不是让它压住别的 */
+  html[data-claude-structure="linear"] #top-settings-holder > .clawd-rail-brand{
+    overflow:hidden !important; min-width:0 !important;
+  }
+
+  /* ---- 第二列：会话列表。position:fixed 而不是 absolute ——
+         rail 自己有 overflow:auto，absolute 会跟着滚。 ---- */
+  html[data-claude-structure="linear"] .clawd-rail-recents{
+    position:fixed !important; left:210px !important; top:0 !important; bottom:0 !important;
+    width:300px !important; max-width:300px !important;
+    margin:0 !important; padding:0 !important;
+    border-left:1px solid var(--cl-line) !important;
+    border-right:1px solid var(--cl-line) !important;
+    overflow-y:auto !important; z-index:3996 !important;
+    background:var(--cl-canvas) !important;
+  }
+  html[data-claude-structure="linear"] .clawd-rail-recents-label{
+    position:sticky !important; top:0 !important; z-index:2 !important;
+    background:var(--cl-canvas) !important;
+    padding:18px 18px 8px !important; margin:0 !important;
+    border-bottom:1px solid var(--cl-line) !important;
+  }
+  /* Linear 的两行式行：加粗标题 + 灰色副文 */
+  html[data-claude-structure="linear"] .clawd-rail-recents .recentChat{
+    position:relative !important;
+    width:100% !important; height:auto !important;
+    padding:11px 18px !important; margin:0 !important;
+    grid-template-columns:1fr !important; column-gap:0 !important;
+    border-bottom:1px solid var(--cl-line) !important;
+  }
+  html[data-claude-structure="linear"] .clawd-rail-recents .recentChat > .avatar{ display:none !important; }
+  html[data-claude-structure="linear"] .clawd-rail-recents .recentChat > .recentChatInfo{
+    grid-column:1 / -1 !important; width:100% !important;
+  }
+  html[data-claude-structure="linear"] .clawd-rail-recents .chatNameContainer{ display:block !important; width:100% !important; }
+  html[data-claude-structure="linear"] .clawd-rail-recents .chatName{
+    font-weight:700 !important; color:var(--cl-ink) !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+  }
+  html[data-claude-structure="linear"] .clawd-rail-recents .chatDate{
+    display:block !important; margin-top:3px !important; color:var(--cl-muted) !important;
+  }
+  html[data-claude-structure="linear"] .clawd-rail-recents .chatActions{
+    position:absolute !important; right:14px !important; top:9px !important;
+  }
+
+  /* ---- 对话流让位 ---- */
+  html[data-claude-structure="linear"] #chat{
+    padding-left:538px !important; padding-right:276px !important;
+  }
+  html[data-claude-structure="linear"] #form_sheld{
+    padding-left:510px !important; padding-right:248px !important;
+  }
+
+  /* ---- 第四列：演职员。由 index.js 建节点，CSS 只负责排 ---- */
+  html[data-claude-structure="linear"] #clawd-aside{
+    position:fixed; right:0; top:0; bottom:0; width:248px; box-sizing:border-box;
+    border-left:1px solid var(--cl-line); background:var(--cl-canvas);
+    z-index:3996; padding:18px 20px; overflow-y:auto;
+    font-family:var(--cl-sans); font-size:12.5px; line-height:1.35; color:var(--cl-muted);
+  }
+  html:not([data-claude-structure="linear"]) #clawd-aside{ display:none; }
+  #clawd-aside .cw-h{ padding-bottom:7px; border-bottom:1px solid var(--cl-line); }
+  #clawd-aside .cw-r{
+    display:flex; justify-content:space-between; gap:14px;
+    padding:6px 0; border-bottom:1px solid var(--cl-line);
+  }
+  #clawd-aside .cw-r b{
+    color:var(--cl-ink); font-weight:700; text-align:right;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  #clawd-aside .cw-g{ margin-bottom:26px; }
+}
+/* 窄屏一律退回侧边栏形态 —— 手机端还没有对得上的参考 */
+@media (max-width:1099px){
+  html[data-claude-structure="linear"] #clawd-aside{ display:none !important; }
+}

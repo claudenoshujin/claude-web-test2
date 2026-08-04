@@ -6166,3 +6166,22 @@ html[data-claude-font="native"] {
   --cl-serif-hero : var(--mainFontFamily, sans-serif);
   --cl-cjk        : var(--mainFontFamily, sans-serif);
 }
+
+
+/* 跟随设备/系统字体（2.0.49）：用 CSS 通用族，由操作系统决定具体字体。
+   跟「关掉」的区别 —— 关掉是交还给酒馆的 --mainFontFamily（用户在酒馆里设的），
+   这个是绕过酒馆直接问系统要。两者在用户没配过酒馆字体时才碰巧一样。 */
+html[data-claude-font="device"] {
+  --cl-serif      : system-ui, sans-serif;
+  --cl-sans       : system-ui, sans-serif;
+  --cl-serif-hero : system-ui, sans-serif;
+  --cl-cjk        : system-ui, sans-serif;
+}
+/* 自定义：把 --cw-font-custom 填成任意 font-family 值即可（设置面板里的输入框）。
+   没填时回退到 system-ui，不会塌成 Times。 */
+html[data-claude-font="custom"] {
+  --cl-serif      : var(--cw-font-custom, system-ui, sans-serif);
+  --cl-sans       : var(--cw-font-custom, system-ui, sans-serif);
+  --cl-serif-hero : var(--cw-font-custom, system-ui, sans-serif);
+  --cl-cjk        : var(--cw-font-custom, system-ui, sans-serif);
+}
