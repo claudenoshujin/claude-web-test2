@@ -6185,3 +6185,98 @@ html[data-claude-font="custom"] {
   --cl-serif-hero : var(--cw-font-custom, system-ui, sans-serif);
   --cl-cjk        : var(--cw-font-custom, system-ui, sans-serif);
 }
+
+
+/* ===================== 皮肤层 · Are.na 排版（2.0.50）=====================
+ *
+ * 为什么单开一层：预设只能往 documentElement 写 CSS **变量**，
+ * 而 Are.na 的设计是**规则** —— 三级字号、大写小字元数据、细线行、
+ * 无填充、三轨消息。变量传不过去，所以「换了 Are.na 只是变了个色」。
+ * 现在配色留在预设，排版进这个模块，由风格下拉同时切。
+ * 机制跟 data-claude-archive / data-claude-structure 是同一套。
+ *
+ * 下面每条都在真实酒馆里验过，不是照着 DOM 猜的：
+ *  · .mesAvatarWrapper 里**本来就装着** mesIDDisplay / mes_timer /
+ *    tokenCounterDisplay —— 正好是三轨排版要的那条左边注，不用改 DOM。
+ *  · #send_form 的填充和圆角由更高特异性的规则画，必须用
+ *    `body #form_sheld #send_form` 这种链才压得住，单写 #send_form 无效。
+ */
+html[data-claude-skin="arena"]{
+  --aq-s:12.5px; --aq-m:16px; --aq-note:78px; --aq-gap:20px;
+}
+
+/* ---- 消息：三轨，无气泡无底色 ---- */
+html[data-claude-skin="arena"] #chat .mes{
+  display:grid !important;
+  grid-template-columns:var(--aq-note) minmax(0,1fr) !important;
+  column-gap:var(--aq-gap) !important;
+  padding:14px 0 !important; margin:0 !important;
+  border:0 !important; background:none !important; box-shadow:none !important;
+}
+html[data-claude-skin="arena"] #chat .mesAvatarWrapper{
+  grid-column:1 !important; display:block !important;
+  width:auto !important; min-width:0 !important; text-align:right !important;
+  font-size:var(--aq-s) !important; line-height:1.5 !important; color:var(--cl-muted) !important;
+}
+html[data-claude-skin="arena"] #chat .mesAvatarWrapper .avatar{ display:none !important; }
+html[data-claude-skin="arena"] #chat .mesIDDisplay,
+html[data-claude-skin="arena"] #chat .mes_timer,
+html[data-claude-skin="arena"] #chat .tokenCounterDisplay{
+  display:block !important; opacity:1 !important; margin:0 !important;
+  font-size:var(--aq-s) !important; line-height:1.4 !important; color:var(--cl-muted) !important;
+}
+html[data-claude-skin="arena"] #chat .mes_block{
+  grid-column:2 !important; margin:0 !important; padding:0 !important; background:none !important;
+}
+html[data-claude-skin="arena"] #chat .ch_name{ margin-bottom:6px !important; border:0 !important; }
+html[data-claude-skin="arena"] #chat .ch_name .name_text{
+  font-family:var(--cl-sans) !important; font-size:var(--aq-s) !important;
+  font-weight:700 !important; text-transform:uppercase !important;
+  letter-spacing:normal !important; color:var(--cl-muted) !important;
+}
+html[data-claude-skin="arena"] #chat .mes_text,
+html[data-claude-skin="arena"] #chat .mes[is_user="true"] .mes_text{
+  font-size:var(--aq-m) !important; line-height:1.5 !important; color:var(--cl-ink) !important;
+  border:0 !important; background:none !important; box-shadow:none !important;
+  padding:0 !important; border-radius:0 !important;
+}
+html[data-claude-skin="arena"] #chat .mes_text p{ margin:0 0 12px !important; }
+/* 用户与 AI 只靠缩进区分，不左右分列、不加底色 */
+html[data-claude-skin="arena"] #chat .mes[is_user="true"] .mes_block{ padding-left:36px !important; }
+
+/* ---- 输入框：去填充去圆角，只留一条上边线 ---- */
+html[data-claude-skin="arena"] body #form_sheld #send_form,
+html[data-claude-skin="arena"] body #form_sheld #send_form.compact{
+  background:none !important; background-color:transparent !important;
+  border:0 !important; border-top:1px solid var(--cl-line) !important;
+  border-radius:0 !important; box-shadow:none !important;
+  padding:12px 0 14px !important;
+}
+html[data-claude-skin="arena"] body #form_sheld #send_textarea{
+  background:none !important; border:0 !important; border-radius:0 !important;
+  box-shadow:none !important; font-size:var(--aq-m) !important; line-height:1.5 !important;
+}
+/* Send 做成 Are.na 那个实心方块，不是圆形彩色按钮 */
+html[data-claude-skin="arena"] body #form_sheld #send_but{
+  border-radius:0 !important; box-shadow:none !important;
+  background:var(--cl-accent) !important;
+  width:auto !important; height:auto !important; min-width:0 !important;
+  padding:8px 15px !important; font-size:var(--aq-s) !important; font-weight:700 !important;
+}
+
+/* ---- 抽屉开关：纯文字，无底色无圆角 ---- */
+html[data-claude-skin="arena"] .drawer-toggle{
+  background:none !important; border-radius:0 !important; box-shadow:none !important;
+}
+html[data-claude-skin="arena"] .clawd-rail-label{
+  font-size:var(--aq-s) !important; letter-spacing:normal !important;
+}
+
+/* ===================== Clawd 开关（独立于皮，2.0.50）=====================
+ * 那只是 button.clawd-signoff-button::before 用几十个 box-shadow 点画的像素精灵。
+ * 跟 --cw-shadow-* 三个令牌无关，归零阴影杀不掉它，只能单独关。 */
+html[data-claude-clawd="off"] .clawd-signoff-button,
+html[data-claude-clawd="off"] [class*="clawd-idle"],
+html[data-claude-clawd="off"] [class*="clawd-look"]{
+  display:none !important; box-shadow:none !important;
+}

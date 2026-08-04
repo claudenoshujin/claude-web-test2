@@ -195,6 +195,11 @@ document.documentElement.style.setProperty('--claude-nav-tint-opacity', `${CLAUD
 const CLAUDE_FONT = claudeReadSetting('font', ['follow','songti','heiti','system','device','custom','native'], 'follow');
 document.documentElement.dataset.claudeFont = CLAUDE_FONT;
 document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');
+document.documentElement.dataset.claudeClawd = claudeReadSetting('clawd', ['on','off'], 'on');
+try {
+  const fam = window.localStorage.getItem('claude-web:preset') || '';
+  document.documentElement.dataset.claudeSkin = /arena/.test(fam) ? 'arena' : 'classic';
+} catch { document.documentElement.dataset.claudeSkin = 'classic'; }
 try {
   const cf = window.localStorage.getItem('claude-web:fontCustom');
   if (cf) document.documentElement.style.setProperty('--cw-font-custom', cf);
@@ -288,7 +293,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.49-linear-structure-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.50-arena-skin-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -7370,6 +7375,12 @@ if (CLAUDE_ENABLED) {
   /* 第四列的节点。CSS 只负责排版，DOM 得有人建 ——
      酒馆本身没有任何「属性栏」概念，没有现成节点可以借。
      内容先接能直接读到的三项；token / 消息数要挂 ST 事件，留到下一版。 */
+  /* 第四列的节点。CSS 只负责排版，DOM 得有人建 ——
+     酒馆本身没有「属性栏」概念，没有现成节点可借。
+
+     下面四个选择器是在真实酒馆里逐个试出来的，不是猜的。
+     上一版猜的 #rm_button_selected_ch h2 / #persona_name_field /
+     #claude-model-label 三个里两个读不到，右栏全是「—」。 */
   function ensureAside() {
     if (document.documentElement.dataset.claudeStructure !== 'linear') return;
     let el = document.getElementById('clawd-aside');
@@ -7378,15 +7389,30 @@ if (CLAUDE_ENABLED) {
       el.id = 'clawd-aside';
       document.body.appendChild(el);
     }
-    const txt = sel => (document.querySelector(sel)?.textContent || '').trim() || '—';
+    const val = sel => {
+      const e = document.querySelector(sel);
+      if (!e) return '';
+      return ((e.value !== undefined && e.value !== null ? e.value : e.textContent) || '').trim();
+    };
+    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const row = (k, v) => '<div class="cw-r"><span>' + k + '</span><b>' + esc(v || '—') + '</b></div>';
+    /* 存档名两边是同一个字符串：Recents 每行的 data-file === #selected_chat_pole。
+       高亮当前行和「接上 Manage chat files」靠的就是这个字段。 */
+    const chatFile = val('#selected_chat_pole');
     el.innerHTML =
       '<div class="cw-g"><div class="cw-h">演职员</div>'
-      + '<div class="cw-r"><span>角色</span><b>' + txt('#rm_button_selected_ch h2') + '</b></div>'
-      + '<div class="cw-r"><span>用户</span><b>' + txt('#persona_name_field, .persona_name') + '</b></div>'
-      + '<div class="cw-r"><span>模型</span><b>' + txt('#claude-model-label, #model_select option:checked') + '</b></div></div>'
-      + '<div class="cw-g"><div class="cw-h">本场</div>'
-      + '<div class="cw-r"><span>消息数</span><b>' + document.querySelectorAll('#chat .mes').length + '</b></div></div>';
+      + row('角色', val('#character_name_pole'))
+      + row('用户', val('#your_name'))
+      + row('模型', val('#model_claude_select option:checked') || val('#main_api option:checked'))
+      + '</div><div class="cw-g"><div class="cw-h">本场</div>'
+      + row('存档', chatFile)
+      + row('消息数', document.querySelectorAll('#chat .mes').length)
+      + '</div>';
+    document.querySelectorAll('.recentChat').forEach(r => {
+      r.classList.toggle('is-current', !!chatFile && r.dataset.file === chatFile);
+    });
   }
+
 
   const LAYOUTS = [
     { value: 'auto', label: '自动（跨 700px 自动切换）' },
@@ -7645,6 +7671,10 @@ if (CLAUDE_ENABLED) {
 
           <label for="claude-web-layout" style="margin-top:8px">布局</label>
           <select id="claude-web-layout" class="text_pole"></select>
+
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px">
+            <input type="checkbox" id="claude-web-clawd"> 显示 Clawd
+          </label>
 
           <label for="claude-web-structure" style="margin-top:8px">结构</label>
           <select id="claude-web-structure" class="text_pole"></select>
@@ -7977,6 +8007,9 @@ if (CLAUDE_ENABLED) {
 
     select.addEventListener('change', () => {
       const preset = api.activateFamily(select.value);
+      /* 排版规则传不进预设（预设只能写变量），所以风格同时切一个属性，
+         让 styles 里的 Are.na 排版模块生效。见 CSS 的「皮肤层」那段。 */
+      document.documentElement.dataset.claudeSkin = select.value === 'arena' ? 'arena' : 'classic';
       /* 换风格会换掉自定义的取值起点，取色器要跟着显示新起点的颜色。 */
       syncSwatches();
       hint.textContent = preset ? `已切到「${preset.name}」。` : '切换失败。';
@@ -8194,6 +8227,13 @@ if (CLAUDE_ENABLED) {
       if (autoSelect.value === 'time') syncAutomaticTheme();
     }, 30000);
     syncAutomaticTheme();
+
+    const clawdBox = panel.querySelector('#claude-web-clawd');
+    clawdBox.checked = read('clawd', ['on', 'off'], 'on') !== 'off';
+    clawdBox.addEventListener('change', () => {
+      if (!write('clawd', clawdBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeClawd = clawdBox.checked ? 'on' : 'off';
+    });
 
     const structureSelect = panel.querySelector('#claude-web-structure');
     fillSelect(structureSelect, STRUCTURES, read('structure', STRUCTURE_VALUES, 'rail'));
