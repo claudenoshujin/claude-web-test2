@@ -5479,29 +5479,7 @@ html[data-claude-font="custom"] {
     padding:18px 18px 8px !important; margin:0 !important;
     border-bottom:1px solid var(--cl-line) !important;
   }
-  /* Linear 的两行式行：加粗标题 + 灰色副文 */
-  html[data-claude-structure="linear"] .clawd-rail-recents .recentChat{
-    position:relative !important;
-    width:100% !important; height:auto !important;
-    padding:11px 18px !important; margin:0 !important;
-    grid-template-columns:1fr !important; column-gap:0 !important;
-    border-bottom:1px solid var(--cl-line) !important;
-  }
-  html[data-claude-structure="linear"] .clawd-rail-recents .recentChat > .avatar{ display:none !important; }
-  html[data-claude-structure="linear"] .clawd-rail-recents .recentChat > .recentChatInfo{
-    grid-column:1 / -1 !important; width:100% !important;
-  }
-  html[data-claude-structure="linear"] .clawd-rail-recents .chatNameContainer{ display:block !important; width:100% !important; }
-  html[data-claude-structure="linear"] .clawd-rail-recents .chatName{
-    font-weight:700 !important; color:var(--cl-ink) !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-  html[data-claude-structure="linear"] .clawd-rail-recents .chatDate{
-    display:block !important; margin-top:3px !important; color:var(--cl-muted) !important;
-  }
-  html[data-claude-structure="linear"] .clawd-rail-recents .chatActions{
-    position:absolute !important; right:14px !important; top:9px !important;
-  }
+  /* 列表行的长相已移到皮肤层（Are.na 那份），结构层只留几何。 */
 
   /* ---- 对话流让位 ---- */
   html[data-claude-structure="linear"] #chat{
@@ -5657,4 +5635,72 @@ html[data-claude-clawd="off"] .clawd-signoff-button,
 html[data-claude-clawd="off"] [class*="clawd-idle"],
 html[data-claude-clawd="off"] [class*="clawd-look"]{
   display:none !important; box-shadow:none !important;
+}
+
+
+/* ===== Are.na 皮 · 导航栏与会话列表 =====
+ *
+ * 职责划分（lulu 定的）：**结构轴只管骨架**（几栏、多宽、谁在哪），
+ * **皮管长相**（导航项、列表行、输入框、消息长什么样）。
+ * 所以下面这些规则挂在 skin 上，不挂在 structure 上 ——
+ * 挂错层的话，「官网风格 + Linear 结构」会拿到 Are.na 的长相，混搭就废了。
+ *
+ * 之前的错误：Linear 结构层里写死了 .recentChat 的两行式和 .avatar{display:none}，
+ * 等于结构层替皮做了决定，而且头像不跟总开关走 —— 开了开关列表里依然没有。
+ */
+html[data-claude-skin="arena"] .clawd-rail-brand{
+  font-size:var(--aq-s) !important; font-weight:700 !important;
+  text-transform:uppercase !important; letter-spacing:normal !important;
+  font-family:var(--cl-sans) !important; color:var(--cl-ink) !important;
+  padding:0 0 18px !important;
+}
+html[data-claude-skin="arena"] #top-settings-holder .drawer-icon{ display:none !important; }
+html[data-claude-skin="arena"] #top-settings-holder .drawer-toggle{
+  padding:5px 0 !important; gap:0 !important;
+  background:none !important; border-radius:0 !important; box-shadow:none !important;
+}
+html[data-claude-skin="arena"] .clawd-rail-label{
+  font-size:var(--aq-s) !important; font-weight:400 !important; line-height:1.35 !important;
+  color:var(--cl-muted) !important; letter-spacing:normal !important;
+}
+html[data-claude-skin="arena"] .drawer-toggle:hover .clawd-rail-label{ color:var(--cl-ink) !important; }
+
+html[data-claude-skin="arena"] .clawd-rail-recents-label{
+  font-size:var(--aq-s) !important; font-weight:400 !important;
+  color:var(--cl-muted) !important; letter-spacing:normal !important;
+}
+html[data-claude-skin="arena"] .recentChat{
+  grid-template-columns:1fr !important; column-gap:0 !important;
+  padding:11px 18px !important;
+  border-bottom:1px solid var(--cl-line) !important;
+  border-radius:0 !important; background:none !important;
+}
+/* 头像跟总开关走，不再由结构层写死 */
+html[data-claude-skin="arena"] .recentChat > .avatar{
+  grid-column:1 !important; width:22px !important; height:22px !important; margin:0 0 5px !important;
+}
+html[data-claude-skin="arena"] .recentChat > .avatar img{
+  width:22px !important; height:22px !important; border-radius:0 !important;
+}
+html[data-claude-avatars="off"] .recentChat > .avatar{ display:none !important; }
+html[data-claude-skin="arena"] .recentChat > .recentChatInfo{ grid-column:1 !important; width:100% !important; }
+html[data-claude-skin="arena"] .recentChat .chatName{
+  font-size:var(--aq-s) !important; font-weight:700 !important; color:var(--cl-ink) !important;
+  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+}
+html[data-claude-skin="arena"] .recentChat .chatDate{
+  display:block !important; margin-top:3px !important;
+  font-size:var(--aq-s) !important; color:var(--cl-muted) !important;
+}
+/* 当前对话：一条 accent 细标，不用底色（Are.na 不靠面积区分） */
+html[data-claude-skin="arena"] .recentChat.is-current{
+  background:none !important; box-shadow:inset 2px 0 0 var(--cl-accent) !important;
+}
+html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !important; }
+
+/* Linear 下抽屉不该盖住会话列表 —— 它是常驻列，不是可被覆盖的临时面板 */
+@media (min-width:1100px){
+  html[data-claude-structure="linear"] #top-settings-holder .drawer-content{
+    left:510px !important; width:auto !important; right:248px !important;
+  }
 }
