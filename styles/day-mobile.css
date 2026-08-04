@@ -6218,7 +6218,15 @@ html[data-claude-skin="arena"] #chat .mesAvatarWrapper{
   width:auto !important; min-width:0 !important; text-align:right !important;
   font-size:var(--aq-s) !important; line-height:1.5 !important; color:var(--cl-muted) !important;
 }
-html[data-claude-skin="arena"] #chat .mesAvatarWrapper .avatar{ display:none !important; }
+/* 头像是独立开关，**默认开**。Are.na 皮不再强制拿掉 ——
+   三轨排版里头像和左边注可以共存，头像在上、序号时间在下。 */
+html[data-claude-avatars="off"] #chat .mesAvatarWrapper .avatar{ display:none !important; }
+html[data-claude-skin="arena"] #chat .mesAvatarWrapper .avatar{
+  margin:0 0 6px auto !important; width:28px !important; height:28px !important;
+}
+html[data-claude-skin="arena"] #chat .mesAvatarWrapper .avatar img{
+  width:28px !important; height:28px !important; border-radius:0 !important;
+}
 html[data-claude-skin="arena"] #chat .mesIDDisplay,
 html[data-claude-skin="arena"] #chat .mes_timer,
 html[data-claude-skin="arena"] #chat .tokenCounterDisplay{

@@ -196,6 +196,7 @@ const CLAUDE_FONT = claudeReadSetting('font', ['follow','songti','heiti','system
 document.documentElement.dataset.claudeFont = CLAUDE_FONT;
 document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');
 document.documentElement.dataset.claudeClawd = claudeReadSetting('clawd', ['on','off'], 'on');
+document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['on','off'], 'on');
 try {
   const fam = window.localStorage.getItem('claude-web:preset') || '';
   document.documentElement.dataset.claudeSkin = /arena/.test(fam) ? 'arena' : 'classic';
@@ -293,7 +294,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.50-arena-skin-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.51-context-api-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -7373,14 +7374,47 @@ if (CLAUDE_ENABLED) {
   const STRUCTURE_VALUES = STRUCTURES.map(s => s.value);
 
   /* 第四列的节点。CSS 只负责排版，DOM 得有人建 ——
-     酒馆本身没有任何「属性栏」概念，没有现成节点可以借。
-     内容先接能直接读到的三项；token / 消息数要挂 ST 事件，留到下一版。 */
-  /* 第四列的节点。CSS 只负责排版，DOM 得有人建 ——
      酒馆本身没有「属性栏」概念，没有现成节点可借。
 
-     下面四个选择器是在真实酒馆里逐个试出来的，不是猜的。
-     上一版猜的 #rm_button_selected_ch h2 / #persona_name_field /
-     #claude-model-label 三个里两个读不到，右栏全是「—」。 */
+     **全部走 SillyTavern.getContext()，不再扒 DOM。**
+     之前扒 DOM 抓错过一次：#model_claude_select 给的是 claude_model
+     （Claude 直连那一栏的设置），而当前 chat_completion_source 是 custom，
+     真实模型在 custom_model 里 —— 于是右栏显示 sonnet-4-5，实际跑的是 opus-5。
+     DOM 上那个下拉只是「某一种接入方式的设置项」，不是「当前用的模型」。
+
+     定义（按 lulu 的口径）：
+       当前幕次 = 回合数 = 一问一回 = 用户消息条数
+       消息数   = 总条数（含 AI、含用户）
+       开演/最近 = chat[0] / chat[last] 的 send_date
+   */
+  function readSession() {
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return null;
+    const chat = ctx.chat || [];
+    const ccs = ctx.chatCompletionSettings || {};
+    /* 模型：先看当前用的是哪个接入源，再去取那个源自己的 model 字段。 */
+    const src = ccs.chat_completion_source;
+    const model = (src && ccs[src + '_model']) || ccs[(ctx.mainApi || '') + '_model'] || src || ctx.mainApi || '';
+    const turns = chat.filter(m => m.is_user).length;
+    return {
+      角色: ctx.characters?.[ctx.characterId]?.name || ctx.name2 || '',
+      用户: ctx.name1 || '',
+      模型: model,
+      存档: ctx.getCurrentChatId?.() || '',
+      幕次: turns,
+      消息数: chat.length,
+      开演: chat[0]?.send_date || '',
+      最近: chat[chat.length - 1]?.send_date || '',
+    };
+  }
+
+  /* send_date 是 "August 4, 2026 10:33am" 这种长串，右栏放不下，只取时刻。 */
+  function shortTime(d) {
+    if (!d) return '';
+    const m = String(d).match(/(\d{1,2}:\d{2})\s*([ap]m)?/i);
+    return m ? (m[1] + (m[2] ? m[2].toLowerCase() : '')) : String(d).slice(-8);
+  }
+
   function ensureAside() {
     if (document.documentElement.dataset.claudeStructure !== 'linear') return;
     let el = document.getElementById('clawd-aside');
@@ -7389,29 +7423,37 @@ if (CLAUDE_ENABLED) {
       el.id = 'clawd-aside';
       document.body.appendChild(el);
     }
-    const val = sel => {
-      const e = document.querySelector(sel);
-      if (!e) return '';
-      return ((e.value !== undefined && e.value !== null ? e.value : e.textContent) || '').trim();
-    };
-    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const row = (k, v) => '<div class="cw-r"><span>' + k + '</span><b>' + esc(v || '—') + '</b></div>';
-    /* 存档名两边是同一个字符串：Recents 每行的 data-file === #selected_chat_pole。
-       高亮当前行和「接上 Manage chat files」靠的就是这个字段。 */
-    const chatFile = val('#selected_chat_pole');
+    const s = readSession();
+    if (!s) { el.innerHTML = '<div class="cw-g"><div class="cw-h">演职员</div></div>'; return; }
+    const esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const row = (k, v) => '<div class="cw-r"><span>' + k + '</span><b>' + (esc(v) || '—') + '</b></div>';
     el.innerHTML =
       '<div class="cw-g"><div class="cw-h">演职员</div>'
-      + row('角色', val('#character_name_pole'))
-      + row('用户', val('#your_name'))
-      + row('模型', val('#model_claude_select option:checked') || val('#main_api option:checked'))
+      + row('角色', s.角色) + row('用户', s.用户) + row('模型', s.模型)
       + '</div><div class="cw-g"><div class="cw-h">本场</div>'
-      + row('存档', chatFile)
-      + row('消息数', document.querySelectorAll('#chat .mes').length)
+      + row('回合', s.幕次) + row('消息数', s.消息数)
+      + row('开演', shortTime(s.开演)) + row('最近', shortTime(s.最近))
+      + row('存档', s.存档)
       + '</div>';
+    /* Recents 每行的 data-file 和 getCurrentChatId() 是同一个字符串，
+       高亮当前行、以及接 Manage chat files 都靠它。 */
     document.querySelectorAll('.recentChat').forEach(r => {
-      r.classList.toggle('is-current', !!chatFile && r.dataset.file === chatFile);
+      r.classList.toggle('is-current', !!s.存档 && r.dataset.file === s.存档);
     });
   }
+
+  /* 挂 ST 事件，切对话/收发消息时右栏跟着变。事件名取不到就退回轮询。 */
+  function watchSession() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const et = ctx?.eventSource, types = ctx?.eventTypes || ctx?.event_types;
+    if (et && types) {
+      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_RECEIVED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'CHARACTER_MESSAGE_RENDERED']
+        .forEach(k => { if (types[k]) et.on(types[k], ensureAside); });
+    } else {
+      window.setInterval(ensureAside, 2000);
+    }
+  }
+
 
 
   const LAYOUTS = [
@@ -7674,6 +7716,9 @@ if (CLAUDE_ENABLED) {
 
           <label style="display:flex;align-items:center;gap:6px;margin-top:8px">
             <input type="checkbox" id="claude-web-clawd"> 显示 Clawd
+          </label>
+          <label style="display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="claude-web-avatars"> 显示头像
           </label>
 
           <label for="claude-web-structure" style="margin-top:8px">结构</label>
@@ -8235,6 +8280,13 @@ if (CLAUDE_ENABLED) {
       document.documentElement.dataset.claudeClawd = clawdBox.checked ? 'on' : 'off';
     });
 
+    const avatarsBox = panel.querySelector('#claude-web-avatars');
+    avatarsBox.checked = read('avatars', ['on', 'off'], 'on') !== 'off';
+    avatarsBox.addEventListener('change', () => {
+      if (!write('avatars', avatarsBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeAvatars = avatarsBox.checked ? 'on' : 'off';
+    });
+
     const structureSelect = panel.querySelector('#claude-web-structure');
     fillSelect(structureSelect, STRUCTURES, read('structure', STRUCTURE_VALUES, 'rail'));
     structureSelect.addEventListener('change', () => {
@@ -8242,6 +8294,7 @@ if (CLAUDE_ENABLED) {
       /* 纯 CSS 切换，不动 DOM，所以也不用重载。 */
       document.documentElement.dataset.claudeStructure = structureSelect.value;
       ensureAside();
+      watchSession();
       hint.textContent = structureSelect.value === 'linear'
         ? '已切到 Linear 四栏。窄于 1100px 会自动退回侧边栏。'
         : '已切回侧边栏。';
