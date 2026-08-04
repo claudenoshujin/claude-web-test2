@@ -5556,54 +5556,75 @@ html[data-claude-font="custom"] {
  *    `body #form_sheld #send_form` 这种链才压得住，单写 #send_form 无效。
  */
 html[data-claude-skin="arena"]{
-  --aq-s:12.5px; --aq-m:16px; --aq-note:78px; --aq-gap:20px;
+  --aq-s:12.5px; --aq-m:16px; --aq-l:28px;
+  --aq-tl:80px; --aq-tr:100px; --aq-gap:24px;
 }
 
-/* ---- 消息：三轨，无气泡无底色 ---- */
+/* ---- 三轨消息：对齐 剧场主题_THE_PLAYBILL.html 的 .line ----
+   左边注 80（头像 / 时间 / swipe）| 台词 1fr | 右边注 100（token）
+
+   两处是踩出来的，别改回去：
+   1. .mesAvatarWrapper 必须 display:contents，否则 tokenCounterDisplay
+      困在左栏里，去不了第三轨。
+   2. 发言人名**不能**用 .ch_name —— 它是 flex 容器，里面还塞着一排按钮，
+      强行摊平成 inline 会把正文一起毁掉（实测正文整块塌掉）。
+      改成 JS 把名字写进 .mes_text 的 data-speaker，用 ::before 渲染，
+      这才是真 run-in，且零 DOM 手术。 */
 html[data-claude-skin="arena"] #chat .mes{
   display:grid !important;
-  grid-template-columns:var(--aq-note) minmax(0,1fr) !important;
-  column-gap:var(--aq-gap) !important;
-  padding:14px 0 !important; margin:0 !important;
+  grid-template-columns:var(--aq-tl) minmax(0,1fr) var(--aq-tr) !important;
+  column-gap:var(--aq-gap) !important; align-items:start !important;
+  padding:9px 0 !important; margin:0 !important;
   border:0 !important; background:none !important; box-shadow:none !important;
 }
-html[data-claude-skin="arena"] #chat .mesAvatarWrapper{
-  grid-column:1 !important; display:block !important;
-  width:auto !important; min-width:0 !important; text-align:right !important;
-  font-size:var(--aq-s) !important; line-height:1.5 !important; color:var(--cl-muted) !important;
-}
-/* 头像是独立开关，**默认开**。Are.na 皮不再强制拿掉 ——
-   三轨排版里头像和左边注可以共存，头像在上、序号时间在下。 */
-html[data-claude-avatars="off"] #chat .mesAvatarWrapper .avatar{ display:none !important; }
+html[data-claude-skin="arena"] #chat .mesAvatarWrapper{ display:contents !important; }
 html[data-claude-skin="arena"] #chat .mesAvatarWrapper .avatar{
-  margin:0 0 6px auto !important; width:28px !important; height:28px !important;
+  grid-column:1 !important; grid-row:1 !important; justify-self:end !important;
+  width:26px !important; height:26px !important; margin:0 !important;
 }
 html[data-claude-skin="arena"] #chat .mesAvatarWrapper .avatar img{
-  width:28px !important; height:28px !important; border-radius:0 !important;
+  width:26px !important; height:26px !important; border-radius:0 !important;
 }
+html[data-claude-avatars="off"] #chat .mesAvatarWrapper .avatar{ display:none !important; }
 html[data-claude-skin="arena"] #chat .mesIDDisplay,
+html[data-claude-skin="arena"] #chat .timestamp,
 html[data-claude-skin="arena"] #chat .mes_timer,
+html[data-claude-skin="arena"] #chat .swipes-counter,
+html[data-claude-skin="arena"] #chat .ch_name{ display:none !important; }
+/* 时间 / swipe 序号：JS 写成 data 属性，伪元素自动成为网格项 */
+html[data-claude-skin="arena"] #chat .mes::before{
+  content:attr(data-time); grid-column:1; grid-row:2; justify-self:end;
+  font-size:var(--aq-s); line-height:1.5; color:var(--cl-muted); white-space:nowrap;
+}
+html[data-claude-skin="arena"] #chat .mes::after{
+  content:attr(data-swipe); grid-column:1; grid-row:3; justify-self:end;
+  font-size:var(--aq-s); line-height:1.4; color:var(--cl-muted); white-space:nowrap;
+}
+html[data-claude-avatars="off"][data-claude-skin="arena"] #chat .mes::before{ grid-row:1 }
+html[data-claude-avatars="off"][data-claude-skin="arena"] #chat .mes::after{ grid-row:2 }
+/* 右边注：token */
 html[data-claude-skin="arena"] #chat .tokenCounterDisplay{
-  display:block !important; opacity:1 !important; margin:0 !important;
-  font-size:var(--aq-s) !important; line-height:1.4 !important; color:var(--cl-muted) !important;
+  grid-column:3 !important; grid-row:1 !important; justify-self:start !important;
+  font-size:var(--aq-s) !important; line-height:1.5 !important;
+  color:var(--cl-muted) !important; margin:0 !important; opacity:1 !important; white-space:nowrap !important;
 }
 html[data-claude-skin="arena"] #chat .mes_block{
-  grid-column:2 !important; margin:0 !important; padding:0 !important; background:none !important;
+  grid-column:2 !important; grid-row:1 / span 20 !important;
+  margin:0 !important; padding:0 !important; background:none !important;
 }
-html[data-claude-skin="arena"] #chat .ch_name{ margin-bottom:6px !important; border:0 !important; }
-html[data-claude-skin="arena"] #chat .ch_name .name_text{
-  font-family:var(--cl-sans) !important; font-size:var(--aq-s) !important;
-  font-weight:700 !important; text-transform:uppercase !important;
-  letter-spacing:normal !important; color:var(--cl-muted) !important;
+/* run-in 发言人名 */
+html[data-claude-skin="arena"] #chat .mes_text::before{
+  content:attr(data-speaker) "：";
+  font-family:var(--cl-sans); font-size:var(--aq-s); font-weight:700;
+  text-transform:uppercase; letter-spacing:normal; color:var(--cl-ink); margin-right:2px;
 }
-html[data-claude-skin="arena"] #chat .mes_text,
-html[data-claude-skin="arena"] #chat .mes[is_user="true"] .mes_text{
-  font-size:var(--aq-m) !important; line-height:1.5 !important; color:var(--cl-ink) !important;
-  border:0 !important; background:none !important; box-shadow:none !important;
+html[data-claude-skin="arena"] #chat .mes_text{
+  display:block !important; font-size:var(--aq-m) !important; line-height:1.5 !important;
+  color:var(--cl-ink) !important; border:0 !important; background:none !important;
   padding:0 !important; border-radius:0 !important;
 }
-html[data-claude-skin="arena"] #chat .mes_text p{ margin:0 0 12px !important; }
-/* 用户与 AI 只靠缩进区分，不左右分列、不加底色 */
+html[data-claude-skin="arena"] #chat .mes_text > p:first-child{ display:inline !important; margin:0 !important; }
+html[data-claude-skin="arena"] #chat .mes_text > p{ margin:0 0 12px !important; }
 html[data-claude-skin="arena"] #chat .mes[is_user="true"] .mes_block{ padding-left:36px !important; }
 
 /* ---- 输入框：去填充去圆角，只留一条上边线 ---- */

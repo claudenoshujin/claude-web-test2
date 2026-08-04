@@ -197,10 +197,11 @@ document.documentElement.dataset.claudeFont = CLAUDE_FONT;
 document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');
 document.documentElement.dataset.claudeClawd = claudeReadSetting('clawd', ['on','off'], 'on');
 document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['on','off'], 'on');
-try {
-  const fam = window.localStorage.getItem('claude-web:preset') || '';
-  document.documentElement.dataset.claudeSkin = /arena/.test(fam) ? 'arena' : 'classic';
-} catch { document.documentElement.dataset.claudeSkin = 'classic'; }
+/* 皮肤属性在设置面板挂载前就得有，否则首帧是旧样式 */
+/* skin 单独存一个键，**不要**从 claude-web:preset 的字符串去猜 ——
+   踩过：用户用「我的配色」时 preset 是 null，刷新后 skin 掉回 classic，
+   于是「明明选了 Are.na 却说没变化」。 */
+document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic','arena'], 'classic');
 try {
   const cf = window.localStorage.getItem('claude-web:fontCustom');
   if (cf) document.documentElement.style.setProperty('--cw-font-custom', cf);
@@ -294,7 +295,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.51-context-api-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.52-three-track-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -7415,6 +7416,30 @@ if (CLAUDE_ENABLED) {
     return m ? (m[1] + (m[2] ? m[2].toLowerCase() : '')) : String(d).slice(-8);
   }
 
+  /* 三轨排版要的三个值：时间、swipe 序号、发言人名。
+     全部从 getContext 的 chat 数组取，写成 data 属性，由 CSS 伪元素渲染。
+
+     为什么不直接用 DOM 里现成的：
+       .timestamp 是 "August 4, 2026 10:33 AM" 全串，CSS 没法截成 10:33；
+       .mes_timer 装的是生成耗时（88.9s），不是时刻；
+       .ch_name 是 flex 容器且内嵌按钮，摊平会毁掉正文。 */
+  function stampMessages() {
+    if (document.documentElement.dataset.claudeSkin !== 'arena') return;
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return;
+    const chat = ctx.chat || [];
+    document.querySelectorAll('#chat .mes').forEach(el => {
+      const m = chat[Number(el.getAttribute('mesid'))];
+      if (!m) return;
+      const t = String(m.send_date || '').match(/(\d{1,2}:\d{2})/);
+      el.dataset.time = t ? t[1] : '';
+      el.dataset.swipe = (m.swipes && m.swipes.length > 1)
+        ? ((m.swipe_id ?? 0) + 1) + '/' + m.swipes.length : '';
+      const body = el.querySelector('.mes_text');
+      if (body) body.dataset.speaker = m.name || '';
+    });
+  }
+
   function ensureAside() {
     if (document.documentElement.dataset.claudeStructure !== 'linear') return;
     let el = document.getElementById('clawd-aside');
@@ -7448,9 +7473,9 @@ if (CLAUDE_ENABLED) {
     const et = ctx?.eventSource, types = ctx?.eventTypes || ctx?.event_types;
     if (et && types) {
       ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_RECEIVED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'CHARACTER_MESSAGE_RENDERED']
-        .forEach(k => { if (types[k]) et.on(types[k], ensureAside); });
+        .forEach(k => { if (types[k]) et.on(types[k], () => { ensureAside(); stampMessages(); }); });
     } else {
-      window.setInterval(ensureAside, 2000);
+      window.setInterval(() => { ensureAside(); stampMessages(); }, 2000);
     }
   }
 
@@ -8054,7 +8079,10 @@ if (CLAUDE_ENABLED) {
       const preset = api.activateFamily(select.value);
       /* 排版规则传不进预设（预设只能写变量），所以风格同时切一个属性，
          让 styles 里的 Are.na 排版模块生效。见 CSS 的「皮肤层」那段。 */
-      document.documentElement.dataset.claudeSkin = select.value === 'arena' ? 'arena' : 'classic';
+      const skin = select.value === 'arena' ? 'arena' : 'classic';
+      document.documentElement.dataset.claudeSkin = skin;
+      write('skin', skin);
+      stampMessages();
       /* 换风格会换掉自定义的取值起点，取色器要跟着显示新起点的颜色。 */
       syncSwatches();
       hint.textContent = preset ? `已切到「${preset.name}」。` : '切换失败。';
