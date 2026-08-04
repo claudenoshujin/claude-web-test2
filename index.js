@@ -280,7 +280,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.46-crab-on-top-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.47-arena-radius-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -352,6 +352,9 @@ if (CLAUDE_ENABLED) {
     '--cw-shadow-dialog', '--cw-shadow-composer', '--cw-shadow-floating',
     '--cw-topbar-surface', '--cw-body-weight', '--cw-color-scheme',
     '--cw-grid-opacity', '--cw-grid-step',
+    /* 形状（2.0.47）。只开倍率和圆形两个键，不开 --cw-radius-8 那一串档位 ——
+       放开档位等于让配色预设去改设计比例，那是版式层的事，不是配色的事。 */
+    '--cw-radius-scale', '--cw-radius-circle',
   ];
 
   const ALLOWED = new Set([...CORE_KEYS, ...EXTRA_KEYS]);
@@ -464,12 +467,105 @@ if (CLAUDE_ENABLED) {
 
      「暖纸」和「墨」本来就是配对写的（暖纸是浅色半、墨是深色半），合成一个
      家族而不是各占一格 —— 各占一格的话每套都缺另一半，切明暗会掉回默认。 */
+  /* Are.na 家族（2.0.47）。九个色全部取自 are.na 截图的实测像素，不是凭印象调的：
+       #ffffff 占页面 79% 面积、正文 #333333、元数据 #696969、
+       细线 #ededed（白底上即 7% 黑）、Sign up 按钮填充 #00075f。
+
+     和其它家族的区别不只是颜色，是**三个形状键**：
+       radius-scale 0   —— Are.na 全站直角，一个圆角都没有
+       shadow 三项 none —— 分隔只靠细线和留白，不靠阴影和面积
+     这两条是这个风格的骨头，去掉就只是「一个浅色配色」了。
+
+     注意 Clawd 那只在这个皮下会不见 —— 它是几十个 box-shadow 点画出来的，
+     阴影归零它就没了。这是有意的：Are.na 的前提就是界面上没有吉祥物。
+     想留着 Clawd 的人用「官网」或「暖纸」。 */
+  const ARENA_LIGHT = {
+    id: 'arena-light',
+    name: 'Are.na · 日间',
+    scheme: 'light',
+    core: {
+      '--cw-paper-0': '#ffffff',
+      '--cw-paper-1': '#ffffff',
+      '--cw-paper-2': '#fafafa',
+      '--cw-paper-3': '#f7f7f7',
+      '--cw-ink-0': '#333333',
+      '--cw-ink-1': '#545454',
+      '--cw-ink-2': '#696969',
+      '--cw-ink-3': '#cfcfcf',
+      '--cw-clay': '#00075f',
+    },
+    extra: {
+      '--cw-line': 'rgba(0,0,0,.07)',
+      '--cw-line-strong': 'rgba(0,0,0,.14)',
+      '--cw-hero': '#000000',
+      '--cw-icon': '#111111',
+      '--cw-clay-soft': '#e6e7ef',
+      '--cw-clay-strong': '#000b7a',
+      '--cw-code-surface': '#f2f2f2',
+      '--cw-code-ink': '#2d2d2d',
+      '--cw-em': '#696969',
+      '--cw-selection': '#c9cce4',
+      '--cw-scrollbar': '#cfcfcf',
+      '--cw-scrollbar-hover': '#a8a8a8',
+      '--cw-shadow-dialog': 'none',
+      '--cw-shadow-composer': 'none',
+      '--cw-shadow-floating': 'none',
+      '--cw-topbar-surface': 'rgba(255,255,255,.98)',
+      '--cw-body-weight': '400',
+      '--cw-color-scheme': 'light',
+      '--cw-radius-scale': '0',
+    },
+  };
+
+  /* Are.na 没有官方夜间版，所以这一半取自 Linear 截图实测：
+       #121314 占 40.6% 面积、选中行 #1b1c1d、分栏线 #252626、副文 #62666d。
+     深底上细线必须走 alpha —— 实色细线在深色背景上会显脏。
+     藏青 #00075f 在深底上不可读，同色相提亮到 #7c88d8。 */
+  const ARENA_DARK = {
+    id: 'arena-dark',
+    name: 'Are.na · 夜间',
+    scheme: 'dark',
+    core: {
+      '--cw-paper-0': '#121314',
+      '--cw-paper-1': '#161718',
+      '--cw-paper-2': '#1b1c1d',
+      '--cw-paper-3': '#232426',
+      '--cw-ink-0': '#f2f3f3',
+      '--cw-ink-1': '#9ca1a8',
+      '--cw-ink-2': '#62666d',
+      '--cw-ink-3': '#3a3d41',
+      '--cw-clay': '#7c88d8',
+    },
+    extra: {
+      '--cw-line': 'rgba(255,255,255,.085)',
+      '--cw-line-strong': 'rgba(255,255,255,.16)',
+      '--cw-hero': '#f2f3f3',
+      '--cw-icon': '#e8e9ea',
+      '--cw-clay-soft': '#242742',
+      '--cw-clay-strong': '#98a2e4',
+      '--cw-code-surface': '#0e0f10',
+      '--cw-code-ink': '#c8cbce',
+      '--cw-em': '#9ca1a8',
+      '--cw-selection': '#2e3559',
+      '--cw-scrollbar': '#3a3d41',
+      '--cw-scrollbar-hover': '#4d5155',
+      '--cw-shadow-dialog': 'none',
+      '--cw-shadow-composer': 'none',
+      '--cw-shadow-floating': 'none',
+      '--cw-topbar-surface': 'rgba(18,19,20,.98)',
+      '--cw-body-weight': '400',
+      '--cw-color-scheme': 'dark',
+      '--cw-radius-scale': '0',
+    },
+  };
+
   const FAMILIES = [
     { id: 'anthropic', name: '官网', light: ANTHROPIC_LIGHT, dark: ANTHROPIC_DARK },
     { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },
+    { id: 'arena', name: 'Are.na', light: ARENA_LIGHT, dark: ARENA_DARK },
   ];
 
-  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK];
+  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK, ARENA_LIGHT, ARENA_DARK];
 
   function familyOf(presetId) {
     return FAMILIES.find(f => f.light.id === presetId || f.dark.id === presetId) ?? FAMILIES[0];

@@ -1,0 +1,5 @@
+/* Versioned entry point: 形状层（圆角走令牌倍率）+ Are.na 配色家族。
+
+   改了 styles/*.css 就必须新建这个文件并改 manifest 的 js 字段，
+   否则 index.js 的 URL 不变，浏览器直接吃缓存，CSS 也跟着冻住。 */
+import './index.js?v=2.0.47';

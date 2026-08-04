@@ -3,9 +3,9 @@
     "loading_order": 100,
     "requires": [],
     "optional": [],
-    "js": "loader-2.0.46.js",
+    "js": "loader-2.0.47.js",
     "author": "lulu",
-    "version": "2.0.46",
+    "version": "2.0.47",
     "homePage": "https://github.com/claudenoshujin/claude-web-test2",
     "auto_update": true
 }
