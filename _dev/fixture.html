@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN"
+      data-claude-skin="playbill"
+      data-claude-structure="linear"
+      data-claude-font="follow"
+      data-claude-clawd="off"
+      data-claude-avatars="on"
+      style="
+        /* ---- Are.na / PLAYBILL 日间预设的解析结果（= derive() ∪ core ∪ extra）。
+               真实运行时由 index.js 写到 documentElement 的 inline style 上，
+               这里是同一份值的静态快照。改预设定义时要同步这里。 ---- */
+        --cw-paper-0:#ffffff; --cw-paper-1:#ffffff; --cw-paper-2:#fafafa; --cw-paper-3:#f7f7f7;
+        --cw-ink-0:#333333; --cw-ink-1:#545454; --cw-ink-2:#696969; --cw-ink-3:#cfcfcf;
+        --cw-clay:#00075f;
+        --cw-line:rgba(0,0,0,.07); --cw-line-strong:rgba(0,0,0,.14);
+        --cw-hero:#000000; --cw-icon:#111111;
+        --cw-clay-soft:#e6e7ef; --cw-clay-strong:#000b7a;
+        --cw-code-surface:#f2f2f2; --cw-code-ink:#2d2d2d;
+        --cw-em:#696969; --cw-selection:#c9cce4;
+        --cw-scrollbar:#cfcfcf; --cw-scrollbar-hover:#a8a8a8;
+        --cw-shadow-dialog:none; --cw-shadow-composer:none; --cw-shadow-floating:none;
+        --cw-topbar-surface:rgba(255,255,255,.98);
+        --cw-body-weight:400; --cw-color-scheme:light;
+        --cw-radius-scale:0;
+        --cw-grid-opacity:.075; --cw-grid-step:34px;
+        --cw-skin-serif:'Hanken Grotesk',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,var(--cl-cjk);
+        --cw-skin-sans:'Hanken Grotesk',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,var(--cl-cjk);
+      ">
+<head>
+<meta charset="UTF-8">
+<title>fixture · claude-web-test</title>
+
+<!-- ============================================================
+     本地验证台。
+
+     用途：把 styles/*.css 挂在一份**照抄真实酒馆 DOM** 的静态骨架上，
+     在浏览器里直接改直接看，不用打包、不用重装扩展、不用等 lulu 截图。
+
+     DOM 来源：真实酒馆的 devtools 快照 + 交接文档 §3.2 / §3.3 的结构记录。
+     凡是 CSS 选择器会命中的属性和类名，这里都要有 —— 少一个 class，
+     就会出现「fixture 里对了、装上去不对」，那样这个台子就白搭了。
+
+     踩过两次，记在这里：
+      · 导航项的 id 必须和真机一致（预设=ai-config-button，API=sys-settings-button，
+        角色卡=rightNavHolder）。id 对不上就落到没有 --clawd-icon 的兜底分支，
+        遮罩失效露出底色 —— 表现是导航里冒出一个黑方块，而真机上根本没有。
+      · .clawd-user-meta 里**只有两行文字**，没有头像。之前塞了个 .avatar>img，
+        没有任何规则约束尺寸，撑成一个 190×290 的大灰块。
+
+     playbill 的导航（.cw-nav）、封面（.cw-cover）、幕次条（.cw-act）
+     在真机上由 index.js 生成。这里是同一份结构的静态复制 ——
+     改 index.js 里的生成逻辑要同步改这里，否则两边会漂开。
+     ============================================================ -->
+<link rel="stylesheet" href="../styles/day-pc.css">
+
+<style>
+  /* fixture 自己的东西，全部带 fx- 前缀，绝不与主题 CSS 同名。
+     酒馆真实环境里 #sheld 是撑满的，这里补上。 */
+  html,body{height:100%;margin:0}
+  #sheld{position:absolute;inset:0;display:flex;flex-direction:column}
+  #chat{flex:1;overflow-y:auto}
+  .fx-toolbar{
+    position:fixed;right:8px;bottom:8px;z-index:99999;
+    display:flex;gap:6px;font:12px/1 monospace;
+  }
+  .fx-toolbar button{padding:5px 8px;border:1px solid #999;background:#fff;color:#111;cursor:pointer}
+</style>
+</head>
+
+<body class="clawd-interactive-ready clawd-has-recents">
+
+<!-- ============ 侧边栏 / 第一、二列 ============ -->
+<div id="top-settings-holder">
+  <div class="clawd-rail-brand">Claude</div>
+
+  <!-- 原生抽屉。playbill 下只藏 .drawer-toggle，面板留着 —— 藏整个 .drawer
+       会把 .drawer-content 一起藏掉，点「预设」就再也打不开。 -->
+  <div id="ai-config-button" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-sliders interactable"></div>
+      <div class="clawd-rail-label">预设</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+  <div id="sys-settings-button" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-plug interactable"></div>
+      <div class="clawd-rail-label">API</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+  <div id="advanced-formatting-button" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-font interactable"></div>
+      <div class="clawd-rail-label">格式化</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+  <div id="WI-SP-button" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-book-atlas interactable"></div>
+      <div class="clawd-rail-label">世界书</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+  <div id="user-settings-button" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-user-cog interactable"></div>
+      <div class="clawd-rail-label">偏好设置</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+  <div id="logo_block" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-panorama interactable"></div>
+      <div class="clawd-rail-label">背景</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+  <div id="extensions-settings-button" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-cubes interactable"></div>
+      <div class="clawd-rail-label">扩展</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+  <div id="rightNavHolder" class="drawer">
+    <div class="drawer-toggle drawer-header">
+      <div class="drawer-icon fa-solid fa-address-card interactable"></div>
+      <div class="clawd-rail-label">角色卡</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
+  </div>
+
+  <!-- .cw-nav 由 JS 插在这里（品牌行之后、会话列表之前） -->
+
+  <div class="clawd-rail-recents">
+    <div class="clawd-rail-recents-label">Recents</div>
+  </div>
+
+  <div class="clawd-user-meta">
+    <div class="clawd-user-name">零</div>
+    <div class="clawd-user-plan">Max plan</div>
+  </div>
+</div>
+
+<!-- ============ 对话区 ============ -->
+<div id="sheld">
+  <div id="sheldheader" class="fa-solid fa-grip drag-grabber"></div>
+  <div id="chat" data-swipe-threshold="60" data-swipe-unit="px" data-swipe-timeout="500" data-show-hidden-reasoning="true"></div>
+
+  <div id="form_sheld">
+    <form id="send_form" class="compact">
+      <div id="leftSendForm">
+        <div id="options_button" class="fa-solid fa-bars interactable" title="选项"></div>
+        <div id="extensionsMenuButton" class="fa-solid fa-wand-magic-sparkles interactable" title="扩展"></div>
+      </div>
+      <textarea id="send_textarea" rows="1" placeholder="写下你的台词……"></textarea>
+      <div id="rightSendForm">
+        <div id="send_but" class="fa-solid fa-paper-plane interactable"></div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<aside id="clawd-aside"></aside>
+
+<div class="fx-toolbar">
+  <button data-fx="skin">skin: playbill</button>
+  <button data-fx="structure">structure: linear</button>
+  <button data-fx="avatars">avatars: on</button>
+  <button data-fx="reload">reload css</button>
+</div>
+
+<script>
+/* ============================================================
+   种子数据 —— 从 剧场主题_THE_PLAYBILL.html 的 SEED 原样搬来，
+   这样 fixture 和参考稿放在一起比对时，字是同一批字，
+   差异只可能来自 CSS，不会来自「内容不一样所以看着不一样」。
+   ============================================================ */
+const SEED = [
+  ["ai","Elias","你把伞放在门口了。滴水的声音一直在往里走。"],
+  ["me","安河","我以为这场雨会停。"],
+  ["ai","Elias","它不会。这座城市里，雨是唯一守时的演员。<em>他拨了拨工作灯，光圈晃了一下。</em>"],
+  ["me","安河","那封信呢。"],
+  ["ai","Elias","还在我口袋里。写完之后我读了六遍，每一遍都少一句。"],
+  ["me","安河","少的是哪一句。"],
+  ["ai","Elias","第一遍少的是称呼。第六遍少的是署名。"],
+  ["me","安河","那还剩什么。"],
+  ["ai","Elias","剩下一段没有人称的句子。听上去像天气预报。"],
+  ["me","安河","念给我听。"],
+  ["ai","Elias","「今晚有雨，明日转晴，风向不定。」<em>他把纸折回口袋。</em>你看，说出口就没什么了。"],
+  ["me","安河","你不是在写天气。"],
+  ["ai","Elias","我知道。但我只学会了用这种语气讲重要的事。"],
+  ["me","安河","那我们从别的地方开始。你为什么留在这个剧场。"],
+  ["ai","Elias","因为它还没塌。这不是玩笑——三年前隔壁那座塌了，观众席上一个人也没有，所以没上新闻。"],
+  ["me","安河","于是你替它写讣告。"],
+  ["ai","Elias","我替它排了一出戏。没人来看，但灯每晚都亮。"],
+  ["me","安河","那是给谁看的。"],
+  ["ai","Elias","给还在路上的人。<em>停顿。</em>也给已经不来的人。"],
+  ["me","安河","我今天来了。"],
+  ["ai","Elias","我知道。所以今晚的灯比平时亮一档。"],
+  ["me","安河","别把这句写进信里，太像台词了。"],
+  ["ai","Elias","这本来就是台词。我们站在舞台上。"],
+  ["me","安河","那我的呢。"],
+  ["ai","Elias","你的还没写。这一幕留白，等你自己填。"]
+];
+
+const CHATS = [
+  ["雨夜的第二封信","14:32"], ["灯塔看守人","昨天"], ["八月三日的排练","2 天"],
+  ["没有观众的返场","5 天"], ["南站，末班车之后","1 周"], ["给缺席者的独白","3 周"],
+];
+const CHARS = ["Elias","守夜人","无名氏"];
+
+const AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23c9c9c4'/%3E%3C/svg%3E";
+const START = new Date(2026, 7, 4, 14, 2);
+
+/* ---- 这三样必须和 index.js 里的实现保持一致 ---- */
+const PB_ACT_EVERY = 4;
+const PB_LINES = {
+  dawn:  ['天快亮了。清场的人还没来。','晨光从侧幕漏进来，落在没收的道具上。','第一班车的声音穿过后台。','灯还亮着，但已经不需要了。'],
+  day:   ['白天的剧场，谁都看得见灰。','排练厅。窗开着，外面有人在搬东西。','空场。只有你和回声。','午后。幕布上有一道晒出来的印子。'],
+  dusk:  ['开演前二十分钟。走廊里有脚步声。','天色刚暗下来，灯正在预热。','检票的声音停了。','侧幕的风比刚才凉。'],
+  night: ['雨。旧剧场后台，只有一盏工作灯。','深夜。观众席空着，灯只亮了一半。','这个点还留在剧场里的，都不是来看戏的。','落幕之后。没有人起身。'],
+};
+function pbSlot(d){const h=(d||new Date()).getHours();
+  return h<6?'night':h<11?'dawn':h<17?'day':h<22?'dusk':'night';}
+function pbLine(seed,when){const p=PB_LINES[pbSlot(when)];return p[Math.abs(seed)%p.length];}
+function roman(n){const t=[[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];let s="";
+  for(const [v,r] of t){while(n>=v){s+=r;n-=v;}}return s||"I";}
+
+/* ---- 会话列表 ---- */
+const recents = document.querySelector(".clawd-rail-recents");
+CHATS.forEach(([name, date], i) => {
+  const row = document.createElement("div");
+  row.className = "recentChat" + (i === 0 ? " is-current" : "");
+  row.dataset.file = name; row.dataset.avatar = ""; row.dataset.group = "";
+  row.innerHTML =
+    '<div class="avatar"><img src="' + AVATAR + '"></div>'
+  + '<div class="recentChatInfo">'
+  +   '<div class="chatNameContainer"><div class="chatName">' + name + '</div></div>'
+  +   '<small class="chatDate">' + date + '</small>'
+  +   '<div class="chatActions"></div>'
+  + '</div>';
+  recents.appendChild(row);
+});
+
+/* ---- 一条消息的真实 DOM。**照抄，不要简化。** ---- */
+function buildMes(i, [who, name, text]) {
+  const isUser = who === "me";
+  const t = new Date(START.getTime() + i * 97000);
+  const hhmm = String(t.getHours()).padStart(2,"0") + ":" + String(t.getMinutes()).padStart(2,"0");
+  const stamp = "August 4, 2026 " + hhmm + (t.getHours() >= 12 ? " PM" : " AM");
+  const tok = Math.round(text.replace(/<[^>]+>/g,"").length * 1.6) + 12;
+  const swipes = isUser ? 0 : 2 + (i % 3);
+  const cur = isUser ? 0 : 1 + (i % swipes);
+
+  const el = document.createElement("div");
+  el.className = "mes";
+  el.setAttribute("mesid", String(i));
+  el.setAttribute("ch_name", name);
+  el.setAttribute("is_user", String(isUser));
+  el.setAttribute("is_system", "false");
+  el.setAttribute("swipeid", "0");
+  el.setAttribute("force_avatar", "true");
+  el.setAttribute("timestamp", stamp);
+  el.dataset.time = hhmm;                                  /* stampMessages() 写的 */
+  el.dataset.swipe = swipes > 1 ? (cur + "/" + swipes) : "";
+
+  el.innerHTML =
+    '<div class="for_checkbox"></div>'
+  + '<input type="checkbox" class="del_checkbox">'
+  + '<div class="mesAvatarWrapper">'
+  +   '<div class="avatar"><img src="' + AVATAR + '"></div>'
+  +   '<div class="mesIDDisplay">#' + i + '</div>'
+  +   '<div class="mes_timer">' + (isUser ? "" : "8.4s") + '</div>'
+  +   '<div class="tokenCounterDisplay">' + tok + ' tok</div>'
+  + '</div>'
+  + '<div class="swipe_left fa-solid fa-chevron-left interactable" style="display:none;" tabindex="0" role="button"></div>'
+  + '<div class="mes_block">'
+  +   '<div class="ch_name flex-container justifySpaceBetween alignItemsBaseline">'
+  +     '<span class="name_text">' + name + '</span>'
+  +     '<div class="mes_buttons">'
+  +       '<div class="mes_edit fa-solid fa-pencil interactable" tabindex="0"></div>'
+  +       '<div class="mes_hide fa-solid fa-eye-slash interactable" tabindex="0"></div>'
+  +     '</div>'
+  +     '<span class="timestamp">' + stamp + '</span>'
+  +   '</div>'
+  +   '<div class="mes_text" data-speaker="' + name + '"><p>' + text + '</p></div>'
+  + '</div>'
+  + '<div class="flex-container swipeRightBlock flexFlowColumn flexNoGap"></div>';
+  return el;
+}
+
+const chat = document.getElementById("chat");
+SEED.forEach((m, i) => chat.appendChild(buildMes(i, m)));
+
+/* ---- 幕次分隔条。和 index.js 的 markActs() 是同一套规则 ---- */
+(function markActs(){
+  let turns = 0, act = 0;
+  [...chat.querySelectorAll(":scope > .mes")].forEach(mes => {
+    const need = Math.floor(turns / PB_ACT_EVERY) + 1;
+    if (need !== act) {
+      act = need;
+      const when = mes.dataset.time ? new Date("2000/01/01 " + mes.dataset.time) : null;
+      const note = pbLine(act, when);
+      const el = document.createElement("div");
+      el.className = "cw-act";
+      el.dataset.actNo = String(act); el.dataset.act = roman(act); el.dataset.note = note;
+      el.innerHTML = '<div class="cw-act-bar"><span class="cw-act-no">Act ' + roman(act)
+        + '</span></div><div class="cw-act-note">' + note + '</div>';
+      chat.insertBefore(el, mes);
+    }
+    if (mes.getAttribute("is_user") === "true") turns++;
+  });
+})();
+
+/* ---- 节目单封面 ---- */
+(function cover(){
+  const turns = SEED.filter(m => m[0] === "me").length;
+  const acts = Math.max(1, Math.ceil(turns / PB_ACT_EVERY));
+  const row = (k,v) => '<div class="cw-r"><span>'+k+'</span><b>'+v+'</b></div>';
+  const el = document.createElement("section");
+  el.className = "cw-cover";
+  el.innerHTML =
+    '<div class="cw-kicker">Tonight&rsquo;s Programme</div>'
+  + '<div class="cw-mark"></div>'
+  + '<h1 class="cw-cover-title">雨夜的第二封信</h1>'
+  + '<p class="cw-cover-sub">' + pbLine(turns, START) + '</p>'
+  + '<div class="cw-cover-grid">'
+  +   '<dl><div class="cw-h">演出</div>'
+  +     row('角色','Elias') + row('对手戏','安河') + row('幕数', roman(acts))
+  +   '</dl>'
+  +   '<dl><div class="cw-h">场务</div>'
+  +     row('模型','claude-opus-5') + row('开演','14:02') + row('剧场','SillyTavern')
+  +   '</dl>'
+  + '</div>'
+  + '<p class="cw-cover-foot">向下滚动开演</p>';
+  chat.insertBefore(el, chat.firstElementChild);
+})();
+
+/* ---- 演职员栏。和 index.js 的 ensureAside() 是同一份 HTML ---- */
+document.getElementById("clawd-aside").innerHTML =
+  '<div class="cw-g"><div class="cw-h">演职员</div>'
++ '<div class="cw-r"><span>角色</span><b>Elias</b></div>'
++ '<div class="cw-r"><span>用户</span><b>安河</b></div>'
++ '<div class="cw-r"><span>模型</span><b>claude-opus-5</b></div>'
++ '</div><div class="cw-g"><div class="cw-h">本场</div>'
++ '<div class="cw-r"><span>回合</span><b>' + SEED.filter(m=>m[0]==="me").length + '</b></div>'
++ '<div class="cw-r"><span>消息数</span><b>' + SEED.length + '</b></div>'
++ '<div class="cw-r"><span>开演</span><b>14:02</b></div>'
++ '<div class="cw-r"><span>最近</span><b>14:41</b></div>'
++ '<div class="cw-r"><span>存档</span><b>雨夜的第二封信</b></div>'
++ '</div>'
++ '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">历史对话</div>'
++ CHATS.map((c,i) => '<button type="button" class="cw-chat-row' + (i===0?' is-current':'')
+    + '"><span>'+c[0]+'</span><em>'+c[1]+'</em></button>').join('')
++ '</div>';
+
+/* ---- 导航。和 index.js 的 buildNav() 是同一套结构 ---- */
+(function buildNav(){
+  const rail = document.getElementById("top-settings-holder");
+  const nav = document.createElement("nav");
+  nav.className = "cw-nav";
+  const item = (label, cur) =>
+    '<button type="button" class="cw-nav-item"' + (cur ? ' aria-current="true"' : '')
+    + '><i class="cw-dot"></i><span>' + label + '</span></button>';
+  const group = (title, body, extra) =>
+    '<div class="cw-nav-group ' + (extra||'') + '">'
+    + '<button type="button" class="cw-nav-head"><i class="cw-tri"></i>' + title + '</button>'
+    + '<div class="cw-nav-body">' + body + '</div></div>';
+
+  nav.innerHTML =
+    group('剧目', item('上演中', true) + item('本角色'))
+  + group('角色', CHARS.map((c,i) => item(c, i===0)).join(''))
+  + group('剧场',
+      item('幕次索引')
+      + '<div class="cw-act-index">'
+      + [...chat.querySelectorAll(":scope > .cw-act")].map(a =>
+          '<button type="button" class="cw-act-link"><span>Act ' + a.dataset.act
+          + '</span><em>' + a.dataset.note + '</em></button>').join('')
+      + '</div>'
+      + item('预设')
+      + group('设置',
+          ['API','格式化','世界书','背景','扩展','偏好设置'].map(x => item(x)).join(''),
+          'cw-nav-sub is-closed'));
+
+  rail.insertBefore(nav, rail.querySelector(".clawd-rail-recents"));
+
+  nav.querySelectorAll(".cw-nav-head").forEach(h => {
+    h.addEventListener("click", () => h.parentElement.classList.toggle("is-closed"));
+  });
+  nav.querySelectorAll(".cw-nav-item").forEach(b => {
+    if (b.textContent.trim() === "幕次索引") {
+      b.addEventListener("click", () => nav.classList.toggle("cw-acts-open"));
+    }
+  });
+})();
+
+/* ---- 三个轴的现场切换 ---- */
+const CYCLE = {
+  skin:      ["playbill", "arena", "classic"],
+  structure: ["linear", "rail"],
+  avatars:   ["on", "off"],
+};
+document.querySelector(".fx-toolbar").addEventListener("click", e => {
+  const key = e.target.dataset.fx;
+  if (!key) return;
+  if (key === "reload") {
+    const link = document.querySelector('link[rel=stylesheet]');
+    link.href = link.href.split("?")[0] + "?t=" + Date.now();
+    return;
+  }
+  const attr = "claude" + key[0].toUpperCase() + key.slice(1);
+  const list = CYCLE[key];
+  const next = list[(list.indexOf(document.documentElement.dataset[attr]) + 1) % list.length];
+  document.documentElement.dataset[attr] = next;
+  e.target.textContent = key + ": " + next;
+});
+</script>
+</body>
+</html>

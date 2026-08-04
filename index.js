@@ -201,7 +201,12 @@ document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['
 /* skin 单独存一个键，**不要**从 claude-web:preset 的字符串去猜 ——
    踩过：用户用「我的配色」时 preset 是 null，刷新后 skin 掉回 classic，
    于是「明明选了 Are.na 却说没变化」。 */
-document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic','arena'], 'classic');
+document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic','arena','playbill'], 'classic');
+/* playbill 是整套主题，不参与"皮 x 结构"的自由组合：选它就等于同时选了四栏。
+   这里在首帧就把结构钉死，避免"选了剧场但结构还停在侧边栏"闪一下。 */
+if (document.documentElement.dataset.claudeSkin === 'playbill') {
+  document.documentElement.dataset.claudeStructure = 'linear';
+}
 try {
   const cf = window.localStorage.getItem('claude-web:fontCustom');
   if (cf) document.documentElement.style.setProperty('--cw-font-custom', cf);
@@ -295,7 +300,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.53-skin-owns-look-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.54-playbill-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -585,13 +590,23 @@ if (CLAUDE_ENABLED) {
     },
   };
 
+  /* THE PLAYBILL 的取色和 Are.na 是同一组 —— 参考稿 剧场主题_THE_PLAYBILL.html
+     的日间色本来就是 Are.na 截图实测（白底 / #333 正文 / #696969 元数据 /
+     #00075F 藏青），夜间同样是 Linear 实测那一组。
+     所以这里只换 id 和名字，不重新调色：调出第二组几乎一样的颜色，
+     以后改一处忘另一处，两个主题会慢慢漂开。 */
+  const PLAYBILL_LIGHT = { ...ARENA_LIGHT, id: 'playbill-light', name: 'THE PLAYBILL · 日间' };
+  const PLAYBILL_DARK  = { ...ARENA_DARK,  id: 'playbill-dark',  name: 'THE PLAYBILL · 夜间' };
+
   const FAMILIES = [
     { id: 'anthropic', name: '官网', light: ANTHROPIC_LIGHT, dark: ANTHROPIC_DARK },
     { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },
     { id: 'arena', name: 'Are.na', light: ARENA_LIGHT, dark: ARENA_DARK },
+    { id: 'playbill', name: 'THE PLAYBILL（剧场 · 整套）', light: PLAYBILL_LIGHT, dark: PLAYBILL_DARK },
   ];
 
-  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK, ARENA_LIGHT, ARENA_DARK];
+  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK, ARENA_LIGHT, ARENA_DARK,
+                    PLAYBILL_LIGHT, PLAYBILL_DARK];
 
   function familyOf(presetId) {
     return FAMILIES.find(f => f.light.id === presetId || f.dark.id === presetId) ?? FAMILIES[0];
@@ -7423,8 +7438,374 @@ if (CLAUDE_ENABLED) {
        .timestamp 是 "August 4, 2026 10:33 AM" 全串，CSS 没法截成 10:33；
        .mes_timer 装的是生成耗时（88.9s），不是时刻；
        .ch_name 是 flex 容器且内嵌按钮，摊平会毁掉正文。 */
+  /* 需要三轨排版的皮。孤零零一个字符串散在函数里，加第三种皮时必然漏一处 —— 所以集中在这里。 */
+  const STAMPED_SKINS = new Set(['arena', 'playbill']);
+
+  /* playbill = 整套主题，选中它时结构轴被它接管，不再可选。
+     不锁的话会出现"剧场皮 + 侧边栏结构"这种组合 —— 那正是这次要终结的缝合体：
+     四栏是这套设计的一部分，不是可以拆下来的配件。 */
+  function syncPlaybillLock() {
+    const on = document.documentElement.dataset.claudeSkin === 'playbill';
+    if (on) {
+      document.documentElement.dataset.claudeStructure = 'linear';
+      write('structure', 'linear');
+    }
+    const sel = document.querySelector('#claude-web-structure');
+    if (sel) {
+      if (on) sel.value = 'linear';
+      sel.disabled = on;
+      sel.title = on ? 'THE PLAYBILL 自带四栏结构，不单独选。' : '';
+    }
+  }
+
+  /* ==========================================================================
+     THE PLAYBILL 的 DOM 构造
+
+     为什么这一整块必须存在：
+     参考稿的导航是「剧目 / 角色 / 剧场」三组，酒馆的导航是八个设置抽屉平铺。
+     这两者不是同一个东西的两种长相，是**两套信息架构**。给酒馆那八个抽屉
+     换字体换图标，读出来仍然是设置菜单，不是剧场。所以这里不改抽屉的长相，
+     而是另起一套导航，把抽屉降级成「剧场 > 设置」下面的一层。
+
+     一条纪律：**不搬动酒馆的 DOM 节点。**
+     抽屉上挂着酒馆自己的事件绑定和开合状态，移动节点会把它们弄坏。
+     需要打开某个抽屉时，程序化点它原来的 .drawer-toggle —— 走酒馆自己的路径。
+     ========================================================================== */
+
+  const PB_ACT_EVERY = 4;      /* 每 4 回合一幕 */
+
+  /* 场景提示句。按时段分组，和参考稿里"雨。旧剧场后台，只有一盏工作灯。"是
+     同一类东西 —— 氛围，不描述剧情。不描述剧情是有意的：它不知道你在写什么，
+     一旦装作知道就会说错。
+
+     取句用幕号取模，不用 Math.random()：随机的话每次重绘都换一句，滚动时
+     文字会跳，看起来像 bug。同一幕永远是同一句。 */
+  const PB_LINES = {
+    dawn:  ['天快亮了。清场的人还没来。',
+            '晨光从侧幕漏进来，落在没收的道具上。',
+            '第一班车的声音穿过后台。',
+            '灯还亮着，但已经不需要了。'],
+    day:   ['白天的剧场，谁都看得见灰。',
+            '排练厅。窗开着，外面有人在搬东西。',
+            '空场。只有你和回声。',
+            '午后。幕布上有一道晒出来的印子。'],
+    dusk:  ['开演前二十分钟。走廊里有脚步声。',
+            '天色刚暗下来，灯正在预热。',
+            '检票的声音停了。',
+            '侧幕的风比刚才凉。'],
+    night: ['雨。旧剧场后台，只有一盏工作灯。',
+            '深夜。观众席空着，灯只亮了一半。',
+            '这个点还留在剧场里的，都不是来看戏的。',
+            '落幕之后。没有人起身。'],
+  };
+
+  function pbSlot(d) {
+    const h = (d || new Date()).getHours();
+    return h < 6 ? 'night' : h < 11 ? 'dawn' : h < 17 ? 'day' : h < 22 ? 'dusk' : 'night';
+  }
+  function pbLine(seed, when) {
+    const pool = PB_LINES[pbSlot(when)];
+    return pool[Math.abs(seed) % pool.length];
+  }
+
+  function pbOn() {
+    return document.documentElement.dataset.claudeSkin === 'playbill';
+  }
+  function pbEsc(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  const PB_ROMAN = [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  function pbRoman(n) {
+    let s = '';
+    for (const [v, r] of PB_ROMAN) { while (n >= v) { s += r; n -= v; } }
+    return s || 'I';
+  }
+
+  /* 打开某个原生抽屉：点它自己的开关，不自己改 class。
+     酒馆的抽屉开合还牵着别的逻辑（关掉其他抽屉、滚动锁定等），
+     手动加 class 只会做对一半。 */
+  function pbOpenDrawer(id) {
+    document.querySelector('#' + id + ' .drawer-toggle')?.click();
+  }
+
+  /* ---------------------------------------------------------------- 导航 */
+  const PB_SETTING_DRAWERS = [
+    ['sys-settings-button', 'API'],
+    ['advanced-formatting-button', '格式化'],
+    ['WI-SP-button', '世界书'],
+    ['logo_block', '背景'],
+    ['extensions-settings-button', '扩展'],
+    ['user-settings-button', '偏好设置'],
+  ];
+
+  function pbNavItem(label, onClick, current) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cw-nav-item';
+    if (current) b.setAttribute('aria-current', 'true');
+    b.innerHTML = '<i class="cw-dot"></i><span>' + pbEsc(label) + '</span>';
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function pbNavGroup(title) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cw-nav-group';
+    wrap.innerHTML = '<button type="button" class="cw-nav-head"><i class="cw-tri"></i>'
+      + pbEsc(title) + '</button>';
+    const body = document.createElement('div');
+    body.className = 'cw-nav-body';
+    wrap.appendChild(body);
+    wrap.querySelector('.cw-nav-head').addEventListener('click', () => {
+      wrap.classList.toggle('is-closed');
+    });
+    return { wrap, body };
+  }
+
+  /* 剧目 = 会话列表的筛选。酒馆没有"已收起/草稿"这两个状态，
+     所以这里接的是真的能筛出来的两个：全部 / 只看当前角色。
+     筛选靠给 .clawd-rail-recents 写一个属性，具体隐藏由 CSS 做 —— \
+JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
+  function pbApplyFilter(mode) {
+    const list = document.querySelector('.clawd-rail-recents');
+    if (!list) return;
+    list.dataset.pbFilter = mode;
+    const ctx = window.SillyTavern?.getContext?.();
+    const me = ctx?.characters?.[ctx?.characterId]?.avatar || '';
+    list.querySelectorAll('.recentChat').forEach(r => {
+      const mine = !me || r.dataset.avatar === me || (r.dataset.avatar || '').includes(me);
+      r.classList.toggle('pb-hidden', mode === 'mine' && !mine);
+    });
+  }
+
+  /* 导航不能每次消息变动都重建 —— refreshTheatre 是挂在 #chat 的
+     MutationObserver 上的，一轮流式输出会触发几十次。重建一次就丢一次
+     分组的展开状态和当前筛选，表现是"打字时左边的菜单自己收起来了"。
+     所以先算一个签名，只有角色表 / 当前角色 / 皮真的变了才重建。 */
+  let pbNavSig = '';
+  function buildNav() {
+    const rail = document.getElementById('top-settings-holder');
+    if (!rail) return;
+    const old = rail.querySelector('.cw-nav');
+    if (!pbOn()) { old?.remove(); pbNavSig = ''; return; }
+
+    const ctx = window.SillyTavern?.getContext?.();
+    const sig = 'pb|' + (ctx?.characterId ?? '') + '|'
+      + (ctx?.characters || []).map(c => c.name).join(',');
+    if (old && sig === pbNavSig) return;
+    pbNavSig = sig;
+    if (old) old.remove();
+    const nav = document.createElement('nav');
+    nav.className = 'cw-nav';
+
+    /* --- 剧目 --- */
+    const g1 = pbNavGroup('剧目');
+    let filter = 'all';
+    const all = pbNavItem('上演中', () => { filter = 'all'; pbApplyFilter('all'); syncFilter(); }, true);
+    const mine = pbNavItem('本角色', () => { filter = 'mine'; pbApplyFilter('mine'); syncFilter(); });
+    function syncFilter() {
+      all.toggleAttribute('aria-current', filter === 'all');
+      mine.toggleAttribute('aria-current', filter === 'mine');
+    }
+    g1.body.append(all, mine);
+    nav.appendChild(g1.wrap);
+
+    /* --- 角色 --- */
+    const g2 = pbNavGroup('角色');
+    const chars = (ctx?.characters || []).slice(0, 12);
+    if (!chars.length) {
+      const empty = document.createElement('div');
+      empty.className = 'cw-nav-empty';
+      empty.textContent = '（还没有角色）';
+      g2.body.appendChild(empty);
+    }
+    chars.forEach((c, i) => {
+      g2.body.appendChild(pbNavItem(c.name, () => {
+        /* 切角色走斜杠命令 —— 直接改 characterId 不会触发酒馆的加载流程。
+           两个 API 名字在不同版本里换过，都试一遍。 */
+        try {
+          if (ctx.executeSlashCommandsWithOptions) ctx.executeSlashCommandsWithOptions('/go ' + c.name);
+          else if (ctx.executeSlashCommands) ctx.executeSlashCommands('/go ' + c.name);
+        } catch (e) { console.warn('[Claude Web] 切角色失败：', e); }
+      }, i === ctx?.characterId));
+    });
+    nav.appendChild(g2.wrap);
+
+    /* --- 剧场 --- */
+    const g3 = pbNavGroup('剧场');
+    const idx = pbNavItem('幕次索引', () => {
+      nav.classList.toggle('cw-acts-open');
+      buildActIndex(actList);
+    });
+    const actList = document.createElement('div');
+    actList.className = 'cw-act-index';
+    g3.body.append(idx, actList);
+    g3.body.appendChild(pbNavItem('预设', () => pbOpenDrawer('ai-config-button')));
+
+    const settings = pbNavGroup('设置');
+    settings.wrap.classList.add('cw-nav-sub', 'is-closed');
+    PB_SETTING_DRAWERS.forEach(([id, label]) => {
+      if (document.getElementById(id)) {
+        settings.body.appendChild(pbNavItem(label, () => pbOpenDrawer(id)));
+      }
+    });
+    g3.body.appendChild(settings.wrap);
+    nav.appendChild(g3.wrap);
+
+    /* 插在品牌行后面、会话列表前面。 */
+    const anchor = rail.querySelector('.clawd-rail-recents');
+    rail.insertBefore(nav, anchor || null);
+    pbApplyFilter(filter);
+  }
+
+  /* 幕次索引：读 #chat 里已经插好的分隔条，点了滚过去。 */
+  function buildActIndex(host) {
+    if (!host) return;
+    host.innerHTML = '';
+    document.querySelectorAll('#chat > .cw-act').forEach(a => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cw-act-link';
+      b.innerHTML = '<span>Act ' + a.dataset.act + '</span><em>'
+        + pbEsc(a.dataset.note || '') + '</em>';
+      b.addEventListener('click', () => a.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      host.appendChild(b);
+    });
+  }
+
+  /* ---------------------------------------------------------------- 封面 */
+  function buildCover() {
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+    const old = chat.querySelector(':scope > .cw-cover');
+    if (!pbOn()) { old?.remove(); return; }
+
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return;
+    const chatArr = ctx.chat || [];
+    const turns = chatArr.filter(m => m.is_user).length;
+    const acts = Math.max(1, Math.ceil(turns / PB_ACT_EVERY));
+    const ccs = ctx.chatCompletionSettings || {};
+    const src = ccs.chat_completion_source;
+    const model = (src && ccs[src + '_model']) || src || ctx.mainApi || '';
+    const title = ctx.getCurrentChatId?.() || '未命名的一场';
+    const started = String(chatArr[0]?.send_date || '').match(/(\d{1,2}:\d{2})/);
+
+    const html =
+      '<div class="cw-kicker">Tonight&rsquo;s Programme</div>'
+      + '<div class="cw-mark"></div>'
+      + '<h1 class="cw-cover-title">' + pbEsc(title) + '</h1>'
+      + '<p class="cw-cover-sub">' + pbEsc(pbLine(turns, chatArr[0] ? new Date(chatArr[0].send_date) : null)) + '</p>'
+      + '<div class="cw-cover-grid">'
+      +   '<dl><div class="cw-h">演出</div>'
+      +     pbRow('角色', ctx.characters?.[ctx.characterId]?.name || ctx.name2)
+      +     pbRow('对手戏', ctx.name1)
+      +     pbRow('幕数', pbRoman(acts))
+      +   '</dl>'
+      +   '<dl><div class="cw-h">场务</div>'
+      +     pbRow('模型', model)
+      +     pbRow('开演', started ? started[1] : '—')
+      +     pbRow('剧场', 'SillyTavern')
+      +   '</dl>'
+      + '</div>'
+      + '<p class="cw-cover-foot">向下滚动开演</p>';
+
+    if (old) { if (old.innerHTML !== html) old.innerHTML = html; return; }
+    const el = document.createElement('section');
+    el.className = 'cw-cover';
+    el.innerHTML = html;
+    chat.insertBefore(el, chat.firstElementChild);
+  }
+  function pbRow(k, v) {
+    return '<div class="cw-r"><span>' + k + '</span><b>' + (pbEsc(v) || '—') + '</b></div>';
+  }
+
+  /* ------------------------------------------------ 右栏第三块：本角色的历史对话
+     对应酒馆的 Manage chat files。先走它自己的接口拿全量；
+     接口名或鉴权头在不同版本里变过，取不到就退回筛选左边 Recents 里已有的行 ——
+     退化之后只少了"没进过最近列表的旧存档"，不会整块空掉。 */
+  let pbChatsCache = { key: '', rows: [] };
+  async function loadCharChats() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const ch = ctx?.characters?.[ctx?.characterId];
+    if (!ch) return [];
+    if (pbChatsCache.key === ch.avatar) return pbChatsCache.rows;
+
+    let rows = [];
+    try {
+      const res = await fetch('/api/characters/chats', {
+        method: 'POST',
+        headers: ctx.getRequestHeaders ? ctx.getRequestHeaders() : { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: ch.avatar }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        rows = (Array.isArray(data) ? data : []).map(d => ({
+          name: String(d.file_name || '').replace(/\.jsonl$/, ''),
+          count: d.chat_items ?? d.message_count ?? '',
+          date: d.last_mes || '',
+        }));
+      }
+    } catch { /* 退回下面的兜底 */ }
+
+    if (!rows.length) {
+      rows = [...document.querySelectorAll('.clawd-rail-recents .recentChat')].map(r => ({
+        name: r.dataset.file || r.querySelector('.chatName')?.textContent || '',
+        count: '',
+        date: r.querySelector('.chatDate')?.textContent || '',
+      }));
+    }
+    pbChatsCache = { key: ch.avatar, rows };
+    return rows;
+  }
+
+  /* ---- 幕次分隔条 ----
+     酒馆没有"幕"这个概念，DOM 里没有现成节点，只能自己插。
+     口径（lulu 定的）：幕次 = 回合 = 用户消息条数。每 PB_ACT_EVERY 个回合起一幕。 */
+  function markActs() {
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+    if (!pbOn()) {
+      chat.querySelectorAll(':scope > .cw-act').forEach(el => el.remove());
+      return;
+    }
+    /* 幕号按"已经过了多少回合"算，不能写成 `turns % N === 0 -> act++`：
+       回合数只在用户消息上 +1，两条用户消息之间可能夹着好几条 AI 消息，
+       那几条的 turns 都还停在同一个倍数上，于是每一条都会开一幕。
+       实测症状是第一条前面没有 Act I，第二条前面直接冒出 Act II。 */
+    let turns = 0, act = 0;
+    const want = new Map();          /* 该出现在哪条消息前面 -> 第几幕 */
+    chat.querySelectorAll(':scope > .mes').forEach(mes => {
+      const need = Math.floor(turns / PB_ACT_EVERY) + 1;
+      if (need !== act) { act = need; want.set(mes, act); }
+      if (mes.getAttribute('is_user') === 'true') turns++;
+    });
+    /* 先删不该在的，再补该在的 —— 直接清空重建会让滚动位置跳。 */
+    chat.querySelectorAll(':scope > .cw-act').forEach(el => {
+      const next = el.nextElementSibling;
+      if (!next || want.get(next) !== Number(el.dataset.actNo)) el.remove();
+    });
+    want.forEach((no, mes) => {
+      const prev = mes.previousElementSibling;
+      if (prev && prev.classList.contains('cw-act')) return;
+      /* 场景提示按这一幕第一条消息的时刻取时段，按幕号选句 ——
+         同一幕永远同一句，重绘不会跳字。 */
+      const when = mes.dataset.time
+        ? new Date('2000/01/01 ' + mes.dataset.time) : null;
+      const note = pbLine(no, when);
+      const el = document.createElement('div');
+      el.className = 'cw-act';
+      el.dataset.actNo = String(no);
+      el.dataset.act = pbRoman(no);
+      el.dataset.note = note;
+      el.innerHTML = '<div class="cw-act-bar"><span class="cw-act-no">Act '
+        + pbRoman(no) + '</span></div><div class="cw-act-note">' + pbEsc(note) + '</div>';
+      chat.insertBefore(el, mes);
+    });
+  }
+
   function stampMessages() {
-    if (document.documentElement.dataset.claudeSkin !== 'arena') return;
+    if (!STAMPED_SKINS.has(document.documentElement.dataset.claudeSkin)) return;
     const ctx = window.SillyTavern?.getContext?.();
     if (!ctx) return;
     const chat = ctx.chat || [];
@@ -7440,8 +7821,42 @@ if (CLAUDE_ENABLED) {
     });
   }
 
+  /* 把历史存档填进右栏第三块。点一行 = 打开那个存档，走酒馆自己的
+     /chat 斜杠命令，不去碰它的加载流程。 */
+  async function fillAsideChats() {
+    const host = document.getElementById('clawd-aside-chats');
+    if (!host) return;
+    const ctx = window.SillyTavern?.getContext?.();
+    const cur = ctx?.getCurrentChatId?.() || '';
+    const rows = await loadCharChats();
+    const host2 = document.getElementById('clawd-aside-chats');   /* await 期间可能已被重建 */
+    if (!host2) return;
+    if (!rows.length) {
+      host2.innerHTML = '<div class="cw-h">历史对话</div><div class="cw-empty">（没有别的存档）</div>';
+      return;
+    }
+    host2.innerHTML = '<div class="cw-h">历史对话</div>'
+      + rows.map(r =>
+          '<button type="button" class="cw-chat-row'
+          + (r.name === cur ? ' is-current' : '') + '" data-file="' + pbEsc(r.name) + '">'
+          + '<span>' + pbEsc(r.name) + '</span>'
+          + '<em>' + pbEsc(r.count !== '' ? r.count + ' 句' : r.date) + '</em></button>'
+        ).join('');
+    host2.querySelectorAll('.cw-chat-row').forEach(b => {
+      b.addEventListener('click', () => {
+        const file = b.dataset.file;
+        if (!file || file === cur) return;
+        try {
+          if (ctx.executeSlashCommandsWithOptions) ctx.executeSlashCommandsWithOptions('/chat ' + file);
+          else if (ctx.executeSlashCommands) ctx.executeSlashCommands('/chat ' + file);
+        } catch (e) { console.warn('[Claude Web] 切存档失败：', e); }
+      });
+    });
+  }
+
   function ensureAside() {
-    if (document.documentElement.dataset.claudeStructure !== 'linear') return;
+    if (document.documentElement.dataset.claudeStructure !== 'linear'
+        && document.documentElement.dataset.claudeSkin !== 'playbill') return;
     let el = document.getElementById('clawd-aside');
     if (!el) {
       el = document.createElement('aside');
@@ -7459,7 +7874,11 @@ if (CLAUDE_ENABLED) {
       + row('回合', s.幕次) + row('消息数', s.消息数)
       + row('开演', shortTime(s.开演)) + row('最近', shortTime(s.最近))
       + row('存档', s.存档)
-      + '</div>';
+      + '</div>'
+      /* 第三块：本角色的历史存档（对应酒馆的 Manage chat files）。
+         异步取，先占位再填 —— 让整个右栏等一次网络请求不值得。 */
+      + (pbOn() ? '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">历史对话</div></div>' : '');
+    if (pbOn()) fillAsideChats();
     /* Recents 每行的 data-file 和 getCurrentChatId() 是同一个字符串，
        高亮当前行、以及接 Manage chat files 都靠它。 */
     document.querySelectorAll('.recentChat').forEach(r => {
@@ -7467,16 +7886,47 @@ if (CLAUDE_ENABLED) {
     });
   }
 
-  /* 挂 ST 事件，切对话/收发消息时右栏跟着变。事件名取不到就退回轮询。 */
+  /* 一次刷新 = 右栏 + 消息戳 + 幕次条。三件事永远一起做，
+     分开调用早晚会出现"右栏更新了但幕次条没动"这种半新半旧的状态。
+     用 rAF 合并，因为下面的 MutationObserver 一轮渲染会连着触发很多次。 */
+  let refreshRaf = 0;
+  function refreshTheatre() {
+    if (refreshRaf) return;
+    refreshRaf = window.requestAnimationFrame(() => {
+      refreshRaf = 0;
+      ensureAside();
+      stampMessages();
+      markActs();
+      buildCover();
+      buildNav();
+    });
+  }
+
+  /* 挂 ST 事件，切对话/收发消息时右栏跟着变。事件名取不到就退回轮询。
+
+     **光挂事件不够。** data-time / data-swipe / data-speaker 是写在 DOM 上的，
+     而酒馆在流式输出和 swipe 时会整块替换 .mes_text 的 innerHTML —— 替换之后
+     属性就没了，而 *_MESSAGE_RENDERED 覆盖不到那一刻（交接文档里"发言人名
+     只渲染出冒号"就是这一类）。所以再加一个 MutationObserver 盯 #chat：
+     只要 DOM 动过就补写一次，不依赖事件名是否齐全。 */
+  let chatObserver = null;
   function watchSession() {
     const ctx = window.SillyTavern?.getContext?.();
     const et = ctx?.eventSource, types = ctx?.eventTypes || ctx?.event_types;
     if (et && types) {
-      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_RECEIVED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'CHARACTER_MESSAGE_RENDERED']
-        .forEach(k => { if (types[k]) et.on(types[k], () => { ensureAside(); stampMessages(); }); });
+      ['CHAT_CHANGED', 'MESSAGE_SENT', 'MESSAGE_RECEIVED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED',
+       'CHARACTER_MESSAGE_RENDERED', 'USER_MESSAGE_RENDERED']
+        .forEach(k => { if (types[k]) et.on(types[k], refreshTheatre); });
     } else {
-      window.setInterval(() => { ensureAside(); stampMessages(); }, 2000);
+      window.setInterval(refreshTheatre, 2000);
     }
+
+    const chat = document.getElementById('chat');
+    if (chat && window.MutationObserver && !chatObserver) {
+      chatObserver = new window.MutationObserver(refreshTheatre);
+      chatObserver.observe(chat, { childList: true, subtree: true });
+    }
+    refreshTheatre();
   }
 
 
@@ -8079,10 +8529,16 @@ if (CLAUDE_ENABLED) {
       const preset = api.activateFamily(select.value);
       /* 排版规则传不进预设（预设只能写变量），所以风格同时切一个属性，
          让 styles 里的 Are.na 排版模块生效。见 CSS 的「皮肤层」那段。 */
-      const skin = select.value === 'arena' ? 'arena' : 'classic';
+      /* 三个值，不是两个：playbill 是整套主题，arena 只是排版皮。 */
+      const skin = select.value === 'playbill' ? 'playbill'
+                 : select.value === 'arena' ? 'arena'
+                 : 'classic';
       document.documentElement.dataset.claudeSkin = skin;
       write('skin', skin);
+      syncPlaybillLock();
       stampMessages();
+      markActs();
+      ensureAside();
       /* 换风格会换掉自定义的取值起点，取色器要跟着显示新起点的颜色。 */
       syncSwatches();
       hint.textContent = preset ? `已切到「${preset.name}」。` : '切换失败。';
@@ -8327,6 +8783,9 @@ if (CLAUDE_ENABLED) {
         ? '已切到 Linear 四栏。窄于 1100px 会自动退回侧边栏。'
         : '已切回侧边栏。';
     });
+    /* 面板刚挂上来时也要锁一次 —— 用户上次存的就是 playbill 的话，
+       下拉必须一开始就是禁用状态，不能等他去点一下风格才生效。 */
+    syncPlaybillLock();
 
     const fontSelect = panel.querySelector('#claude-web-font');
     const fontCustom = panel.querySelector('#claude-web-font-custom');

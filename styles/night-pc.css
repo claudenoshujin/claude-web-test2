@@ -5704,3 +5704,839 @@ html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !imp
     left:510px !important; width:auto !important; right:248px !important;
   }
 }
+
+
+/* ============================================================================
+   THE PLAYBILL —— 整套主题（2.0.54）
+   ============================================================================
+
+   为什么它是「一套」而不是「一张皮 + 一个结构」：
+
+   参考稿 剧场主题_THE_PLAYBILL.html 里有三类东西 ——
+     排版（三级字号、细线、run-in 发言人名、左右边注）   来自 Are.na
+     骨架（导航 / 列表 / 内容 / 属性 四栏）              来自 Linear
+     内容（幕次分隔条、节目单封面、演职员栏、导航分组）   来自剧场这个隐喻本身
+   第三类既不属于 Are.na 也不属于 Linear，在「皮 x 结构」两个可自由组合的轴上
+   没有位置可挂，所以一直没做；做出来的部分也就一直是半成品拼半成品。
+
+   2.0.54 起 playbill 是**一个整体**：选中它同时锁定皮和结构（见 index.js 里
+   structureSelect 的禁用逻辑），不参与混搭。Are.na 和 Linear 保持原样，各自
+   只负责自己那一半，也不再假装能拼出这张参考稿。
+
+   —— 写法上的两条纪律 ——
+
+   1. 这一段里的规则**要写全**。
+      官网皮的规则是成组下发的。比如 day-pc.css:1137 那条
+      `.mes[is_user="true"] .mes_block` 一次声明了 8 个属性
+      （border-radius / width / margin-left / background / border /
+        box-shadow / max-width / padding）。
+      Are.na 皮只抵消了 background 和 margin 两条，剩下六条照常生效 ——
+      用户看到的「用户消息有个框」就是这么来的，不是谁多画了一个边框。
+      逐条打补丁必然漏，所以下面对 .mes / .mes_block 一律写整套重置。
+      改完要确认有没有漏，用 _dev/cascade.js 裁一遍，别靠肉眼看截图：
+        node cascade.js '#chat .mes[is_user="true"] .mes_block' border width
+
+   2. 字号行高只有三级，全部走 --cw-fs-* / --cw-lh-*。
+      但要清楚这六个令牌**不会**让 playbill 自动接管别处的排版 —— 全站 116 处
+      font-size 只有 28 处走变量，其余仍是字面值。令牌解决的是「playbill 内部
+      三级字号只有一个改动点」；真正让排版立住的，是下面每条规则都把
+      font-size / line-height 显式写出来。这两件事被混为一谈过，记在这里。
+   ============================================================================ */
+
+:root{
+  /* 三级字号 / 两档字重 —— 取自参考稿实测（Are.na 截图取样）。
+     默认值只是给这六个令牌一个合法起点，不影响任何现有规则：
+     除 playbill 外没有别的地方引用它们。 */
+  --cw-fs-s:12.5px;  --cw-lh-s:1.35;
+  --cw-fs-m:16px;    --cw-lh-m:1.5;
+  --cw-fs-l:28px;    --cw-lh-l:1.25;
+
+  /* 四栏与三轨的几何。参考稿的取值，不是现在 linear 的取值 ——
+     linear 是 210/300/248，那是把侧边栏收窄凑出来的，不是排出来的。 */
+  --cw-c-nav:190px;
+  --cw-c-list:284px;
+  --cw-c-cast:232px;
+  --cw-gut:24px;
+  --cw-track-l:80px;      /* 左边注：头像 / 时间 / swipe 序号 */
+  --cw-track-r:100px;     /* 右边注：token 数 */
+  --cw-track-gap:24px;
+}
+
+/* ---------------------------------------------------------------------------
+   桌面四栏。窄于 1100px 一律退回侧边栏形态 —— 手机端没有对得上的参考稿，
+   硬塞四栏只会得到第三种半成品。
+   --------------------------------------------------------------------------- */
+@media (min-width:1100px){
+
+  /* ---- 第一列：导航 ---- */
+  html[data-claude-skin="playbill"] #top-settings-holder{
+    width:var(--cw-c-nav) !important; max-width:var(--cw-c-nav) !important;
+    padding:20px 0 32px !important;
+    border-right:1px solid var(--cw-rule-hairline) !important;
+    background:var(--cw-surface-page) !important;
+    gap:0 !important;
+  }
+  /* 带 id 的直接子元素特异性压过 .clawd-rail-recents，不排除掉它会把
+     第二列拉成整屏宽。这条是踩出来的，别删。 */
+  html[data-claude-skin="playbill"] #top-settings-holder > *:not(.clawd-rail-recents){
+    max-width:100% !important; box-sizing:border-box !important;
+  }
+
+  /* ---- 第二列：会话列表。fixed 不是 absolute —— rail 自己有 overflow:auto，
+         absolute 会跟着 rail 一起滚。 ---- */
+  html[data-claude-skin="playbill"] .clawd-rail-recents{
+    position:fixed !important; left:var(--cw-c-nav) !important;
+    top:0 !important; bottom:0 !important;
+    width:var(--cw-c-list) !important; max-width:var(--cw-c-list) !important;
+    margin:0 !important; padding:0 !important;
+    border-right:1px solid var(--cw-rule-hairline) !important;
+    border-left:0 !important;
+    overflow-y:auto !important; z-index:3996 !important;
+    background:var(--cw-surface-page) !important;
+  }
+
+  /* ---- 第三列：对话流让位 ---- */
+  html[data-claude-skin="playbill"] #chat{
+    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list) + 28px) !important;
+    padding-right:calc(var(--cw-c-cast) + 28px) !important;
+  }
+  html[data-claude-skin="playbill"] #form_sheld{
+    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
+    padding-right:var(--cw-c-cast) !important;
+  }
+
+  /* ---- 第四列：演职员。DOM 由 index.js 的 ensureAside() 建 ---- */
+  html[data-claude-skin="playbill"] #clawd-aside{
+    display:block !important;
+    position:fixed; right:0; top:0; bottom:0;
+    width:var(--cw-c-cast); box-sizing:border-box;
+    border-left:1px solid var(--cw-rule-hairline);
+    background:var(--cw-surface-page);
+    z-index:3996; padding:20px var(--cw-gut) 32px; overflow-y:auto;
+    font-family:var(--cl-sans);
+    font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+    color:var(--cw-text-muted);
+  }
+
+  /* 抽屉是临时面板，会话列表是常驻列 —— 面板不该盖住列。 */
+  html[data-claude-skin="playbill"] #top-settings-holder .drawer-content{
+    left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
+    right:var(--cw-c-cast) !important;
+    width:auto !important;
+  }
+}
+@media (max-width:1099px){
+  html[data-claude-skin="playbill"] #clawd-aside{ display:none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   导航列的长相
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"] .clawd-rail-brand{
+  padding:0 var(--cw-gut) 20px !important;
+  margin:0 !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important; text-transform:uppercase !important;
+  letter-spacing:normal !important; color:var(--cw-text-body) !important;
+}
+/* 图标：**不要 display:none。**
+   .drawer-icon 被官网皮做成了 position:absolute;inset:0 的整行命中区
+   （见上面 "图标撑满整行当命中区" 那段）—— 酒馆把 role=button 挂在它身上，
+   .drawer-toggle 只是个壳。把它藏了，导航项就点不动了。
+   所以留着元素、只关掉它画的那个 glyph（glyph 是 ::before 用遮罩画的）。 */
+html[data-claude-skin="playbill"] body #top-settings-holder .drawer-icon::before,
+html[data-claude-skin="playbill"] body #top-settings-holder .drawer-icon::after{
+  content:none !important;
+}
+html[data-claude-skin="playbill"] body #top-settings-holder .drawer-icon{
+  padding:0 !important;          /* 不再给 glyph 留左边那一格 */
+  background:none !important;
+}
+
+/* 导航行本身。选择器必须写到 body + 子代链才够特异 ——
+   官网皮那条是 `html body #top-settings-holder > .drawer > .drawer-toggle`
+   (1,2,2)，里面有 padding:0 和 min-height:34px；
+   写成 `html[data-claude-skin] #top-settings-holder .drawer-toggle` 只有
+   (1,2,1)，压不住，行高会回到 34px、左右内边距会掉成 0。 */
+html[data-claude-skin="playbill"] body #top-settings-holder > .drawer > .drawer-toggle{
+  min-height:0 !important;
+  padding:5px var(--cw-gut) !important;
+  gap:0 !important;
+  background:none !important; background-color:transparent !important;
+  border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  animation:none !important;
+}
+/* hover 不位移、不铺底色 —— 这套设计只用字色表达状态。 */
+html[data-claude-skin="playbill"] body #top-settings-holder > .drawer > .drawer-toggle:hover,
+html[data-claude-skin="playbill"] body #top-settings-holder > .drawer > .drawer-toggle:has(.openIcon){
+  background-color:transparent !important;
+  transform:none !important;
+}
+/* 标签同理要写到完整子代链。官网皮那条是
+   `html body #top-settings-holder > .drawer > .drawer-toggle > .clawd-rail-label`
+   (1,3,2)，里面有 font-size:var(--cl-fs-md) 和 margin-left:33px
+   —— 33px 是留给图标 glyph 的位置，glyph 已经关掉了，这里必须收回来，
+   否则导航文字会整体右移一格，和品牌行、列表行对不齐。 */
+html[data-claude-skin="playbill"] body #top-settings-holder > .drawer > .drawer-toggle > .clawd-rail-label{
+  margin:0 !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:400 !important; letter-spacing:normal !important;
+  color:var(--cw-text-secondary) !important;
+}
+html[data-claude-skin="playbill"] body #top-settings-holder > .drawer > .drawer-toggle:hover > .clawd-rail-label{
+  color:var(--cw-text-body) !important;
+}
+
+/* 导航分组头。DOM 由 index.js 插入（酒馆原生没有分组这个概念）。 */
+html[data-claude-skin="playbill"] .cw-nav-group{
+  padding:22px var(--cw-gut) 6px !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:400 !important; color:var(--cw-text-muted) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   会话列表的长相（Linear 两行式行 + Are.na 细线）
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"] .clawd-rail-recents-label{
+  position:sticky !important; top:0 !important; z-index:2 !important;
+  margin:0 !important;
+  padding:20px var(--cw-gut) 8px !important;
+  background:var(--cw-surface-page) !important;
+  border-bottom:1px solid var(--cw-rule-hairline) !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important; text-transform:uppercase !important;
+  letter-spacing:normal !important; color:var(--cw-text-body) !important;
+}
+/* 会话行。
+   官网皮把行的长相写在一组结构选择器上（day-pc.css:3979 起）：
+     .clawd-rail-recents > :not(.clawd-rail-recents-label) > *          ← 行内的两列网格
+     .clawd-rail-recents :is(img,.avatar,...)                           ← 头像 30px 跨两行
+     .clawd-rail-recents > :not(...) > * > :not(img)...:first-of-type   ← 标题
+     .clawd-rail-recents > :not(...) > * > :not(img)...:nth-of-type(2)  ← 副行
+   特异性到 (0,5,2)。用 `html[data-claude-skin] .recentChat .chatName` 这种
+   写法只有 (1,1,0)，压不住 —— 必须**照抄它的结构选择器再加皮的属性**，
+   这样才是 (1,5,2)。下面每条都是这么来的，看着啰嗦，但换成短选择器就失效。
+
+   行本身：细线分隔，无圆角无底色。 */
+/* 先把行的盒子拿回来。官网皮给 .recentChat 设了 display:contents（L3973），
+   行本身不生成盒子、由它的子元素充当行 —— 那套排法下没有地方画分隔线，
+   也没有地方挂"当前对话"的标记。playbill 需要一条细线分隔的行，所以
+   把 .recentChat 恢复成真正的行盒子，子元素回到它下面排。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  row-gap:3px !important;
+  margin:0 !important;
+  padding:11px var(--cw-gut) !important;
+  border:0 !important;
+  border-bottom:1px solid var(--cw-rule-hairline) !important;
+  border-radius:0 !important;
+  background:none !important;
+  box-shadow:none !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > *{
+  display:block !important;
+  grid-column:1 !important;
+  width:100% !important; max-width:100% !important; min-width:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+}
+/* 标题行 = 名字 + 时间并排（参考稿 .lrow-top）。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  column-gap:12px !important;
+  align-items:baseline !important;
+}
+/* 时间在官网皮里是被藏起来的（L4075 那条 :is(small,.timestamp,...)），
+   参考稿要显示，这里放出来。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents :is(small,.timestamp,.chat_file_size,.chat_messages_count){
+  display:block !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover > *{
+  background-color:transparent !important;
+  transform:none !important;
+}
+/* 头像方形、小一档；关掉时**必须把那一列一起收掉** ——
+   只写 display:none 的话 30px 列 + 9px 间距还占着位，列表左边会留一条空槽。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents :is(img,.avatar,.mesAvatarWrapper,[class*="avatar" i]){
+  width:22px !important; height:22px !important; min-width:22px !important;
+  border-radius:0 !important;
+}
+html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents :is(img,.avatar,.mesAvatarWrapper,[class*="avatar" i]){
+  display:none !important;
+}
+html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > *{
+  grid-template-columns:minmax(0,1fr) !important;
+  column-gap:0 !important;
+}
+html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * > *{
+  grid-column:1 !important;
+}
+/* 标题：加粗、单行截断。padding-right:34px 是官网皮给行内操作按钮留的位，留着。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
+  :not(img):not([class*="avatar" i]):first-of-type{
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important;
+  color:var(--cw-text-body) !important;
+}
+/* 副行（时间）：降到 muted，字号收回三级里的最小一级。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents :is(.chat_preview,.preview,blockquote,q),
+html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
+  :not(img):not([class*="avatar" i]):nth-of-type(2){
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  color:var(--cw-text-muted) !important;
+}
+/* 当前对话用一条 accent 细标，不用底色 —— 这套设计不靠色块面积区分层级。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat.is-current{
+  background:none !important;
+  box-shadow:inset 2px 0 0 var(--cw-mark) !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover{
+  background:var(--cw-surface-hover) !important;
+}
+/* Recents 标题行右边那个装饰图标（::after 贴的遮罩 SVG）在这套主题下不出现。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents-label::after{
+  content:none !important; display:none !important;
+}
+
+/* ---------------------------------------------------------------------------
+   台词区 —— 三轨：左边注 / 台词 / 右边注
+
+   .mesAvatarWrapper 必须 display:contents，否则 tokenCounterDisplay 困在
+   左栏里去不了第三轨。这条也是踩出来的。
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"] #chat .mes{
+  display:grid !important;
+  grid-template-columns:var(--cw-track-l) minmax(0,1fr) var(--cw-track-r) !important;
+  column-gap:var(--cw-track-gap) !important;
+  align-items:start !important;
+  width:auto !important; max-width:none !important;
+  margin:0 !important; padding:9px 0 !important;
+  border:0 !important; border-radius:0 !important;
+  background:none !important; box-shadow:none !important;
+}
+/* **整套重置**，不是逐条抵消。官网皮在 .mes_block 上一次性下发了
+   border / border-radius / box-shadow / width / max-width / background /
+   margin / padding 八个属性，这里八个全部接管。 */
+html[data-claude-skin="playbill"] #chat .mes .mes_block{
+  grid-column:2 !important; grid-row:1 / span 20 !important;
+  width:auto !important; max-width:none !important; min-width:0 !important;
+  margin:0 !important; padding:0 !important;
+  border:0 !important; border-radius:0 !important;
+  background:none !important; box-shadow:none !important;
+  position:static !important;
+}
+/* 用户与 AI 的区分：正文栏整体缩进，不左右分列、不加底色。 */
+html[data-claude-skin="playbill"] #chat .mes[is_user="true"] .mes_block{
+  padding-left:36px !important;
+}
+
+html[data-claude-skin="playbill"] #chat .mesAvatarWrapper{ display:contents !important; }
+html[data-claude-skin="playbill"] #chat .mesAvatarWrapper .avatar{
+  grid-column:1 !important; grid-row:1 !important; justify-self:end !important;
+  width:26px !important; height:26px !important; margin:0 !important;
+}
+html[data-claude-skin="playbill"] #chat .mesAvatarWrapper .avatar img{
+  width:26px !important; height:26px !important; border-radius:0 !important;
+}
+html[data-claude-avatars="off"][data-claude-skin="playbill"] #chat .mesAvatarWrapper .avatar{
+  display:none !important;
+}
+
+/* 藏掉原生元数据：
+   .timestamp 是 "August 4, 2026 10:33 AM" 全串，CSS 截不出 10:33；
+   .mes_timer 装的是生成耗时（88.9s），不是时刻；
+   .ch_name 是 flex 容器且内嵌一排按钮，摊平会把正文一起毁掉。 */
+html[data-claude-skin="playbill"] #chat .mesIDDisplay,
+html[data-claude-skin="playbill"] #chat .timestamp,
+html[data-claude-skin="playbill"] #chat .mes_timer,
+html[data-claude-skin="playbill"] #chat .swipes-counter,
+html[data-claude-skin="playbill"] #chat .ch_name{ display:none !important; }
+
+/* 左边注：时间（第二行）+ swipe 序号（第三行）。
+   两个值由 index.js 的 stampMessages() 写成 data 属性，伪元素自动成为网格项。 */
+html[data-claude-skin="playbill"] #chat .mes::before{
+  content:attr(data-time); grid-column:1; grid-row:2; justify-self:end;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-m);
+  color:var(--cw-text-muted); white-space:nowrap;
+}
+html[data-claude-skin="playbill"] #chat .mes::after{
+  content:attr(data-swipe); grid-column:1; grid-row:3; justify-self:end;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-muted); white-space:nowrap;
+}
+/* 关掉头像时整列上移一行，不要在第一行留个空格子。 */
+html[data-claude-avatars="off"][data-claude-skin="playbill"] #chat .mes::before{ grid-row:1; }
+html[data-claude-avatars="off"][data-claude-skin="playbill"] #chat .mes::after{ grid-row:2; }
+
+/* 右边注：token 数 */
+html[data-claude-skin="playbill"] #chat .tokenCounterDisplay{
+  grid-column:3 !important; grid-row:1 !important; justify-self:start !important;
+  margin:0 !important; opacity:1 !important; white-space:nowrap !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-m) !important;
+  color:var(--cw-text-muted) !important;
+}
+
+/* run-in 发言人名。
+   注意名字**不能**从 .mes 的原生 ch_name 属性取 —— attr() 只读伪元素所在
+   元素自己的属性，而 ch_name 挂在 .mes 上、伪元素要长在 .mes_text 上。
+   所以仍然由 index.js 把名字写进 .mes_text 的 data-speaker。 */
+html[data-claude-skin="playbill"] #chat .mes_text::before{
+  content:attr(data-speaker) "：";
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); font-weight:700;
+  text-transform:uppercase; letter-spacing:normal;
+  color:var(--cw-text-body); margin-right:2px;
+}
+html[data-claude-skin="playbill"] #chat .mes_text{
+  display:block !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-m) !important; line-height:var(--cw-lh-m) !important;
+  color:var(--cw-text-body) !important;
+  margin:0 !important; padding:0 !important;
+  border:0 !important; border-radius:0 !important; background:none !important;
+}
+/* 第一段必须 inline，否则 ::before 的名字会单独占一行，run-in 就不成立。 */
+html[data-claude-skin="playbill"] #chat .mes_text > p:first-child{
+  display:inline !important; margin:0 !important;
+}
+html[data-claude-skin="playbill"] #chat .mes_text > p{ margin:0 0 12px !important; }
+html[data-claude-skin="playbill"] #chat .mes_text em{
+  font-style:italic !important; color:var(--cw-text-muted) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   幕次分隔条。DOM 由 index.js 插入 —— 酒馆没有「幕」这个概念，没有现成节点。
+   口径：幕次 = 回合 = 用户消息条数，每 8 回合一幕。
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"] #chat .cw-act{
+  padding:56px 0 44px !important;
+  text-align:center;
+}
+html[data-claude-skin="playbill"] #chat .cw-act-bar{
+  display:flex; align-items:center; gap:16px;
+}
+html[data-claude-skin="playbill"] #chat .cw-act-bar::before,
+html[data-claude-skin="playbill"] #chat .cw-act-bar::after{
+  content:""; flex:1; height:1px; background:var(--cw-rule-hairline);
+}
+html[data-claude-skin="playbill"] #chat .cw-act-no{
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  font-weight:700; text-transform:uppercase;
+  color:var(--cw-text-body); white-space:nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   输入区：去填充去圆角，只留一条上边线。
+   #send_form 的填充和圆角由更高特异性的规则画，必须用 body #form_sheld #x
+   这种链才压得住，单写 #send_form 无效。
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"] body #form_sheld #send_form,
+html[data-claude-skin="playbill"] body #form_sheld #send_form.compact{
+  background:none !important; background-color:transparent !important;
+  border:0 !important;
+  border-top:1px solid var(--cw-rule-hairline) !important;
+  border-radius:0 !important; box-shadow:none !important;
+  padding:14px 0 18px !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld #send_textarea{
+  background:none !important; border:0 !important;
+  border-radius:0 !important; box-shadow:none !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-m) !important; line-height:var(--cw-lh-m) !important;
+  color:var(--cw-text-body) !important;
+}
+/* Are.na "Sign up" 式实心方块，不是圆形彩色按钮。 */
+html[data-claude-skin="playbill"] body #form_sheld #send_but{
+  width:auto !important; height:auto !important; min-width:0 !important;
+  padding:7px 13px !important;
+  border-radius:0 !important; box-shadow:none !important;
+  background:var(--cw-mark) !important;
+  color:var(--cw-surface-page) !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important;
+}
+
+/* ---------------------------------------------------------------------------
+   演职员栏的行样式（Are.na 标签/值行）
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"] #clawd-aside .cw-g{ margin-bottom:28px; }
+html[data-claude-skin="playbill"] #clawd-aside .cw-h{
+  padding-bottom:7px; margin-bottom:0;
+  border-bottom:1px solid var(--cw-rule-hairline);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-muted);
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-r{
+  display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+  padding:6px 0; border-bottom:1px solid var(--cw-rule-hairline);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-r > span{ color:var(--cw-text-muted); white-space:nowrap; }
+html[data-claude-skin="playbill"] #clawd-aside .cw-r > b{
+  color:var(--cw-text-body); font-weight:700; text-align:right;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Clawd 在这套主题下永远不出现 —— 剧场的前提是台上只有演员。
+   它是 button.clawd-signoff-button::before 用几十个 box-shadow 点画的像素精灵，
+   跟 --cw-shadow-* 无关，归零阴影杀不掉，只能显式关。
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"] .clawd-signoff-button,
+html[data-claude-skin="playbill"] [class*="clawd-idle"],
+html[data-claude-skin="playbill"] [class*="clawd-look"]{
+  display:none !important;
+}
+
+/* 输入框上方那只 Clawd 是 #send_form::after 贴的 icons/clawd.png，
+   跟 .clawd-signoff-button 不是同一个东西，得单独关。 */
+html[data-claude-skin="playbill"] body #send_form::after{
+  content:none !important; display:none !important;
+}
+/* 输入区宽度按参考稿：居中定宽，不跟着 --cw-column 一起随视口展开。 */
+html[data-claude-skin="playbill"] body #form_sheld #send_form{
+  max-width:720px !important; margin:0 auto !important;
+}
+
+/* 时间那一格要单独再压一次。
+   官网皮的"标题"规则用的是 :first-of-type —— 而 :first-of-type 是按**元素类型**
+   算的：.chatNameContainer 是第一个 div，.chatDate 是第一个 small，两个都命中，
+   于是时间也拿到了加粗和 ink 色。官网皮里时间是 display:none，撞不出来；
+   playbill 把时间放出来了，这个重叠就现形了。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
+  :not(img):not([class*="avatar" i]):is(small,.chatDate){
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:400 !important;
+  color:var(--cw-text-muted) !important;
+  white-space:nowrap !important;
+  padding-right:0 !important;
+  text-align:right !important;
+}
+
+
+/* ===================== 2.0.55 · 照真机截图修的六处 =====================
+   都是「fixture 里能看见、但只看 CSS 想不到」的那类问题。 */
+
+/* 1. 消息里这些原生零件不参与三轨排版。
+      .for_checkbox / .del_checkbox 是批量删除用的复选框 —— 它们平时不显眼，
+      但 .mes 变成 grid 之后**每一个都是网格项**，会在第三轨下面各占一格，
+      正文右侧那一列小方块就是它们。 */
+html[data-claude-skin="playbill"] #chat .mes > .for_checkbox,
+html[data-claude-skin="playbill"] #chat .mes > .del_checkbox,
+html[data-claude-skin="playbill"] #chat .mes > .swipe_left,
+html[data-claude-skin="playbill"] #chat .mes > .swipe_right,
+html[data-claude-skin="playbill"] #chat .mes > .swipeRightBlock{
+  display:none !important;
+}
+
+/* 2. token：官网皮把 AI 消息的 token 藏了（`.mes[is_user="false"]
+      :is(.mes_timer,.tokenCounterDisplay){display:none}`），于是右边注只有
+      用户消息有数字。参考稿两边都显示。 */
+html[data-claude-skin="playbill"] #chat .tokenCounterDisplay{
+  display:block !important;
+}
+
+/* 3. 发言人名和正文**同字号**，只靠字重区分 —— 参考稿的 .speaker 就是继承
+      正文字号加粗。之前写死成 fs-s，名字比正文小一圈，run-in 看着像脚注。 */
+html[data-claude-skin="playbill"] #chat .mes_text::before{
+  font-size:inherit;
+}
+
+/* 4. 导航图标的 glyph。
+      不能靠 `content:none` —— 官网皮是按 id 逐个下发的
+      （`html body #top-settings-holder > .drawer#ai-config-button > ... ::before`，
+      两个 id，特异性 (2,2,3)），皮这边够不着。
+      改成设 display —— 没有任何别的规则给这个伪元素设 display，谁写谁赢。
+      元素本身要留着：它是 position:absolute;inset:0 的整行命中区。 */
+html[data-claude-skin="playbill"] body #top-settings-holder .drawer-icon::before,
+html[data-claude-skin="playbill"] body #top-settings-holder .drawer-icon::after{
+  display:none !important;
+}
+html[data-claude-skin="playbill"] body #top-settings-holder > .drawer > .drawer-toggle > .clawd-rail-label{
+  text-align:left !important;
+}
+
+/* 5. 列表行：名字和时间要在同一行的两个格子里（参考稿 .lrow-top）。
+      官网皮把行内所有非头像子元素一律推到 grid-column:2（特异性 (0,5,2)），
+      于是名字和时间挤进同一格上下堆叠，还跟着整体右对齐。 */
+/* 这里的 :not() 要**逐个抄齐**。官网皮那条写的是
+     :not(img):not(.avatar):not(.mesAvatarWrapper):not([class*="avatar" i])
+   四个 :not() 各算一个类，特异性 (0,5,2)。少抄两个就是 (0,4,3)，
+   b 位 4 < 5，前缀里那个属性选择器补不回来 —— 名字还是会被推到第二列。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
+  :not(img):not(.avatar):not(.mesAvatarWrapper):not([class*="avatar" i]){
+  grid-column:1 !important;
+  text-align:left !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
+  :not(img):not([class*="avatar" i]):is(small,.chatDate){
+  grid-column:2 !important;
+  grid-row:1 !important;
+}
+/* 行内那排操作按钮（重命名/删除）在这套设计里不常显。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents .chatActions{
+  display:none !important;
+}
+
+
+/* ============================================================================
+   THE PLAYBILL · 剧场 DOM 的样式（2.0.54 第二轮）
+
+   上一轮的做法是给酒馆那八个设置抽屉换字体换图标。换完读出来仍然是设置菜单，
+   不是剧场 —— 因为参考稿和酒馆不是"同一个东西的两种长相"，是两套信息架构。
+   这一轮改成：另起一套导航（index.js 的 buildNav），把抽屉降级成
+   「剧场 > 设置」下面的一层，抽屉本身只藏开关、不藏面板。
+   ============================================================================ */
+
+/* 原生抽屉的开关收掉。**只藏 .drawer-toggle，不藏 .drawer** ——
+   面板 .drawer-content 是 .drawer 的子元素，把 .drawer 整个 display:none
+   会连面板一起藏掉，点"预设"就再也打不开了。 */
+html[data-claude-skin="playbill"] #top-settings-holder > .drawer > .drawer-toggle{
+  display:none !important;
+}
+
+/* 品牌行改成参考稿的两行。原文字用 font-size:0 收掉，两行由伪元素画 ——
+   这个节点是 Claude Web 自己建的，但改它的文案要动 JS，
+   而文案属于"这套皮长什么样"，放在皮里更该。 */
+html[data-claude-skin="playbill"] .clawd-rail-brand{
+  display:block !important;
+  font-size:0 !important;
+  line-height:0 !important;
+  min-height:0 !important;
+  padding:0 var(--cw-gut) 20px !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-brand::before{
+  content:"The Playbill"; display:block;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  font-weight:700; text-transform:uppercase; color:var(--cw-text-body);
+}
+html[data-claude-skin="playbill"] .clawd-rail-brand::after{
+  content:"SillyTavern Theme"; display:block;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  font-weight:400; color:var(--cw-text-muted);
+}
+
+/* ---------------------------------------------------------------- 导航
+   三角折叠符和圆点都用 clip-path 成形，不用 border 也不用 border-radius ——
+   这套设计全站直角（--cw-radius-scale:0），引入 border-radius 会破例；
+   用 border 拼三角则会引入第二种边框色。 */
+html[data-claude-skin="playbill"] .cw-nav{
+  display:flex; flex-direction:column;
+  padding:0 0 8px;
+}
+html[data-claude-skin="playbill"] .cw-nav-group{ margin-top:22px; }
+html[data-claude-skin="playbill"] .cw-nav-group:first-child{ margin-top:0; }
+html[data-claude-skin="playbill"] .cw-nav-head{
+  display:flex; align-items:center; gap:7px;
+  width:100%; padding:0 var(--cw-gut) 6px;
+  background:none; border:0; cursor:pointer; text-align:left;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  font-weight:400; color:var(--cw-text-muted);
+}
+html[data-claude-skin="playbill"] .cw-nav-head:hover{ color:var(--cw-text-body); }
+html[data-claude-skin="playbill"] .cw-tri{
+  width:6px; height:6px; flex:none; background:currentColor;
+  clip-path:polygon(0 0,100% 50%,0 100%);
+  transform:rotate(90deg) translateX(-1px);
+  transition:transform 120ms ease;
+}
+html[data-claude-skin="playbill"] .cw-nav-group.is-closed .cw-tri{ transform:none; }
+html[data-claude-skin="playbill"] .cw-nav-group.is-closed > .cw-nav-body{ display:none; }
+html[data-claude-skin="playbill"] .cw-nav-item{
+  display:flex; align-items:baseline; gap:8px; width:100%;
+  padding:5px var(--cw-gut);
+  background:none; border:0; cursor:pointer; text-align:left;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  font-weight:400; color:var(--cw-text-secondary);
+}
+html[data-claude-skin="playbill"] .cw-nav-item:hover{ color:var(--cw-text-body); }
+html[data-claude-skin="playbill"] .cw-nav-item[aria-current="true"]{
+  color:var(--cw-text-body); font-weight:700;
+}
+html[data-claude-skin="playbill"] .cw-dot{
+  width:5px; height:5px; flex:none; background:transparent;
+  clip-path:circle(50%); transform:translateY(-2px);
+}
+html[data-claude-skin="playbill"] .cw-nav-item[aria-current="true"] .cw-dot{
+  background:var(--cw-mark);
+}
+html[data-claude-skin="playbill"] .cw-nav-empty{
+  padding:5px var(--cw-gut);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s); color:var(--cw-text-faint);
+}
+/* 「设置」是嵌在剧场组里的二级组，整体再缩进一格。 */
+html[data-claude-skin="playbill"] .cw-nav-sub{ margin-top:0; }
+html[data-claude-skin="playbill"] .cw-nav-sub > .cw-nav-head{
+  padding:5px var(--cw-gut);
+  color:var(--cw-text-secondary);
+}
+html[data-claude-skin="playbill"] .cw-nav-sub .cw-nav-item{
+  padding-left:calc(var(--cw-gut) + 13px);
+}
+/* 幕次索引展开后的那一列 */
+html[data-claude-skin="playbill"] .cw-act-index{ display:none; }
+html[data-claude-skin="playbill"] .cw-nav.cw-acts-open .cw-act-index{ display:block; }
+html[data-claude-skin="playbill"] .cw-act-link{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  width:100%; padding:4px var(--cw-gut) 4px calc(var(--cw-gut) + 13px);
+  background:none; border:0; cursor:pointer; text-align:left;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-secondary);
+}
+html[data-claude-skin="playbill"] .cw-act-link:hover{ color:var(--cw-text-body); }
+html[data-claude-skin="playbill"] .cw-act-link em{
+  font-style:normal; color:var(--cw-text-faint);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:9em;
+}
+/* 「剧目」筛选：隐藏由 CSS 做，JS 只写一个 class —— \
+JS 逐行改 style 的话，切回"全部"时容易漏掉几行。 */
+html[data-claude-skin="playbill"] .recentChat.pb-hidden{ display:none !important; }
+
+/* ---------------------------------------------------------------- 节目单封面 */
+html[data-claude-skin="playbill"] #chat > .cw-cover{
+  padding:96px 0 104px;
+  max-width:none;
+}
+html[data-claude-skin="playbill"] .cw-kicker{
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  font-weight:700; text-transform:uppercase; color:var(--cw-text-muted);
+}
+html[data-claude-skin="playbill"] .cw-mark{
+  width:26px; height:3px; background:var(--cw-mark); margin:26px 0;
+}
+html[data-claude-skin="playbill"] .cw-cover-title{
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-l); line-height:var(--cw-lh-l);
+  font-weight:700; color:var(--cw-text-body);
+  max-width:16ch; margin:0;
+}
+html[data-claude-skin="playbill"] .cw-cover-sub{
+  margin:18px 0 0;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-m); line-height:var(--cw-lh-m);
+  color:var(--cw-text-secondary); max-width:42ch;
+}
+html[data-claude-skin="playbill"] .cw-cover-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:0 48px; margin-top:72px;
+}
+html[data-claude-skin="playbill"] .cw-cover-foot{
+  margin:72px 0 0;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s); color:var(--cw-text-muted);
+}
+/* 封面和右栏共用同一套"标签 / 值"行 */
+html[data-claude-skin="playbill"] .cw-cover .cw-h,
+html[data-claude-skin="playbill"] #clawd-aside .cw-h{
+  padding-bottom:7px; border-bottom:1px solid var(--cw-rule-hairline);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s); color:var(--cw-text-muted);
+}
+html[data-claude-skin="playbill"] .cw-cover .cw-r{
+  display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+  padding:6px 0; border-bottom:1px solid var(--cw-rule-hairline);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+}
+html[data-claude-skin="playbill"] .cw-cover .cw-r > span{ color:var(--cw-text-muted); }
+html[data-claude-skin="playbill"] .cw-cover .cw-r > b{
+  color:var(--cw-text-body); font-weight:700; text-align:right;
+}
+
+/* ---------------------------------------------------------------- 幕次条的场景提示 */
+html[data-claude-skin="playbill"] #chat .cw-act-note{
+  margin-top:11px;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-muted);
+}
+
+/* ---------------------------------------------------------------- 右栏历史对话 */
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  width:100%; padding:6px 0;
+  border:0; border-bottom:1px solid var(--cw-rule-hairline);
+  background:none; cursor:pointer; text-align:left;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-secondary);
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row > span{
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row > em{
+  font-style:normal; color:var(--cw-text-faint); white-space:nowrap;
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row:hover{ color:var(--cw-text-body); }
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row.is-current{
+  color:var(--cw-text-body); font-weight:700;
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-empty{
+  padding:6px 0; color:var(--cw-text-faint); font-size:var(--cw-fs-s);
+}
+
+/* ---------------------------------------------------------------- 输入区
+   参考稿：正文一行占满，第二行左边是功能键、右边是 Send。
+   酒馆的 #send_form 是 flex 一行，这里改成两行网格。
+   左边那两个键用酒馆原生的 #options_button / #extensionsMenuButton ——
+   不新造按钮，功能是现成的。 */
+html[data-claude-skin="playbill"] body #form_sheld #send_form,
+html[data-claude-skin="playbill"] body #form_sheld #send_form.compact{
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr) auto !important;
+  grid-template-areas:
+    "text text text"
+    "left mid  send" !important;
+  align-items:center !important;
+  gap:8px 12px !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld #send_textarea{
+  grid-area:text !important;
+  width:100% !important; min-height:48px !important;
+  padding:0 !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld :is(#leftSendForm,#options_button,#extensionsMenuButton){
+  grid-area:left !important;
+  align-self:center !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld #leftSendForm{
+  display:flex !important; gap:14px !important;
+  background:none !important; border:0 !important; padding:0 !important; margin:0 !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld :is(#options_button,#extensionsMenuButton){
+  width:auto !important; height:auto !important; min-width:0 !important; min-height:0 !important;
+  margin:0 !important; padding:0 !important;
+  background:none !important; border:0 !important; border-radius:0 !important;
+  color:var(--cw-text-muted) !important;
+  font-size:15px !important; opacity:1 !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld :is(#options_button,#extensionsMenuButton):hover{
+  color:var(--cw-text-body) !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld :is(#rightSendForm,#send_but){
+  grid-area:send !important;
+  justify-self:end !important; align-self:center !important;
+}
+html[data-claude-skin="playbill"] body #form_sheld #rightSendForm{
+  display:flex !important; align-items:center !important; gap:8px !important;
+  background:none !important; border:0 !important; padding:0 !important; margin:0 !important;
+}
