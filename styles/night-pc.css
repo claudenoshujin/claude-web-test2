@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400..600&family=Noto+Serif+SC:wght@300&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400..600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@300&display=swap");
 
 /* Claude / Clawd 1.1 — shared theme structure */
 :root {
@@ -5753,9 +5753,13 @@ html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !imp
 
   /* 四栏与三轨的几何。参考稿的取值，不是现在 linear 的取值 ——
      linear 是 210/300/248，那是把侧边栏收窄凑出来的，不是排出来的。 */
-  --cw-c-nav:190px;
-  --cw-c-list:284px;
-  --cw-c-cast:232px;
+  /* 三条侧栏往中间压。正文有 62ch 限宽（为了可读性，不动），所以中间那列
+     再宽也填不满 —— 加宽中间只是在正文两侧堆更多空白。要让版面不空，
+     只能加宽侧栏。这三个值是默认值，用户可以拖（见 index.js 的 pbWatchRails），
+     拖过的值存在 localStorage，由 JS 写成同名的行内变量覆盖这里。 */
+  --cw-c-nav:216px;
+  --cw-c-list:330px;
+  --cw-c-cast:280px;
   --cw-gut:24px;
   --cw-track-l:80px;      /* 左边注：头像 / 时间 / swipe 序号 */
   --cw-track-r:100px;     /* 右边注：token 数 */
@@ -5903,7 +5907,9 @@ html[data-claude-skin="playbill"] .cw-nav-group{
 html[data-claude-skin="playbill"] .clawd-rail-recents-label{
   position:sticky !important; top:0 !important; z-index:2 !important;
   margin:0 !important;
-  padding:20px var(--cw-gut) 8px !important;
+  /* 18px = #top-settings-holder 的 padding-top（L3626）。两栏的第一行文字
+     必须落在同一条顶线上，差 2px 也看得出来。改左栏 padding 时这里要跟着改。 */
+  padding:18px var(--cw-gut) 8px !important;
   background:var(--cw-surface-page) !important;
   border-bottom:1px solid var(--cw-rule-hairline) !important;
   font-family:var(--cl-sans) !important;
@@ -7058,33 +7064,7 @@ html[data-claude-skin="playbill"] .cw-nav .cw-nav-item{
    第七轮：配图合成一张 / 真透明 / 操作键常显 / 导航三个一组 / 去掉底部用户块
    ============================================================================ */
 
-/* ---- 1. 配图：一张，sticky ----
-   上一版是"封面里一张 + 顶部固定一张"，同一张图出现两次还叠在一起。
-   现在只有一个元素：一开始跟着内容排在标题上方，往下滚到顶就钉住，
-   后面的正文从它下面穿过。"标题的图变成固定跟随的图"是同一个元素的两个
-   状态，不需要两个节点。
-
-   高度砍掉一半（300 → 150）。
-
-   **底端用遮罩，不是叠一层渐变底色。**
-   叠 linear-gradient(transparent → var(--cw-surface-page)) 是假透明 ——
-   它是往图上盖一层和页面同色的布，只在页面底色确实是那个颜色时才成立，
-   换了背景图或者半透明面板就会露馅。
-   mask-image 是让**图本身**的下缘真的变成透明，后面是什么就透出什么。 */
-html[data-claude-skin="playbill"] #chat > .cw-cover-art{
-  position:sticky;
-  top:0;
-  z-index:5;
-  height:150px;
-  /* #chat 左右各有 28px 的排版留白，图要从边线到边线铺满，就得把这两段吃回来。 */
-  margin:0 -28px 0 -28px;
-  background-size:cover;
-  background-position:center;
-  background-repeat:no-repeat;
-  -webkit-mask-image:linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
-  mask-image:linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
-  pointer-events:none;
-}
+/* ---- 1. 配图 ---- 见下面第 3 节，这里那版已删。 */
 /* 图钉住之后，正文要从它下面过去，所以正文的层级必须更低。 */
 html[data-claude-skin="playbill"] #chat > .cw-cover,
 html[data-claude-skin="playbill"] #chat > .mes{ position:relative; z-index:1; }
@@ -7221,27 +7201,55 @@ html[data-claude-skin="playbill"] #chat .cw-msg-acts button:hover{
   color:var(--cw-text-body);
 }
 
-/* ---- 3. 配图：占位槽写死高度，图在里面收放 ----
-   直接改 sticky 元素自己的高度会让下面的内容往上跳，跳完滚动位置又变，
-   再触发一次收缩 —— 自己喂自己，图会抖。槽的高度固定就不会。 */
-html[data-claude-skin="playbill"] #chat > .cw-cover-slot{
-  height:560px;
-  margin:0 -28px;
+/* ---- 3. 配图：sticky 的图 + 一块补高垫片 ----
+
+   上一版是「560px 的槽 + 槽里 sticky 的图」，钉不住。原因是 sticky 元素只能在
+   **它父元素的内容盒**里移动：父元素是那个 560px 的槽，图起始高度也是 560px，
+   可移动距离一开始是 0，随着收缩最多长到 410px（560 − 150）。滚过 410px 之后
+   图就跟着槽一起走掉了 —— 表现就是「完全不跟随」。
+
+   现在图直接是 #chat 的孩子，父元素是整条对话，可移动距离等于全文长度，一钉到底。
+   图收缩带来的流变化由紧跟其后的 .cw-cover-pad 补回来（图高 + 垫高恒等于 560），
+   所以下面的内容一格都不会跳，也就不需要那个槽了。
+
+   .cw-cover-anchor 是图前面一个 0 高度的标记，JS 拿它的 getBoundingClientRect()
+   算滚过了多少 —— 不读 scrollTop。真机和 fixture 的滚动容器不是同一个，
+   读 scrollTop 就得先猜对是谁在滚，测量位置不用猜。
+
+   flex:0 0 auto 是防的：#chat 若是 column flex 容器，默认 flex-shrink:1 会把
+   写死的高度压掉。
+
+   底端用 mask 让图本身淡成透明，不叠同色渐变（那是假透明，换个背景就露馅）。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover-anchor{
+  height:0; margin:0; padding:0; border:0; flex:0 0 auto;
 }
-html[data-claude-skin="playbill"] #chat > .cw-cover-slot > .cw-cover-art{
+html[data-claude-skin="playbill"] #chat > .cw-cover-art{
   position:sticky; top:0; z-index:5;
-  height:560px;
+  flex:0 0 auto;
+  height:380px;
+  /* #chat 左右各有 28px 排版留白，图要从边线铺到边线就得把这两段吃回来。 */
+  margin:0 -28px;
   background-size:cover; background-position:center; background-repeat:no-repeat;
-  /* 多给几个停靠点，中间才不会出现一道能看出来的折线。 */
+  /* 面积加大到 680，但整体压到 55% 不透明度：加大的是尺寸，压下去的是
+     **单位面积的重量**。图占的地方更多，视觉上反而更退得回去。
+     opacity 作用在整个元素上，mask 只管下缘怎么收 —— 两件事分开，
+     调其中一个不会把另一个带歪。 */
+  opacity:.55;
+  /* 从 30% 就开始淡，不再是过了大半截才收。停靠点给密一些，
+     免得中间出现一道能看出来的折线。 */
   -webkit-mask-image:linear-gradient(to bottom,
-    #000 0%, rgba(0,0,0,.98) 46%, rgba(0,0,0,.86) 62%,
-    rgba(0,0,0,.58) 76%, rgba(0,0,0,.26) 88%, transparent 100%);
+    #000 0%, rgba(0,0,0,.94) 30%, rgba(0,0,0,.78) 48%,
+    rgba(0,0,0,.54) 64%, rgba(0,0,0,.28) 80%, rgba(0,0,0,.10) 91%, transparent 100%);
   mask-image:linear-gradient(to bottom,
-    #000 0%, rgba(0,0,0,.98) 46%, rgba(0,0,0,.86) 62%,
-    rgba(0,0,0,.58) 76%, rgba(0,0,0,.26) 88%, transparent 100%);
+    #000 0%, rgba(0,0,0,.94) 30%, rgba(0,0,0,.78) 48%,
+    rgba(0,0,0,.54) 64%, rgba(0,0,0,.28) 80%, rgba(0,0,0,.10) 91%, transparent 100%);
   pointer-events:none;
 }
-html[data-claude-skin="playbill"] #chat > .cw-cover-art{ display:none !important; }
+html[data-claude-skin="playbill"] #chat > .cw-cover-pad{
+  height:0; margin:0 -28px; flex:0 0 auto; pointer-events:none;
+}
+/* 旧结构作废。留一条兜底，万一有残留节点不至于画出一个 560px 的空洞。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover-slot{ display:none !important; }
 html[data-claude-skin="playbill"] #chat > .cw-cover{ padding-top:40px; z-index:1; position:relative; }
 html[data-claude-skin="playbill"] #chat > .mes{ z-index:1; }
 
@@ -7387,4 +7395,883 @@ html[data-claude-skin="playbill"] body #chat > .mes .mes_block{
 html[data-claude-skin="playbill"] body #chat > .mes .mes_text{
   max-width:none !important;
   width:auto !important;
+}
+
+
+/* ---- 8. 字体：Arimo + Noto Sans SC ----
+   参考稿 剧场主题_THE_PLAYBILL.html 的 --font 是
+   "Helvetica Neue", Helvetica, Arial, "Noto Sans SC" ——
+   Arimo 是 Arial 的度量兼容开源版（字宽逐字相同），装在 Google Fonts 上，
+   所以在没有 Helvetica 的机器上排出来的行长和参考稿一致，不会换行位置乱掉。
+
+   只挂在 playbill 上，不改全局 :root —— 改 :root 会把官网皮和 Are.na 一起换掉。
+   代价：playbill 下「字体」下拉里的手选项（思源宋等）会被这一段压住。
+   这和「选 playbill 就锁四栏结构」是同一个决定：整套主题，字体是它的一部分。
+   要放开就把下面四行的选择器换成 html[data-claude-skin="playbill"][data-claude-font="follow"]。
+
+   预设 PLAYBILL_LIGHT / PLAYBILL_DARK 里的 --cw-skin-sans / --cw-skin-serif
+   也已同步改成同一串（index.js）。两处要一起改。
+
+   注意：本文件里另有 11 处 font-family 是 "Font Awesome 6 Free"，是图标字形，
+   动了会变方框，这一段一处都没碰。 */
+html[data-claude-skin="playbill"]{
+  --cl-cjk        : "Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  --cl-sans       : "Arimo","Helvetica Neue",Helvetica,Arial,var(--cl-cjk);
+  --cl-serif      : var(--cl-sans);
+  --cl-serif-hero : var(--cl-sans);
+}
+
+
+/* ============================================================================
+   第八轮：列表行照参考稿重排 / 角色卡名单 / 栏宽可拖 / 导航拉开
+   ============================================================================ */
+
+/* ---- 9. 会话列表行：照 剧场主题_THE_PLAYBILL.html 的两行式 ----
+
+   参考稿的行是：
+     第一行   存档名（粗）..................................... 14:32
+     第二行   Elias · 第 VII 幕 · 49 句
+   没有头像，也没有正文预览。
+
+   .chatMeta 那个节点是 index.js 的 buildRecentRow 新加的，**默认全局隐藏**
+   （下面第一条），只有 playbill 放出来。原因：这一行的 DOM 结构是
+   module-mobile.css 的地基（.chatNameContainer 限高、.chatName>span 只留角色名
+   那几条都是照它写的），改结构 PC 上看不出来、手机上必炸。所以只加节点、
+   不动结构，显隐交给皮肤。
+
+   选择器全写成整条路径是有意的：官网皮那批规则是 (0,5,2)，
+   `html[data-claude-skin] .chatName` 这种短写法只有 (1,1,0)，压不住。
+   下面每条都是 (0,6,1) 起步。 */
+.chatMeta{ display:none; }
+
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  column-gap:12px !important;
+  row-gap:3px !important;
+  align-items:baseline !important;
+  padding-right:0 !important;
+}
+/* 第一行左：存档名。.chatName 里原来是「角色名 – 存档名」三个节点，
+   角色名挪到第二行去了，这里只留存档名那一个 span。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatName{
+  grid-column:1 !important; grid-row:1 !important;
+  display:block !important;
+  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important;
+  color:var(--cw-text-body) !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatName > .characterName,
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatName > span:first-of-type{
+  display:none !important;
+}
+/* 第一行右：时间。参考稿是和标题同一行的最右端，不是标题下面一行。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatDate{
+  grid-column:2 !important; grid-row:1 !important;
+  display:block !important;
+  white-space:nowrap !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:400 !important;
+  color:var(--cw-text-muted) !important;
+}
+/* 第二行：角色 · 第 X 幕 · N 句，横跨两列。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatMeta{
+  display:block !important;
+  grid-column:1 / -1 !important; grid-row:2 !important;
+  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  /* 必须显式写 400：.chatNameContainer 被官网皮那条 :first-of-type 规则设成了
+     700，不写就会继承过来，两行一样粗，分不出主次。 */
+  font-weight:400 !important;
+  color:var(--cw-text-muted) !important;
+}
+/* 正文预览和头像在这一版不出现。数据还在（entry.preview 照旧算），
+   哪天想加回来把这两条删掉即可。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatPreview,
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .avatar{
+  display:none !important;
+}
+/* 删除键压到行右上，hover 才出现 —— 常显的话它和时间抢同一块地方。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatActions{
+  grid-column:2 !important; grid-row:1 !important;
+  justify-self:end !important;
+  opacity:0 !important;
+  transition:opacity .12s linear !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover > .recentChatInfo > .chatNameContainer > .chatActions{
+  opacity:1 !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover > .recentChatInfo > .chatNameContainer > .chatDate{
+  opacity:0 !important;
+}
+
+/* ---- 10. 导航：行距拉开 ----
+   Are.na 的左栏（P3 的 Info / Members / View / Order）行与行之间是很松的，
+   靠留白分组，不靠线也不靠底色。原来 6px 的上下内边距是照 Claude 侧栏的密度
+   来的，那套密度是给"一屏塞下二十项"用的，这里只有九项。 */
+html[data-claude-skin="playbill"] .cw-nav{ padding:4px 0 18px !important; }
+html[data-claude-skin="playbill"] .cw-nav .cw-nav-item{
+  padding-top:9px !important; padding-bottom:9px !important;
+  letter-spacing:.01em !important;
+}
+/* 3 / 3 / 3 分组：第 4 项和第 7 项前面各留一段空。靠留白分组，不画线。 */
+html[data-claude-skin="playbill"] .cw-nav .cw-nav-item:nth-child(4),
+html[data-claude-skin="playbill"] .cw-nav .cw-nav-item:nth-child(7){
+  margin-top:16px !important;
+}
+
+/* ---- 11. 角色卡名单 ----
+   填左栏下方那片空缺。参考稿导航里本来就有「角色 → Elias / 守夜人 / 无名氏」，
+   这块是把它补上，不是新造的。
+   行格式和 Are.na 的 Info 表同一个骨架：左标签、右数值、细线栏头。 */
+html[data-claude-skin="playbill"] .cw-cast-list{
+  /* 紧跟导航，用一条细线隔开，**不钉栏底**。钉底的话名单和导航之间会空出
+     一大片和内容无关的白 —— 那不是节奏，是没排满。
+     flex:0 0 auto 防它被下面的会话列表挤扁。 */
+  flex:0 0 auto;
+  padding:14px 0 4px;
+  border-top:1px solid var(--cw-rule-hairline);
+}
+html[data-claude-skin="playbill"] .cw-cast-h{
+  padding:0 var(--cw-gut) 8px;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  font-weight:400;
+  letter-spacing:.08em; text-transform:uppercase;
+  color:var(--cw-text-muted);
+}
+html[data-claude-skin="playbill"] .cw-cast-item{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  width:100%;
+  padding:7px var(--cw-gut);
+  border:0; background:none; border-radius:0;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-body);
+  text-align:left; cursor:pointer;
+}
+html[data-claude-skin="playbill"] .cw-cast-item > span{
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html[data-claude-skin="playbill"] .cw-cast-item > em{
+  flex:0 0 auto;
+  font-style:normal;
+  font-size:var(--cw-fs-s);
+  color:var(--cw-text-muted);
+}
+html[data-claude-skin="playbill"] .cw-cast-item:hover{ background:var(--cw-surface-hover); }
+/* 当前角色和"当前对话"用同一个记号：一条 accent 竖标，不用底色。
+   这套设计不靠色块面积区分层级。 */
+html[data-claude-skin="playbill"] .cw-cast-item.is-current{
+  box-shadow:inset 2px 0 0 var(--cw-mark);
+  font-weight:700;
+}
+/* 左栏要能把名单顶到底，自己得是一个纵向 flex 容器。 */
+html[data-claude-skin="playbill"] #top-settings-holder{
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+/* ---- 12. 栏宽拖拽把手 ----
+   三条竖缝上各一个。平时完全看不见，鼠标压上去才出一条细线 ——
+   常显的话版面上就多了三条和内容无关的竖线，这套设计里线是有含义的。 */
+html[data-claude-skin="playbill"] .cw-rail-grip{
+  position:fixed; top:0; bottom:0;
+  width:11px; margin-left:-5px;
+  z-index:4100;
+  cursor:col-resize;
+  background:none;
+}
+html[data-claude-skin="playbill"] .cw-rail-grip[data-col="nav"]{ left:var(--cw-c-nav); }
+html[data-claude-skin="playbill"] .cw-rail-grip[data-col="list"]{ left:calc(var(--cw-c-nav) + var(--cw-c-list)); }
+html[data-claude-skin="playbill"] .cw-rail-grip[data-col="cast"]{ left:auto; right:var(--cw-c-cast); margin-left:0; margin-right:-5px; }
+html[data-claude-skin="playbill"] .cw-rail-grip::before{
+  content:""; position:absolute; top:0; bottom:0; left:5px;
+  width:1px; background:var(--cw-mark);
+  opacity:0; transition:opacity .12s linear;
+}
+html[data-claude-skin="playbill"] .cw-rail-grip:hover::before,
+html[data-claude-skin="playbill"] .cw-rail-grip.is-drag::before{ opacity:1; }
+/* 拖动时别让指针在文字上刷出一片选中蓝。 */
+html.cw-rail-dragging, html.cw-rail-dragging *{
+  user-select:none !important; cursor:col-resize !important;
+}
+/* 窄屏退回侧边栏形态时，把手不能留在屏幕上。 */
+@media (max-width:1100px){
+  html[data-claude-skin="playbill"] .cw-rail-grip{ display:none !important; }
+}
+
+
+/* ============================================================================
+   第九轮：排版收紧 —— 局部密、整体疏、强左对齐
+   ----------------------------------------------------------------------------
+   诊断（对着 Are.na 的频道页量的）：Are.na 之所以看着紧凑又不挤，是因为
+   **块内的行贴得很死、块与块之间留大片白**。Info / Members / View / Order
+   四列，列内行高 19px、字号 13px，白全留在列与列之间。
+
+   playbill 之前是反过来的：每一行都松，所以哪里都不密，整体就显得没排满。
+   实测一条消息从分隔线到下一条约 400px，其中正文只占 80px —— 消息头四行
+   （标语 / 头像 56px / 名字 / 元数据）吃掉 190px。
+
+   这一段做三件事：
+     1. 消息头四行压成两行 —— 头像 36px + 名字 + 元数据合成一行
+     2. 正文限宽 62ch → 74ch，并且整块**左对齐**到一条固定基线（不再居中）
+     3. 行高全线收紧：右栏 29 → 23px，左栏导航 9 → 6px，会话行 11 → 8px
+   ============================================================================ */
+
+/* ---- 13. 一条固定的左基线 ----
+   Are.na 的正文列（P4/P5）是贴一条左基线排的，不是居中。居中的列在窗口变宽时
+   左边缘会跟着动，眼睛每换一行都要重新找行首；贴左基线就永远在同一个位置。
+   消息头仍然居中，但是**在这条 74ch 的列之内**居中 —— 列是左对齐的，
+   列里的内容各排各的，这两件事不冲突。 */
+html[data-claude-skin="playbill"]{
+  --cw-pb-measure:min(74ch, 100%);
+}
+html[data-claude-skin="playbill"] body #chat > .mes .mes_block,
+html[data-claude-skin="playbill"] #chat .cw-card-head,
+html[data-claude-skin="playbill"] #chat .cw-msg-acts,
+html[data-claude-skin="playbill"] #chat > .cw-cover{
+  max-width:var(--cw-pb-measure) !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+}
+/* 编辑 / 删除跟着正文贴左，不再居中 —— 正文左对齐之后，居中的按钮会飘在
+   一段文字的右下方，看着像属于别的东西。 */
+html[data-claude-skin="playbill"] #chat .cw-msg-acts{
+  justify-content:flex-start !important;
+  gap:18px !important;
+  margin-top:14px !important;
+  padding-bottom:0 !important;
+}
+
+/* ---- 14. 消息头：四行 → 两行 ---- */
+html[data-claude-skin="playbill"] #chat .cw-card-head{
+  padding-bottom:16px !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-bar{
+  padding-top:26px !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-note{
+  margin-top:10px !important;
+}
+/* 第二行：头像 · 名字 · 元数据。三样在一条基线上，靠 gap 分开，不靠换行。 */
+html[data-claude-skin="playbill"] #chat .cw-card-line{
+  display:flex; align-items:center; justify-content:center;
+  gap:12px; margin-top:11px;
+  flex-wrap:nowrap; min-width:0;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-face{
+  display:block !important;
+  width:36px !important; height:36px !important;
+  margin:0 !important; flex:0 0 auto !important;
+  object-fit:cover; border-radius:0;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-name{
+  margin-top:0 !important;
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+/* 元数据是这一行里唯一可以被压掉的东西：窗口窄的时候先截它，
+   名字和头像不动 —— 名字被截成半个字是最难认的一种失败。 */
+html[data-claude-skin="playbill"] #chat .cw-card-meta{
+  margin-top:0 !important;
+  min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* ---- 15. 行高全线收紧 ----
+   数值都是照 Are.na 量的：它的键值行总高约 19px（字 13px + 上下 3px），
+   这里字号是 12.5px，所以上下各 3px。 */
+html[data-claude-skin="playbill"] #clawd-aside .cw-r{
+  padding:3px 0 !important;
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-h{
+  padding-bottom:5px !important;
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-g{
+  margin-bottom:20px !important;
+}
+/* 导航：上一轮拉到 9px 是矫枉过正 —— 拉开的应该是**组与组之间**，
+   不是每一行之间。行回到 6px，组间距 16 → 14px。 */
+html[data-claude-skin="playbill"] .cw-nav{ padding:2px 0 12px !important; }
+html[data-claude-skin="playbill"] .cw-nav .cw-nav-item{
+  padding-top:6px !important; padding-bottom:6px !important;
+}
+html[data-claude-skin="playbill"] .cw-nav .cw-nav-item:nth-child(4),
+html[data-claude-skin="playbill"] .cw-nav .cw-nav-item:nth-child(7){
+  margin-top:14px !important;
+}
+html[data-claude-skin="playbill"] .cw-cast-item{ padding-top:5px; padding-bottom:5px; }
+/* 会话列表行：两行内容，11px 的上下留白偏多。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat{
+  padding-top:8px !important; padding-bottom:8px !important;
+}
+/* 右栏幕次表的预览行是三行里最占地方的一段，收到两行。 */
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-preview{
+  -webkit-line-clamp:2 !important;
+}
+/* 段间距：正文段落之间 14 → 11px。行内已经有 1.5 的行距，段距不必再拉开一倍。 */
+html[data-claude-skin="playbill"] #chat .mes_text > p{ margin:0 0 11px !important; }
+
+
+/* ============================================================================
+   第十轮：把正文区的呼吸还回去（第九轮压过头了）
+   ----------------------------------------------------------------------------
+   第九轮按「一条消息 400px 里正文只占 80px」来算，把消息头从 190px 压到 95px。
+   那笔账在样例数据上成立，在真实使用里不成立：酒馆一条角色输出通常 800–1000 字，
+   一条消息的高度是 1200px 起，头省掉的 95px 占不到 8% —— 省不出什么。
+
+   而代价是实打实的：**头是两堵文字墙之间唯一的喘息**，也是「这句是谁说的」
+   的唯一分界。把它压扁，连着两条长回复就会糊成一片。
+
+   所以这一段把账重新算一次，分开两类区域：
+     · 列表 / 元信息区（左栏导航、会话行、右栏键值表）—— 保持第九轮的紧。
+       它们是短行，密是对的，Are.na 的 Info 列也是这么密。
+     · 正文区（消息头、正文行距段距、操作键）—— 全部放回去，并且比第九轮之前
+       还松一点：正文行距 1.5 → 1.72，段距 11 → 18px。
+       1.5 是给 16px 拉丁文的，中文方块字在 1.5 下长段落会糊。
+
+   一句话：**列表要密，正文要疏。** 这两件事第九轮混成了一件。
+   ============================================================================ */
+
+/* ---- 16. 消息头：一行的结构留着，间距还回去 ----
+   合成一行本身是对的（省掉的是「四样东西各占一行」的堆叠），
+   错的是把这一行上下的留白也一起削了。 */
+html[data-claude-skin="playbill"] #chat .cw-card-bar{
+  padding-top:48px !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-note{
+  margin-top:16px !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-line{
+  margin-top:18px !important;
+  gap:14px !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-face{
+  width:44px !important; height:44px !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-head{
+  padding-bottom:32px !important;
+}
+
+/* ---- 17. 正文：长文该有的行距和段距 ----
+   line-height 单独开一个 playbill 的令牌，不动全局的 --cw-lh-m ——
+   那个还有别的皮肤在用，改它会把官网皮和 Are.na 一起拉松。 */
+html[data-claude-skin="playbill"]{
+  --cw-pb-lh-body:1.72;
+}
+html[data-claude-skin="playbill"] #chat .mes_text{
+  line-height:var(--cw-pb-lh-body) !important;
+}
+/* 段距 18px：比行距（16 × 1.72 ≈ 27px）小，段与段才是「同一段话的两节」，
+   而不是两条独立的消息。比行距还大就会读成断开的两块。 */
+html[data-claude-skin="playbill"] #chat .mes_text > p{ margin:0 0 18px !important; }
+html[data-claude-skin="playbill"] #chat .mes_text > p:last-child{ margin-bottom:0 !important; }
+
+/* ---- 18. 操作键：离正文远一点 ----
+   贴着正文最后一行会读成正文的一部分。 */
+html[data-claude-skin="playbill"] #chat .cw-msg-acts{
+  margin-top:26px !important;
+  padding-bottom:10px !important;
+}
+
+
+/* ============================================================================
+   第十一轮：对齐说死 + 再松一档
+   ----------------------------------------------------------------------------
+   对齐分两类，写死不靠继承：
+     · 左对齐 —— 封面标题、正文、编辑/删除键
+     · 居中   —— ACT 分隔条、场景标语、头像 + 名字 + 时间那一行
+   这不是随意分的：左对齐的都是**要读的**（眼睛需要一条固定的行首），
+   居中的都是**标记**（它们标的是「这里换人了」，居中才读得出对称的分界感）。
+
+   之前这两组有一半是靠继承拿到的默认值 —— 没有规则写，只是碰巧对。
+   碰巧对的东西，下次别人加一条 text-align 就会塌，所以这里全部显式写出来。
+   ============================================================================ */
+
+/* ---- 19. 左对齐：封面 / 正文 / 操作键 ---- */
+html[data-claude-skin="playbill"] #chat > .cw-cover,
+html[data-claude-skin="playbill"] #chat > .cw-cover .cw-kicker,
+html[data-claude-skin="playbill"] #chat > .cw-cover .cw-cover-title,
+html[data-claude-skin="playbill"] #chat > .cw-cover .cw-cover-sub,
+html[data-claude-skin="playbill"] #chat > .cw-cover .cw-cover-foot,
+html[data-claude-skin="playbill"] #chat .mes .mes_block,
+html[data-claude-skin="playbill"] #chat .mes_text{
+  text-align:left !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-msg-acts{
+  justify-content:flex-start !important;
+}
+
+/* ---- 20. 居中：ACT 条 / 标语 / 头像那一行 ---- */
+html[data-claude-skin="playbill"] #chat .cw-card-head{
+  text-align:center !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-line{
+  justify-content:center !important;
+}
+
+/* ---- 21. 再松一档 ----
+   加的全是**块与块之间**的空，不是行与行之间的：行距已经是 1.72，
+   再拉行距长段落会散成一行一行的，读起来反而费劲。
+   Are.na 也是这个分法 —— 行贴得紧，块之间大片留白。 */
+html[data-claude-skin="playbill"] #chat .cw-card-bar{ padding-top:68px !important; }
+html[data-claude-skin="playbill"] #chat .cw-card-note{ margin-top:22px !important; }
+html[data-claude-skin="playbill"] #chat .cw-card-line{ margin-top:26px !important; }
+html[data-claude-skin="playbill"] #chat .cw-card-head{ padding-bottom:48px !important; }
+html[data-claude-skin="playbill"] #chat .cw-msg-acts{
+  margin-top:36px !important;
+  padding-bottom:28px !important;
+}
+/* 段距 22px：仍然小于行距（16 × 1.72 ≈ 27px）。这条线不能越过 ——
+   段距一旦大于行距，段与段就读成两条独立的消息，而不是一段话的两节。 */
+html[data-claude-skin="playbill"] #chat .mes_text > p{ margin:0 0 22px !important; }
+html[data-claude-skin="playbill"] #chat .mes_text > p:last-child{ margin-bottom:0 !important; }
+
+/* 封面同步放松，不然封面显得比下面的正文挤。 */
+/* 写成 longhand，不写 padding 简写：上面 L7258 那条声明的是 padding-top 长写法，
+   两种写法混在一起时，谁压谁要连 !important 一起看，很容易看错。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover{
+  padding-top:56px !important;
+  padding-bottom:132px !important;
+  padding-left:0 !important;
+  padding-right:0 !important;
+}
+html[data-claude-skin="playbill"] .cw-cover-grid{ margin-top:88px !important; }
+html[data-claude-skin="playbill"] .cw-cover-foot{ margin-top:88px !important; }
+
+
+/* ============================================================================
+   第十二轮：消息头退回堆叠 —— 头像必须落在同一条竖轴上
+   ----------------------------------------------------------------------------
+   第九轮把 头像 / 名字 / 元数据 合成一行（.cw-card-line，居中的 flex）省竖向空间。
+   那是个真错误，不是取舍：
+
+     元数据每条的长短不一样 —— 用户消息是 "14:13 · 22 tok"，
+     角色消息是 "14:14 · 8.4s · 1/4 · 95 tok"。
+     [头像][名字][元数据] 作为一整组居中，组宽不一样，
+     **头像的横坐标就每条都在飘。**
+
+   一列头像左右跳，比多占一百像素严重得多：视线沿着这一列往下走时，
+   每换一条都要重新找中轴。所以退回堆叠 —— 各占一行、各自居中，
+   头像才永远在同一条竖轴上。
+
+   .cw-card-line 这个节点已经从 index.js / fixture.html 里删掉了，
+   下面那条 display:contents 只是兜底：万一还有旧的缓存 DOM 留着这个壳，
+   让它不生成盒子，里面三样直接按 .cw-card-head 的居中排。
+   ============================================================================ */
+html[data-claude-skin="playbill"] #chat .cw-card-line{
+  display:contents !important;
+}
+/* 头像：block + 左右 auto，居中靠自己的 margin，不靠父元素的 flex ——
+   这样它的位置只和自己的宽度有关，和同行有什么东西无关。 */
+html[data-claude-skin="playbill"] #chat .cw-card-face{
+  display:block !important;
+  width:56px !important; height:56px !important;
+  /* 写成 longhand：前面几轮有 margin 简写也有 margin-left 长写法，
+     混着看谁压谁很容易看错（第十一轮在 padding 上已经栽过一次）。 */
+  margin-top:26px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  margin-bottom:0 !important;
+  object-fit:cover; border-radius:0;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-name{
+  display:block !important;
+  margin-top:14px !important;
+  white-space:normal;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-meta{
+  display:block !important;
+  margin-top:7px !important;
+  overflow:visible; text-overflow:clip; white-space:normal;
+}
+
+
+/* ============================================================================
+   第十三轮：整列在对话区里水平居中
+   ----------------------------------------------------------------------------
+   第九轮把这条 74ch 的列贴到了对话区左边缘，理由是「Are.na 的正文列贴一条
+   固定左基线」。那条理由在 Are.na 成立，在这里不成立 —— Are.na 的页面左边
+   还有一栏元信息（P4/P5 的 References / Category），列贴左是**因为左边有东西**。
+   这里左边什么都没有，贴左的结果就是右边空出一大条，谁也不占。
+
+   所以列本身居中，列**里面**的对齐不变：
+     · 正文、封面标题、编辑/删除键 —— 在列内左对齐（行首仍然固定）
+     · ACT 条、标语、头像 / 名字 / 时间 —— 在列内居中
+   列居中只是把这一整块挪到对话区中间，不改任何一样东西的内部对齐。
+   ============================================================================ */
+html[data-claude-skin="playbill"] body #chat > .mes .mes_block,
+html[data-claude-skin="playbill"] #chat .cw-card-head,
+html[data-claude-skin="playbill"] #chat .cw-msg-acts,
+html[data-claude-skin="playbill"] #chat > .cw-cover{
+  max-width:var(--cw-pb-measure) !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+
+
+/* ============================================================================
+   第十四轮：宽度只定义一次 / 头用网格锁列位 / 三个小修
+   ----------------------------------------------------------------------------
+   前四轮反复出错的根源：「正文列有多宽」这件事写在四个选择器里
+   （.cw-card-head / .mes_block / .cw-msg-acts / .cw-cover），各写一遍
+   max-width + margin:auto。改一次宽度要同步改四处，漏一处就错位。
+
+   现在宽度只写在 .mes 上 —— 一条消息的最外层盒子。里面三样宽度设成 100%，
+   跟着外层走。以后调列宽只改一个数。
+   （.cw-cover 不在 .mes 里面，仍然自己定，但用同一个令牌 --cw-pb-measure。）
+
+   **没有照搬的一点**：参考实现把分隔线改成了 .mes 的 border-top。这里不改 ——
+   现在那条线中间夹着「ACT II」，是 .cw-card-bar 用两条伪元素线加中间的字画的。
+   换成边框就没地方夹字了。线的活儿留给 .cw-card-bar。
+   ============================================================================ */
+html[data-claude-skin="playbill"] #chat > .mes{
+  display:block !important;
+  width:100% !important;
+  max-width:var(--cw-pb-measure) !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+/* 里面三样不再各自定宽，撑满外层即可。 */
+html[data-claude-skin="playbill"] body #chat > .mes .mes_block,
+html[data-claude-skin="playbill"] #chat > .mes .cw-card-head,
+html[data-claude-skin="playbill"] #chat > .mes .cw-msg-acts{
+  width:100% !important;
+  max-width:none !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+}
+/* 封面不在 .mes 里，但用同一个令牌，两边不会漂。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover{
+  max-width:var(--cw-pb-measure) !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+
+/* ---- 22. 消息头：居中的外观不变，实现换成网格 ----
+   居中原来靠每个子元素自己的 margin:auto / text-align。那是三套机制拼出来的
+   同一个效果，任何一处被别的规则改掉就会有一样东西偏出去。
+   网格只有一套：一列，justify-items:center，所有子元素落在同一条竖轴上。
+   .cw-card-bar 要例外 —— 它是「细线 + Act 号 + 细线」，必须撑满整行，
+   缩到内容宽两边的线就没了。 */
+html[data-claude-skin="playbill"] #chat .cw-card-head{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  justify-items:center !important;
+  text-align:center !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-bar{
+  justify-self:stretch !important;
+  width:100% !important;
+}
+html[data-claude-skin="playbill"] #chat .cw-card-face,
+html[data-claude-skin="playbill"] #chat .cw-card-name,
+html[data-claude-skin="playbill"] #chat .cw-card-meta{
+  margin-left:0 !important;
+  margin-right:0 !important;
+}
+
+/* ---- 23. 长英文串不撑破列 ----
+   中文靠标点和字符自动折行，但一串没有空格的英文或网址（贴进来的链接常常
+   两百个字符）浏览器不会拆，会一路顶到列外面，把这条消息撑得比别的宽。 */
+html[data-claude-skin="playbill"] #chat .mes_text{
+  overflow-wrap:anywhere !important;
+  word-break:normal !important;
+}
+
+/* ---- 24. 编辑 / 删除：平时淡，hover 才实 ----
+   常显的话一屏五条消息就是十个灰字。.28 是「看得见但不抢」——
+   不设 0，设 0 就变成隐藏功能，新用户根本不知道有这两个键。 */
+html[data-claude-skin="playbill"] #chat .cw-msg-acts{
+  opacity:.28 !important;
+  transition:opacity .15s linear !important;
+}
+html[data-claude-skin="playbill"] #chat .mes:hover .cw-msg-acts,
+html[data-claude-skin="playbill"] #chat .cw-msg-acts:focus-within{
+  opacity:1 !important;
+}
+
+/* ---- 25. 右栏幕次表：三段各占固定列位 ----
+   原来是 flex，谁长谁占地方：存档名一长，右边的「49 句」就被挤出去或者换行。
+   网格三列 auto / 1fr / auto —— Act 号和句数位置固定，要截断只截中间的名字。 */
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-top{
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr) auto !important;
+  align-items:baseline !important;
+  gap:8px !important;
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-top b{
+  min-width:0 !important;
+  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+}
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-top i,
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-top em{
+  white-space:nowrap !important;
+}
+
+
+/* ============================================================================
+   第十五轮：顶栏 + Are.na 式频道标题区 + 侧栏收窄
+   ----------------------------------------------------------------------------
+   三件事：
+     1. 加一条 52px 的顶栏（左：标识 + 搜索；右：一浅一蓝两个键）。
+        形状照 Are.na 站点顶栏，**功能全是真的** —— 搜索即时过滤会话列表，
+        两个键分别开 persona 抽屉和新建对话。参考稿那两个是 Log in / Sign up，
+        酒馆里没有账号，点下去什么都不会发生；不响应的按钮比不做更糟。
+     2. 封面改成 Are.na 的频道头：`角色 / 存档名 [头像]` 一行 + 四列细线表。
+        第四列「视图」是真开关，点了会切 data-claude-* 属性。
+     3. 三条侧栏收窄（216/330/280 → 176/250/220），正文列放宽到 920px。
+        原来三条侧栏 826px、正文列只有 74ch（≈660px），中间填不满就空着。
+        现在侧栏 646px，空出来的 180px 加上原来空着的那片全给正文。
+        ch 是「0 的宽度」，Arimo 16px 下约 8.9px —— 74ch 看着像很宽，其实不到 660px。
+   ============================================================================ */
+
+html[data-claude-skin="playbill"]{
+  --cw-pb-top:52px;
+  /* 正文列改用像素：ch 随字体走，换字体时列宽会跟着变，
+     而这一列的宽度是版面几何的一部分，不该跟着字体漂。 */
+  --cw-pb-measure:min(920px, 100%);
+}
+
+/* ---- 26. 顶栏 ---- */
+html[data-claude-skin="playbill"] .cw-topbar{
+  position:fixed; inset:0 0 auto 0; z-index:4200;
+  height:var(--cw-pb-top);
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:0 14px 0 18px;
+  background:var(--cw-surface-page);
+  border-bottom:1px solid var(--cw-rule-hairline);
+  font-family:var(--cl-sans);
+}
+html[data-claude-skin="playbill"] .cw-top-left{
+  display:flex; align-items:center; gap:22px; min-width:0; flex:1;
+}
+/* 标识：两个方块，不用图标字体也不用 SVG ——
+   参考稿左栏通篇只有三角和圆点两种形状，顶栏也守同一条。 */
+html[data-claude-skin="playbill"] .cw-top-symbol{
+  flex:0 0 auto; width:16px; height:7px;
+  background:var(--cw-text-body);
+  clip-path:polygon(0 0,7px 0,7px 7px,0 7px, 9px 0,16px 0,16px 7px,9px 7px);
+}
+html[data-claude-skin="playbill"] .cw-top-search{
+  flex:1; min-width:0; max-width:420px;
+  margin:0; padding:0; border:0; outline:0; background:none;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-body);
+}
+html[data-claude-skin="playbill"] .cw-top-search::placeholder{ color:var(--cw-text-muted); }
+html[data-claude-skin="playbill"] .cw-top-acct{ display:flex; gap:8px; flex:0 0 auto; }
+html[data-claude-skin="playbill"] .cw-top-btn{
+  min-height:24px; padding:3px 11px;
+  border:0; border-radius:0; cursor:pointer;
+  background:var(--cw-surface-hover); color:var(--cw-text-body);
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s); font-weight:700;
+}
+html[data-claude-skin="playbill"] .cw-top-btn.is-primary{
+  background:var(--cw-mark); color:var(--cw-surface-page);
+}
+
+/* 四栏整体下移，给顶栏让位。这五处必须一起改 —— 漏一处那一栏就会被顶栏盖住。 */
+@media (min-width:1100px){
+  html[data-claude-skin="playbill"] #top-settings-holder,
+  html[data-claude-skin="playbill"] .clawd-rail-recents,
+  html[data-claude-skin="playbill"] #clawd-aside,
+  html[data-claude-skin="playbill"] body #sheld,
+  html[data-claude-skin="playbill"] .cw-rail-grip{
+    top:var(--cw-pb-top) !important;
+  }
+}
+
+/* ---- 27. 频道标题区 ----
+   `角色 / 存档名 [头像]` 一行网格，下面四列细线表。
+   层级和 Are.na 的 `Are.na / channel` 是同一个：一个角色底下有多个存档，
+   就像一个组织底下有多个频道。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover{
+  display:grid !important;
+  grid-template-columns:auto auto minmax(0,1fr) auto !important;
+  align-items:center !important;
+  column-gap:12px !important;
+  padding-top:34px !important;
+  padding-bottom:38px !important;
+}
+html[data-claude-skin="playbill"] .cw-kicker{
+  grid-column:1; margin:0; padding:0;
+  font-size:var(--cw-fs-l) !important; line-height:1.1 !important;
+  font-weight:700 !important; text-transform:none !important; letter-spacing:0 !important;
+  color:var(--cw-text-muted) !important;
+  white-space:nowrap;
+}
+html[data-claude-skin="playbill"] .cw-mark{
+  grid-column:2;
+  width:auto !important; height:auto !important; margin:0 !important; background:none !important;
+  font-size:var(--cw-fs-l) !important; line-height:1.1 !important; font-weight:400 !important;
+  color:var(--cw-text-faint) !important;
+}
+html[data-claude-skin="playbill"] .cw-cover-title{
+  grid-column:3;
+  min-width:0; max-width:none !important; margin:0 !important;
+  font-size:var(--cw-fs-l) !important; line-height:1.1 !important; font-weight:700 !important;
+  color:var(--cw-text-body) !important; text-align:left !important;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* 右边那个小方块：Are.na 放的是频道可见性首字母，这里放角色头像 ——
+   同样是「这是谁的地盘」的标记，但我们有真图，就别放字母。 */
+html[data-claude-skin="playbill"] .cw-cover-badge{
+  grid-column:4; align-self:center;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; margin:0;
+  object-fit:cover; border-radius:0;
+  background:var(--cw-surface-hover); color:var(--cw-text-body);
+  font-family:var(--cl-sans); font-size:var(--cw-fs-s); line-height:1; font-weight:700;
+}
+html[data-claude-skin="playbill"] .cw-cover-grid{
+  grid-column:1 / -1 !important;
+  display:grid !important;
+  grid-template-columns:repeat(4, minmax(0,1fr)) !important;
+  gap:16px !important;
+  margin-top:38px !important;
+}
+html[data-claude-skin="playbill"] .cw-cover-grid dl{ min-width:0; margin:0; padding:0; }
+html[data-claude-skin="playbill"] .cw-cover-foot{
+  grid-column:1 / -1 !important;
+  margin-top:22px !important;
+  color:var(--cw-text-muted) !important;
+}
+
+/* 第四列的三个开关。做成和左边三列的键值行**一样的样子** ——
+   它们在同一张表里，长得不一样会读成两种东西。
+   只有一个差别：可点，所以 hover 有下划线。 */
+html[data-claude-skin="playbill"] .cw-cover .cw-r-act{
+  width:100%; border:0; background:none; cursor:pointer; text-align:left;
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-muted);
+}
+html[data-claude-skin="playbill"] .cw-cover .cw-r-act:hover:not(:disabled) span{ text-decoration:underline; }
+/* 开着的那一行前面点一个圆点。Are.na 的 View / Order 就是用圆点标当前选中项，
+   不是用高亮底色 —— 这套设计里没有色块。 */
+html[data-claude-skin="playbill"] .cw-cover .cw-r-act > b::before{
+  content:''; display:inline-block; width:5px; height:5px;
+  background:var(--cw-text-faint); clip-path:circle(50%);
+  opacity:0;
+}
+html[data-claude-skin="playbill"] .cw-cover .cw-r-act.is-on > b::before{ opacity:1; }
+html[data-claude-skin="playbill"] .cw-cover .cw-r-act.is-on > span{ color:var(--cw-text-body); }
+html[data-claude-skin="playbill"] .cw-cover .cw-r-act.is-disabled{
+  cursor:default; opacity:.45;
+}
+
+
+/* ============================================================================
+   第十六轮：配图挪到标题区下面 + 图注
+   ----------------------------------------------------------------------------
+   照参考稿的编辑页顺序排：
+
+     .cw-cover        标题行 + 四列细线表
+     .cw-cover-anchor 高 0，测量用
+     .cw-cover-art    配图（sticky，470 → 110）
+     .cw-cover-pad    补回图收缩掉的高度
+     .cw-cover-cap    图注 = 那句随机场景标语
+
+   **滚动跟随照旧生效。** sticky 只能在父元素的内容盒里移动，这四个节点仍然是
+   #chat 的直接孩子，父元素就是整条对话，可移动距离和图排在第几位无关。
+   测量用的 anchor 跟着图一起挪到标题区下面，所以「滚过了多少」从图自己的
+   流位置开始算 —— 标题区滚完图才开始收缩，正是要的。
+
+   宽度用整列宽（920），不是参考稿那个 760。参考稿的图窄一档、居中在 1040 的
+   列里，那是因为它下面全是同样窄的正文块；我们下面是 920 的对话列，图窄一档
+   就会和标题、正文三条左右边线对不齐。图钉住之后更明显 —— 一条 760 的横幅
+   浮在 920 的正文上，两侧各露出 80px。要换回窄版把下面的 width 改成
+   min(760px,100%) 即可，但左右就不齐了。
+   ============================================================================ */
+html[data-claude-skin="playbill"] #chat > .cw-cover-art{
+  height:470px !important;
+  /* 不再用负 margin 铺满 #chat 的内边距 —— 现在它和标题区、正文同宽同边线。 */
+  width:100% !important;
+  max-width:var(--cw-pb-measure) !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+  background-color:var(--cw-surface-hover) !important;
+}
+html[data-claude-skin="playbill"] #chat > .cw-cover-pad,
+html[data-claude-skin="playbill"] #chat > .cw-cover-anchor{
+  width:100% !important;
+  max-width:var(--cw-pb-measure) !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+/* 图注：参考稿是图下面一行居中的极小号粗体。那是 Are.na 编辑页的标志性节奏，
+   照搬。它是**图的说明**，不是正文，所以比正文小、比正文淡。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover-cap{
+  width:100% !important;
+  max-width:var(--cw-pb-measure) !important;
+  margin:12px auto 0 !important;
+  padding:0 !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important;
+  color:var(--cw-text-muted) !important;
+  text-align:center !important;
+}
+/* 标题区和图之间留一段。标题区自己的下内边距在上一轮是 38px，
+   现在它下面紧跟着图，收到 30px，图注下面再留 44px 接第一条消息。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover{
+  padding-bottom:30px !important;
+}
+html[data-claude-skin="playbill"] #chat > .cw-cover-cap{
+  margin-bottom:44px !important;
+}
+/* 标语已经不在标题区里了（挪到图注去了），旧节点如果还在就别画。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover .cw-cover-foot{
+  display:none !important;
+}
+
+
+/* ============================================================================
+   第十七轮：砍掉滚动跟随，图变成流里的一块
+   ----------------------------------------------------------------------------
+   参考稿的编辑页里，图就是流里的一个静态块 + 下面一行图注，什么都不钉。
+   收缩钉顶是营销页的手法，风格上对不上。而且那套一直在收成本 ——
+   测量锚点 / 补高垫片 / 滚动监听 / 每帧 rAF，这一轮最难的几个 bug 全出在它身上，
+   换来的是一条 110px 的横幅永久占住阅读列顶部。
+
+   现在只剩：标题区 → 图 → 图注。
+
+   遮罩和 55% 不透明度一起去掉了。那两样当初是为了压住「一张 680px 的巨图
+   占满首屏」的重量；现在图是一个 470px 的有界插图、下面还有图注收口，
+   本来就不重，再压反而像没加载完。
+   （想要回半透明：把下面的 opacity 打开即可，一行。）
+   ============================================================================ */
+html[data-claude-skin="playbill"] #chat > .cw-cover-art{
+  position:static !important;
+  top:auto !important;
+  z-index:auto !important;
+  height:470px !important;
+  width:100% !important;
+  max-width:var(--cw-pb-measure) !important;
+  margin:0 auto !important;
+  opacity:1 !important;
+  -webkit-mask-image:none !important;
+  mask-image:none !important;
+  background-size:cover !important;
+  background-position:center !important;
+  background-repeat:no-repeat !important;
+  background-color:var(--cw-surface-hover) !important;
+  pointer-events:auto !important;
+}
+/* 旧结构的三个节点已经从 JS 里删了。留一条兜底：从旧版本升上来时 DOM 里
+   可能还有残留，别让它们画出两块空白。 */
+html[data-claude-skin="playbill"] #chat > .cw-cover-anchor,
+html[data-claude-skin="playbill"] #chat > .cw-cover-pad,
+html[data-claude-skin="playbill"] #chat > .cw-cover-slot{
+  display:none !important;
 }

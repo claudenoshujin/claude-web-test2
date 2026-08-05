@@ -23,8 +23,10 @@
         --cw-body-weight:400; --cw-color-scheme:light;
         --cw-radius-scale:0;
         --cw-grid-opacity:.075; --cw-grid-step:34px;
-        --cw-skin-serif:'Hanken Grotesk',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,var(--cl-cjk);
-        --cw-skin-sans:'Hanken Grotesk',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,var(--cl-cjk);
+        /* playbill 用 Arimo（Arial 的度量兼容开源版）+ Noto Sans SC，
+           和 index.js 里 PLAYBILL_LIGHT 的 PB_SANS 是同一串。 */
+        --cw-skin-serif:'Arimo','Helvetica Neue',Helvetica,Arial,var(--cl-cjk);
+        --cw-skin-sans:'Arimo','Helvetica Neue',Helvetica,Arial,var(--cl-cjk);
       ">
 <head>
 <meta charset="UTF-8">
@@ -68,6 +70,20 @@
 </head>
 
 <body class="clawd-interactive-ready clawd-has-recents">
+
+<!-- ============ 顶栏。真机上由 index.js 的 buildTopbar() 建 ============
+     形状照 Are.na 站点顶栏，功能全是真的：搜索即时过滤会话列表，
+     右边两个键：Log in = 打开用户角色（persona）列表，Sign up = 新建用户角色。 -->
+<header class="cw-topbar">
+  <div class="cw-top-left">
+    <span class="cw-top-symbol" aria-hidden="true"></span>
+    <input class="cw-top-search" type="search" placeholder="搜索对话" aria-label="搜索对话">
+  </div>
+  <div class="cw-top-acct">
+    <button type="button" class="cw-top-btn" data-act="user">Log in</button>
+    <button type="button" class="cw-top-btn is-primary" data-act="new">Sign up</button>
+  </div>
+</header>
 
 <!-- ============ 侧边栏 / 第一、二列 ============ -->
 <div id="top-settings-holder">
@@ -224,10 +240,11 @@ const START = new Date(2026, 7, 4, 14, 2);
 /* 剧场配图。真机上是用户在设置里传的图（localStorage 的 claude-web:pbImage）。
    fixture 里用一张占位渐变图，只是为了看清"图 + 底部渐变"这套排法。
    设成 "" 就能看没有配图时的兜底（一条渐变横条）。 */
-const PB_ART = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b9bccd'/%3E%3Cstop offset='.55' stop-color='%237c8298'/%3E%3Cstop offset='1' stop-color='%232f3340'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='300' fill='url(%23g)'/%3E%3C/svg%3E";
+const PB_ART = "data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20800%20470'%3E%0A%3Crect%20width%3D'800'%20height%3D'470'%20fill%3D'%23050505'%2F%3E%0A%3Crect%20x%3D'122'%20y%3D'72'%20width%3D'242'%20height%3D'328'%20fill%3D'%23b9c58f'%2F%3E%0A%3Crect%20x%3D'137'%20y%3D'88'%20width%3D'212'%20height%3D'44'%20fill%3D'none'%20stroke%3D'%233e4b32'%20stroke-width%3D'2'%2F%3E%0A%3Ctext%20x%3D'243'%20y%3D'172'%20text-anchor%3D'middle'%20font-family%3D'Arial'%20font-size%3D'34'%20fill%3D'%23eef0dc'%3ESECOND%20LETTER%3C%2Ftext%3E%0A%3Ctext%20x%3D'243'%20y%3D'202'%20text-anchor%3D'middle'%20font-family%3D'Arial'%20font-size%3D'11'%20fill%3D'%23293022'%3EARCHIVE%20%2F%20RAIN%20%2F%20STAGE%3C%2Ftext%3E%0A%3Cpath%20d%3D'M242%20240%20C185%20262%20185%20330%20242%20358%20C300%20330%20300%20262%20242%20240Z'%20fill%3D'none'%20stroke%3D'%23eef0dc'%20stroke-width%3D'2'%2F%3E%0A%3Cpath%20d%3D'M242%20244V355M188%20292H296M205%20265L279%20334M279%20265L205%20334'%20stroke%3D'%23eef0dc'%20stroke-width%3D'1'%2F%3E%0A%3Ccircle%20cx%3D'243'%20cy%3D'300'%20r%3D'4'%20fill%3D'%23eef0dc'%2F%3E%0A%3Cg%20transform%3D'translate(455%20116)%20rotate(15)'%3E%0A%20%3Crect%20width%3D'82'%20height%3D'280'%20rx%3D'3'%20fill%3D'%23f6f6f2'%2F%3E%3Ctext%20x%3D'20'%20y%3D'38'%20font-family%3D'Arial'%20font-size%3D'17'%20fill%3D'%23111'%20transform%3D'rotate(90%2020%2038)'%3ETHIS%20SCENE%20IS%20A%20GIFT%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3Cg%20transform%3D'translate(552%20142)%20rotate(27)'%3E%0A%20%3Crect%20width%3D'78'%20height%3D'250'%20rx%3D'3'%20fill%3D'%23f6f6f2'%2F%3E%3Ctext%20x%3D'18'%20y%3D'36'%20font-family%3D'Arial'%20font-size%3D'15'%20fill%3D'%23111'%20transform%3D'rotate(90%2018%2036)'%3EARE.NA%20%2F%20CONVERSATION%3C%2Ftext%3E%0A%3C%2Fg%3E%0A%3Cellipse%20cx%3D'548'%20cy%3D'74'%20rx%3D'25'%20ry%3D'17'%20fill%3D'%238b7048'%20transform%3D'rotate(12%20548%2074)'%2F%3E%0A%3Cpath%20d%3D'M535%2072c8-9%2019-8%2027%200-8%207-18%209-27%200Z'%20fill%3D'%23b6955c'%2F%3E%0A%3C%2Fsvg%3E";
 
 /* ---- 这三样必须和 index.js 里的实现保持一致 ---- */
-const PB_ACT_EVERY = 4;
+/* 一问一答算一幕：用户发一条 + 角色回一条 = Act I。所以幕数 = 用户消息条数。 */
+const pbActsOf = (userTurns) => Math.max(1, userTurns);
 const PB_LINES = {
   dawn:  ['天快亮了。清场的人还没来。','晨光从侧幕漏进来，落在没收的道具上。','第一班车的声音穿过后台。','灯还亮着，但已经不需要了。'],
   day:   ['白天的剧场，谁都看得见灰。','排练厅。窗开着，外面有人在搬东西。','空场。只有你和回声。','午后。幕布上有一道晒出来的印子。'],
@@ -242,17 +259,25 @@ function roman(n){const t=[[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];let s="";
 
 /* ---- 会话列表 ---- */
 const recents = document.querySelector(".clawd-rail-recents");
+/* 幕号 = 这个存档在全部历史里的序号，**最旧的是 Act I**。CHATS 是新→旧，
+   所以倒着数。右栏幕次表用的是同一套编号，两处必须一致。 */
 CHATS.forEach(([name, date], i) => {
   const row = document.createElement("div");
   row.className = "recentChat" + (i === 0 ? " is-current" : "");
   row.dataset.file = name; row.dataset.avatar = ""; row.dataset.group = "";
+  const actNo = CHATS.length - i;
+  /* .chatName 里的三个节点照抄真机（角色名 / – / 存档名）：手机端 CSS 是照这个
+     结构写的。playbill 只把前两个藏起来，不改结构。 */
   row.innerHTML =
     '<div class="avatar"><img src="' + AVATAR + '"></div>'
   + '<div class="recentChatInfo">'
   +   '<div class="chatNameContainer">'
-  +     '<div class="chatName">' + name + '</div>'
+  +     '<div class="chatName"><strong class="characterName">' + CHARS[i % CHARS.length]
+  +       '</strong><span>–</span><span>' + name + '</span></div>'
   +     '<small class="chatDate">' + date + '</small>'
   +     '<div class="chatActions"></div>'
+  +     '<div class="chatMeta">' + CHARS[i % CHARS.length] + ' \u00b7 第 ' + roman(actNo)
+  +       ' 幕 \u00b7 ' + CHATS[i][2] + ' 句</div>'
   +     '<div class="chatPreview">' + CHATS[i][3] + '</div>'
   +   '</div>'
   + '</div>';
@@ -316,15 +341,16 @@ SEED.forEach((m, i) => chat.appendChild(buildMes(i, m)));
 
 /* ---- 每条消息的头。和 index.js 的 buildCards() 是同一套规则 ----
    细线 / 标语 / 头像 / 名字，全部居中；幕号只在换幕时打在线上。 */
-const PB_ACT_EVERY_TURNS = 4;
 const PB_ACTS = [];
 (function buildCards(){
-  let turns = 0, act = 0;
+  let act = 0;
   [...chat.querySelectorAll(":scope > .mes")].forEach(mes => {
-    const need = Math.floor(turns / PB_ACT_EVERY_TURNS) + 1;
-    const isNewAct = need !== act;
-    if (isNewAct) act = need;
-    if (mes.getAttribute("is_user") === "true") turns++;
+    /* 一问一答算一幕：用户发一条就开一幕，角色的回答归在同一幕里。
+       开场白（第一条不是用户发的）算 Act I 的开头，不单独占一幕。 */
+    const isUser = mes.getAttribute("is_user") === "true";
+    let isNewAct = false;
+    if (isUser) { act += 1; isNewAct = true; }
+    else if (act === 0) { act = 1; isNewAct = true; }
 
     const id = Number(mes.getAttribute("mesid")) || 0;
     const name = mes.getAttribute("ch_name") || "";
@@ -344,6 +370,8 @@ const PB_ACTS = [];
     +   (isNewAct ? '<span class="cw-act-no">Act ' + roman(act) + '</span>' : '')
     + '</div>'
     + '<div class="cw-card-note">' + note + '</div>'
+    /* 头像 / 名字 / 元数据各占一行，全部居中。合成一行会让头像左右飘 ——
+       元数据长短不一，整组宽度就不一样。和 index.js 的 buildCards() 一致。 */
     + (src ? '<img class="cw-card-face" src="' + src + '" alt="">' : '')
     + '<div class="cw-card-name">' + name + '</div>'
     + '<div class="cw-card-meta">' + meta + '</div>';
@@ -359,55 +387,64 @@ const PB_ACTS = [];
   });
 })();
 
-/* ---- 配图。**一张**，position:sticky，是 #chat 的第一个孩子。
-   一开始跟着内容排在标题上方，往下滚到顶就钉住，正文从它下面穿过。 ---- */
-/* 配图：占位槽高度写死，图在里面 sticky 并随滚动收放。
-   直接改 sticky 元素自己的高度会让下面内容往上跳，跳完滚动位置又变，
-   再触发一次收缩 —— 自己喂自己，图会抖。 */
-const PB_ART_MAX = 560, PB_ART_MIN = 150;
+/* ---- 配图：流里的一块 + 一行图注。**没有 sticky、不跟随滚动。**
+   参考稿的编辑页里图就是流里的一个静态块，下面一行图注，什么都不钉。
+   收缩钉顶那套（锚点 / 垫片 / 滚动监听 / 每帧 rAF）已经整体删掉。
+   和 index.js 的 buildCoverArt() 是同一套结构，改一边要改另一边。 ---- */
+const PB_ART_H = 470;
 (function coverArt(){
   if (!PB_ART) return;
-  const slot = document.createElement("div");
-  slot.className = "cw-cover-slot";
-  slot.innerHTML = '<div class="cw-cover-art"></div>';
-  slot.firstElementChild.style.backgroundImage = 'url("' + PB_ART + '")';
-  chat.insertBefore(slot, chat.firstElementChild);
-  const img = slot.firstElementChild;
-  const sync = () => {
-    img.style.height = Math.max(PB_ART_MIN,
-      Math.min(PB_ART_MAX, PB_ART_MAX - chat.scrollTop)) + "px";
-  };
-  let raf = 0;
-  chat.addEventListener("scroll", () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => { raf = 0; sync(); });
-  }, { passive: true });
-  sync();
+  const art = document.createElement("div");
+  art.className = "cw-cover-art";
+  art.style.backgroundImage = 'url("' + PB_ART + '")';
+  const cap = document.createElement("p");
+  cap.className = "cw-cover-cap";
+  cap.textContent = pbLine(SEED.filter(m => m[0] === "me").length, START);
+  /* 排在标题区后面。这里 cover() 还没跑，所以先塞到最前，
+     由下面的 cover() 把标题区插到它前面 —— 顺序在那边保证。 */
+  chat.insertBefore(art, chat.firstElementChild);
+  chat.insertBefore(cap, art.nextElementSibling);
 })();
 
 /* ---- 节目单封面 ---- */
 (function cover(){
   const turns = SEED.filter(m => m[0] === "me").length;
-  const acts = Math.max(1, Math.ceil(turns / PB_ACT_EVERY));
+  const acts = pbActsOf(turns);
   const row = (k,v) => '<div class="cw-r"><span>'+k+'</span><b>'+v+'</b></div>';
   const el = document.createElement("section");
   el.className = "cw-cover";
+  /* 标题行照 Are.na 的频道头：`角色 / 存档名 [头像]`。
+     第四列「视图」是真开关，点了切 data-claude-* 属性。 */
+  const pick = (on,label,act,off) =>
+    '<button type="button" class="cw-r cw-r-act' + (on ? ' is-on' : '')
+    + (off ? ' is-disabled" disabled title="' + off : '"')
+    + ' data-view="' + act + '"><span>' + label + '</span><b></b></button>';
+  const avatarsOn = document.documentElement.dataset.claudeAvatars !== "off";
+  const structure = document.documentElement.dataset.claudeStructure || "linear";
   el.innerHTML =
-    '<div class="cw-kicker">Tonight&rsquo;s Programme</div>'
-  + '<div class="cw-mark"></div>'
+    '<div class="cw-kicker">Elias</div>'
+  + '<div class="cw-mark">/</div>'
   + '<h1 class="cw-cover-title">雨夜的第二封信</h1>'
-  + '<p class="cw-cover-sub">' + pbLine(turns, START) + '</p>'
+  + '<img class="cw-cover-badge" src="' + AVATAR + '" alt="">'
   + '<div class="cw-cover-grid">'
-  +   '<dl><div class="cw-h">演出</div>'
-  +     row('角色','Elias') + row('对手戏','安河') + row('幕数', roman(acts))
+  +   '<dl><div class="cw-h">本场</div>'
+  +     row('开演','14:02') + row('最近','14:41') + row('消息数', SEED.length)
   +   '</dl>'
-  +   '<dl><div class="cw-h">场务</div>'
-  +     row('模型','claude-opus-5') + row('开演','14:02') + row('剧场','SillyTavern')
+  +   '<dl><div class="cw-h">演职员</div>'
+  +     row('角色','Elias') + row('用户','安河') + row('模型','claude-opus-5')
+  +   '</dl>'
+  +   '<dl><div class="cw-h">幕次</div>'
+  +     row('当前幕次', roman(acts)) + row('回合', turns) + row('Token','1,816')
+  +   '</dl>'
+  +   '<dl><div class="cw-h">视图</div>'
+  +     pick(avatarsOn,'显示头像','avatars')
+  +     pick(structure === 'linear','四栏结构','structure')
+  +     pick(!!PB_ART,'剧场配图','art', PB_ART ? '' : '在设置面板的「剧场配图」里填图片地址或选本地文件')
   +   '</dl>'
   + '</div>'
-  + '<p class="cw-cover-foot">向下滚动开演</p>';
-  const slot = chat.querySelector(':scope > .cw-cover-slot');
-  chat.insertBefore(el, slot ? slot.nextSibling : chat.firstElementChild);
+  ;   /* 标语不在这里 —— 它在配图下面当图注（.cw-cover-cap）。 */
+  /* 标题区在图**上面**。之前这里写成「插在 pad 后面」，结果标题跑到图下面去了。 */
+  chat.insertBefore(el, chat.firstElementChild);
 })();
 
 /* ---- 演职员栏。和 index.js 的 ensureAside() 是同一份 HTML ---- */
@@ -428,7 +465,7 @@ document.getElementById("clawd-aside").innerHTML =
 + CHATS.map((c,i) =>
     '<div class="cw-chat-row' + (i===0?' is-current':'') + '">'
   +   '<button type="button" class="cw-chat-open">'
-  +     '<span class="cw-chat-top"><i class="cw-chat-act">Act '+roman(i+1)+'</i><b>'+c[0]+'</b><em>'+c[2]+' 句</em></span>'
+  +     '<span class="cw-chat-top"><i class="cw-chat-act">Act '+roman(CHATS.length-i)+'</i><b>'+c[0]+'</b><em>'+c[2]+' 句</em></span>'
   +     '<span class="cw-chat-preview">'+c[3]+'</span>'
   +   '</button>'
   +   '<span class="cw-chat-acts">'
@@ -459,6 +496,105 @@ document.getElementById("clawd-aside").innerHTML =
     + '><i class="cw-dot"></i><span>' + label + '</span></button>').join('');
   rail.insertBefore(nav, rail.querySelector(".clawd-rail-recents"));
 })();
+
+/* ---- 角色卡名单。和 index.js 的 buildCast() 是同一套结构 ----
+   填左栏下方那片空缺。参考稿导航里本来就有「角色 → Elias / 守夜人 / 无名氏」。
+   行格式：角色名 + 右侧场次数（这个角色有几个存档）。 */
+(function buildCast(){
+  const rail = document.getElementById("top-settings-holder");
+  const box = document.createElement("div");
+  box.className = "cw-cast-list";
+  /* 场次数在真机上是数左栏已经渲染出来的 .recentChat 行（按 data-avatar 分组），
+     fixture 里用 CHARS 的顺序摊一下，只为看排版。 */
+  const n = {};
+  CHATS.forEach((c, i) => { const k = CHARS[i % CHARS.length]; n[k] = (n[k] || 0) + 1; });
+  box.innerHTML = '<div class="cw-cast-h">角色</div>'
+    + CHARS.map((name, i) =>
+        '<button type="button" class="cw-cast-item' + (i === 0 ? ' is-current' : '') + '">'
+      +   '<span>' + name + '</span>'
+      +   (n[name] ? '<em>' + n[name] + ' 场</em>' : '')
+      + '</button>').join('');
+  /* 放在导航正下面，用一条细线和功能模块隔开 —— 不钉栏底。 */
+  rail.insertBefore(box, rail.querySelector(".clawd-rail-recents"));
+})();
+
+/* ---- 栏宽拖拽把手。和 index.js 的 pbWatchRails() 是同一套结构 ----
+   三条竖缝上各一个，平时看不见，鼠标压上去才出一条细线。
+   fixture 里只做拖动本身，不存 localStorage —— 存了会跨次残留，
+   下次打开看到的就不是默认值，那样这个台子就不能用来判断默认值好不好。 */
+(function rails(){
+  const DEF = { nav:176, list:250, cast:220 };
+  const MIN = { nav:150, list:220, cast:190 };
+  const MAX = { nav:360, list:560, cast:460 };
+  const CHAT_MIN = 420;
+  let w = { ...DEF };
+  const apply = () => {
+    const st = document.documentElement.style;
+    st.setProperty("--cw-c-nav",  w.nav  + "px");
+    st.setProperty("--cw-c-list", w.list + "px");
+    st.setProperty("--cw-c-cast", w.cast + "px");
+  };
+  apply();
+  for (const col of ["nav","list","cast"]) {
+    const g = document.createElement("div");
+    g.className = "cw-rail-grip"; g.dataset.col = col;
+    g.title = "拖动改变栏宽 · 双击还原";
+    document.body.appendChild(g);
+    let x0 = 0, w0 = 0;
+    g.addEventListener("pointerdown", e => {
+      x0 = e.clientX; w0 = w[col];
+      g.setPointerCapture(e.pointerId); g.classList.add("is-drag");
+      document.documentElement.classList.add("cw-rail-dragging");
+      e.preventDefault();
+    });
+    g.addEventListener("pointermove", e => {
+      if (!g.classList.contains("is-drag")) return;
+      /* 右栏在右边，往左拖是变宽，方向反过来。 */
+      const dx = (col === "cast" ? -1 : 1) * (e.clientX - x0);
+      const others = ["nav","list","cast"].filter(k => k !== col).reduce((t,k) => t + w[k], 0);
+      let next = Math.min(MAX[col], Math.max(MIN[col], Math.round(w0 + dx)));
+      next = Math.max(MIN[col], Math.min(next, window.innerWidth - others - CHAT_MIN));
+      w = { ...w, [col]: next };
+      apply();
+    });
+    const end = () => {
+      g.classList.remove("is-drag");
+      document.documentElement.classList.remove("cw-rail-dragging");
+    };
+    g.addEventListener("pointerup", end);
+    g.addEventListener("pointercancel", end);
+    g.addEventListener("dblclick", () => { w = { ...w, [col]: DEF[col] }; apply(); });
+  }
+})();
+
+/* ---- 顶栏行为。和 index.js 的 buildTopbar() 一致 ----
+   搜索只改 .recentChat 行的显示，不动数据也不重排。
+   fixture 里「用户 / 新一场」没有真抽屉可开，点了只提示一下。 */
+(function topbar(){
+  document.querySelector(".cw-top-search")?.addEventListener("input", e => {
+    const q = String(e.target.value || "").trim().toLowerCase();
+    document.querySelectorAll(".clawd-rail-recents .recentChat").forEach(row => {
+      row.style.display = (!q || (row.textContent || "").toLowerCase().includes(q)) ? "" : "none";
+    });
+  });
+  document.querySelector(".cw-top-acct")?.addEventListener("click", e => {
+    const act = e.target?.dataset?.act;
+    if (act) console.log("[fixture] 顶栏动作：" + act + "（真机上分别是 打开角色列表 / 新建用户角色）");
+  });
+})();
+
+/* ---- 封面第四列「视图」的三个开关。真机上在 index.js 的 pbBindCoverView()。 ---- */
+document.addEventListener("click", e => {
+  const btn = e.target?.closest?.(".cw-cover .cw-r-act");
+  if (!btn || btn.disabled) return;
+  const html = document.documentElement;
+  if (btn.dataset.view === "avatars") {
+    html.dataset.claudeAvatars = html.dataset.claudeAvatars === "off" ? "on" : "off";
+  } else if (btn.dataset.view === "structure") {
+    html.dataset.claudeStructure = html.dataset.claudeStructure === "linear" ? "rail" : "linear";
+  }
+  btn.classList.toggle("is-on");
+});
 
 /* ---- 三个轴的现场切换 ---- */
 const CYCLE = {
