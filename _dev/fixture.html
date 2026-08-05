@@ -178,42 +178,53 @@
    这样 fixture 和参考稿放在一起比对时，字是同一批字，
    差异只可能来自 CSS，不会来自「内容不一样所以看着不一样」。
    ============================================================ */
+/* 种子数据。**长度要贴近真实使用**：酒馆里一条 AI 回复通常是两三段、
+   带动作描写和对话，不是参考稿演示用的那种一句话台词。
+   短句样例会让排版看起来比实际宽松得多 —— 行距、段距、左边注和正文的
+   基线关系，全都要在长文本下才看得出问题。 */
 const SEED = [
-  ["ai","Elias","你把伞放在门口了。滴水的声音一直在往里走。"],
-  ["me","安河","我以为这场雨会停。"],
-  ["ai","Elias","它不会。这座城市里，雨是唯一守时的演员。<em>他拨了拨工作灯，光圈晃了一下。</em>"],
-  ["me","安河","那封信呢。"],
-  ["ai","Elias","还在我口袋里。写完之后我读了六遍，每一遍都少一句。"],
+  ["ai","Elias","你把伞放在门口了。滴水的声音一直在往里走，顺着地板的木缝，一路走到我脚边。<em>他没有起身，只是把手里那本翻旧了的排练本合上，放在膝盖上。</em>\n\n这个剧场的地板是斜的，你大概没注意。所有落在门口的水，最后都会流到这张椅子底下来。三年前我修过一次，修完之后水改从另一边流，我就不修了。"],
+  ["me","安河","我以为这场雨会停。走到半路才发现越下越大，回头也来不及了。"],
+  ["ai","Elias","它不会。这座城市里，雨是唯一守时的演员——该来的时候一定来，该走的时候从来不走。<em>他拨了拨工作灯，光圈在幕布上晃了一下，又稳住。</em>\n\n你要是想等它停，可以坐下。这里没有别人，椅子随便挑。第七排靠边那个位置弹簧坏了，坐上去会响一声，除此之外都还行。"],
+  ["me","安河","那封信呢。你上次说写完了。"],
+  ["ai","Elias","还在我口袋里。<em>他拍了拍胸前的位置，没有掏出来。</em>写完之后我读了六遍，每一遍都少一句。不是我删的，是读到那儿会自己跳过去，像台词背到一半忘了词，但你知道那句原本在那儿。"],
   ["me","安河","少的是哪一句。"],
-  ["ai","Elias","第一遍少的是称呼。第六遍少的是署名。"],
+  ["ai","Elias","第一遍少的是称呼。第六遍少的是署名。中间那四遍少的东西我记不清了，因为每次都不一样。\n\n你要问我这算不算把信写坏了——我觉得不算。一封信如果读六遍都不掉字，那说明它写的是别人的事。"],
   ["me","安河","那还剩什么。"],
-  ["ai","Elias","剩下一段没有人称的句子。听上去像天气预报。"],
-  ["me","安河","念给我听。"],
-  ["ai","Elias","「今晚有雨，明日转晴，风向不定。」<em>他把纸折回口袋。</em>你看，说出口就没什么了。"],
+  ["ai","Elias","剩下一段没有人称的句子。听上去像天气预报，或者车站广播，反正是那种谁听见都可以、谁听见都不用回应的东西。"],
+  ["me","安河","念给我听。就这一次。"],
+  ["ai","Elias","「今晚有雨，明日转晴，风向不定。」<em>他把纸折回口袋，动作很轻，像是怕折痕再多一道。</em>\n\n你看，说出口就没什么了。刚才它还在口袋里的时候，我以为它很重。"],
   ["me","安河","你不是在写天气。"],
-  ["ai","Elias","我知道。但我只学会了用这种语气讲重要的事。"],
+  ["ai","Elias","我知道。但我只学会了用这种语气讲重要的事。<em>他笑了一下，很短。</em>小时候家里也是这样——要说的话都藏在别的话里，谁先听懂谁就输了。后来我上了台，发现台词也是这么写的，就再也改不过来了。"],
   ["me","安河","那我们从别的地方开始。你为什么留在这个剧场。"],
-  ["ai","Elias","因为它还没塌。这不是玩笑——三年前隔壁那座塌了，观众席上一个人也没有，所以没上新闻。"],
+  ["ai","Elias","因为它还没塌。<em>他抬头看了看头顶那排熄着的灯。</em>\n\n这不是玩笑。三年前隔壁那座塌了，是半夜塌的，观众席上一个人也没有，所以没上新闻。第二天我去看，瓦砾里有半张海报还贴在墙上，字都还认得出来。从那天起我就想，一个地方要是没人记得它演过什么，塌不塌其实没区别。"],
   ["me","安河","于是你替它写讣告。"],
-  ["ai","Elias","我替它排了一出戏。没人来看，但灯每晚都亮。"],
+  ["ai","Elias","我替它排了一出戏。没人来看，但灯每晚都亮，从八点到十一点，一分钟不差。<em>他把排练本又打开，翻到中间某一页，那一页写满了字又划掉大半。</em>\n\n你要是问我这有什么用，我答不上来。但你今天来了，所以今晚这三个小时不算白亮。"],
   ["me","安河","那是给谁看的。"],
-  ["ai","Elias","给还在路上的人。<em>停顿。</em>也给已经不来的人。"],
+  ["ai","Elias","给还在路上的人。<em>停顿。他没有看向门口，但显然在听雨声。</em>也给已经不来的人。后面这一类比前面那一类多得多，可是没办法，名单是不能删的。"],
   ["me","安河","我今天来了。"],
-  ["ai","Elias","我知道。所以今晚的灯比平时亮一档。"],
-  ["me","安河","别把这句写进信里，太像台词了。"],
-  ["ai","Elias","这本来就是台词。我们站在舞台上。"],
-  ["me","安河","那我的呢。"],
-  ["ai","Elias","你的还没写。这一幕留白，等你自己填。"]
+  ["ai","Elias","我知道。所以今晚的灯比平时亮一档。<em>他伸手把工作灯的旋钮又拧了一点，光圈铺开，照到第七排。</em>\n\n别说这句写得太像台词。我知道它像。但站在舞台上的人说什么都像台词，这是职业病，不是撒谎。"],
 ];
 
+/* [名字, 相对时间, 句数, 正文预览] —— 预览这一列真机上来自
+   /api/characters/chats 返回的最后一条消息，接口没给就整列不显示。 */
 const CHATS = [
-  ["雨夜的第二封信","14:32"], ["灯塔看守人","昨天"], ["八月三日的排练","2 天"],
-  ["没有观众的返场","5 天"], ["南站，末班车之后","1 周"], ["给缺席者的独白","3 周"],
+  ["雨夜的第二封信","14:32",49,"你的还没写。这一幕留白，等你自己填。"],
+  ["灯塔看守人","昨天",22,"塔顶的灯每转一圈要四十二秒，我数过一整夜。"],
+  ["八月三日的排练","2 天",7,"第三次读同一段台词，还是不对。"],
+  ["没有观众的返场","5 天",88,"灯亮了一半，我就当全场都在。"],
+  ["南站，末班车之后","1 周",15,"站台上只剩广播还在说话。"],
+  ["给缺席者的独白","3 周",41,"这段是写给不来的人的，所以可以说得直白些。"],
 ];
 const CHARS = ["Elias","守夜人","无名氏"];
 
 const AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23c9c9c4'/%3E%3C/svg%3E";
 const START = new Date(2026, 7, 4, 14, 2);
+
+/* 剧场配图。真机上是用户在设置里传的图（localStorage 的 claude-web:pbImage）。
+   fixture 里用一张占位渐变图，只是为了看清"图 + 底部渐变"这套排法。
+   设成 "" 就能看没有配图时的兜底（一条渐变横条）。 */
+const PB_ART = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 300' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b9bccd'/%3E%3Cstop offset='.55' stop-color='%237c8298'/%3E%3Cstop offset='1' stop-color='%232f3340'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='300' fill='url(%23g)'/%3E%3C/svg%3E";
 
 /* ---- 这三样必须和 index.js 里的实现保持一致 ---- */
 const PB_ACT_EVERY = 4;
@@ -238,9 +249,12 @@ CHATS.forEach(([name, date], i) => {
   row.innerHTML =
     '<div class="avatar"><img src="' + AVATAR + '"></div>'
   + '<div class="recentChatInfo">'
-  +   '<div class="chatNameContainer"><div class="chatName">' + name + '</div></div>'
-  +   '<small class="chatDate">' + date + '</small>'
-  +   '<div class="chatActions"></div>'
+  +   '<div class="chatNameContainer">'
+  +     '<div class="chatName">' + name + '</div>'
+  +     '<small class="chatDate">' + date + '</small>'
+  +     '<div class="chatActions"></div>'
+  +     '<div class="chatPreview">' + CHATS[i][3] + '</div>'
+  +   '</div>'
   + '</div>';
   recents.appendChild(row);
 });
@@ -283,10 +297,15 @@ function buildMes(i, [who, name, text]) {
   +     '<div class="mes_buttons">'
   +       '<div class="mes_edit fa-solid fa-pencil interactable" tabindex="0"></div>'
   +       '<div class="mes_hide fa-solid fa-eye-slash interactable" tabindex="0"></div>'
+  +       '<div class="extraMesButtonsHint fa-solid fa-ellipsis interactable" tabindex="0"></div>'
   +     '</div>'
   +     '<span class="timestamp">' + stamp + '</span>'
   +   '</div>'
-  +   '<div class="mes_text" data-speaker="' + name + '"><p>' + text + '</p></div>'
+  +   '<div class="mes_text" data-speaker="' + name + '">'
+  /* 酒馆把消息里的空行渲染成多个 <p>。fixture 也要拆，不然段距那一档
+     根本测不到 —— 单段文本下 .mes_text > p 的 margin 是看不出来的。 */
+  +     text.split("\n\n").map(p => '<p>' + p + '</p>').join('')
+  +   '</div>'
   + '</div>'
   + '<div class="flex-container swipeRightBlock flexFlowColumn flexNoGap"></div>';
   return el;
@@ -295,24 +314,75 @@ function buildMes(i, [who, name, text]) {
 const chat = document.getElementById("chat");
 SEED.forEach((m, i) => chat.appendChild(buildMes(i, m)));
 
-/* ---- 幕次分隔条。和 index.js 的 markActs() 是同一套规则 ---- */
-(function markActs(){
+/* ---- 每条消息的头。和 index.js 的 buildCards() 是同一套规则 ----
+   细线 / 标语 / 头像 / 名字，全部居中；幕号只在换幕时打在线上。 */
+const PB_ACT_EVERY_TURNS = 4;
+const PB_ACTS = [];
+(function buildCards(){
   let turns = 0, act = 0;
   [...chat.querySelectorAll(":scope > .mes")].forEach(mes => {
-    const need = Math.floor(turns / PB_ACT_EVERY) + 1;
-    if (need !== act) {
-      act = need;
-      const when = mes.dataset.time ? new Date("2000/01/01 " + mes.dataset.time) : null;
-      const note = pbLine(act, when);
-      const el = document.createElement("div");
-      el.className = "cw-act";
-      el.dataset.actNo = String(act); el.dataset.act = roman(act); el.dataset.note = note;
-      el.innerHTML = '<div class="cw-act-bar"><span class="cw-act-no">Act ' + roman(act)
-        + '</span></div><div class="cw-act-note">' + note + '</div>';
-      chat.insertBefore(el, mes);
-    }
+    const need = Math.floor(turns / PB_ACT_EVERY_TURNS) + 1;
+    const isNewAct = need !== act;
+    if (isNewAct) act = need;
     if (mes.getAttribute("is_user") === "true") turns++;
+
+    const id = Number(mes.getAttribute("mesid")) || 0;
+    const name = mes.getAttribute("ch_name") || "";
+    const when = mes.dataset.time ? new Date("2000/01/01 " + mes.dataset.time) : null;
+    const note = pbLine(id, when);
+    const src = mes.querySelector(".mesAvatarWrapper .avatar img")?.getAttribute("src") || "";
+
+    const head = document.createElement("div");
+    head.className = "cw-card-head" + (isNewAct ? " is-act" : "");
+    const tok = (mes.querySelector(".tokenCounterDisplay")?.textContent || "").trim();
+    /* .mes_timer 装的是生成耗时（8.4s），不是时刻。 */
+    const dur = (mes.querySelector(".mes_timer")?.textContent || "").trim();
+    const meta = [mes.dataset.time, dur, mes.dataset.swipe, tok]
+      .filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");
+    head.innerHTML =
+      '<div class="cw-card-bar">'
+    +   (isNewAct ? '<span class="cw-act-no">Act ' + roman(act) + '</span>' : '')
+    + '</div>'
+    + '<div class="cw-card-note">' + note + '</div>'
+    + (src ? '<img class="cw-card-face" src="' + src + '" alt="">' : '')
+    + '<div class="cw-card-name">' + name + '</div>'
+    + '<div class="cw-card-meta">' + meta + '</div>';
+    mes.insertBefore(head, mes.firstChild);
+
+    /* 编辑 / 删除：纯文字，自建，常显居中。真机上点下去会转发到酒馆自己的按钮。 */
+    const bar = document.createElement("div");
+    bar.className = "cw-msg-acts";
+    bar.innerHTML = '<button type="button" data-act="edit">编辑</button>'
+      + '<button type="button" data-act="del">删除</button>';
+    mes.appendChild(bar);
+    PB_ACTS.push({ no: act, roman: roman(act), note, el: mes, isNew: isNewAct });
   });
+})();
+
+/* ---- 配图。**一张**，position:sticky，是 #chat 的第一个孩子。
+   一开始跟着内容排在标题上方，往下滚到顶就钉住，正文从它下面穿过。 ---- */
+/* 配图：占位槽高度写死，图在里面 sticky 并随滚动收放。
+   直接改 sticky 元素自己的高度会让下面内容往上跳，跳完滚动位置又变，
+   再触发一次收缩 —— 自己喂自己，图会抖。 */
+const PB_ART_MAX = 560, PB_ART_MIN = 150;
+(function coverArt(){
+  if (!PB_ART) return;
+  const slot = document.createElement("div");
+  slot.className = "cw-cover-slot";
+  slot.innerHTML = '<div class="cw-cover-art"></div>';
+  slot.firstElementChild.style.backgroundImage = 'url("' + PB_ART + '")';
+  chat.insertBefore(slot, chat.firstElementChild);
+  const img = slot.firstElementChild;
+  const sync = () => {
+    img.style.height = Math.max(PB_ART_MIN,
+      Math.min(PB_ART_MAX, PB_ART_MAX - chat.scrollTop)) + "px";
+  };
+  let raf = 0;
+  chat.addEventListener("scroll", () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => { raf = 0; sync(); });
+  }, { passive: true });
+  sync();
 })();
 
 /* ---- 节目单封面 ---- */
@@ -336,7 +406,8 @@ SEED.forEach((m, i) => chat.appendChild(buildMes(i, m)));
   +   '</dl>'
   + '</div>'
   + '<p class="cw-cover-foot">向下滚动开演</p>';
-  chat.insertBefore(el, chat.firstElementChild);
+  const slot = chat.querySelector(':scope > .cw-cover-slot');
+  chat.insertBefore(el, slot ? slot.nextSibling : chat.firstElementChild);
 })();
 
 /* ---- 演职员栏。和 index.js 的 ensureAside() 是同一份 HTML ---- */
@@ -346,55 +417,47 @@ document.getElementById("clawd-aside").innerHTML =
 + '<div class="cw-r"><span>用户</span><b>安河</b></div>'
 + '<div class="cw-r"><span>模型</span><b>claude-opus-5</b></div>'
 + '</div><div class="cw-g"><div class="cw-h">本场</div>'
-+ '<div class="cw-r"><span>回合</span><b>' + SEED.filter(m=>m[0]==="me").length + '</b></div>'
++ '<div class="cw-r"><span>当前幕次</span><b>' + roman(Math.max.apply(null, PB_ACTS.map(a=>a.no))) + '</b></div>'
 + '<div class="cw-r"><span>消息数</span><b>' + SEED.length + '</b></div>'
++ '<div class="cw-r"><span>Token</span><b>1,816</b></div>'
 + '<div class="cw-r"><span>开演</span><b>14:02</b></div>'
 + '<div class="cw-r"><span>最近</span><b>14:41</b></div>'
-+ '<div class="cw-r"><span>存档</span><b>雨夜的第二封信</b></div>'
 + '</div>'
-+ '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">历史对话</div>'
-+ CHATS.map((c,i) => '<button type="button" class="cw-chat-row' + (i===0?' is-current':'')
-    + '"><span>'+c[0]+'</span><em>'+c[1]+'</em></button>').join('')
+
++ '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">幕次表</div>'
++ CHATS.map((c,i) =>
+    '<div class="cw-chat-row' + (i===0?' is-current':'') + '">'
+  +   '<button type="button" class="cw-chat-open">'
+  +     '<span class="cw-chat-top"><i class="cw-chat-act">Act '+roman(i+1)+'</i><b>'+c[0]+'</b><em>'+c[2]+' 句</em></span>'
+  +     '<span class="cw-chat-preview">'+c[3]+'</span>'
+  +   '</button>'
+  +   '<span class="cw-chat-acts">'
+  +     '<button type="button" class="cw-chat-edit" title="重命名">\u270e</button>'
+  +     '<button type="button" class="cw-chat-del" title="删除">\u{1F5D1}</button>'
+  +   '</span>'
+  + '</div>').join('')
 + '</div>';
 
-/* ---- 导航。和 index.js 的 buildNav() 是同一套结构 ---- */
+/* ---- 导航。和 index.js 的 buildNav() 是同一套结构：拍平的八个原生入口 ----
+   第三个参数是图标 key，只有 preset/api/card/user 四个会画图标 ——
+   和 index.js 的 PB_ICONS / PB_DRAWERS 一致，改一边要改另一边。 */
 (function buildNav(){
   const rail = document.getElementById("top-settings-holder");
   const nav = document.createElement("nav");
   nav.className = "cw-nav";
-  const item = (label, cur) =>
-    '<button type="button" class="cw-nav-item"' + (cur ? ' aria-current="true"' : '')
-    + '><i class="cw-dot"></i><span>' + label + '</span></button>';
-  const group = (title, body, extra) =>
-    '<div class="cw-nav-group ' + (extra||'') + '">'
-    + '<button type="button" class="cw-nav-head"><i class="cw-tri"></i>' + title + '</button>'
-    + '<div class="cw-nav-body">' + body + '</div></div>';
-
-  nav.innerHTML =
-    group('剧目', item('上演中', true) + item('本角色'))
-  + group('角色', CHARS.map((c,i) => item(c, i===0)).join(''))
-  + group('剧场',
-      item('幕次索引')
-      + '<div class="cw-act-index">'
-      + [...chat.querySelectorAll(":scope > .cw-act")].map(a =>
-          '<button type="button" class="cw-act-link"><span>Act ' + a.dataset.act
-          + '</span><em>' + a.dataset.note + '</em></button>').join('')
-      + '</div>'
-      + item('预设')
-      + group('设置',
-          ['API','格式化','世界书','背景','扩展','偏好设置'].map(x => item(x)).join(''),
-          'cw-nav-sub is-closed'));
-
+  /* 九项，3/3/3。和 index.js 的 PB_DRAWERS 一致。
+     「用户」= 酒馆原生的 persona 管理，官网皮底部「零 / Max plan」背后的入口。 */
+  /* 记号只有圆点一种，且只给常用四项 —— 和 index.js 的 PB_DOTTED 一致。
+     参考稿左栏通篇只有三角和圆点两种形状，没有别的图标。 */
+  const DRAWERS = [
+    ['预设',1], ['API',1], ['角色卡',1],
+    ['用户',1], ['偏好设置',0], ['格式化',0],
+    ['世界书',0], ['背景',0], ['扩展',0],
+  ];
+  nav.innerHTML = DRAWERS.map(([label, dot]) =>
+    '<button type="button" class="cw-nav-item"' + (dot ? ' data-mark="dot"' : '')
+    + '><i class="cw-dot"></i><span>' + label + '</span></button>').join('');
   rail.insertBefore(nav, rail.querySelector(".clawd-rail-recents"));
-
-  nav.querySelectorAll(".cw-nav-head").forEach(h => {
-    h.addEventListener("click", () => h.parentElement.classList.toggle("is-closed"));
-  });
-  nav.querySelectorAll(".cw-nav-item").forEach(b => {
-    if (b.textContent.trim() === "幕次索引") {
-      b.addEventListener("click", () => nav.classList.toggle("cw-acts-open"));
-    }
-  });
 })();
 
 /* ---- 三个轴的现场切换 ---- */

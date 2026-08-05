@@ -4307,6 +4307,11 @@ if (CLAUDE_ENABLED) {
           ? context.getThumbnailUrl('avatar', character.avatar)
           : '',
         dateText: String(record?.last_mes ?? ''),
+        /* 正文预览。服务端的 recent-chats 记录里本来就带最后一条消息，
+           酒馆自己的欢迎页也是拿它显示的 —— 之前这一行没被渲染出来，
+           不是数据没有。去掉标签、把空白压成一个空格，截断交给 CSS。 */
+        preview: String(record?.mes ?? record?.preview_message ?? '')
+          .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160),
         pinned: Object.prototype.hasOwnProperty.call(pinned, pinnedKeyFor(record)),
       });
     }
@@ -4402,6 +4407,15 @@ if (CLAUDE_ENABLED) {
     date.className = 'chatDate';
     date.textContent = entry.dateText;
 
+    /* 预览行。没有内容就不建节点 —— 建一个空的会在行里占出一条空白，
+       列表看起来忽高忽低。 */
+    let preview = null;
+    if (entry.preview) {
+      preview = hostDocument.createElement('div');
+      preview.className = 'chatPreview';
+      preview.textContent = entry.preview;
+    }
+
     const actions = hostDocument.createElement('div');
     actions.className = 'chatActions';
     const del = hostDocument.createElement('button');
@@ -4412,6 +4426,7 @@ if (CLAUDE_ENABLED) {
     actions.append(del);
 
     nameContainer.append(nameLine, date, actions);
+    if (preview) nameContainer.append(preview);
     info.append(nameContainer);
     row.append(avatar, info);
     return row;
@@ -7421,6 +7436,9 @@ if (CLAUDE_ENABLED) {
       消息数: chat.length,
       开演: chat[0]?.send_date || '',
       最近: chat[chat.length - 1]?.send_date || '',
+      /* Token 用消息自己带的计数，不重新跑 getTokenCountAsync ——
+         那是个异步接口，右栏每次刷新都等一轮的话，数字会一路闪。 */
+      Token: chat.reduce((n, m) => n + (Number(m?.extra?.token_count) || 0), 0),
     };
   }
 
@@ -7511,6 +7529,10 @@ if (CLAUDE_ENABLED) {
   function pbOn() {
     return document.documentElement.dataset.claudeSkin === 'playbill';
   }
+  /* 用户自定义的剧场配图。空字符串 = 没设，调用方走各自的兜底。 */
+  function pbImage() {
+    try { return window.localStorage.getItem('claude-web:pbImage') || ''; } catch { return ''; }
+  }
   function pbEsc(t) {
     return String(t == null ? '' : t)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -7530,58 +7552,48 @@ if (CLAUDE_ENABLED) {
   }
 
   /* ---------------------------------------------------------------- 导航 */
-  const PB_SETTING_DRAWERS = [
-    ['sys-settings-button', 'API'],
-    ['advanced-formatting-button', '格式化'],
-    ['WI-SP-button', '世界书'],
-    ['logo_block', '背景'],
-    ['extensions-settings-button', '扩展'],
-    ['user-settings-button', '偏好设置'],
+  /* 剧场组直接列酒馆原生功能，不再把它们埋进一个「设置」子组里。
+     埋一层的代价是常用的东西（预设、API、角色卡）都要多点一次，
+     而这几个恰恰是用得最多的。第三个字段是图标 key，空 = 不画图标。 */
+  /* 九项，正好 3 / 3 / 3 分三组（参考稿左栏就是三组三项）。
+     「用户」= 酒馆原生的 persona 管理，也就是官网皮底部那块
+     「零 / Max plan」背后的入口 —— 它是个功能，该待在功能区里，
+     不该以"用户名 + 套餐名"的形式钉在侧栏最底下。 */
+  const PB_DRAWERS = [
+    ['ai-config-button', '预设', 'preset'],
+    ['sys-settings-button', 'API', 'api'],
+    ['rightNavHolder', '角色卡', 'card'],
+
+    ['persona-management-button', '用户', 'persona'],
+    ['user-settings-button', '偏好设置', ''],
+    ['advanced-formatting-button', '格式化', ''],
+
+    ['WI-SP-button', '世界书', ''],
+    ['logo_block', '背景', ''],
+    ['extensions-settings-button', '扩展', ''],
   ];
 
-  function pbNavItem(label, onClick, current) {
+  /* 记号只有一种：圆点（clip-path 画的实心圆，不是图标字体、也不是遮罩 SVG）。
+     参考稿左栏通篇只有两种形状 —— 分组头前面的三角、条目前面的圆点。
+     之前从官网皮那边搬了一组遮罩 SVG 过来当图标，那是 Claude 侧栏的语言，
+     不是这套设计的，已经全部去掉。
+
+     圆点只给常用的四项：预设 / API / 角色卡 / 用户。
+     每项都挂记号的话，记号就不再是记号，只是一列噪点。 */
+  const PB_DOTTED = new Set(['preset', 'api', 'card', 'persona']);
+
+  function pbNavItem(label, onClick, current, icon) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'cw-nav-item';
     if (current) b.setAttribute('aria-current', 'true');
+    if (icon && PB_DOTTED.has(icon)) b.dataset.mark = 'dot';
     b.innerHTML = '<i class="cw-dot"></i><span>' + pbEsc(label) + '</span>';
     b.addEventListener('click', onClick);
     return b;
   }
-  function pbNavGroup(title) {
-    const wrap = document.createElement('div');
-    wrap.className = 'cw-nav-group';
-    wrap.innerHTML = '<button type="button" class="cw-nav-head"><i class="cw-tri"></i>'
-      + pbEsc(title) + '</button>';
-    const body = document.createElement('div');
-    body.className = 'cw-nav-body';
-    wrap.appendChild(body);
-    wrap.querySelector('.cw-nav-head').addEventListener('click', () => {
-      wrap.classList.toggle('is-closed');
-    });
-    return { wrap, body };
-  }
-
-  /* 剧目 = 会话列表的筛选。酒馆没有"已收起/草稿"这两个状态，
-     所以这里接的是真的能筛出来的两个：全部 / 只看当前角色。
-     筛选靠给 .clawd-rail-recents 写一个属性，具体隐藏由 CSS 做 —— \
-JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
-  function pbApplyFilter(mode) {
-    const list = document.querySelector('.clawd-rail-recents');
-    if (!list) return;
-    list.dataset.pbFilter = mode;
-    const ctx = window.SillyTavern?.getContext?.();
-    const me = ctx?.characters?.[ctx?.characterId]?.avatar || '';
-    list.querySelectorAll('.recentChat').forEach(r => {
-      const mine = !me || r.dataset.avatar === me || (r.dataset.avatar || '').includes(me);
-      r.classList.toggle('pb-hidden', mode === 'mine' && !mine);
-    });
-  }
-
-  /* 导航不能每次消息变动都重建 —— refreshTheatre 是挂在 #chat 的
-     MutationObserver 上的，一轮流式输出会触发几十次。重建一次就丢一次
-     分组的展开状态和当前筛选，表现是"打字时左边的菜单自己收起来了"。
-     所以先算一个签名，只有角色表 / 当前角色 / 皮真的变了才重建。 */
+  /* 导航不能每次消息变动都重建 —— refreshTheatre 挂在 #chat 的
+     MutationObserver 上，一轮流式输出会触发几十次。重建一次就丢一次状态。 */
   let pbNavSig = '';
   function buildNav() {
     const rail = document.getElementById('top-settings-holder');
@@ -7589,91 +7601,26 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
     const old = rail.querySelector('.cw-nav');
     if (!pbOn()) { old?.remove(); pbNavSig = ''; return; }
 
-    const ctx = window.SillyTavern?.getContext?.();
-    const sig = 'pb|' + (ctx?.characterId ?? '') + '|'
-      + (ctx?.characters || []).map(c => c.name).join(',');
+    /* 只列酒馆原生的八个入口，不再分组（lulu 定的）。
+       之前那三组（剧目 / 角色 / 剧场）是照参考稿搭的，但参考稿里那几项在
+       酒馆没有真正对应的东西：剧目的三个筛选是编的，角色一栏和会话列表
+       重复，幕次索引正文里已经有分隔条了。留着只是多一层要点开的壳。 */
+    const sig = 'pb|' + PB_DRAWERS.map(d => d[0]).join(',');
     if (old && sig === pbNavSig) return;
     pbNavSig = sig;
     if (old) old.remove();
+
     const nav = document.createElement('nav');
     nav.className = 'cw-nav';
-
-    /* --- 剧目 --- */
-    const g1 = pbNavGroup('剧目');
-    let filter = 'all';
-    const all = pbNavItem('上演中', () => { filter = 'all'; pbApplyFilter('all'); syncFilter(); }, true);
-    const mine = pbNavItem('本角色', () => { filter = 'mine'; pbApplyFilter('mine'); syncFilter(); });
-    function syncFilter() {
-      all.toggleAttribute('aria-current', filter === 'all');
-      mine.toggleAttribute('aria-current', filter === 'mine');
-    }
-    g1.body.append(all, mine);
-    nav.appendChild(g1.wrap);
-
-    /* --- 角色 --- */
-    const g2 = pbNavGroup('角色');
-    const chars = (ctx?.characters || []).slice(0, 12);
-    if (!chars.length) {
-      const empty = document.createElement('div');
-      empty.className = 'cw-nav-empty';
-      empty.textContent = '（还没有角色）';
-      g2.body.appendChild(empty);
-    }
-    chars.forEach((c, i) => {
-      g2.body.appendChild(pbNavItem(c.name, () => {
-        /* 切角色走斜杠命令 —— 直接改 characterId 不会触发酒馆的加载流程。
-           两个 API 名字在不同版本里换过，都试一遍。 */
-        try {
-          if (ctx.executeSlashCommandsWithOptions) ctx.executeSlashCommandsWithOptions('/go ' + c.name);
-          else if (ctx.executeSlashCommands) ctx.executeSlashCommands('/go ' + c.name);
-        } catch (e) { console.warn('[Claude Web] 切角色失败：', e); }
-      }, i === ctx?.characterId));
-    });
-    nav.appendChild(g2.wrap);
-
-    /* --- 剧场 --- */
-    const g3 = pbNavGroup('剧场');
-    const idx = pbNavItem('幕次索引', () => {
-      nav.classList.toggle('cw-acts-open');
-      buildActIndex(actList);
-    });
-    const actList = document.createElement('div');
-    actList.className = 'cw-act-index';
-    g3.body.append(idx, actList);
-    g3.body.appendChild(pbNavItem('预设', () => pbOpenDrawer('ai-config-button')));
-
-    const settings = pbNavGroup('设置');
-    settings.wrap.classList.add('cw-nav-sub', 'is-closed');
-    PB_SETTING_DRAWERS.forEach(([id, label]) => {
+    PB_DRAWERS.forEach(([id, label, icon]) => {
       if (document.getElementById(id)) {
-        settings.body.appendChild(pbNavItem(label, () => pbOpenDrawer(id)));
+        nav.appendChild(pbNavItem(label, () => pbOpenDrawer(id), false, icon));
       }
     });
-    g3.body.appendChild(settings.wrap);
-    nav.appendChild(g3.wrap);
-
-    /* 插在品牌行后面、会话列表前面。 */
-    const anchor = rail.querySelector('.clawd-rail-recents');
-    rail.insertBefore(nav, anchor || null);
-    pbApplyFilter(filter);
+    rail.insertBefore(nav, rail.querySelector('.clawd-rail-recents') || null);
   }
 
-  /* 幕次索引：读 #chat 里已经插好的分隔条，点了滚过去。 */
-  function buildActIndex(host) {
-    if (!host) return;
-    host.innerHTML = '';
-    document.querySelectorAll('#chat > .cw-act').forEach(a => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'cw-act-link';
-      b.innerHTML = '<span>Act ' + a.dataset.act + '</span><em>'
-        + pbEsc(a.dataset.note || '') + '</em>';
-      b.addEventListener('click', () => a.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-      host.appendChild(b);
-    });
-  }
 
-  /* ---------------------------------------------------------------- 封面 */
   function buildCover() {
     const chat = document.getElementById('chat');
     if (!chat) return;
@@ -7710,11 +7657,16 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
       + '</div>'
       + '<p class="cw-cover-foot">向下滚动开演</p>';
 
+    /* 配图不在这里 —— 它是 .cw-cover-art（sticky，见 buildCoverArt）。
+       封面这一段只管文字，跟着内容正常滚。 */
     if (old) { if (old.innerHTML !== html) old.innerHTML = html; return; }
     const el = document.createElement('section');
     el.className = 'cw-cover';
     el.innerHTML = html;
-    chat.insertBefore(el, chat.firstElementChild);
+    /* 封面文字排在配图后面。配图是 sticky 的，必须是 #chat 的第一个孩子，
+       否则它上面还有东西时，钉住的位置会算错。 */
+    const slot = chat.querySelector(':scope > .cw-cover-slot');
+    chat.insertBefore(el, slot ? slot.nextSibling : chat.firstElementChild);
   }
   function pbRow(k, v) {
     return '<div class="cw-r"><span>' + k + '</span><b>' + (pbEsc(v) || '—') + '</b></div>';
@@ -7724,6 +7676,13 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
      对应酒馆的 Manage chat files。先走它自己的接口拿全量；
      接口名或鉴权头在不同版本里变过，取不到就退回筛选左边 Recents 里已有的行 ——
      退化之后只少了"没进过最近列表的旧存档"，不会整块空掉。 */
+  function pbSlash(ctx, cmd) {
+    try {
+      if (ctx.executeSlashCommandsWithOptions) ctx.executeSlashCommandsWithOptions(cmd);
+      else if (ctx.executeSlashCommands) ctx.executeSlashCommands(cmd);
+    } catch (e) { console.warn('[Claude Web] 命令执行失败：', cmd, e); }
+  }
+
   let pbChatsCache = { key: '', rows: [] };
   async function loadCharChats() {
     const ctx = window.SillyTavern?.getContext?.();
@@ -7744,6 +7703,10 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
           name: String(d.file_name || '').replace(/\.jsonl$/, ''),
           count: d.chat_items ?? d.message_count ?? '',
           date: d.last_mes || '',
+          /* 接口把最后一条消息原样带回来，含标签和换行，直接塞进一行会很难看。
+             这里只做两件事：去掉尖括号标签、把空白压成一个空格。截断交给 CSS。 */
+          preview: String(d.mes || d.preview_message || '')
+            .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120),
         }));
       }
     } catch { /* 退回下面的兜底 */ }
@@ -7759,66 +7722,176 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
     return rows;
   }
 
-  /* ---- 幕次分隔条 ----
-     酒馆没有"幕"这个概念，DOM 里没有现成节点，只能自己插。
-     口径（lulu 定的）：幕次 = 回合 = 用户消息条数。每 PB_ACT_EVERY 个回合起一幕。 */
-  function markActs() {
+  /* ---- 每条消息的头 ----
+     从上往下：细线分隔 / 场景标语 / 居中头像 / 居中名字 / 正文 /
+     左轨时间 / 底部居中的操作键。用户消息和角色消息**同一套格式**。
+
+     幕号只在换幕时打在分隔线上，同一幕内后面几条只画线不打字 ——
+     每条都写一遍 "Act III" 的话，一屏里同一个词会出现五六次，
+     那时它就不再是分节标记，只是噪音。线本身已经把消息隔开了。
+
+     头像不用原生那个节点。原生 .avatar 是 .mes 的直接子元素
+     （.mesAvatarWrapper 是 display:contents），要把它插到"标语和名字中间"
+     就得改 DOM 顺序。这里自己放一张 img，src 从这条消息自己的头像上抄 ——
+     角色消息用角色的脸、用户消息用用户的脸，各是各的。 */
+  const PB_ACT_EVERY_TURNS = 4;
+
+  /* 幕次表要用的：每一幕的第一条消息、幕号、场景标语。buildCards 顺手记下来，
+     右栏直接读，不用再扫一遍 DOM。 */
+  let pbActs = [];
+
+  function buildCards() {
     const chat = document.getElementById('chat');
     if (!chat) return;
     if (!pbOn()) {
-      chat.querySelectorAll(':scope > .cw-act').forEach(el => el.remove());
+      chat.querySelectorAll(':scope > .cw-act, .cw-card-head, .cw-msg-acts').forEach(el => el.remove());
+      pbActs = [];
       return;
     }
-    /* 幕号按"已经过了多少回合"算，不能写成 `turns % N === 0 -> act++`：
-       回合数只在用户消息上 +1，两条用户消息之间可能夹着好几条 AI 消息，
-       那几条的 turns 都还停在同一个倍数上，于是每一条都会开一幕。
-       实测症状是第一条前面没有 Act I，第二条前面直接冒出 Act II。 */
+    chat.querySelectorAll(':scope > .cw-act').forEach(el => el.remove());
+
+    const showFace = document.documentElement.dataset.claudeAvatars !== 'off';
     let turns = 0, act = 0;
-    const want = new Map();          /* 该出现在哪条消息前面 -> 第几幕 */
+    const acts = [];
+
     chat.querySelectorAll(':scope > .mes').forEach(mes => {
-      const need = Math.floor(turns / PB_ACT_EVERY) + 1;
-      if (need !== act) { act = need; want.set(mes, act); }
+      const need = Math.floor(turns / PB_ACT_EVERY_TURNS) + 1;
+      const isNewAct = need !== act;
+      if (isNewAct) act = need;
       if (mes.getAttribute('is_user') === 'true') turns++;
+
+      const id = Number(mes.getAttribute('mesid')) || 0;
+      const name = mes.getAttribute('ch_name') || '';
+      const when = mes.dataset.time ? new Date('2000/01/01 ' + mes.dataset.time) : null;
+      const note = pbLine(id, when);
+      if (isNewAct) acts.push({ no: act, roman: pbRoman(act), note, el: mes });
+
+      const src = showFace
+        ? (mes.querySelector('.mesAvatarWrapper .avatar img')?.getAttribute('src') || '')
+        : '';
+      /* token 数从原生那个计数器上抄文本。自己再算一遍要跑 getTokenCountAsync，
+         每条消息一次异步，滚动时会一路闪。 */
+      const tok = (mes.querySelector('.tokenCounterDisplay')?.textContent || '').trim();
+      /* .mes_timer 装的是生成耗时（8.4s），不是时刻 —— 别拿它当时间戳。 */
+      const dur = (mes.querySelector('.mes_timer')?.textContent || '').trim();
+
+      /* 时间 / swipe 序号 / token 从左右两条边注收回到名字下面一行居中。
+         左右边注是给"每行一句台词"那种密排版用的；现在每条消息自带
+         居中的头，两侧还各挂一条竖排元数据，视线要在三列之间来回跳。 */
+      const meta = [mes.dataset.time, dur, mes.dataset.swipe, tok]
+        .filter(Boolean).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+
+      let head = mes.querySelector(':scope > .cw-card-head');
+      if (!head) {
+        head = document.createElement('div');
+        head.className = 'cw-card-head';
+        mes.insertBefore(head, mes.firstChild);
+      }
+      head.classList.toggle('is-act', isNewAct);
+      const html =
+        '<div class="cw-card-bar">'
+        + (isNewAct ? '<span class="cw-act-no">Act ' + pbRoman(act) + '</span>' : '')
+        + '</div>'
+        + '<div class="cw-card-note">' + pbEsc(note) + '</div>'
+        + (src ? '<img class="cw-card-face" src="' + pbEsc(src) + '" alt="">' : '')
+        + '<div class="cw-card-name">' + pbEsc(name) + '</div>'
+        + '<div class="cw-card-meta">' + meta + '</div>';
+      if (head.innerHTML !== html) head.innerHTML = html;
+
+      /* ---- 编辑 / 删除 ----
+         **自己建，不复用酒馆那两个图标按钮。** 那两个是 Font Awesome 字形，
+         字体没加载时渲染成空白 —— 一眼看过去就是"按钮没加"。
+         这里用纯文字，任何环境都看得见；点下去仍然走酒馆自己的按钮，
+         所以删除的确认弹窗、编辑的输入框都还是它原来那套。 */
+      let bar = mes.querySelector(':scope > .cw-msg-acts');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'cw-msg-acts';
+        bar.innerHTML = '<button type="button" data-act="edit">编辑</button>'
+          + '<button type="button" data-act="del">删除</button>';
+        bar.addEventListener('click', e => {
+          const kind = e.target?.dataset?.act;
+          if (!kind) return;
+          if (kind === 'edit') {
+            mes.querySelector('.mes_edit')?.click();
+            return;
+          }
+          /* 删除在不同版本里位置不一样：有的直接有 .mes_del，
+             有的收在「更多」面板里。先找直接的，找不到就把面板打开，
+             让用户在酒馆自己的界面上确认 —— 删楼不可撤销，不自己代劳。 */
+          const del = mes.querySelector('.mes_del, .mes_delete, .deleteMesButton');
+          if (del) del.click();
+          else mes.querySelector('.extraMesButtonsHint')?.click();
+        });
+        mes.appendChild(bar);
+      } else if (bar !== mes.lastElementChild) {
+        mes.appendChild(bar);
+      }
     });
-    /* 先删不该在的，再补该在的 —— 直接清空重建会让滚动位置跳。 */
-    chat.querySelectorAll(':scope > .cw-act').forEach(el => {
-      const next = el.nextElementSibling;
-      if (!next || want.get(next) !== Number(el.dataset.actNo)) el.remove();
-    });
-    want.forEach((no, mes) => {
-      const prev = mes.previousElementSibling;
-      if (prev && prev.classList.contains('cw-act')) return;
-      /* 场景提示按这一幕第一条消息的时刻取时段，按幕号选句 ——
-         同一幕永远同一句，重绘不会跳字。 */
-      const when = mes.dataset.time
-        ? new Date('2000/01/01 ' + mes.dataset.time) : null;
-      const note = pbLine(no, when);
-      const el = document.createElement('div');
-      el.className = 'cw-act';
-      el.dataset.actNo = String(no);
-      el.dataset.act = pbRoman(no);
-      el.dataset.note = note;
-      el.innerHTML = '<div class="cw-act-bar"><span class="cw-act-no">Act '
-        + pbRoman(no) + '</span></div><div class="cw-act-note">' + pbEsc(note) + '</div>';
-      chat.insertBefore(el, mes);
-    });
+
+    pbActs = acts;
   }
 
-  function stampMessages() {
-    if (!STAMPED_SKINS.has(document.documentElement.dataset.claudeSkin)) return;
-    const ctx = window.SillyTavern?.getContext?.();
-    if (!ctx) return;
-    const chat = ctx.chat || [];
-    document.querySelectorAll('#chat .mes').forEach(el => {
-      const m = chat[Number(el.getAttribute('mesid'))];
-      if (!m) return;
-      const t = String(m.send_date || '').match(/(\d{1,2}:\d{2})/);
-      el.dataset.time = t ? t[1] : '';
-      el.dataset.swipe = (m.swipes && m.swipes.length > 1)
-        ? ((m.swipe_id ?? 0) + 1) + '/' + m.swipes.length : '';
-      const body = el.querySelector('.mes_text');
-      if (body) body.dataset.speaker = m.name || '';
-    });
+  /* ---- 配图 ----
+     **只有一张，不是两张。** 上一版做成了"标题里一张 + 顶部固定一张"，
+     结果同一张图同时出现两次、还叠在一起。
+
+     正确的做法是一个 position:sticky 的元素：它一开始就在封面标题的上方
+     跟着内容排，往下滚到顶就钉住不动，后面的正文从它下面穿过。
+     "标题的图滑着滑着变成固定跟随的图"本来就是同一个元素的两个状态，
+     不需要两个节点。
+
+     它必须放在 #chat 里面 —— sticky 是相对滚动容器算的，而滚的是 #chat。
+     （放 body 下做 fixed 就只能是"另一张图"，也就是上一版那个错。） */
+  /* 配图：**一个元素，两个状态**。
+     一开始是封面那么高（PB_ART_MAX），往下滚逐渐收到条状（PB_ART_MIN）并钉在顶上。
+
+     结构是"占位槽 + 里面一个 sticky 的图"，不是直接把图做成 sticky：
+     直接改 sticky 元素自己的高度，它在文档流里占的位置也跟着变，下面的内容
+     会往上跳，跳完滚动位置又变了，再触发一次收缩 —— 自己喂自己，图会抖。
+     外面套一个高度写死的槽，图怎么收都不影响流，就不会抖。
+
+     底端不叠一层同色渐变（那是假透明，换个背景就露馅），而是用 mask 让图本身
+     真的淡成透明。多给几个停靠点，免得中间出现一道能看出来的折线。 */
+  const PB_ART_MAX = 560;
+  const PB_ART_MIN = 150;
+
+  function buildCoverArt() {
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+    let slot = chat.querySelector(':scope > .cw-cover-slot');
+    const art = pbOn() ? pbImage() : '';
+    if (!art) { slot?.remove(); return; }
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.className = 'cw-cover-slot';
+      slot.innerHTML = '<div class="cw-cover-art"></div>';
+      chat.insertBefore(slot, chat.firstElementChild);
+    } else if (slot !== chat.firstElementChild) {
+      chat.insertBefore(slot, chat.firstElementChild);
+    }
+    const img = slot.firstElementChild;
+    const next = 'url("' + art.replace(/"/g, '%22') + '")';
+    if (img.style.backgroundImage !== next) img.style.backgroundImage = next;
+    syncCoverArt();
+  }
+
+  let pbArtRaf = 0;
+  function syncCoverArt() {
+    const chat = document.getElementById('chat');
+    const img = chat?.querySelector(':scope > .cw-cover-slot > .cw-cover-art');
+    if (!img) return;
+    const h = Math.max(PB_ART_MIN, Math.min(PB_ART_MAX, PB_ART_MAX - chat.scrollTop));
+    img.style.height = h + 'px';
+  }
+  function watchCoverArt() {
+    const chat = document.getElementById('chat');
+    if (!chat || chat.dataset.pbArtBound) return;
+    chat.dataset.pbArtBound = '1';
+    chat.addEventListener('scroll', () => {
+      if (pbArtRaf) return;
+      pbArtRaf = window.requestAnimationFrame(() => { pbArtRaf = 0; syncCoverArt(); });
+    }, { passive: true });
   }
 
   /* 把历史存档填进右栏第三块。点一行 = 打开那个存档，走酒馆自己的
@@ -7832,24 +7905,48 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
     const host2 = document.getElementById('clawd-aside-chats');   /* await 期间可能已被重建 */
     if (!host2) return;
     if (!rows.length) {
-      host2.innerHTML = '<div class="cw-h">历史对话</div><div class="cw-empty">（没有别的存档）</div>';
+      host2.innerHTML = '<div class="cw-h">幕次表</div><div class="cw-empty">（没有别的存档）</div>';
       return;
     }
-    host2.innerHTML = '<div class="cw-h">历史对话</div>'
-      + rows.map(r =>
-          '<button type="button" class="cw-chat-row'
-          + (r.name === cur ? ' is-current' : '') + '" data-file="' + pbEsc(r.name) + '">'
-          + '<span>' + pbEsc(r.name) + '</span>'
-          + '<em>' + pbEsc(r.count !== '' ? r.count + ' 句' : r.date) + '</em></button>'
+    /* 照酒馆原生的 Manage chat files 来：名字 + 时间一行，下面一行是正文预览，
+       右边两个键是编辑（重命名）和删除。预览来自接口返回的最后一条消息，
+       接口没给就不显示 —— 不去编一段假的摘要。 */
+    host2.innerHTML = '<div class="cw-h">幕次表</div>'
+      + rows.map((r, i) =>
+          '<div class="cw-chat-row' + (r.name === cur ? ' is-current' : '')
+          + '" data-file="' + pbEsc(r.name) + '">'
+          + '<button type="button" class="cw-chat-open">'
+          +   '<span class="cw-chat-top">'
+          +     '<i class="cw-chat-act">Act ' + pbRoman(i + 1) + '</i>'
+          +     '<b>' + pbEsc(r.name) + '</b>'
+          +     '<em>' + pbEsc(r.count !== '' ? r.count + ' 句' : r.date) + '</em>'
+          +   '</span>'
+          +   (r.preview ? '<span class="cw-chat-preview">' + pbEsc(r.preview) + '</span>' : '')
+          + '</button>'
+          + '<span class="cw-chat-acts">'
+          +   '<button type="button" class="cw-chat-edit" title="重命名">✎</button>'
+          +   '<button type="button" class="cw-chat-del" title="删除">🗑</button>'
+          + '</span>'
+          + '</div>'
         ).join('');
-    host2.querySelectorAll('.cw-chat-row').forEach(b => {
-      b.addEventListener('click', () => {
-        const file = b.dataset.file;
+    host2.querySelectorAll('.cw-chat-row').forEach(row => {
+      const file = row.dataset.file;
+      row.querySelector('.cw-chat-open')?.addEventListener('click', () => {
         if (!file || file === cur) return;
-        try {
-          if (ctx.executeSlashCommandsWithOptions) ctx.executeSlashCommandsWithOptions('/chat ' + file);
-          else if (ctx.executeSlashCommands) ctx.executeSlashCommands('/chat ' + file);
-        } catch (e) { console.warn('[Claude Web] 切存档失败：', e); }
+        pbSlash(ctx, '/chat ' + file);
+      });
+      row.querySelector('.cw-chat-edit')?.addEventListener('click', e => {
+        e.stopPropagation();
+        const next = window.prompt('新的存档名', file);
+        if (next && next !== file) { pbSlash(ctx, '/renamechat ' + next); pbChatsCache.key = ''; }
+      });
+      /* 删除不自己发请求，交给酒馆原生的 Manage chat files ——
+         删存档是不可逆的，走它自己的确认流程比我再造一个确认框稳妥。 */
+      row.querySelector('.cw-chat-del')?.addEventListener('click', e => {
+        e.stopPropagation();
+        pbOpenDrawer('option_select_chat');
+        window.alert('已打开酒馆的「Manage chat files」，在那里删除「' + file + '」。\n'
+          + '删存档不可撤销，所以这一步走酒馆自己的确认流程。');
       });
     });
   }
@@ -7871,13 +7968,15 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
       '<div class="cw-g"><div class="cw-h">演职员</div>'
       + row('角色', s.角色) + row('用户', s.用户) + row('模型', s.模型)
       + '</div><div class="cw-g"><div class="cw-h">本场</div>'
-      + row('回合', s.幕次) + row('消息数', s.消息数)
+      + row('当前幕次', pbRoman(Math.floor(Math.max(0, s.幕次 - 1) / PB_ACT_EVERY_TURNS) + 1))
+      + row('消息数', s.消息数)
+      + row('Token', s.Token ? s.Token.toLocaleString('en-US') : '—')
       + row('开演', shortTime(s.开演)) + row('最近', shortTime(s.最近))
-      + row('存档', s.存档)
       + '</div>'
-      /* 第三块：本角色的历史存档（对应酒馆的 Manage chat files）。
-         异步取，先占位再填 —— 让整个右栏等一次网络请求不值得。 */
-      + (pbOn() ? '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">历史对话</div></div>' : '');
+      /* 幕次表 = 这个角色的历史存档。之前拆成了两块（一块列本场的幕、
+         一块列存档），其实是同一件事的两种说法 —— 一个存档就是一幕。
+         合成一块，块名用「幕次表」。数据异步取，先占位再填。 */
+      + (pbOn() ? '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">幕次表</div></div>' : '');
     if (pbOn()) fillAsideChats();
     /* Recents 每行的 data-file 和 getCurrentChatId() 是同一个字符串，
        高亮当前行、以及接 Manage chat files 都靠它。 */
@@ -7896,7 +7995,9 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
       refreshRaf = 0;
       ensureAside();
       stampMessages();
-      markActs();
+      buildCards();
+      buildCoverArt();
+      watchCoverArt();
       buildCover();
       buildNav();
     });
@@ -8195,6 +8296,13 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
           <label style="display:flex;align-items:center;gap:6px">
             <input type="checkbox" id="claude-web-avatars"> 显示头像
           </label>
+
+          <label for="claude-web-pbimage" style="margin-top:8px">剧场配图（仅 THE PLAYBILL）</label>
+          <input id="claude-web-pbimage" class="text_pole" placeholder="图片地址，或用下面的按钮选本地文件">
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <input type="file" id="claude-web-pbimage-file" accept="image/*" style="flex:1;min-width:0">
+            <button type="button" id="claude-web-pbimage-clear" class="menu_button">清除</button>
+          </div>
 
           <label for="claude-web-structure" style="margin-top:8px">结构</label>
           <select id="claude-web-structure" class="text_pole"></select>
@@ -8537,7 +8645,8 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
       write('skin', skin);
       syncPlaybillLock();
       stampMessages();
-      markActs();
+      buildCards();
+      buildCoverArt();
       ensureAside();
       /* 换风格会换掉自定义的取值起点，取色器要跟着显示新起点的颜色。 */
       syncSwatches();
@@ -8770,6 +8879,49 @@ JS 不去逐行改 style，那样切回"全部"时容易漏掉几行。 */
       if (!write('avatars', avatarsBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeAvatars = avatarsBox.checked ? 'on' : 'off';
     });
+
+    /* 剧场配图。存两种形态：网址原样存，本地文件转成 data URL 存。
+       data URL 会把整张图塞进 localStorage —— 那里通常只有 5MB 左右，
+       塞爆之后**整个设置模块的写入都会开始抛异常**，不只是这一项失效。
+       所以卡在 1.2MB，超了就直接拒绝并说清楚，不做静默截断。 */
+    const PB_IMG_MAX = 1.2 * 1024 * 1024;
+    const pbImgInput = panel.querySelector('#claude-web-pbimage');
+    const pbImgFile = panel.querySelector('#claude-web-pbimage-file');
+    const pbImgClear = panel.querySelector('#claude-web-pbimage-clear');
+    function pbImgShow(v) {
+      pbImgInput.value = (v || '').startsWith('data:') ? '（已选本地图片）' : (v || '');
+    }
+    try { pbImgShow(window.localStorage.getItem('claude-web:pbImage') || ''); } catch { /* 无痕 */ }
+    function pbImgSave(v) {
+      try {
+        if (v) window.localStorage.setItem('claude-web:pbImage', v);
+        else window.localStorage.removeItem('claude-web:pbImage');
+      } catch (e) { hint.textContent = '写入失败（存储可能已满）。'; return; }
+      pbImgShow(v);
+      buildCover(); buildCards(); buildCoverArt();
+      hint.textContent = v ? '配图已更新。' : '已清除配图。';
+    }
+    pbImgInput.addEventListener('change', () => {
+      const v = pbImgInput.value.trim();
+      if (v.startsWith('（')) return;              /* 本地图片的占位文案，别当成网址存 */
+      pbImgSave(v);
+    });
+    pbImgFile.addEventListener('change', () => {
+      const file = pbImgFile.files?.[0];
+      if (!file) return;
+      if (file.size > PB_IMG_MAX) {
+        hint.textContent = '这张图 ' + Math.round(file.size / 1024) + 'KB，超过 1.2MB 了。'
+          + '本地图片要整张存进浏览器存储，太大会把存储塞满、连带别的设置也存不进去。'
+          + '先压一下，或者改用图片地址。';
+        pbImgFile.value = '';
+        return;
+      }
+      const fr = new FileReader();
+      fr.onload = () => pbImgSave(String(fr.result || ''));
+      fr.onerror = () => { hint.textContent = '读取图片失败。'; };
+      fr.readAsDataURL(file);
+    });
+    pbImgClear.addEventListener('click', () => { pbImgFile.value = ''; pbImgSave(''); });
 
     const structureSelect = panel.querySelector('#claude-web-structure');
     fillSelect(structureSelect, STRUCTURES, read('structure', STRUCTURE_VALUES, 'rail'));
