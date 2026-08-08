@@ -300,7 +300,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.56-drag-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.57-scoped-observer-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -1547,6 +1547,8 @@ if (CLAUDE_ENABLED) {
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAABf0lEQVR4nO3cwUkDURRG4enHEtzEvfshHQgWcLcpJfbhIl3crZ1EAoIgeTEBzfzR78DZ5TF33plFmJA3TQAAAAAAAAAAAAAAAAAAAAAAAAAAALg9uuZV17zhfI6rawQ5XGjP+Rw3glSUgnSWgnSWgnSWgnSWgnSWgnSWgnSWgnSWgnSWgnSWmUGmaTrqy/ph6Q3bf/Uw02heQUoQQdaCRPkiyPIRWhBBfgxBZkFaEEEmQTIUJCBCCyLIokGe7++O+vr0uHiA/uJhptG8fybIP3YjSEUpSGcpSGcpSN96kI+/F1ziNuBG9zfi9tL9nQKGZn0qSGUpSGUpSGUpSGUpSGUpSGUpSGUpSGUpSGUpSGUpSGXp5WKFvVz0+n3+Tf0e0lkK0lkK0lkK0v8wyOhEuVPfvkYnrr0NPr+7wmlvu8G1306sGd3fdrET5b4JdXTgE2t2Sz1ZPd7g3Yk1oyDLbfwIQcIQJAxBwhAkDEHCECQMQcIQJAxBwhAkDEGmH+EdPR0/XvA9afUAAAAASUVORK5CYII=';
 
   let observer = null;
+  let chatAttributeObserver = null;
+  let observedAttributeChat = null;
   let scrollHost = null;
   let lastManualScrollAt = 0;
   let frameId = 0;
@@ -6667,15 +6669,22 @@ if (CLAUDE_ENABLED) {
     }
   }
 
-  /* 刷新自己会改 DOM，而观察器盯着整个 body 的 class / style。
-     不掐断的话每次刷新都会把自己再排进下一轮，空闲时也在 20Hz 空转。
-     刷新期间断开，结束前把这段时间攒下的记录丢掉再接回去。 */
-  const OBSERVER_INIT = {
+  /* Structural changes can occur anywhere, but high-frequency class/style
+     changes outside #chat must never enter the attribute observer. Filtering
+     after delivery is too late for panels that write position styles more than
+     one thousand times per second. */
+  const BODY_OBSERVER_INIT = {
     subtree: true,
     childList: true,
+  };
+  const ROOT_ATTRIBUTE_OBSERVER_INIT = {
     attributes: true,
     attributeOldValue: true,
     attributeFilter: ['class', 'style'],
+  };
+  const CHAT_ATTRIBUTE_OBSERVER_INIT = {
+    ...ROOT_ATTRIBUTE_OBSERVER_INIT,
+    subtree: true,
   };
 
   const OBSERVER_COSMETIC_CLASSES = new Set([
@@ -6852,6 +6861,28 @@ if (CLAUDE_ENABLED) {
     return true;
   }
 
+  function ensureChatAttributeObserver() {
+    if (!chatAttributeObserver) return;
+    const chat = hostDocument.querySelector('#chat');
+    if (chat === observedAttributeChat) return;
+    chatAttributeObserver.disconnect();
+    observedAttributeChat = chat;
+    chatAttributeObserver.observe(hostDocument.documentElement, ROOT_ATTRIBUTE_OBSERVER_INIT);
+    chatAttributeObserver.observe(hostDocument.body, ROOT_ATTRIBUTE_OBSERVER_INIT);
+    if (chat) chatAttributeObserver.observe(chat, CHAT_ATTRIBUTE_OBSERVER_INIT);
+  }
+
+  function handleObservedMutations(records) {
+    refreshStats.recordsSeen += records.length;
+    trackDirtyMessages(records);
+    ensureChatAttributeObserver();
+    preserveStreamingReasoning(isTypingActive());
+    if (!records.some(mutationNeedsFullRefresh)) return;
+    refreshStats.recordsPassedFilter += records.length;
+    if (refreshing) { dirtyWhileRefreshing = true; return; }
+    scheduleRefresh();
+  }
+
   let refreshing = false;
   let dirtyWhileRefreshing = false;
 
@@ -6897,7 +6928,10 @@ if (CLAUDE_ENABLED) {
          takeRecords 就是干这个用的：把队列里已经攒下的记录取走并清空。
          取出来的仍然过一遍过滤 —— 万一里面混着酒馆的真实改动，
          不能连那个也一起丢了。 */
-      const pending = observer?.takeRecords?.() ?? [];
+      const pending = [
+        ...(observer?.takeRecords?.() ?? []),
+        ...(chatAttributeObserver?.takeRecords?.() ?? []),
+      ];
       if (pending.length) {
         refreshStats.selfRecordsDropped += pending.length;
         if (pending.some(mutationNeedsFullRefresh)) dirtyWhileRefreshing = true;
@@ -7156,18 +7190,12 @@ if (CLAUDE_ENABLED) {
     hostDocument.body.classList.toggle(TAURITAVERN_HOST_CLASS, isTauriTavernHost());
     installVirtualKeyboardOverlay();
     watchGenerationEvents();
-    observer = new hostWindow.MutationObserver(records => {
-      refreshStats.recordsSeen += records.length;
-      trackDirtyMessages(records);
-      preserveStreamingReasoning(isTypingActive());
-      if (!records.some(mutationNeedsFullRefresh)) return;
-      refreshStats.recordsPassedFilter += records.length;
-      if (refreshing) { dirtyWhileRefreshing = true; return; }
-      scheduleRefresh();
-    });
+    observer = new hostWindow.MutationObserver(handleObservedMutations);
+    chatAttributeObserver = new hostWindow.MutationObserver(handleObservedMutations);
     // characterData 会让流式输出的每个 token 都触发一次全量刷新，去掉；
     // 结构变化用 childList + attributes 已经够。
-    observer.observe(hostDocument.body, OBSERVER_INIT);
+    observer.observe(hostDocument.body, BODY_OBSERVER_INIT);
+    ensureChatAttributeObserver();
     scrollHost = hostDocument.querySelector('#chat');
     if (hostWindow.IntersectionObserver && scrollHost) {
       swipeObserver = new hostWindow.IntersectionObserver(entries => {
@@ -7223,6 +7251,9 @@ if (CLAUDE_ENABLED) {
     if (destroyed) return;
     destroyed = true;
     observer?.disconnect();
+    chatAttributeObserver?.disconnect();
+    chatAttributeObserver = null;
+    observedAttributeChat = null;
     // 借来的列表还回去，再摘掉事件监听
     restoreRecents();
     for (const { source, type, handler } of chatDeletedSubscriptions) {
