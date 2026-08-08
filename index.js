@@ -300,7 +300,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.55-phase1-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.56-drag-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -4396,6 +4396,18 @@ if (CLAUDE_ENABLED) {
     return slot;
   }
 
+  function recentActRoman(value) {
+    let number = Math.max(1, Math.floor(Number(value) || 1));
+    let result = '';
+    for (const [unit, roman] of [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]) {
+      while (number >= unit) {
+        result += roman;
+        number -= unit;
+      }
+    }
+    return result || 'I';
+  }
+
   function buildRecentRow(entry) {
     const row = hostDocument.createElement('div');
     row.className = 'recentChat' + (entry.isGroup ? ' group' : '');
@@ -4464,7 +4476,7 @@ if (CLAUDE_ENABLED) {
     meta.className = 'chatMeta';
     meta.textContent = [
       entry.name,
-      Number.isFinite(entry.actNo) ? '第 ' + pbRoman(entry.actNo) + ' 幕' : '',
+      Number.isFinite(entry.actNo) ? '第 ' + recentActRoman(entry.actNo) + ' 幕' : '',
       Number.isFinite(entry.count) && entry.count > 0 ? entry.count + ' 句' : '',
     ].filter(Boolean).join(' · ');
 
@@ -5956,6 +5968,10 @@ if (CLAUDE_ENABLED) {
   }
   let lastMouseMoveAt = Date.now();
   function handleLook(event) {
+    /* A pressed mouse button means the pointer is dragging or resizing. Eye
+       tracking used to read every Clawd button's layout on every drag frame,
+       competing directly with third-party movable panels. */
+    if (event.buttons) return;
     lookX = event.clientX;
     lookY = event.clientY;
     lastMouseMoveAt = Date.now();
