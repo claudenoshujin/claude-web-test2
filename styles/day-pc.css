@@ -8240,6 +8240,21 @@ html[data-claude-skin="playbill"] #chat > .cw-cover .cw-cover-foot{
   display:none !important;
 }
 
+/* Claude Web 2.0.62 — a closed desktop drawer must leave layout entirely.
+   Earlier reveal animations forced every drawer to display:block, keeping
+   thousands of invisible settings controls in style/layout work while a chat
+   was being rendered. The host's openDrawer class remains the single gate. */
+@media (min-width:701px) {
+  html body #top-settings-holder > .drawer > .drawer-content.closedDrawer,
+  html body #top-settings-holder > .drawer > .drawer-content:not(.openDrawer) {
+    display:none !important;
+    animation:none !important;
+  }
+  html body #top-settings-holder > .drawer > .drawer-content.openDrawer {
+    display:block !important;
+  }
+}
+
 
 /* ============================================================================
    第十七轮：砍掉滚动跟随，图变成流里的一块
