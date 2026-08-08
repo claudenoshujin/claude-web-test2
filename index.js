@@ -1032,19 +1032,25 @@ if (CLAUDE_ENABLED) {
     if (!rules) return;
     for (let index = rules.length - 1; index >= 0; index -= 1) {
       const rule = rules[index];
-      let childRules = null;
-      try { childRules = rule.cssRules; } catch { childRules = null; }
-      if (childRules) {
-        collectStyleAttributeRules(rule, source, removed);
+      /* Chromium now exposes an empty cssRules list on ordinary CSSStyleRule
+         objects as part of CSS nesting support. Checking only for the
+         property's existence therefore misclassified every normal selector
+         as a grouping rule and skipped it in 2.0.59/2.0.60. Test the selector
+         before descending, and recurse only when child rules actually exist. */
+      if (isStyleAttributeRule(rule)) {
+        const cssText = rule.cssText;
+        try {
+          parent.deleteRule(index);
+          removed.push({ parent, index, cssText, source });
+        } catch {
+          // A read-only sheet is harmless; leave it intact and continue.
+        }
         continue;
       }
-      if (!isStyleAttributeRule(rule)) continue;
-      const cssText = rule.cssText;
-      try {
-        parent.deleteRule(index);
-        removed.push({ parent, index, cssText, source });
-      } catch {
-        // A read-only sheet is harmless; leave it intact and continue.
+      let childRules = null;
+      try { childRules = rule.cssRules; } catch { childRules = null; }
+      if (childRules?.length) {
+        collectStyleAttributeRules(rule, source, removed);
       }
     }
   }
