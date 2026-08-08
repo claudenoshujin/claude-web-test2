@@ -913,7 +913,7 @@ hr {
   line-height:1.56 !important;
   text-wrap:auto;
 }
-body:has(.typing_indicator:not(.displayNone):not([style*="display: none"]):not([style*="display:none"])) #chat > .mes.last_mes[is_user="false"] .mes_text::after {
+body.claude-generation-active #chat > .mes.last_mes[is_user="false"] .mes_text::after {
   opacity:0;
   transform:translateY(9px) scale(.82);
   transition-delay:0ms;
