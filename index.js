@@ -939,6 +939,7 @@ if (CLAUDE_ENABLED) {
   );
   const RESTORE_KEY = 'claude-integrated-theme-restore:v2';
   const WATCHDOG_KEY = '__claudeIntegratedThemeWatchdog';
+  const HOST_DELETE_STYLE_SELECTOR = /\[\s*style\s*\*=\s*["'][^"']*display\s*:\s*block[^"']*["']\s*\]/i;
   const INSTANCE_TOKEN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   let destroyed = false;
   let hostPageUnloading = false;
@@ -946,6 +947,7 @@ if (CLAUDE_ENABLED) {
   let disableCheckTimer = 0;
   let runnerRemovalTimer = 0;
   let runnerPresenceObserver = null;
+  let neutralizedHostRules = [];
   const runnerFrame = window.frameElement;
 
   hostWindow[INSTANCE_KEY]?.destroy?.({ restore: false });
@@ -1004,6 +1006,71 @@ if (CLAUDE_ENABLED) {
       node.textContent = LIVE_CSS;
     }
     hostDocument.documentElement.dataset.claudeIntegratedTheme = CLAUDE_THEME_VARIANT;
+  }
+
+  /* SillyTavern's delete-mode stylesheet contains a selector shaped like:
+       .last_mes:has(> .del_checkbox[style*="display: block"]) .mes_text
+
+     The checkbox's inline display state makes every unrelated inline-style
+     write enter expensive :has() invalidation. A reversible same-page A/B on
+     a long chat measured roughly 70ms before removal and 2ms after it.
+
+     Match the proven rule by behavior instead of stylesheet URL, but keep the
+     predicate deliberately narrow. Removing every [style] selector would
+     break unrelated host/plugin features and ordinary [style] selectors do
+     not have the same ancestor-invalidation cost. */
+  function isRedundantHostDeleteRule(rule) {
+    const selector = rule?.selectorText || '';
+    if (!selector.includes(':has(')
+      || !selector.includes('.last_mes')
+      || !selector.includes('.del_checkbox')
+      || !HOST_DELETE_STYLE_SELECTOR.test(selector)) return false;
+    if (rule.style?.length !== 1) return false;
+    return rule.style.getPropertyValue('margin-left') === '0px';
+  }
+
+  function collectRedundantHostDeleteRules(parent, source, removed) {
+    let rules;
+    try { rules = parent.cssRules; } catch { return; }
+    if (!rules) return;
+    for (let index = rules.length - 1; index >= 0; index -= 1) {
+      const rule = rules[index];
+      let childRules = null;
+      try { childRules = rule.cssRules; } catch { childRules = null; }
+      if (childRules) {
+        collectRedundantHostDeleteRules(rule, source, removed);
+        continue;
+      }
+      if (!isRedundantHostDeleteRule(rule)) continue;
+      const cssText = rule.cssText;
+      try {
+        parent.deleteRule(index);
+        removed.push({ parent, index, cssText, source });
+      } catch {
+        // A read-only sheet is harmless; leave it intact and continue.
+      }
+    }
+  }
+
+  function neutralizeRedundantHostDeleteRules() {
+    const removed = [];
+    for (const sheet of hostDocument.styleSheets) {
+      collectRedundantHostDeleteRules(sheet, sheet.href || '<style>', removed);
+    }
+    if (!removed.length) return 0;
+    neutralizedHostRules.push(...removed);
+    console.info(
+      '[Claude Web] 已中和 ' + removed.length + ' 条宿主删除模式高开销选择器：',
+      removed.map(entry => ({ source: entry.source, rule: entry.cssText })),
+    );
+    return removed.length;
+  }
+
+  function restoreRedundantHostDeleteRules() {
+    for (const entry of [...neutralizedHostRules].reverse()) {
+      try { entry.parent.insertRule(entry.cssText, entry.index); } catch { /* detached/read-only sheet */ }
+    }
+    neutralizedHostRules = [];
   }
 
   function valuesMatch(left, right) {
@@ -1391,13 +1458,17 @@ if (CLAUDE_ENABLED) {
   function start(attempt = 0) {
     if (destroyed) return;
     installLiveStyle();
+    neutralizeRedundantHostDeleteRules();
     const changed = persistFullTheme();
     if (changed === null && attempt < 12) {
       retryTimer = hostWindow.setTimeout(() => start(attempt + 1), 250);
       return;
     }
     hostWindow.setTimeout(() => {
-      if (!destroyed) persistFullTheme();
+      if (!destroyed) {
+        neutralizeRedundantHostDeleteRules();
+        persistFullTheme();
+      }
     }, 800);
   }
 
@@ -1416,6 +1487,7 @@ if (CLAUDE_ENABLED) {
     }
     hostWindow.removeEventListener('beforeunload', markHostPageUnloading, true);
     hostWindow.removeEventListener('pagehide', markHostPageUnloading, true);
+    restoreRedundantHostDeleteRules();
     removeRuntimeArtifacts();
     if (hostWindow[INSTANCE_KEY] === api) delete hostWindow[INSTANCE_KEY];
     if (restore) restorePreviousTheme();
