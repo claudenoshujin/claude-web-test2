@@ -939,7 +939,7 @@ if (CLAUDE_ENABLED) {
   );
   const RESTORE_KEY = 'claude-integrated-theme-restore:v2';
   const WATCHDOG_KEY = '__claudeIntegratedThemeWatchdog';
-  const HOST_DELETE_STYLE_SELECTOR = /\[\s*style\s*\*=\s*["'][^"']*display\s*:\s*block[^"']*["']\s*\]/i;
+  const STYLE_ATTRIBUTE_SELECTOR_MARK = '[style';
   const INSTANCE_TOKEN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   let destroyed = false;
   let hostPageUnloading = false;
@@ -1015,21 +1015,18 @@ if (CLAUDE_ENABLED) {
      write enter expensive :has() invalidation. A reversible same-page A/B on
      a long chat measured roughly 70ms before removal and 2ms after it.
 
-     Match the proven rule by behavior instead of stylesheet URL, but keep the
-     predicate deliberately narrow. Removing every [style] selector would
-     break unrelated host/plugin features and ordinary [style] selectors do
-     not have the same ancestor-invalidation cost. */
-  function isRedundantHostDeleteRule(rule) {
-    const selector = rule?.selectorText || '';
-    if (!selector.includes(':has(')
-      || !selector.includes('.last_mes')
-      || !selector.includes('.del_checkbox')
-      || !HOST_DELETE_STYLE_SELECTOR.test(selector)) return false;
-    if (rule.style?.length !== 1) return false;
-    return rule.style.getPropertyValue('margin-left') === '0px';
+     A same-page scan found three candidate rules and only this host rule
+     contains "[style". Match that CSSOM marker directly: selectorText
+     serialization differs between Chromium/SillyTavern builds, so a regex
+     for the attribute value produced false negatives in 2.0.59. Keep a
+     cssText fallback for rule implementations without selectorText. */
+  function isStyleAttributeRule(rule) {
+    if (typeof rule?.selectorText === 'string'
+      && rule.selectorText.includes(STYLE_ATTRIBUTE_SELECTOR_MARK)) return true;
+    return (rule?.cssText || '').split('{')[0].includes(STYLE_ATTRIBUTE_SELECTOR_MARK);
   }
 
-  function collectRedundantHostDeleteRules(parent, source, removed) {
+  function collectStyleAttributeRules(parent, source, removed) {
     let rules;
     try { rules = parent.cssRules; } catch { return; }
     if (!rules) return;
@@ -1038,10 +1035,10 @@ if (CLAUDE_ENABLED) {
       let childRules = null;
       try { childRules = rule.cssRules; } catch { childRules = null; }
       if (childRules) {
-        collectRedundantHostDeleteRules(rule, source, removed);
+        collectStyleAttributeRules(rule, source, removed);
         continue;
       }
-      if (!isRedundantHostDeleteRule(rule)) continue;
+      if (!isStyleAttributeRule(rule)) continue;
       const cssText = rule.cssText;
       try {
         parent.deleteRule(index);
@@ -1052,21 +1049,21 @@ if (CLAUDE_ENABLED) {
     }
   }
 
-  function neutralizeRedundantHostDeleteRules() {
+  function neutralizeStyleAttributeRules() {
     const removed = [];
     for (const sheet of hostDocument.styleSheets) {
-      collectRedundantHostDeleteRules(sheet, sheet.href || '<style>', removed);
+      collectStyleAttributeRules(sheet, sheet.href || '<style>', removed);
     }
     if (!removed.length) return 0;
     neutralizedHostRules.push(...removed);
     console.info(
-      '[Claude Web] 已中和 ' + removed.length + ' 条宿主删除模式高开销选择器：',
+      '[Claude Web] 已中和 ' + removed.length + ' 条匹配 style 属性的高开销选择器：',
       removed.map(entry => ({ source: entry.source, rule: entry.cssText })),
     );
     return removed.length;
   }
 
-  function restoreRedundantHostDeleteRules() {
+  function restoreStyleAttributeRules() {
     for (const entry of [...neutralizedHostRules].reverse()) {
       try { entry.parent.insertRule(entry.cssText, entry.index); } catch { /* detached/read-only sheet */ }
     }
@@ -1458,7 +1455,7 @@ if (CLAUDE_ENABLED) {
   function start(attempt = 0) {
     if (destroyed) return;
     installLiveStyle();
-    neutralizeRedundantHostDeleteRules();
+    neutralizeStyleAttributeRules();
     const changed = persistFullTheme();
     if (changed === null && attempt < 12) {
       retryTimer = hostWindow.setTimeout(() => start(attempt + 1), 250);
@@ -1466,7 +1463,7 @@ if (CLAUDE_ENABLED) {
     }
     hostWindow.setTimeout(() => {
       if (!destroyed) {
-        neutralizeRedundantHostDeleteRules();
+        neutralizeStyleAttributeRules();
         persistFullTheme();
       }
     }, 800);
@@ -1487,7 +1484,7 @@ if (CLAUDE_ENABLED) {
     }
     hostWindow.removeEventListener('beforeunload', markHostPageUnloading, true);
     hostWindow.removeEventListener('pagehide', markHostPageUnloading, true);
-    restoreRedundantHostDeleteRules();
+    restoreStyleAttributeRules();
     removeRuntimeArtifacts();
     if (hostWindow[INSTANCE_KEY] === api) delete hostWindow[INSTANCE_KEY];
     if (restore) restorePreviousTheme();
