@@ -2542,6 +2542,7 @@ html body:has(#completion_prompt_manager_popup.openDrawer) #form_sheld {
 
 #completion_prompt_manager #completion_prompt_manager_list > li {
   box-sizing:border-box !important;
+  display:grid !important;
   grid-template-columns:minmax(0,1fr) minmax(72px,max-content) minmax(3ch,auto) !important;
   align-items:center !important;
   column-gap:8px !important;
