@@ -300,7 +300,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.54-playbill-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.55-phase1-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -1137,6 +1137,17 @@ if (CLAUDE_ENABLED) {
     }
   }
 
+  function valuesWithPreservedQuote(settings, values) {
+    const next = { ...values };
+    const current = settings?.quote_text_color;
+    const defaults = typeof CLAUDE_THEMES !== 'undefined'
+      ? Object.values(CLAUDE_THEMES).map(theme => theme?.quote_text_color).filter(Boolean)
+      : [values.quote_text_color].filter(Boolean);
+    const isClaudeDefault = defaults.some(value => valuesMatch(current, value));
+    if (current != null && current !== '' && !isClaudeDefault) next.quote_text_color = current;
+    return next;
+  }
+
   function persistFullTheme() {
     const context = getContext();
     const settings = context?.powerUserSettings;
@@ -1144,9 +1155,10 @@ if (CLAUDE_ENABLED) {
 
     const previousName = settings.theme;
     rememberRestorePoint(settings);
+    const values = valuesWithPreservedQuote(settings, THEME_VALUES);
     const changed = settings.theme !== THEME_NAME
-      || Object.entries(THEME_VALUES).some(([key, value]) => !valuesMatch(settings[key], value));
-    Object.assign(settings, THEME_VALUES);
+      || Object.entries(values).some(([key, value]) => !valuesMatch(settings[key], value));
+    Object.assign(settings, values);
     settings.theme = THEME_NAME;
     applyCssVariables(settings);
     applyUiState(settings);
@@ -1174,7 +1186,10 @@ if (CLAUDE_ENABLED) {
     if (!settings) return false;
     const previousName = settings.theme;
     rememberRestorePoint(settings);
-    const values = Object.fromEntries(Object.entries(theme).filter(([key]) => key !== 'name'));
+    const values = valuesWithPreservedQuote(
+      settings,
+      Object.fromEntries(Object.entries(theme).filter(([key]) => key !== 'name')),
+    );
     Object.assign(settings, values);
     settings.theme = theme.name;
     applyCssVariables(settings);
@@ -6769,6 +6784,12 @@ if (CLAUDE_ENABLED) {
     }
   }
 
+  function externalStyleMutationIsIrrelevant(record, target) {
+    return record.type === 'attributes'
+      && record.attributeName === 'style'
+      && !target.closest('#chat');
+  }
+
   function mutationNeedsFullRefresh(record) {
     const target = record.target instanceof hostWindow.Element ? record.target : record.target.parentElement;
     if (!(target instanceof hostWindow.Element)) return true;
@@ -6790,6 +6811,14 @@ if (CLAUDE_ENABLED) {
        真机实测：生成期间它产生 1566 条记录，是全场最多的一类，比第二名还多 57%。
        整个 #completion_prompt_manager 子树直接不参与刷新判断。 */
     if (target.closest('#completion_prompt_manager')) return false;
+
+    /* Third-party floating panels update inline position styles on every pointer
+       move. Outside #chat those writes cannot affect message decoration, so do
+       not trade a compositor-only drag for another whole-chat refresh. */
+    if (externalStyleMutationIsIrrelevant(record, target)) {
+      refreshStats.externalStyleRecordsIgnored += 1;
+      return false;
+    }
 
     if (target.matches(OWNED_MUTATION_SELECTOR) || target.closest(OWNED_MUTATION_SELECTOR)) return false;
     if (record.type === 'attributes' && classMutationIsCosmetic(record, target)) return false;
@@ -6832,6 +6861,7 @@ if (CLAUDE_ENABLED) {
     recordsSeen: 0,
     recordsPassedFilter: 0,
     selfRecordsDropped: 0,
+    externalStyleRecordsIgnored: 0,
     since: Date.now(),
   };
 
@@ -7346,6 +7376,7 @@ if (CLAUDE_ENABLED) {
         收到记录数: refreshStats.recordsSeen,
         通过过滤数: refreshStats.recordsPassedFilter,
         自身记录丢弃数: refreshStats.selfRecordsDropped,
+        外部样式记录忽略数: refreshStats.externalStyleRecordsIgnored,
         消息条数: hostDocument.querySelectorAll('#chat > .mes').length,
         消息总字数: [...hostDocument.querySelectorAll('#chat > .mes .mes_text')]
           .reduce((sum, node) => sum + node.textContent.length, 0),
@@ -7354,6 +7385,7 @@ if (CLAUDE_ENABLED) {
         Object.assign(refreshStats, {
           refreshes: 0, totalMs: 0, maxMs: 0, lastMs: 0,
           recordsSeen: 0, recordsPassedFilter: 0, selfRecordsDropped: 0,
+          externalStyleRecordsIgnored: 0,
           since: Date.now(),
         });
       }
@@ -9505,4 +9537,3 @@ if (CLAUDE_ENABLED) {
     }
   }, 500);
 })();
-

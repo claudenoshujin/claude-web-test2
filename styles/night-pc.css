@@ -1271,7 +1271,7 @@ body:has(.typing_indicator:not(.displayNone):not([style*="display: none"]):not([
   line-height:14px !important;
 }
 .mes_text q, .mes_reasoning q, .mes_text .quote, .mes_reasoning .quote {
-  color:inherit !important;
+  color:var(--SmartThemeQuoteColor, var(--cw-text-body)) !important;
   -webkit-text-fill-color:currentColor !important;
 }
 .mes_text q::before, .mes_text q::after, .mes_reasoning q::before, .mes_reasoning q::after {
