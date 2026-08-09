@@ -10,6 +10,8 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.68";
+
 const CLAUDE_EXTENSION_MODE = true;
 
 /* 样式文件的地址从自身模块地址推导，这样用户把扩展文件夹叫什么都无所谓
@@ -300,7 +302,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.66-via-keyboard-poll-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.68-via-geometry-diagnostics-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -1683,6 +1685,7 @@ if (CLAUDE_ENABLED) {
   let mobileKeyboardRecoveryActive = false;
   let mobileKeyboardPollTimer = 0;
   let mobileKeyboardPollSignature = '';
+  let keyboardDiagnostics = null;
 
   hostWindow[INSTANCE_KEY]?.destroy?.();
 
@@ -6849,6 +6852,7 @@ if (CLAUDE_ENABLED) {
     '.clawd-mobile-new-chat',
     '.clawd-character-menu',
     '.clawd-character-switcher',
+    '.clawd-keyboard-diagnostics',
     '.clawd-rail-brand',
     '.clawd-rail-label',
     '.clawd-rail-grip',
@@ -7349,6 +7353,20 @@ if (CLAUDE_ENABLED) {
     hostDocument.addEventListener('focusout', handleFocusOut, true);
     hostWindow.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
     hostWindow.visualViewport?.addEventListener('scroll', handleViewportChange, { passive: true });
+    keyboardDiagnostics = installKeyboardDiagnostics({
+      window: hostWindow,
+      document: hostDocument,
+      buildId: KEYBOARD_BUILD.id,
+      isMobileLayout,
+      getRuntimeState: () => ({
+        virtualKeyboardOverlayActive,
+        mobileKeyboardRecoveryActive,
+        mobileKeyboardSettlingUntil,
+        mobileKeyboardSettling: Date.now() < mobileKeyboardSettlingUntil,
+        mobileKeyboardPollRunning: Boolean(mobileKeyboardPollTimer),
+        keyboardBaselineMode,
+      }),
+    });
     startMobileKeyboardPoll();
     scheduleRefresh();
   }
@@ -7427,6 +7445,8 @@ if (CLAUDE_ENABLED) {
     mobileKeyboardRecoveryActive = false;
     stopMobileKeyboardPoll();
     stopKeyboardTrace();
+    keyboardDiagnostics?.destroy?.();
+    keyboardDiagnostics = null;
     restoreVirtualKeyboardOverlay();
     hostDocument.querySelectorAll('.' + RAIL_BRAND_CLASS).forEach(brand => brand.remove());
     hostDocument.querySelectorAll('.' + PC_TOP_ACTIONS_CLASS).forEach(actions => actions.remove());
