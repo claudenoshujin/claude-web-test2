@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.81";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.82";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.81-compat-mechanism-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.82-compat-mechanism-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };

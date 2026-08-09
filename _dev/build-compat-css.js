@@ -105,13 +105,13 @@ const base = fs.readFileSync(basePath, 'utf8').trim();
 const structurePatch = fs.readFileSync(patchPath, 'utf8').trim();
 const welcomeException = `@media (min-width:701px){\n${WELCOME_PLACEHOLDER_SELECTOR}{display:none!important}\n}`;
 const ownedSelectors = [
-  ...OWNED_ROOTS.map(selector => scopeSelector(selector)),
-  ...OWNED_SUBTREES.map(selector => scopeSelector(`${selector} *`)),
+  ...OWNED_ROOTS,
+  ...OWNED_SUBTREES.map(selector => `${selector} *`),
 ];
 const ownedReset = [
   '/* Framework-owned nodes: cancel every declaration supplied by the external theme.',
   ' * This must be the first structural rule in cw-frame. Never include .drawer-content or #chat descendants. */',
-  `@media (min-width:701px){\n${ownedSelectors.join(',\n')}{all:revert-layer!important}\n}`,
+  `@media (min-width:701px){\nhtml[data-claude-mode="compat"] body :where(\n${ownedSelectors.join(',\n')}\n){all:revert-layer!important}\n}`,
   '/* Explicit skin channel: external themes may replace rail icon artwork, never its geometry. */',
   '@media (min-width:701px){',
   'html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{',

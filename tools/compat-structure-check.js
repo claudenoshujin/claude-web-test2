@@ -54,6 +54,9 @@ const resetRules = rules.filter(rule => rule.declarations.some(declaration =>
   declaration.property === 'all' && declaration.value === 'revert-layer' && declaration.important));
 if (resetRules.length !== 1) errors.push(`expected one owned-subtree reset rule, found ${resetRules.length}`);
 const resetSelectors = resetRules.flatMap(rule => rule.selectors);
+if (!resetSelectors.every(selector => selector.includes(':where('))) {
+  errors.push('owned-subtree reset must use low-specificity :where()');
+}
 for (const forbidden of ['.drawer-content', '#chat']) {
   if (resetSelectors.some(selector => selector.includes(forbidden))) {
     errors.push(`owned-subtree reset must not include ${forbidden}`);
