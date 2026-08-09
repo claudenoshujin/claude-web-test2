@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.73";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.74";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -302,7 +302,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.73-via-autocomplete-resize-guard-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.74-settings-sections-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -7916,6 +7916,7 @@ if (CLAUDE_ENABLED) {
       sel.disabled = on;
       sel.title = on ? 'THE PLAYBILL 自带四栏结构，不单独选。' : '';
     }
+    syncPanelPresentationRef();
   }
 
   /* ==========================================================================
@@ -8988,6 +8989,7 @@ if (CLAUDE_ENABLED) {
       <style>
         /* 主题自己那 2400 多处 !important 会把按钮压成窄条，文字于是竖着排。
            这里用 id 提高特异性把它抢回来。 */
+        #${PANEL_ID}, #${PANEL_ID} * { box-sizing:border-box; }
         #${PANEL_ID} .menu_button {
           display:inline-flex !important;
           align-items:center !important;
@@ -9033,6 +9035,69 @@ if (CLAUDE_ENABLED) {
         #${PANEL_ID} .claude-web-swatch span {
           overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
         }
+        #${PANEL_ID} .claude-web-master {
+          display:flex !important; align-items:center; gap:7px;
+          margin:0 !important; padding:10px 11px;
+          border:1px solid color-mix(in srgb,currentColor 16%,transparent);
+          border-radius:10px;
+        }
+        #${PANEL_ID} .claude-web-master input { flex:0 0 auto; }
+        #${PANEL_ID} .claude-web-sections {
+          display:grid; gap:7px; margin-top:10px;
+        }
+        #${PANEL_ID} .claude-web-section {
+          margin:0; border:1px solid color-mix(in srgb,currentColor 14%,transparent);
+          border-radius:10px; overflow:hidden;
+          background:color-mix(in srgb,currentColor 2.5%,transparent);
+        }
+        #${PANEL_ID} .claude-web-section > summary {
+          display:flex; align-items:center; gap:8px;
+          min-height:38px; padding:8px 10px; cursor:pointer; user-select:none;
+          list-style:none; font-weight:600;
+        }
+        #${PANEL_ID} .claude-web-section > summary::-webkit-details-marker { display:none; }
+        #${PANEL_ID} .claude-web-section > summary::after {
+          content:"\\f078"; flex:0 0 auto; margin-left:2px;
+          font-family:"Font Awesome 6 Free","Font Awesome 5 Free" !important;
+          font-weight:900; font-size:.72em; opacity:.55;
+          transition:transform .16s ease;
+        }
+        #${PANEL_ID} .claude-web-section[open] > summary::after { transform:rotate(180deg); }
+        #${PANEL_ID} .claude-web-section-summary {
+          flex:1 1 auto; min-width:0; overflow:hidden;
+          color:inherit; font-size:.84em; font-weight:400; opacity:.62;
+          text-align:right; text-overflow:ellipsis; white-space:nowrap;
+        }
+        #${PANEL_ID} .claude-web-section-body {
+          padding:10px; border-top:1px solid color-mix(in srgb,currentColor 11%,transparent);
+        }
+        #${PANEL_ID} .claude-web-field + .claude-web-field { margin-top:9px; }
+        #${PANEL_ID} .claude-web-check {
+          display:flex !important; align-items:center; gap:7px; margin:0 !important;
+          min-height:28px;
+        }
+        #${PANEL_ID} .claude-web-check + .claude-web-check { margin-top:3px !important; }
+        #${PANEL_ID} .claude-web-suboptions {
+          margin:6px 0 0 22px; padding-left:9px;
+          border-left:2px solid color-mix(in srgb,currentColor 13%,transparent);
+        }
+        #${PANEL_ID} .claude-web-range {
+          display:grid; grid-template-columns:auto minmax(70px,1fr) 3em;
+          align-items:center; gap:8px; margin-top:7px;
+        }
+        #${PANEL_ID} .claude-web-range > span:first-child {
+          font-size:.9em; opacity:.75; white-space:nowrap;
+        }
+        #${PANEL_ID} .claude-web-range > span:last-child {
+          width:3em; font-size:.9em; opacity:.75; text-align:right;
+        }
+        #${PANEL_ID} .claude-web-help {
+          margin-top:5px; font-size:.85em; opacity:.62; line-height:1.5;
+        }
+        #${PANEL_ID} .claude-web-actions {
+          display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;
+        }
+        #${PANEL_ID} [hidden] { display:none !important; }
       </style>
       <div class="inline-drawer">
         <div class="inline-drawer-toggle inline-drawer-header">
@@ -9040,140 +9105,178 @@ if (CLAUDE_ENABLED) {
           <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
-          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <label class="checkbox_label claude-web-master">
             <input id="claude-web-enabled" type="checkbox">
             <span><b>启用 Claude Web</b></span>
           </label>
           <div id="claude-web-enabled-hint"
-               style="margin:-6px 0 10px;font-size:0.9em;opacity:.75;line-height:1.5"></div>
+               style="margin:6px 2px 0;font-size:0.9em;opacity:.75;line-height:1.5"></div>
 
-          <label for="claude-web-preset">风格</label>
-          <select id="claude-web-preset" class="text_pole"></select>
+          <div class="claude-web-sections">
+            <details class="claude-web-section" id="claude-web-section-appearance" open>
+              <summary>
+                <span>外观</span>
+                <span class="claude-web-section-summary" id="claude-web-summary-appearance"></span>
+              </summary>
+              <div class="claude-web-section-body">
+                <div class="claude-web-field">
+                  <label for="claude-web-preset">Claude 风格预设</label>
+                  <select id="claude-web-preset" class="text_pole"></select>
+                </div>
 
-          <details id="claude-web-colors" style="margin-top:8px">
-            <summary style="cursor:pointer;user-select:none;opacity:.85">自定义配色</summary>
-            <div id="claude-web-swatches" class="claude-web-swatches"></div>
-            <div style="margin-top:6px;font-size:0.85em;opacity:.6;line-height:1.5">
-              改动存进「我的配色」，日间和夜间各存一套。其余颜色（线条、阴影、代码块等）自动推导。
-            </div>
-          </details>
+                <div class="claude-web-field claude-web-auto-theme">
+                  <label for="claude-web-theme-auto"><b>主题切换</b></label>
+                  <select id="claude-web-theme-auto" class="text_pole"></select>
+                  <div id="claude-web-auto-times" class="claude-web-auto-times" hidden>
+                    <label>日间开始<input id="claude-web-day-start" type="time" class="text_pole" value="07:00"></label>
+                    <label>夜间开始<input id="claude-web-night-start" type="time" class="text_pole" value="19:00"></label>
+                  </div>
+                  <div id="claude-web-auto-hint" class="claude-web-help"></div>
+                </div>
 
-          <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
-            <button id="claude-web-export" class="menu_button">导出</button>
-            <button id="claude-web-import" class="menu_button">导入</button>
-            <button id="claude-web-reset" class="menu_button">清除自定义</button>
+                <div class="claude-web-field">
+                  <label for="claude-web-variant">当前明暗</label>
+                  <select id="claude-web-variant" class="text_pole"></select>
+                </div>
+
+                <div class="claude-web-field">
+                  <label for="claude-web-font">字体</label>
+                  <select id="claude-web-font" class="text_pole"></select>
+                  <input id="claude-web-font-custom" class="text_pole" style="margin-top:6px;display:none"
+                         placeholder='自定义 font-family，例如："LXGW WenKai", serif'>
+                </div>
+
+                <details id="claude-web-colors" class="claude-web-field">
+                  <summary style="cursor:pointer;user-select:none;opacity:.85">自定义配色</summary>
+                  <div id="claude-web-swatches" class="claude-web-swatches"></div>
+                  <div class="claude-web-help">改动存进「我的配色」，日间和夜间各存一套，其余颜色自动推导。</div>
+                </details>
+
+                <div class="claude-web-actions">
+                  <button id="claude-web-export" class="menu_button">导出</button>
+                  <button id="claude-web-import" class="menu_button">导入</button>
+                  <button id="claude-web-reset" class="menu_button">清除自定义</button>
+                </div>
+                <input id="claude-web-import-file" type="file" accept="application/json,.json" style="display:none">
+                <div id="claude-web-preset-hint" class="claude-web-help"></div>
+              </div>
+            </details>
+
+            <details class="claude-web-section" id="claude-web-section-layout">
+              <summary>
+                <span>布局</span>
+                <span class="claude-web-section-summary" id="claude-web-summary-layout"></span>
+              </summary>
+              <div class="claude-web-section-body">
+                <div class="claude-web-field">
+                  <label for="claude-web-layout">设备布局</label>
+                  <select id="claude-web-layout" class="text_pole"></select>
+                </div>
+                <div class="claude-web-field">
+                  <label for="claude-web-structure">导航结构</label>
+                  <select id="claude-web-structure" class="text_pole"></select>
+                </div>
+                <label class="checkbox_label claude-web-check claude-web-field">
+                  <input type="checkbox" id="claude-web-avatars">
+                  <span>显示头像</span>
+                </label>
+                <div id="claude-web-playbill-options" class="claude-web-field" hidden>
+                  <label for="claude-web-pbimage">THE PLAYBILL 配图</label>
+                  <input id="claude-web-pbimage" class="text_pole" placeholder="图片地址，或用下面的按钮选本地文件">
+                  <div class="claude-web-actions">
+                    <input type="file" id="claude-web-pbimage-file" accept="image/*" style="flex:1;min-width:0">
+                    <button type="button" id="claude-web-pbimage-clear" class="menu_button">清除</button>
+                  </div>
+                </div>
+                <div id="claude-web-hint" class="claude-web-help"></div>
+              </div>
+            </details>
+
+            <details class="claude-web-section" id="claude-web-section-clawd">
+              <summary>
+                <span>Clawd</span>
+                <span class="claude-web-section-summary" id="claude-web-summary-clawd"></span>
+              </summary>
+              <div class="claude-web-section-body">
+                <label class="checkbox_label claude-web-check">
+                  <input type="checkbox" id="claude-web-clawd">
+                  <span>显示 Clawd</span>
+                </label>
+                <div id="claude-web-clawd-options" class="claude-web-suboptions">
+                  <label class="checkbox_label claude-web-check">
+                    <input id="claude-web-motion" type="checkbox">
+                    <span>启用状态动画</span>
+                  </label>
+                  <label class="checkbox_label claude-web-check">
+                    <input id="claude-web-decorations" type="checkbox">
+                    <span>启用粒子与提示气泡</span>
+                  </label>
+                  <label class="checkbox_label claude-web-check">
+                    <input id="claude-web-gen-timer" type="checkbox">
+                    <span>显示生成计时器</span>
+                  </label>
+                </div>
+              </div>
+            </details>
+
+            <details class="claude-web-section" id="claude-web-section-background">
+              <summary>
+                <span>背景</span>
+                <span class="claude-web-section-summary" id="claude-web-summary-background"></span>
+              </summary>
+              <div class="claude-web-section-body">
+                <label class="checkbox_label claude-web-check">
+                  <input id="claude-web-bg-transparent" type="checkbox">
+                  <span>背景透传</span>
+                </label>
+                <div class="claude-web-help">显示酒馆背景，而不是 Claude 的白底或黑底。</div>
+
+                <label class="checkbox_label claude-web-check" style="margin-top:8px !important">
+                  <input id="claude-web-bg-blur" type="checkbox">
+                  <span>背景毛玻璃</span>
+                </label>
+                <div id="claude-web-bg-blur-options" class="claude-web-suboptions">
+                  <div class="claude-web-range">
+                    <span>浓度</span>
+                    <input id="claude-web-bg-blur-opacity" type="range" min="8" max="60" step="1">
+                    <span id="claude-web-bg-blur-opacity-value"></span>
+                  </div>
+                </div>
+
+                <label class="checkbox_label claude-web-check" style="margin-top:10px !important">
+                  <input id="claude-web-bg-image-blur" type="checkbox">
+                  <span>背景图模糊</span>
+                </label>
+                <div id="claude-web-bg-image-options" class="claude-web-suboptions">
+                  <div class="claude-web-range">
+                    <span>模糊半径</span>
+                    <input id="claude-web-bg-image-blur-radius" type="range" min="0" max="32" step="1">
+                    <span id="claude-web-bg-image-blur-radius-value"></span>
+                  </div>
+                  <div class="claude-web-range">
+                    <span>背景压暗</span>
+                    <input id="claude-web-bg-image-dim" type="range" min="0" max="70" step="1">
+                    <span id="claude-web-bg-image-dim-value"></span>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="claude-web-section" id="claude-web-section-about">
+              <summary>
+                <span>关于与更新</span>
+                <span class="claude-web-section-summary">版本与维护</span>
+              </summary>
+              <div class="claude-web-section-body">
+                <div class="claude-web-actions" style="margin-top:0">
+                  <button id="claude-web-update" class="menu_button">检查更新</button>
+                  <button id="claude-web-reinstall" class="menu_button">重新安装</button>
+                </div>
+                <div id="claude-web-update-hint" class="claude-web-help"></div>
+                <div id="claude-web-build" class="claude-web-help" style="opacity:.55;word-break:break-all"></div>
+              </div>
+            </details>
           </div>
-          <input id="claude-web-import-file" type="file" accept="application/json,.json" style="display:none">
-          <div id="claude-web-preset-hint"
-               style="margin-top:6px;font-size:0.9em;opacity:.75;line-height:1.5"></div>
-
-          <hr style="margin:10px 0;opacity:.25">
-
-          <div class="claude-web-auto-theme">
-            <label for="claude-web-theme-auto"><b>自动主题</b></label>
-            <select id="claude-web-theme-auto" class="text_pole"></select>
-            <div id="claude-web-auto-times" class="claude-web-auto-times" hidden>
-              <label>日间开始<input id="claude-web-day-start" type="time" class="text_pole" value="07:00"></label>
-              <label>夜间开始<input id="claude-web-night-start" type="time" class="text_pole" value="19:00"></label>
-            </div>
-            <div id="claude-web-auto-hint" style="margin-top:6px;font-size:.85em;opacity:.7"></div>
-          </div>
-
-          <label for="claude-web-variant">手动明暗</label>
-          <select id="claude-web-variant" class="text_pole"></select>
-
-          <label for="claude-web-layout" style="margin-top:8px">布局</label>
-          <select id="claude-web-layout" class="text_pole"></select>
-
-          <label style="display:flex;align-items:center;gap:6px;margin-top:8px">
-            <input type="checkbox" id="claude-web-clawd"> 显示 Clawd
-          </label>
-          <label style="display:flex;align-items:center;gap:6px">
-            <input type="checkbox" id="claude-web-avatars"> 显示头像
-          </label>
-
-          <label for="claude-web-pbimage" style="margin-top:8px">剧场配图（仅 THE PLAYBILL）</label>
-          <input id="claude-web-pbimage" class="text_pole" placeholder="图片地址，或用下面的按钮选本地文件">
-          <div style="display:flex;gap:6px;margin-top:6px">
-            <input type="file" id="claude-web-pbimage-file" accept="image/*" style="flex:1;min-width:0">
-            <button type="button" id="claude-web-pbimage-clear" class="menu_button">清除</button>
-          </div>
-
-          <label for="claude-web-structure" style="margin-top:8px">结构</label>
-          <select id="claude-web-structure" class="text_pole"></select>
-
-          <label for="claude-web-font" style="margin-top:8px">字体</label>
-          <select id="claude-web-font" class="text_pole"></select>
-          <input id="claude-web-font-custom" class="text_pole" style="margin-top:6px;display:none"
-                 placeholder='自定义 font-family，例如："LXGW WenKai", serif'>
-
-          <div id="claude-web-hint"
-               style="margin-top:8px;font-size:0.9em;opacity:.75;line-height:1.5"></div>
-
-          <hr style="margin:10px 0;opacity:.25">
-          <div style="font-weight:600;margin-bottom:6px">Clawd</div>
-          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
-            <input id="claude-web-motion" type="checkbox">
-            <span>启用状态动画</span>
-          </label>
-          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
-            <input id="claude-web-decorations" type="checkbox">
-            <span>启用粒子与提示气泡</span>
-          </label>
-          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
-            <input id="claude-web-gen-timer" type="checkbox">
-            <span>显示生成计时器</span>
-          </label>
-
-          <hr style="margin:10px 0;opacity:.25">
-          <div style="font-weight:600;margin-bottom:6px">界面</div>
-          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
-            <input id="claude-web-bg-transparent" type="checkbox">
-            <span>背景透传（显示酒馆背景，而不是白底/黑底）</span>
-          </label>
-          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px">
-            <input id="claude-web-bg-blur" type="checkbox">
-            <span>背景毛玻璃（需先开启背景透传）</span>
-          </label>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-            <span style="font-size:0.9em;opacity:.75;white-space:nowrap">毛玻璃浓度</span>
-            <input id="claude-web-bg-blur-opacity" type="range" min="8" max="60" step="1" style="flex:1">
-            <span id="claude-web-bg-blur-opacity-value" style="font-size:0.9em;opacity:.75;width:2.4em;text-align:right"></span>
-          </div>
-          <div style="font-size:0.85em;opacity:.6;line-height:1.5;margin-top:2px">
-            数字越大越糊、底色越浓；越小越透。世界书/角色管理这些抽屉面板
-            不跟着上面两个开关走，固定带浅浅的磨砂色调，浓度也吃这根滑条，
-            但有个可读性下限，不会被拖到看不清字。
-          </div>
-
-          <label class="checkbox_label" style="display:flex;align-items:center;gap:6px;margin-top:10px">
-            <input id="claude-web-bg-image-blur" type="checkbox">
-            <span>背景图模糊</span>
-          </label>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-            <span style="font-size:0.9em;opacity:.75;white-space:nowrap">模糊半径</span>
-            <input id="claude-web-bg-image-blur-radius" type="range" min="0" max="32" step="1" style="flex:1">
-            <span id="claude-web-bg-image-blur-radius-value" style="font-size:0.9em;opacity:.75;width:2.8em;text-align:right"></span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-            <span style="font-size:0.9em;opacity:.75;white-space:nowrap">背景压暗</span>
-            <input id="claude-web-bg-image-dim" type="range" min="0" max="70" step="1" style="flex:1">
-            <span id="claude-web-bg-image-dim-value" style="font-size:0.9em;opacity:.75;width:2.8em;text-align:right"></span>
-          </div>
-          <div style="font-size:0.85em;opacity:.6;line-height:1.5;margin-top:2px">
-            只糊背景图，文字、角色列表、弹窗都保持清晰 —— 跟上面的毛玻璃是
-            两回事，可以单独开。要看得见背景图，得先开「背景透传」。
-          </div>
-
-          <hr style="margin:10px 0;opacity:.25">
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button id="claude-web-update" class="menu_button">检查更新</button>
-            <button id="claude-web-reinstall" class="menu_button">重新安装</button>
-          </div>
-          <div id="claude-web-update-hint"
-               style="margin-top:6px;font-size:0.9em;opacity:.75;line-height:1.5"></div>
-          <div id="claude-web-build"
-               style="margin-top:8px;font-size:0.85em;opacity:.55;line-height:1.5;word-break:break-all"></div>
         </div>
       </div>
     `;
@@ -9351,6 +9454,9 @@ if (CLAUDE_ENABLED) {
 
   /* 明暗那个下拉的 handler 和取色器不在同一个函数里，用这个引用搭桥。 */
   let syncSwatchesRef = () => {};
+  /* 面板分区标题和条件显示由 mount() 统一维护。预设切换在 mountPresets()
+     里，所以同样用一个延迟绑定的引用搭桥，避免两边各写一份状态判断。 */
+  let syncPanelPresentationRef = () => {};
 
   /* 九个核心色的人话名字。用户看到的是「正文」不是 --cw-ink-0。 */
   const SWATCH_LABELS = {
@@ -9612,6 +9718,7 @@ if (CLAUDE_ENABLED) {
       syncSwatchesRef();
       hint.textContent = ok ? '' : '主题已保存，刷新后生效。';
       if (ok) describe();
+      syncPanelPresentationRef();
     };
 
     variantSelect.addEventListener('change', () => applyVariant(variantSelect.value));
@@ -9636,6 +9743,7 @@ if (CLAUDE_ENABLED) {
       autoHint.textContent = mode === 'system'
         ? `跟随系统 · 当前${next === 'night' ? '夜间' : '日间'}`
         : `${dayStartInput.value} 日间 / ${nightStartInput.value} 夜间 · 当前${next === 'night' ? '夜间' : '日间'}`;
+      syncPanelPresentationRef();
     };
 
     autoSelect.addEventListener('change', () => {
@@ -9666,6 +9774,7 @@ if (CLAUDE_ENABLED) {
     clawdBox.addEventListener('change', () => {
       if (!write('clawd', clawdBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeClawd = clawdBox.checked ? 'on' : 'off';
+      syncPanelPresentationRef();
     });
 
     const avatarsBox = panel.querySelector('#claude-web-avatars');
@@ -9673,6 +9782,7 @@ if (CLAUDE_ENABLED) {
     avatarsBox.addEventListener('change', () => {
       if (!write('avatars', avatarsBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeAvatars = avatarsBox.checked ? 'on' : 'off';
+      syncPanelPresentationRef();
     });
 
     /* 剧场配图。存两种形态：网址原样存，本地文件转成 data URL 存。
@@ -9729,6 +9839,7 @@ if (CLAUDE_ENABLED) {
       hint.textContent = structureSelect.value === 'linear'
         ? '已切到 Linear 四栏。窄于 1100px 会自动退回侧边栏。'
         : '已切回侧边栏。';
+      syncPanelPresentationRef();
     });
     /* 面板刚挂上来时也要锁一次 —— 用户上次存的就是 playbill 的话，
        下拉必须一开始就是禁用状态，不能等他去点一下风格才生效。 */
@@ -9758,6 +9869,7 @@ if (CLAUDE_ENABLED) {
     layoutSelect.addEventListener('change', () => {
       if (!write('layout', layoutSelect.value)) return;
       hint.textContent = '正在切换布局…';
+      syncPanelPresentationRef();
       window.setTimeout(() => window.location.reload(), 120);
     });
 
@@ -9768,10 +9880,12 @@ if (CLAUDE_ENABLED) {
     motionBox.addEventListener('change', () => {
       if (!write('motion', motionBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeMotion = motionBox.checked ? 'on' : 'off';
+      syncPanelPresentationRef();
     });
     decorationsBox.addEventListener('change', () => {
       if (!write('decorations', decorationsBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeDecorations = decorationsBox.checked ? 'on' : 'off';
+      syncPanelPresentationRef();
     });
 
     const genTimerBox = panel.querySelector('#claude-web-gen-timer');
@@ -9779,6 +9893,7 @@ if (CLAUDE_ENABLED) {
     genTimerBox.addEventListener('change', () => {
       if (!write('genTimer', genTimerBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeGenTimer = genTimerBox.checked ? 'on' : 'off';
+      syncPanelPresentationRef();
     });
 
     const bgTransparentBox = panel.querySelector('#claude-web-bg-transparent');
@@ -9795,6 +9910,7 @@ if (CLAUDE_ENABLED) {
         write('bgBlur', 'off');
         document.documentElement.dataset.claudeBgBlur = 'off';
       }
+      syncPanelPresentationRef();
     });
     bgBlurBox.addEventListener('change', () => {
       if (!write('bgBlur', bgBlurBox.checked ? 'on' : 'off')) return;
@@ -9806,6 +9922,7 @@ if (CLAUDE_ENABLED) {
         write('bgTransparent', 'on');
         document.documentElement.dataset.claudeBgTransparent = 'on';
       }
+      syncPanelPresentationRef();
     });
 
     const bgBlurOpacitySlider = panel.querySelector('#claude-web-bg-blur-opacity');
@@ -9836,6 +9953,7 @@ if (CLAUDE_ENABLED) {
     bgImageBlurBox.addEventListener('change', () => {
       if (!write('bgImageBlur', bgImageBlurBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeBgImageBlur = bgImageBlurBox.checked ? 'on' : 'off';
+      syncPanelPresentationRef();
     });
 
     const bgImageRadius = panel.querySelector('#claude-web-bg-image-blur-radius');
@@ -9866,7 +9984,47 @@ if (CLAUDE_ENABLED) {
       write('bgImageDim', String(applyBgImageDim(Number(bgImageDim.value))));
     });
 
+    /* 折叠标题只显示当前状态，不另存一份数据；所有文字都从真实控件现读。
+       子项也在这里统一收放，避免 Clawd、Playbill 和背景三个区域各养一套
+       hidden 判断，后面加框架模式时只需要扩展这一处。 */
+    const selectedLabel = select => select?.selectedOptions?.[0]?.textContent?.trim() || '';
+    const appearanceSummary = panel.querySelector('#claude-web-summary-appearance');
+    const layoutSummary = panel.querySelector('#claude-web-summary-layout');
+    const clawdSummary = panel.querySelector('#claude-web-summary-clawd');
+    const backgroundSummary = panel.querySelector('#claude-web-summary-background');
+    const playbillOptions = panel.querySelector('#claude-web-playbill-options');
+    const clawdOptions = panel.querySelector('#claude-web-clawd-options');
+    const bgBlurOptions = panel.querySelector('#claude-web-bg-blur-options');
+    const bgImageOptions = panel.querySelector('#claude-web-bg-image-options');
+
+    function syncPanelPresentation() {
+      const presetName = selectedLabel(panel.querySelector('#claude-web-preset')) || 'Claude';
+      const variantName = selectedLabel(variantSelect) || (variantSelect.value === 'night' ? '夜间' : '日间');
+      appearanceSummary.textContent = `${presetName} / ${variantName}`;
+
+      const layoutName = selectedLabel(layoutSelect) || layoutSelect.value;
+      const structureName = selectedLabel(structureSelect) || structureSelect.value;
+      layoutSummary.textContent = `${layoutName} / ${structureName}${avatarsBox.checked ? '' : ' / 头像关'}`;
+
+      clawdSummary.textContent = clawdBox.checked
+        ? `显示${motionBox.checked ? ' / 动画开' : ' / 动画关'}`
+        : '隐藏';
+
+      const backgroundStates = [];
+      if (bgTransparentBox.checked) backgroundStates.push('透传');
+      if (bgBlurBox.checked) backgroundStates.push('毛玻璃');
+      if (bgImageBlurBox.checked) backgroundStates.push('背景图模糊');
+      backgroundSummary.textContent = backgroundStates.length ? backgroundStates.join(' + ') : '关闭';
+
+      playbillOptions.hidden = document.documentElement.dataset.claudeSkin !== 'playbill';
+      clawdOptions.hidden = !clawdBox.checked;
+      bgBlurOptions.hidden = !bgBlurBox.checked;
+      bgImageOptions.hidden = !bgImageBlurBox.checked;
+    }
+
+    syncPanelPresentationRef = syncPanelPresentation;
     mountPresets(panel);
+    syncPanelPresentation();
 
     /* 构建号写在面板上。ST 加载 index.js 的 <script> 标签不带版本参数，
        浏览器可能给出缓存的旧模块 —— 出现过「推了新版但面板还是旧的」，
