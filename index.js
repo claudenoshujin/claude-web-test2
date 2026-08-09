@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.80";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.81";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.80-compat-structure-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.81-compat-mechanism-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -956,6 +956,7 @@ if (CLAUDE_ENABLED) {
   const hostDocument = hostWindow.document;
   const INSTANCE_KEY = '__claudeIntegratedTheme';
   const STYLE_ID = 'claude-integrated-theme-live-style';
+  const LAYER_ORDER_ID = 'claude-layer-order';
   const OPTION_CLASS = 'claude-integrated-theme-option';
   const THEME_NAME = CLAUDE_THEME.name;
   const LIVE_CSS = typeof CLAUDE_LIVE_CSS !== 'undefined' ? CLAUDE_LIVE_CSS : CLAUDE_THEME.custom_css;
@@ -973,6 +974,9 @@ if (CLAUDE_ENABLED) {
   let runnerRemovalTimer = 0;
   let runnerPresenceObserver = null;
   let compatibilityStyleOrderObserver = null;
+  let compatibilityCustomStyleObserver = null;
+  let observedCompatibilityCustomStyle = null;
+  const compatibilityWrappedStyles = new Set();
   let neutralizedHostRules = [];
   const runnerFrame = window.frameElement;
 
@@ -1034,26 +1038,82 @@ if (CLAUDE_ENABLED) {
     hostDocument.documentElement.dataset.claudeIntegratedTheme = CLAUDE_THEME_VARIANT;
   }
 
-  function ensureCompatibilityStyleOrder() {
-    if (!compatibilityMode || destroyed) return;
-    const frameworkStyle = hostDocument.getElementById(STYLE_ID);
-    const customStyle = hostDocument.getElementById('custom-style');
-    if (!frameworkStyle || !customStyle || frameworkStyle.parentElement !== hostDocument.head) return;
-    const children = [...hostDocument.head.children];
-    const customIndex = children.indexOf(customStyle);
-    const frameworkIndex = children.indexOf(frameworkStyle);
-    if (customIndex < 0 || frameworkIndex > customIndex) return;
-    hostDocument.head.append(frameworkStyle);
-    console.warn('[Claude Web] 外部主题样式在兼容结构层之后重建；已恢复结构层层叠顺序。');
+  function wrapImportsForThemeLayer(css) {
+    const imports = [];
+    const body = String(css || '').replace(
+      /@import\s+(url\(\s*(?:"[^"]*"|'[^']*'|[^)]*)\s*\)|"[^"]*"|'[^']*')\s*([^;]*);/gi,
+      (_statement, source, qualifiers = '') => {
+        const tail = String(qualifiers).replace(/\blayer(?:\([^)]*\))?/gi, '').trim();
+        imports.push(`@import ${source} layer(st-theme)${tail ? ` ${tail}` : ''};`);
+        return '';
+      },
+    );
+    return `${imports.length ? `${imports.join('\n')}\n` : ''}@layer st-theme {\n${body}\n}`;
   }
 
-  function watchCompatibilityStyleOrder() {
+  function wrapCompatibilityCustomStyle(customStyle) {
+    if (!compatibilityMode || destroyed || !customStyle) return;
+    const current = customStyle.textContent || '';
+    if (current === customStyle.__claudeCompatWrappedCss) return;
+    const raw = current;
+    const wrapped = wrapImportsForThemeLayer(raw);
+    customStyle.__claudeCompatRawCss = raw;
+    customStyle.__claudeCompatWrappedCss = wrapped;
+    compatibilityWrappedStyles.add(customStyle);
+    if (current !== wrapped) customStyle.textContent = wrapped;
+  }
+
+  function observeCompatibilityCustomStyle(customStyle) {
+    if (observedCompatibilityCustomStyle === customStyle) return;
+    compatibilityCustomStyleObserver?.disconnect();
+    compatibilityCustomStyleObserver = null;
+    observedCompatibilityCustomStyle = customStyle || null;
+    if (!customStyle) return;
+    compatibilityCustomStyleObserver = new hostWindow.MutationObserver(() => {
+      hostWindow.queueMicrotask(() => wrapCompatibilityCustomStyle(customStyle));
+    });
+    compatibilityCustomStyleObserver.observe(customStyle, { childList: true, characterData: true, subtree: true });
+  }
+
+  function ensureCompatibilityLayers() {
+    if (!compatibilityMode || destroyed || !hostDocument.head) return;
+    let layerOrder = hostDocument.getElementById(LAYER_ORDER_ID);
+    if (!layerOrder) {
+      layerOrder = hostDocument.createElement('style');
+      layerOrder.id = LAYER_ORDER_ID;
+    }
+    if (layerOrder.textContent !== '@layer cw-frame, st-theme;') {
+      layerOrder.textContent = '@layer cw-frame, st-theme;';
+    }
+    if (hostDocument.head.firstChild !== layerOrder) hostDocument.head.prepend(layerOrder);
+    const customStyle = hostDocument.getElementById('custom-style');
+    wrapCompatibilityCustomStyle(customStyle);
+    observeCompatibilityCustomStyle(customStyle);
+  }
+
+  function restoreCompatibilityLayers() {
+    compatibilityCustomStyleObserver?.disconnect();
+    compatibilityCustomStyleObserver = null;
+    observedCompatibilityCustomStyle = null;
+    for (const customStyle of compatibilityWrappedStyles) {
+      if (customStyle?.isConnected && typeof customStyle.__claudeCompatRawCss === 'string'
+        && customStyle.textContent === customStyle.__claudeCompatWrappedCss) {
+        customStyle.textContent = customStyle.__claudeCompatRawCss;
+      }
+      if (customStyle) {
+        delete customStyle.__claudeCompatRawCss;
+        delete customStyle.__claudeCompatWrappedCss;
+      }
+    }
+    compatibilityWrappedStyles.clear();
+    hostDocument.getElementById(LAYER_ORDER_ID)?.remove();
+  }
+
+  function watchCompatibilityLayers() {
     if (!compatibilityMode || compatibilityStyleOrderObserver) return;
-    ensureCompatibilityStyleOrder();
-    compatibilityStyleOrderObserver = new hostWindow.MutationObserver(records => {
-      if (!records.some(record => [...record.addedNodes].some(node =>
-        node?.id === 'custom-style' || node?.id === STYLE_ID))) return;
-      hostWindow.queueMicrotask(ensureCompatibilityStyleOrder);
+    ensureCompatibilityLayers();
+    compatibilityStyleOrderObserver = new hostWindow.MutationObserver(() => {
+      hostWindow.queueMicrotask(ensureCompatibilityLayers);
     });
     compatibilityStyleOrderObserver.observe(hostDocument.head, { childList: true });
   }
@@ -1411,6 +1471,7 @@ if (CLAUDE_ENABLED) {
     try { hostWindow.__claudeClawdInteraction?.destroy?.(); } catch { /* iframe may already be detaching */ }
     hostDocument.getElementById('form_sheld')?.style.removeProperty('--cl-mobile-composer-translate-y');
     hostDocument.getElementById(STYLE_ID)?.remove();
+    hostDocument.getElementById(LAYER_ORDER_ID)?.remove();
     hostDocument.getElementById('claude-clawd-interaction-style')?.remove();
     hostDocument.querySelectorAll(`option.${OPTION_CLASS}`).forEach(option => option.remove());
     hostDocument.querySelectorAll([
@@ -1481,8 +1542,13 @@ if (CLAUDE_ENABLED) {
             try { window.__claudeClawdInteraction && window.__claudeClawdInteraction.destroy && window.__claudeClawdInteraction.destroy(); } catch (_) {}
             var composer = doc.getElementById('form_sheld');
             if (composer) composer.style.removeProperty('--cl-mobile-composer-translate-y');
-            var ids = [styleId, 'claude-clawd-interaction-style'];
+            var ids = [styleId, 'claude-layer-order', 'claude-clawd-interaction-style'];
             ids.forEach(function (id) { var node = doc.getElementById(id); if (node) node.remove(); });
+            var customStyle = doc.getElementById('custom-style');
+            if (customStyle && typeof customStyle.__claudeCompatRawCss === 'string') {
+              customStyle.textContent = customStyle.__claudeCompatRawCss;
+              try { delete customStyle.__claudeCompatRawCss; delete customStyle.__claudeCompatWrappedCss; } catch (_) {}
+            }
             doc.querySelectorAll('option.' + optionClass).forEach(function (node) { node.remove(); });
             doc.querySelectorAll('.clawd-mobile-chrome,.clawd-mobile-scrim,.clawd-mobile-new-chat,.clawd-character-menu,.clawd-character-switcher,.clawd-rail-brand,.clawd-rail-grip,.claude-user-message-actions,.claude-swipe-left-proxy,.claude-swipe-right-proxy,.claude-reroll-button,.clawd-signoff-button').forEach(function (node) { node.remove(); });
             if (body) body.classList.remove('clawd-interactive-ready','claude-generation-active','clawd-mobile-layout','clawd-mobile-menu-open','clawd-tauritavern-host','clawd-welcome','clawd-has-recents');
@@ -1535,11 +1601,12 @@ if (CLAUDE_ENABLED) {
      剩下依赖页面初始化的部分交给用户自己手动刷新一次。 */
   function start(attempt = 0) {
     if (destroyed) return;
+    if (compatibilityMode) ensureCompatibilityLayers();
     installLiveStyle();
     neutralizeStyleAttributeRules();
     if (compatibilityMode) {
       releaseClaudeThemeForCompatibility();
-      watchCompatibilityStyleOrder();
+      watchCompatibilityLayers();
       return;
     }
     const changed = persistFullTheme();
@@ -1559,6 +1626,7 @@ if (CLAUDE_ENABLED) {
     if (destroyed) return;
     compatibilityStyleOrderObserver?.disconnect();
     compatibilityStyleOrderObserver = null;
+    restoreCompatibilityLayers();
     destroyed = true;
     if (retryTimer) hostWindow.clearTimeout(retryTimer);
     if (disableCheckTimer) hostWindow.clearTimeout(disableCheckTimer);
@@ -1662,6 +1730,8 @@ if (CLAUDE_ENABLED) {
   const PRESET_REASONING_CLASS = 'claude-has-preset-reasoning';
   const SWIPE_VIEW_CLASS = 'claude-swipe-in-viewport';
   const USER_ACTIONS_CLASS = 'claude-user-message-actions';
+  const SURFACE_BACKING_CLASS = 'clawd-surface-backing';
+  const SURFACE_HOST_CLASS = 'clawd-surface-host';
   const USER_EDIT_CLASS = 'claude-user-message-edit';
   const USER_DELETE_CLASS = 'claude-user-message-delete';
   const WELCOME_ASSISTANT_CLASS = 'claude-welcome-clawd-assistant';
@@ -6966,6 +7036,7 @@ if (CLAUDE_ENABLED) {
     '.clawd-rail-grip',
     '.clawd-welcome-hero',
     '.clawd-welcome-shortcuts',
+    `.${SURFACE_BACKING_CLASS}`,
     /* 生成计时器是扩展自己创建、自己每 100ms 改一次文本的元素，
        但它一直漏在这份"我的元素"名单外面。后果：每跳一秒，它自己写出来的
        childList 记录都被当成"酒馆那边的外部改动"，换来一整轮全量刷新。
@@ -7113,6 +7184,38 @@ if (CLAUDE_ENABLED) {
   let refreshing = false;
   let dirtyWhileRefreshing = false;
 
+  function refreshCompatibilitySurfaceBackings() {
+    const previousHosts = [...hostDocument.querySelectorAll(`.${SURFACE_HOST_CLASS}`)];
+    if (!frameworkCompatibilityMode || isMobileLayout()) {
+      previousHosts.forEach(host => {
+        host.classList.remove(SURFACE_HOST_CLASS);
+        host.querySelector(`:scope > .${SURFACE_BACKING_CLASS}`)?.remove();
+      });
+      return;
+    }
+    const targets = [
+      hostDocument.querySelector('#top-settings-holder'),
+      ...hostDocument.querySelectorAll('#top-settings-holder > .drawer > .drawer-content'),
+      hostDocument.querySelector('#send_form'),
+      hostDocument.body.classList.contains('clawd-welcome') ? hostDocument.querySelector('#sheld') : null,
+    ].filter(Boolean);
+    const targetSet = new Set(targets);
+    previousHosts.filter(host => !targetSet.has(host)).forEach(host => {
+      host.classList.remove(SURFACE_HOST_CLASS);
+      host.querySelector(`:scope > .${SURFACE_BACKING_CLASS}`)?.remove();
+    });
+    for (const host of targets) {
+      host.classList.add(SURFACE_HOST_CLASS);
+      let backing = host.querySelector(`:scope > .${SURFACE_BACKING_CLASS}`);
+      if (!backing) {
+        backing = hostDocument.createElement('div');
+        backing.className = SURFACE_BACKING_CLASS;
+        backing.setAttribute('aria-hidden', 'true');
+        host.prepend(backing);
+      }
+    }
+  }
+
   /* 5.11 第一版在这里 disconnect / observe，那是错的：
      disconnect 会清空记录队列，断开期间酒馆自己的改动一条都收不到。
      如果你正好在一次刷新进行中按了发送，那条消息的插入就被漏掉，
@@ -7188,6 +7291,7 @@ if (CLAUDE_ENABLED) {
     }
     previousTypingActive = typingActive;
     hostDocument.body.classList.toggle(GENERATING_CLASS, typingActive);
+    refreshCompatibilitySurfaceBackings();
     refreshTypingInteractions(typingActive, generationJustEnded);
     applyMobileViewportMetrics();
     refreshMobileComposerInset();
@@ -7204,6 +7308,7 @@ if (CLAUDE_ENABLED) {
     if (frameworkCompatibilityMode) {
       const welcomeMessages = [...hostDocument.querySelectorAll('#chat > .mes[is_user="false"]')];
       refreshWelcomeMode(welcomeMessages);
+      refreshCompatibilitySurfaceBackings();
       if (generationJustEnded) {
         recentSignature = null;
         refreshRailRecents({ force: true });
@@ -7697,6 +7802,8 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    hostDocument.querySelectorAll(`.${SURFACE_HOST_CLASS}`).forEach(host => host.classList.remove(SURFACE_HOST_CLASS));
+    hostDocument.querySelectorAll(`.${SURFACE_BACKING_CLASS}`).forEach(backing => backing.remove());
     restoreAutoCompleteResizeGuard();
     observer?.disconnect();
     chatAttributeObserver?.disconnect();

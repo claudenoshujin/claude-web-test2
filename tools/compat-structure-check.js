@@ -5,8 +5,12 @@ const csstree = require('css-tree');
 const root = path.resolve(__dirname, '..');
 const cssPath = path.join(root, 'styles', 'compat.css');
 const fixturePath = path.join(root, '_dev', 'fixture.html');
+const patchPath = path.join(root, '_dev', 'compat-structure-patch.css');
+const runtimePath = path.join(root, 'index.js');
 const css = fs.readFileSync(cssPath, 'utf8');
 const fixture = fs.readFileSync(fixturePath, 'utf8');
+const structurePatch = fs.readFileSync(patchPath, 'utf8');
+const runtime = fs.readFileSync(runtimePath, 'utf8');
 const ast = csstree.parse(css);
 const errors = [];
 const rules = [];
@@ -39,6 +43,32 @@ csstree.walk(ast, {
     }
   },
 });
+
+const topLevelLayers = ast.children.toArray().filter(node => node.type === 'Atrule' && node.name === 'layer');
+if (topLevelLayers.length !== 1 || normalize(csstree.generate(topLevelLayers[0].prelude)) !== 'cw-frame'
+  || !topLevelLayers[0].block) {
+  errors.push('compat.css must contain one top-level @layer cw-frame block');
+}
+
+const resetRules = rules.filter(rule => rule.declarations.some(declaration =>
+  declaration.property === 'all' && declaration.value === 'revert-layer' && declaration.important));
+if (resetRules.length !== 1) errors.push(`expected one owned-subtree reset rule, found ${resetRules.length}`);
+const resetSelectors = resetRules.flatMap(rule => rule.selectors);
+for (const forbidden of ['.drawer-content', '#chat']) {
+  if (resetSelectors.some(selector => selector.includes(forbidden))) {
+    errors.push(`owned-subtree reset must not include ${forbidden}`);
+  }
+}
+for (const requiredOwned of [
+  '.clawd-rail-brand', '.clawd-rail-recents', '.recentChat', '.clawd-user-face',
+  '#top-settings-holder>.drawer>.drawer-toggle', '#send_form', '#qr--bar', '#nonQRFormItems',
+  '#leftSendForm', '#rightSendForm', '#send_textarea', '#send_but', '#mes_stop',
+  '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
+]) {
+  if (!resetSelectors.some(selector => normalize(selector).includes(normalize(requiredOwned)))) {
+    errors.push(`owned-subtree reset missing ${requiredOwned}`);
+  }
+}
 
 function hasDeclaration(selectorPart, property, expected) {
   return rules.some(rule => rule.selectors.some(selector => selector.includes(selectorPart))
@@ -74,6 +104,26 @@ for (const rule of rules) {
 }
 
 if (/@media\s*\(max-width\s*:\s*0px\)/.test(css)) errors.push('legacy max-width:0px block still exists');
+if (/(?:transform|filter|translate|scale|rotate)\s*:\s*none\s*!important|float\s*:\s*none\s*!important|position\s*:\s*static\s*!important/i.test(structurePatch)) {
+  errors.push('compat-structure-patch.css still contains defensive property declarations');
+}
+for (const runtimeFragment of [
+  "const LAYER_ORDER_ID = 'claude-layer-order'",
+  "layerOrder.textContent = '@layer cw-frame, st-theme;'",
+  'hostDocument.head.prepend(layerOrder)',
+  '@layer st-theme {',
+  'layer(st-theme)',
+  "new hostWindow.MutationObserver(() =>",
+  "backing.setAttribute('aria-hidden', 'true')",
+]) {
+  if (!runtime.includes(runtimeFragment)) errors.push(`runtime missing ${runtimeFragment}`);
+}
+for (const surfaceFragment of [
+  '.clawd-surface-host>.clawd-surface-backing',
+  'background-color:var(--SmartThemeBlurTintColor',
+]) {
+  if (!css.includes(surfaceFragment)) errors.push(`surface backing CSS missing ${surfaceFragment}`);
+}
 for (const fragment of ['id="qr--bar"', 'id="nonQRFormItems"', 'recentList.className = "recentChatList"', 'id="persona-management-button"']) {
   if (!fixture.includes(fragment)) errors.push(`fixture missing ${fragment}`);
 }
