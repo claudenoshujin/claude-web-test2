@@ -65,7 +65,7 @@ for (const forbidden of ['.drawer-content', '#chat']) {
 for (const requiredOwned of [
   '.clawd-rail-brand', '.clawd-rail-recents', '.recentChat', '.clawd-user-face',
   '#top-settings-holder>.drawer>.drawer-toggle', '#send_form', '#qr--bar', '#nonQRFormItems',
-  '#leftSendForm', '#rightSendForm', '#send_textarea', '#send_but', '#mes_stop',
+  '#leftSendForm', '#rightSendForm', '#send_textarea',
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
 ]) {
   if (!resetSelectors.some(selector => normalize(selector).includes(normalize(requiredOwned)))) {
@@ -123,7 +123,7 @@ for (const runtimeFragment of [
 }
 for (const surfaceFragment of [
   '.clawd-surface-host>.clawd-surface-backing',
-  'background-color:var(--SmartThemeBlurTintColor',
+  'background-color:Canvas!important',
 ]) {
   if (!css.includes(surfaceFragment)) errors.push(`surface backing CSS missing ${surfaceFragment}`);
 }

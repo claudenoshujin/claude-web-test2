@@ -18,7 +18,7 @@ const OWNED_ROOTS = [
   '.clawd-user-face', '.clawd-user-meta', '.clawd-user-name', '.clawd-user-plan', '.clawd-user-more',
   '#top-settings-holder>.drawer>.drawer-toggle',
   '#send_form', '#qr--bar', '#nonQRFormItems', '#leftSendForm', '#rightSendForm',
-  '#send_textarea', '#send_but', '#mes_stop',
+  '#send_textarea',
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
   '.clawd-surface-backing',
 ];
@@ -26,7 +26,7 @@ const OWNED_ROOTS = [
 const OWNED_SUBTREES = [
   '.clawd-rail-brand', '.clawd-rail-recents', '.clawd-pc-top-actions',
   '.recentChatList', '.recentChat', '.clawd-user-face', '.clawd-user-meta',
-  '#top-settings-holder>.drawer>.drawer-toggle', '#qr--bar', '#leftSendForm', '#rightSendForm',
+  '#top-settings-holder>.drawer>.drawer-toggle', '#qr--bar',
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
 ];
 
@@ -111,7 +111,7 @@ const ownedSelectors = [
 const ownedReset = [
   '/* Framework-owned nodes: cancel every declaration supplied by the external theme.',
   ' * This must be the first structural rule in cw-frame. Never include .drawer-content or #chat descendants. */',
-  `@media (min-width:701px){\nhtml[data-claude-mode="compat"] body :where(\n${ownedSelectors.join(',\n')}\n){all:revert-layer!important}\n}`,
+  `@media (min-width:701px){\n:where(html[data-claude-mode="compat"] body) :where(\n${ownedSelectors.join(',\n')}\n){all:revert-layer!important}\n}`,
   '/* Explicit skin channel: external themes may replace rail icon artwork, never its geometry. */',
   '@media (min-width:701px){',
   'html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{',

@@ -5,7 +5,7 @@
 /* Framework-owned nodes: cancel every declaration supplied by the external theme.
  * This must be the first structural rule in cw-frame. Never include .drawer-content or #chat descendants. */
 @media (min-width:701px){
-html[data-claude-mode="compat"] body :where(
+:where(html[data-claude-mode="compat"] body) :where(
 .clawd-rail-brand,
 .clawd-rail-recents,
 .clawd-rail-recents-label,
@@ -24,8 +24,6 @@ html[data-claude-mode="compat"] body :where(
 #leftSendForm,
 #rightSendForm,
 #send_textarea,
-#send_but,
-#mes_stop,
 .clawd-welcome-hero,
 .clawd-welcome-shortcuts,
 .clawd-surface-backing,
@@ -38,8 +36,6 @@ html[data-claude-mode="compat"] body :where(
 .clawd-user-meta *,
 #top-settings-holder>.drawer>.drawer-toggle *,
 #qr--bar *,
-#leftSendForm *,
-#rightSendForm *,
 .clawd-welcome-hero *,
 .clawd-welcome-shortcuts *
 ){all:revert-layer!important}
@@ -74,7 +70,8 @@ html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle
   html[data-claude-mode="compat"] body .clawd-surface-host>.clawd-surface-backing{
     position:absolute!important;inset:0!important;display:block!important;z-index:-1!important;
     width:auto!important;height:auto!important;margin:0!important;padding:0!important;pointer-events:none!important;
-    background-color:var(--SmartThemeBlurTintColor,var(--SmartThemeChatTintColor,var(--cw-surface-page,#f8f8f6)))!important;
+    background-color:Canvas!important;
+    background-image:linear-gradient(var(--SmartThemeBlurTintColor,var(--SmartThemeChatTintColor,transparent)),var(--SmartThemeBlurTintColor,var(--SmartThemeChatTintColor,transparent)))!important;
   }
   html[data-claude-mode="compat"] body #top-bar{
     position:fixed!important;inset:0 auto 0 0!important;
@@ -89,10 +86,10 @@ html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle
     height:100dvh!important;margin:0!important;padding:18px 8px 14px!important;
     overflow:hidden!important;box-sizing:border-box!important;z-index:3995!important;
   }
-  html[data-claude-mode="compat"] body #top-settings-holder>*{order:2}
-  html[data-claude-mode="compat"] body #top-settings-holder>.clawd-rail-brand{order:0}
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer#rightNavHolder{order:3;margin-bottom:2px!important}
-  html[data-claude-mode="compat"] body #top-settings-holder>.clawd-rail-recents{order:4}
+  html[data-claude-mode="compat"] body #top-settings-holder>*{order:2!important}
+  html[data-claude-mode="compat"] body #top-settings-holder>.clawd-rail-brand{order:0!important}
+  html[data-claude-mode="compat"] body #top-settings-holder>.drawer#rightNavHolder{order:3!important;margin-bottom:2px!important}
+  html[data-claude-mode="compat"] body #top-settings-holder>.clawd-rail-recents{order:4!important}
   html[data-claude-mode="compat"] body #top-settings-holder>.drawer{
     display:block!important;flex:0 0 auto!important;
     width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;
