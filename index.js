@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.77";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.78";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -312,7 +312,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.77-shell-ownership-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.78-shell-ownership-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -6067,6 +6067,17 @@ if (CLAUDE_ENABLED) {
     if (!holder) return;
     holder.querySelectorAll(':scope > .drawer > .drawer-toggle').forEach(toggle => {
       const icon = toggle.querySelector('.drawer-icon') ?? toggle;
+      if (frameworkCompatibilityMode && icon instanceof hostWindow.HTMLElement) {
+        const style = hostWindow.getComputedStyle(icon);
+        const before = hostWindow.getComputedStyle(icon, '::before');
+        const imageValues = [style, before].flatMap(layer => [
+          layer.backgroundImage,
+          layer.maskImage,
+          layer.getPropertyValue('-webkit-mask-image'),
+        ]);
+        const hasExternalPaint = imageValues.some(value => value && value !== 'none');
+        icon.classList.toggle('clawd-external-icon', hasExternalPaint);
+      }
       if (toggle.querySelector(':scope > .clawd-rail-label')) return;
       const raw = (icon.getAttribute('title') || toggle.getAttribute('title') || '').trim();
       if (!raw) return;

@@ -161,6 +161,9 @@ const frameworkShell = `/* Framework ownership: Claude controls geometry; the ac
   html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before{
     max-width:24px!important;max-height:24px!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;
   }
+  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon:not(.clawd-external-icon){
+    color:var(--SmartThemeBodyColor,var(--cw-text-body))!important;opacity:1!important;
+  }
   html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-content{
     position:fixed!important;inset:0 0 0 var(--cl-rail)!important;
     width:auto!important;min-width:0!important;max-width:none!important;height:100dvh!important;max-height:100dvh!important;
@@ -213,6 +216,20 @@ html[data-claude-mode="compat"] body :is(#leftSendForm,#rightSendForm){
   display:grid!important;place-items:center!important;width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;
   margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;
   background:var(--SmartThemeQuoteColor,#c96442)!important;background-image:none!important;box-shadow:none!important;
+}
+html[data-claude-mode="compat"] body #send_but{color:transparent!important;font-size:0!important}
+html[data-claude-mode="compat"] body #send_but::before{
+  content:""!important;display:block!important;width:18px!important;height:18px!important;border:0!important;
+  background:#fff!important;box-shadow:none!important;transform:none!important;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M11 20V7.83l-4.59 4.58L5 11l7-7 7 7-1.41 1.41L13 7.83V20z'/%3E%3C/svg%3E") center/contain no-repeat!important;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M11 20V7.83l-4.59 4.58L5 11l7-7 7 7-1.41 1.41L13 7.83V20z'/%3E%3C/svg%3E") center/contain no-repeat!important;
+}
+html[data-claude-mode="compat"] body #send_but::after{display:none!important;content:none!important}
+html[data-claude-mode="compat"] body.claude-generation-active #rightSendForm #send_but::before,
+html[data-claude-mode="compat"] body #rightSendForm #mes_stop::before{
+  content:""!important;display:block!important;width:11px!important;height:11px!important;border:0!important;
+  border-radius:2px!important;background:#fff!important;box-shadow:none!important;transform:none!important;
+  -webkit-mask:none!important;mask:none!important;
 }
 @media (min-width:701px){
   .clawd-pc-top-actions{position:absolute!important;top:13px!important;right:12px!important;z-index:3!important;display:flex!important;align-items:center!important;gap:13px!important;color:var(--cw-text-muted)!important;background:transparent!important;pointer-events:none!important}
