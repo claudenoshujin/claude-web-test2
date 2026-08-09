@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.74";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.75";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -117,6 +117,9 @@ function claudeReadSetting(key, allowed, fallback) {
 /* 总开关。默认开；只有明确写过 'off' 才算关，
    读不到 localStorage（无痕、被云端宿主禁用）时不能把整个扩展关掉。 */
 const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
+/* 兼容框架模式只保留扩展自己的功能组件，不接管 SillyTavern 主题。
+   外部主题继续负责配色、字体、背景、消息皮肤、导航和输入框。 */
+const CLAUDE_COMPAT_MODE = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
 const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
 const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'], 'on') !== 'off';
 /* 生成计时器默认关（2.0.33 起改的，原来默认开）。
@@ -185,6 +188,7 @@ const CLAUDE_BG_IMAGE_BLUR = claudeReadNumberSetting('bgImageBlurRadius', 12, 0,
 const CLAUDE_BG_IMAGE_DIM = claudeReadNumberSetting('bgImageDim', 28, 0, 70);
 
 document.documentElement.dataset.claudeMotion = CLAUDE_MOTION_ENABLED ? 'on' : 'off';
+document.documentElement.dataset.claudeMode = CLAUDE_COMPAT_MODE ? 'compat' : 'full';
 document.documentElement.dataset.claudeDecorations = CLAUDE_DECORATIONS_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeGenTimer = CLAUDE_GEN_TIMER_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeBgTransparent = CLAUDE_BG_TRANSPARENT_ENABLED ? 'on' : 'off';
@@ -208,6 +212,12 @@ document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classi
    这里在首帧就把结构钉死，避免"选了剧场但结构还停在侧边栏"闪一下。 */
 if (document.documentElement.dataset.claudeSkin === 'playbill') {
   document.documentElement.dataset.claudeStructure = 'linear';
+}
+/* 兼容模式不能让上次保存的 Playbill/Linear 状态继续创建专属结构。设置值保留，
+   切回完整模式时仍能恢复，但本次运行只暴露外部主题的原生结构。 */
+if (CLAUDE_COMPAT_MODE) {
+  document.documentElement.dataset.claudeSkin = 'classic';
+  document.documentElement.dataset.claudeStructure = 'rail';
 }
 try {
   const cf = window.localStorage.getItem('claude-web:fontCustom');
@@ -292,9 +302,9 @@ if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
 }
 
 const CLAUDE_FEATURES = {
-  rail: true,
-  welcome: true,
-  mobile: CLAUDE_LAYOUT === 'mobile',
+  rail: !CLAUDE_COMPAT_MODE,
+  welcome: !CLAUDE_COMPAT_MODE,
+  mobile: !CLAUDE_COMPAT_MODE && CLAUDE_LAYOUT === 'mobile',
 };
 
 const CLAUDE_KEYBOARD_BUILD = {
@@ -302,7 +312,8 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.74-settings-sections-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.75-compat-framework-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+    + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -313,14 +324,17 @@ const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web';
 const CLAUDE_THEME = CLAUDE_THEMES[CLAUDE_THEME_VARIANT];
 
 const CLAUDE_STYLE_URL = new URL(
-  'styles/' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '.css',
+  CLAUDE_COMPAT_MODE
+    ? 'styles/compat.css'
+    : 'styles/' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '.css',
   CLAUDE_EXTENSION_BASE,
 );
 CLAUDE_STYLE_URL.searchParams.set('v', CLAUDE_KEYBOARD_BUILD.id);
 const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 console.info(
-  '[Claude Web] 扩展形态启动：' + CLAUDE_THEME_VARIANT + ' / ' + CLAUDE_LAYOUT
+  '[Claude Web] 扩展形态启动：' + (CLAUDE_COMPAT_MODE ? '兼容框架' : CLAUDE_THEME_VARIANT)
+  + ' / ' + CLAUDE_LAYOUT
   + '（在酒馆「扩展」面板的 Claude Web 里可切换）',
 );
 
@@ -929,6 +943,7 @@ if (CLAUDE_ENABLED) {
      构建器给扩展包注入 CLAUDE_EXTENSION_MODE=true，脚本包不注入。
      typeof 判断对未声明的标识符是安全的，脚本形态下不会抛。 */
   const extensionMode = typeof CLAUDE_EXTENSION_MODE !== 'undefined' && CLAUDE_EXTENSION_MODE;
+  const compatibilityMode = typeof CLAUDE_COMPAT_MODE !== 'undefined' && CLAUDE_COMPAT_MODE;
   const hostWindow = extensionMode ? window : window.parent;
   const hostDocument = hostWindow.document;
   const INSTANCE_KEY = '__claudeIntegratedTheme';
@@ -1334,6 +1349,31 @@ if (CLAUDE_ENABLED) {
     });
   }
 
+  /* 从完整模式切到兼容模式时，只在当前确实还是 Claude 主题且存在启用前快照时
+     恢复一次。不能复用 restorePreviousTheme() 的无快照兜底：那个兜底会清空
+     custom_css，而兼容模式恰恰要保住用户刚导入的外部美化。 */
+  function releaseClaudeThemeForCompatibility() {
+    const context = getContext();
+    const settings = context?.powerUserSettings;
+    const snapshot = readRestorePoint();
+    if (!settings || !snapshot || !isClaudeThemeName(settings.theme)) return false;
+    const previousName = settings.theme;
+    Object.assign(settings, snapshot);
+    applyCssVariables(settings);
+    applyUiState(settings);
+    syncControls(settings, previousName, false);
+    const themeSelect = findThemeSelect(previousName);
+    const target = String(snapshot.theme ?? '');
+    if (themeSelect instanceof hostWindow.HTMLSelectElement
+      && [...themeSelect.options].some(option => option.value === target)) {
+      themeSelect.value = target;
+      themeSelect.dispatchEvent(new hostWindow.Event('change', { bubbles: true }));
+    }
+    try { hostWindow.localStorage.removeItem(RESTORE_KEY); } catch { /* no-op */ }
+    context.saveSettingsDebounced?.();
+    return true;
+  }
+
   function removeRuntimeArtifacts() {
     try { hostWindow.__claudeClawdInteraction?.destroy?.(); } catch { /* iframe may already be detaching */ }
     hostDocument.getElementById('form_sheld')?.style.removeProperty('--cl-mobile-composer-translate-y');
@@ -1464,6 +1504,10 @@ if (CLAUDE_ENABLED) {
     if (destroyed) return;
     installLiveStyle();
     neutralizeStyleAttributeRules();
+    if (compatibilityMode) {
+      releaseClaudeThemeForCompatibility();
+      return;
+    }
     const changed = persistFullTheme();
     if (changed === null && attempt < 12) {
       retryTimer = hostWindow.setTimeout(() => start(attempt + 1), 250);
@@ -1495,7 +1539,7 @@ if (CLAUDE_ENABLED) {
     restoreStyleAttributeRules();
     removeRuntimeArtifacts();
     if (hostWindow[INSTANCE_KEY] === api) delete hostWindow[INSTANCE_KEY];
-    if (restore) restorePreviousTheme();
+    if (restore && !compatibilityMode) restorePreviousTheme();
   }
 
   function markHostPageUnloading() {
@@ -1527,7 +1571,12 @@ if (CLAUDE_ENABLED) {
     runnerPresenceObserver.observe(hostDocument.body, { childList: true, subtree: true });
   }
 
-  const api = { token: INSTANCE_TOKEN, destroy, apply: persistFullTheme, applyVariant: applyThemeValuesFor };
+  const api = {
+    token: INSTANCE_TOKEN,
+    destroy,
+    apply: compatibilityMode ? () => false : persistFullTheme,
+    applyVariant: compatibilityMode ? () => false : applyThemeValuesFor,
+  };
   hostWindow[INSTANCE_KEY] = api;
   hostWindow.addEventListener('beforeunload', markHostPageUnloading, true);
   hostWindow.addEventListener('pagehide', markHostPageUnloading, true);
@@ -9120,6 +9169,16 @@ if (CLAUDE_ENABLED) {
               </summary>
               <div class="claude-web-section-body">
                 <div class="claude-web-field">
+                  <label for="claude-web-mode"><b>运行模式</b></label>
+                  <select id="claude-web-mode" class="text_pole">
+                    <option value="full">完整美化（Claude Web 接管界面）</option>
+                    <option value="compat">兼容框架（保留当前酒馆美化）</option>
+                  </select>
+                  <div id="claude-web-mode-hint" class="claude-web-help"></div>
+                </div>
+
+                <div id="claude-web-full-appearance" class="claude-web-field">
+                <div class="claude-web-field">
                   <label for="claude-web-preset">Claude 风格预设</label>
                   <select id="claude-web-preset" class="text_pole"></select>
                 </div>
@@ -9159,6 +9218,7 @@ if (CLAUDE_ENABLED) {
                 </div>
                 <input id="claude-web-import-file" type="file" accept="application/json,.json" style="display:none">
                 <div id="claude-web-preset-hint" class="claude-web-help"></div>
+                </div>
               </div>
             </details>
 
@@ -9677,6 +9737,23 @@ if (CLAUDE_ENABLED) {
 
     mountEnabled(panel);
 
+    const modeSelect = panel.querySelector('#claude-web-mode');
+    const modeHint = panel.querySelector('#claude-web-mode-hint');
+    const compatibilityMode = read('mode', ['full', 'compat'], 'full') === 'compat';
+    modeSelect.value = compatibilityMode ? 'compat' : 'full';
+    modeHint.textContent = compatibilityMode
+      ? '当前主题、配色、字体、背景和原生界面样式都交给酒馆美化；Claude Web 只保留功能组件。'
+      : '使用 Claude Web 的完整界面、结构和配色。';
+    modeSelect.addEventListener('change', () => {
+      if (!write('mode', modeSelect.value)) {
+        modeHint.textContent = '写入失败，运行模式没有改变。';
+        modeSelect.value = compatibilityMode ? 'compat' : 'full';
+        return;
+      }
+      modeHint.textContent = '正在切换运行模式…';
+      window.setTimeout(() => window.location.reload(), 180);
+    });
+
     const variantSelect = panel.querySelector('#claude-web-variant');
     const layoutSelect = panel.querySelector('#claude-web-layout');
     const hint = panel.querySelector('#claude-web-hint');
@@ -9725,6 +9802,13 @@ if (CLAUDE_ENABLED) {
 
     const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)');
     const syncAutomaticTheme = () => {
+      if (compatibilityMode) {
+        variantSelect.disabled = true;
+        autoSelect.disabled = true;
+        autoTimes.hidden = true;
+        autoHint.textContent = '兼容框架模式不接管外部美化的明暗主题。';
+        return;
+      }
       const mode = autoSelect.value;
       const automatic = mode !== 'manual';
       variantSelect.disabled = automatic;
@@ -9992,6 +10076,9 @@ if (CLAUDE_ENABLED) {
     const layoutSummary = panel.querySelector('#claude-web-summary-layout');
     const clawdSummary = panel.querySelector('#claude-web-summary-clawd');
     const backgroundSummary = panel.querySelector('#claude-web-summary-background');
+    const fullAppearance = panel.querySelector('#claude-web-full-appearance');
+    const layoutSection = panel.querySelector('#claude-web-section-layout');
+    const backgroundSection = panel.querySelector('#claude-web-section-background');
     const playbillOptions = panel.querySelector('#claude-web-playbill-options');
     const clawdOptions = panel.querySelector('#claude-web-clawd-options');
     const bgBlurOptions = panel.querySelector('#claude-web-bg-blur-options');
@@ -10000,7 +10087,9 @@ if (CLAUDE_ENABLED) {
     function syncPanelPresentation() {
       const presetName = selectedLabel(panel.querySelector('#claude-web-preset')) || 'Claude';
       const variantName = selectedLabel(variantSelect) || (variantSelect.value === 'night' ? '夜间' : '日间');
-      appearanceSummary.textContent = `${presetName} / ${variantName}`;
+      appearanceSummary.textContent = compatibilityMode
+        ? '兼容框架 / 外部主题'
+        : `${presetName} / ${variantName}`;
 
       const layoutName = selectedLabel(layoutSelect) || layoutSelect.value;
       const structureName = selectedLabel(structureSelect) || structureSelect.value;
@@ -10020,6 +10109,9 @@ if (CLAUDE_ENABLED) {
       clawdOptions.hidden = !clawdBox.checked;
       bgBlurOptions.hidden = !bgBlurBox.checked;
       bgImageOptions.hidden = !bgImageBlurBox.checked;
+      fullAppearance.hidden = compatibilityMode;
+      layoutSection.hidden = compatibilityMode;
+      backgroundSection.hidden = compatibilityMode;
     }
 
     syncPanelPresentationRef = syncPanelPresentation;
