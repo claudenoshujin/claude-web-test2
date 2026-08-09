@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.75";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.76";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -117,8 +117,8 @@ function claudeReadSetting(key, allowed, fallback) {
 /* 总开关。默认开；只有明确写过 'off' 才算关，
    读不到 localStorage（无痕、被云端宿主禁用）时不能把整个扩展关掉。 */
 const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
-/* 兼容框架模式只保留扩展自己的功能组件，不接管 SillyTavern 主题。
-   外部主题继续负责配色、字体、背景、消息皮肤、导航和输入框。 */
+/* 框架兼容模式保留 Claude Web 的桌面外壳：左侧栏、内容区让位和输入框。
+   外部主题继续负责配色、字体、背景、欢迎页和消息内容。 */
 const CLAUDE_COMPAT_MODE = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
 const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
 const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'], 'on') !== 'off';
@@ -302,7 +302,7 @@ if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
 }
 
 const CLAUDE_FEATURES = {
-  rail: !CLAUDE_COMPAT_MODE,
+  rail: !CLAUDE_COMPAT_MODE || CLAUDE_LAYOUT === 'pc',
   welcome: !CLAUDE_COMPAT_MODE,
   mobile: !CLAUDE_COMPAT_MODE && CLAUDE_LAYOUT === 'mobile',
 };
@@ -312,7 +312,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.75-compat-framework-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.76-shell-ownership-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -914,7 +914,7 @@ if (CLAUDE_ENABLED) {
 
   /* 启动时立刻套一次。放在这里而不是等 DOM ready ——
      晚一帧就会看见默认色闪一下。 */
-  activateFamily(currentFamilyId(), { persist: false });
+  if (!CLAUDE_COMPAT_MODE) activateFamily(currentFamilyId(), { persist: false });
 
   window.__claudeWebPresets = {
     families: allFamilies,
@@ -1610,6 +1610,7 @@ if (CLAUDE_ENABLED) {
     : { id: 'dev', mode: 'full' };
   const keyboardBaselineMode = KEYBOARD_BUILD.mode === 'baseline';
   const READY_CLASS = 'clawd-interactive-ready';
+  const frameworkCompatibilityMode = typeof CLAUDE_COMPAT_MODE !== 'undefined' && CLAUDE_COMPAT_MODE;
   const EMPTY_CLASS = 'claude-empty-assistant';
   const GENERATING_CLASS = 'claude-generation-active';
   const BUTTON_CLASS = 'clawd-signoff-button';
@@ -7143,14 +7144,31 @@ if (CLAUDE_ENABLED) {
     refreshTypingInteractions(typingActive, generationJustEnded);
     applyMobileViewportMetrics();
     refreshMobileComposerInset();
-    preserveStreamingReasoning(typingActive);
+    if (!frameworkCompatibilityMode) preserveStreamingReasoning(typingActive);
     if (continuingGeneration) {
       refreshComposerPhrase(true);
       return;
     }
+    refreshComposerPhrase(typingActive);
+    /* 框架兼容模式不能碰消息 DOM。外部美化常用 .mes/.mes_block/.mes_text
+       的定位和伪元素拼整张卡片；插入落款、操作键、reasoning class 或欢迎页
+       助手都会把它们的坐标系拆开。这里只刷新框架节点和原生 typing 状态。 */
+    if (frameworkCompatibilityMode) {
+      if (generationJustEnded) {
+        recentSignature = null;
+        refreshRailRecents({ force: true });
+      }
+      refreshRailBrand();
+      refreshPcTopActions();
+      refreshRailLabels();
+      watchChatDeleted();
+      refreshRailRecents();
+      refreshRailUser();
+      refreshRailGrip();
+      return;
+    }
     refreshEmbeddedSurfaces();
     refreshWelcomeAssistants();
-    refreshComposerPhrase(typingActive);
     refreshCodeBars();
     collapseReasoning();
     expandReasoningWhileEditing();
@@ -9172,7 +9190,7 @@ if (CLAUDE_ENABLED) {
                   <label for="claude-web-mode"><b>运行模式</b></label>
                   <select id="claude-web-mode" class="text_pole">
                     <option value="full">完整美化（Claude Web 接管界面）</option>
-                    <option value="compat">兼容框架（保留当前酒馆美化）</option>
+                    <option value="compat">框架兼容（Claude 外壳 + 当前美化内容）</option>
                   </select>
                   <div id="claude-web-mode-hint" class="claude-web-help"></div>
                 </div>
@@ -9742,7 +9760,7 @@ if (CLAUDE_ENABLED) {
     const compatibilityMode = read('mode', ['full', 'compat'], 'full') === 'compat';
     modeSelect.value = compatibilityMode ? 'compat' : 'full';
     modeHint.textContent = compatibilityMode
-      ? '当前主题、配色、字体、背景和原生界面样式都交给酒馆美化；Claude Web 只保留功能组件。'
+      ? 'Claude Web 保留左侧栏、内容区框架和输入框；当前酒馆美化负责欢迎页、消息、图标、配色与背景。'
       : '使用 Claude Web 的完整界面、结构和配色。';
     modeSelect.addEventListener('change', () => {
       if (!write('mode', modeSelect.value)) {
@@ -10088,7 +10106,7 @@ if (CLAUDE_ENABLED) {
       const presetName = selectedLabel(panel.querySelector('#claude-web-preset')) || 'Claude';
       const variantName = selectedLabel(variantSelect) || (variantSelect.value === 'night' ? '夜间' : '日间');
       appearanceSummary.textContent = compatibilityMode
-        ? '兼容框架 / 外部主题'
+        ? 'Claude 框架 / 外部内容'
         : `${presetName} / ${variantName}`;
 
       const layoutName = selectedLabel(layoutSelect) || layoutSelect.value;
