@@ -74,20 +74,35 @@ const RESET_ROOTS = [
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
 ];
 
+/* 子树归零只能覆盖框架自己建出来的节点。
+   实测（2.0.86 真机）：all:revert-layer!important 并不是「清空」，它会回退到
+   酒馆自己那份未分层的 style.css —— 这对撤销主题是对的，但它同时也压过了
+   酒馆运行时写在元素上的 inline display。所以 #form_sheld * / #top-bar * 这种
+   把原生控件整片扫进去的写法会让 #mes_impersonate、#mes_continue、
+   #dialogue_del_mes 这些「该藏的时候藏」的控件常驻显示。原生控件只归零它们的
+   容器根，内部交给酒馆自己。 */
 const RESET_SUBTREES = [
-  '#top-bar',
   '#top-settings-holder>.drawer>.drawer-toggle',
   '.clawd-rail-brand', '.clawd-rail-recents', '.clawd-pc-top-actions',
   '.recentChatList', '.recentChat', '.clawd-user-face', '.clawd-user-meta',
-  '#form_sheld', '#qr--bar',
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
 ];
 
 /* 换皮插槽不进归零范围。 */
 const SUBTREE_EXCLUDE = {
   '#top-settings-holder>.drawer>.drawer-toggle': ':not(.drawer-icon)',
-  '#top-bar': ':not(.drawer-icon)',
 };
+
+/* 框架自己建的节点。只有它们的 display/visibility 才强制 !important；
+   原生控件的显隐必须留给酒馆的运行时逻辑，否则「该藏的时候藏不住」。 */
+const FRAME_OWNED_SUBJECT = /\.clawd-[\w-]+|\.recentChatList\b|\.recentChat\b|#top-bar\b|#top-settings-holder\b|#form_sheld\b|#send_form\b|#qr--bar\b|#nonQRFormItems\b|#leftSendForm\b|#rightSendForm\b|#send_textarea\b|#sheld\b|#chat\b|\.drawer-content\b|\.drawer-toggle\b/;
+const RUNTIME_TOGGLED_PROPERTIES = new Set(['display', 'visibility']);
+
+function keepsNativeToggle(rule) {
+  if (!rule || rule.prelude?.type !== 'SelectorList') return false;
+  const selectors = rule.prelude.children.toArray().map(selector => csstree.generate(selector));
+  return selectors.every(selector => !FRAME_OWNED_SUBJECT.test(selectorSubject(selector)));
+}
 
 function selectorSubject(selector) {
   const parts = String(selector).split(/[\s>+~]+/).filter(Boolean);
@@ -99,8 +114,28 @@ function isRootLevel(selector) {
     || /^(?:html\s+)?body$/.test(String(selector).trim());
 }
 
+/* 已经限定在外壳容器里的选择器，无论提到什么类名都不可能选到消息 ——
+   侧栏和输入区不是 #chat 的祖先。
+   这条豁免是必须的：day-pc.css 里侧栏头像那条写的是
+   `.clawd-rail-recents :is(img,.avatar,.mesAvatarWrapper,[class*="avatar"i])`，
+   只因为括号里出现了 .mesAvatarWrapper，整条就会被当成对话区规则丢掉，
+   侧栏头像于是回到图片原始尺寸（2.0.86 真机上是 96×144）。
+   注意 #sheld / #chat 不能进这张表 —— 它们是消息的祖先。 */
+const FRAME_SCOPED = new RegExp([
+  /* 注意是 clawd-welcome- 带横杠：body.clawd-welcome 是状态类，
+     写着它的选择器照样能指到 #chat 里的消息，不能当成外壳作用域。 */
+  '\\.clawd-(?:rail|user|pc-top-actions|welcome-|fake-mic)',
+  '#top-bar\\b', '#top-settings-holder\\b',
+  '#form_sheld\\b', '#send_form\\b', '#qr--bar\\b', '#nonQRFormItems\\b',
+  '#leftSendForm\\b', '#rightSendForm\\b', '#send_textarea\\b',
+  /* .welcomeRecent / .welcomePanel 是酒馆自己长在 #chat 里的欢迎区，
+     属于对话区，不在这张表里。 */
+  '\\.recentChatList\\b', '\\.recentChat\\b',
+].join('|'));
+
 function isChatContent(selector) {
   if (WELCOME_OWNED.test(selector)) return false;
+  if (FRAME_SCOPED.test(selector)) return false;
   return CHAT_CONTENT.test(selector);
 }
 
@@ -168,6 +203,8 @@ function forceImportant(cssText) {
     enter(node) {
       if (node.property.startsWith('--')) return;
       if (this.atrule && /keyframes$/i.test(String(this.atrule.name))) return;
+      if (RUNTIME_TOGGLED_PROPERTIES.has(String(node.property).toLowerCase())
+        && keepsNativeToggle(this.rule)) return;
       node.important = true;
     },
   });
@@ -210,6 +247,8 @@ function assertOutput(variant, cssText) {
     enter(node) {
       if (node.property.startsWith('--')) return;
       if (this.atrule && /keyframes$/i.test(String(this.atrule.name))) return;
+      if (RUNTIME_TOGGLED_PROPERTIES.has(String(node.property).toLowerCase())
+        && keepsNativeToggle(this.rule)) return;
       if (!node.important) plain.push(node.property);
     },
   });

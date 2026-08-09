@@ -33,6 +33,10 @@ csstree.walk(ast, {
     rules.push({ selectors, declarations });
     for (const selector of selectors) {
       if (!/\.mes(?:_|\b)/.test(selector)) continue;
+      /* 已经限定在外壳容器里的选择器不算消息选择器：侧栏和输入区不是 #chat 的祖先，
+         写着 .mes_stop / .mesAvatarWrapper 也选不到任何消息。
+         注意 .clawd-welcome 要带横杠匹配，body.clawd-welcome 是状态类不算作用域。 */
+      if (/\.clawd-(?:rail|user|pc-top-actions|welcome-|fake-mic)|#top-bar\b|#top-settings-holder\b|#form_sheld\b|#send_form\b|#qr--bar\b|#nonQRFormItems\b|#leftSendForm\b|#rightSendForm\b|#send_textarea\b|\.recentChatList\b|\.recentChat\b/.test(selector)) continue;
       if (normalize(selector) !== welcomeException) {
         errors.push(`forbidden message selector: ${selector}`);
         continue;
