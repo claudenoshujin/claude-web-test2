@@ -300,7 +300,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.65-tt-prompt-overlay-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.66-via-keyboard-poll-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -1681,6 +1681,8 @@ if (CLAUDE_ENABLED) {
     Math.round(hostWindow.innerHeight || hostDocument.documentElement.clientHeight || 1),
   );
   let mobileKeyboardRecoveryActive = false;
+  let mobileKeyboardPollTimer = 0;
+  let mobileKeyboardPollSignature = '';
 
   hostWindow[INSTANCE_KEY]?.destroy?.();
 
@@ -3937,6 +3939,42 @@ if (CLAUDE_ENABLED) {
     ].join('|');
   }
 
+  /* Via 按系统返回键收起软键盘时，textarea 仍然保持 focus，而且部分版本会漏掉
+     visualViewport 的最后一次 resize/scroll 事件。事件漏掉后，输入框就会永久
+     保留上一次的负 translate，正是“键盘关了但输入框悬在页面中段”的现场。
+
+     只在手机输入框保持焦点时低频读取四个纯数值；几何没变化时不排 rAF、不写
+     DOM。这样即使 Via 漏事件，也能在视口数值恢复后撤销旧位移。不能在检测到
+     键盘关闭后停掉：Android 返回键不会 blur，用户再次点同一个已聚焦输入框时
+     也可能没有新的 focusin。 */
+  function stopMobileKeyboardPoll() {
+    if (mobileKeyboardPollTimer) hostWindow.clearInterval(mobileKeyboardPollTimer);
+    mobileKeyboardPollTimer = 0;
+    mobileKeyboardPollSignature = '';
+  }
+
+  function pollMobileKeyboardGeometry() {
+    if (destroyed || !isMobileLayout()
+      || hostDocument.activeElement?.id !== 'send_textarea') {
+      stopMobileKeyboardPoll();
+      return;
+    }
+    const signature = mobileViewportSignature();
+    if (signature === mobileKeyboardPollSignature) return;
+    mobileKeyboardPollSignature = signature;
+    scheduleMobileComposerTranslate();
+  }
+
+  function startMobileKeyboardPoll() {
+    if (keyboardBaselineMode || virtualKeyboardOverlayActive || !isMobileLayout()
+      || hostDocument.activeElement?.id !== 'send_textarea') return;
+    mobileKeyboardPollSignature = mobileViewportSignature();
+    if (!mobileKeyboardPollTimer) {
+      mobileKeyboardPollTimer = hostWindow.setInterval(pollMobileKeyboardGeometry, 300);
+    }
+    scheduleMobileComposerTranslate();
+  }
+
   function endMobileKeyboardSettling() {
     mobileKeyboardSettlingUntil = 0;
     clearMobileViewportSettleTimers();
@@ -6152,6 +6190,7 @@ if (CLAUDE_ENABLED) {
       mobileKeyboardRecoveryActive = false;
     }
     scheduleMobileViewportSettle();
+    startMobileKeyboardPoll();
     syncCcComposerState(true);
     /* 手机上聚焦输入框时不要触碰历史消息里的 Clawd 按钮。旧逻辑会给每一层
        按钮改 class，并逐个读取 offsetWidth 强制同步排版；重角色卡/长聊天因此
@@ -6179,6 +6218,7 @@ if (CLAUDE_ENABLED) {
       /* schedule 先打开恢复窗口，reset 再同步计算正向高度补偿；顺序不能反。
          用户停留在输入框超过 840ms 时，反过来会把矮视口误记成新的稳定高度。 */
       mobileKeyboardRecoveryActive = !virtualKeyboardOverlayActive && !keyboardBaselineMode;
+      stopMobileKeyboardPoll();
       resetMobileComposerTranslate();
       return;
     }
@@ -7309,6 +7349,7 @@ if (CLAUDE_ENABLED) {
     hostDocument.addEventListener('focusout', handleFocusOut, true);
     hostWindow.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
     hostWindow.visualViewport?.addEventListener('scroll', handleViewportChange, { passive: true });
+    startMobileKeyboardPoll();
     scheduleRefresh();
   }
 
@@ -7384,6 +7425,7 @@ if (CLAUDE_ENABLED) {
     clearMobileViewportSettleTimers();
     mobileKeyboardSettlingUntil = 0;
     mobileKeyboardRecoveryActive = false;
+    stopMobileKeyboardPoll();
     stopKeyboardTrace();
     restoreVirtualKeyboardOverlay();
     hostDocument.querySelectorAll('.' + RAIL_BRAND_CLASS).forEach(brand => brand.remove());
@@ -7526,6 +7568,7 @@ if (CLAUDE_ENABLED) {
       visualTop: hostWindow.visualViewport?.offsetTop ?? null,
       translate: hostDocument.querySelector('#form_sheld')?.style
         .getPropertyValue(MOBILE_COMPOSER_TRANSLATE_PROPERTY) || '',
+      polling: Boolean(mobileKeyboardPollTimer),
     }),
     /* 键盘几何采样默认关闭，显式 start 后才开始（自动采样本身会强制同步
        布局、污染复测）。判读方法见 startKeyboardTrace 上方的注释。 */
