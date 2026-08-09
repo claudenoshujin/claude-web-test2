@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.78";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.79";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -312,7 +312,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.78-shell-ownership-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.79-refresh-recovery-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -7264,7 +7264,21 @@ if (CLAUDE_ENABLED) {
       }, wait);
       return;
     }
+    if (hostDocument.hidden) {
+      throttleTimer = hostWindow.setTimeout(() => {
+        throttleTimer = 0;
+        refreshClawd();
+      }, minGap);
+      return;
+    }
     frameId = hostWindow.requestAnimationFrame(refreshClawd);
+  }
+
+  function recoverStalledFrame() {
+    if (destroyed || hostDocument.hidden || !frameId) return;
+    hostWindow.cancelAnimationFrame(frameId);
+    frameId = 0;
+    scheduleRefresh();
   }
 
   /* ===== 抽屉状态守卫 =====
@@ -7538,6 +7552,7 @@ if (CLAUDE_ENABLED) {
     hostDocument.addEventListener('keydown', noteActivity, { passive: true });
     hostDocument.addEventListener('input', handleComposerInput, true);
     hostDocument.addEventListener('visibilitychange', noteCcVisibility, { passive: true });
+    hostDocument.addEventListener('visibilitychange', recoverStalledFrame, { passive: true });
     hostDocument.addEventListener('focusin', handleFocusIn, true);
     hostDocument.addEventListener('focusout', handleFocusOut, true);
     hostWindow.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
@@ -7719,9 +7734,13 @@ if (CLAUDE_ENABLED) {
     hostDocument.removeEventListener('keydown', noteActivity);
     hostDocument.removeEventListener('input', handleComposerInput, true);
     hostDocument.removeEventListener('visibilitychange', noteCcVisibility);
+    hostDocument.removeEventListener('visibilitychange', recoverStalledFrame);
     hostDocument.removeEventListener('focusin', handleFocusIn, true);
     hostDocument.removeEventListener('focusout', handleFocusOut, true);
-    if (throttleTimer) hostWindow.clearTimeout(throttleTimer);
+    if (throttleTimer) {
+      hostWindow.clearTimeout(throttleTimer);
+      throttleTimer = 0;
+    }
     if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
     /* ccPoseTimers 是按钮各自持有的 WeakMap，按钮节点被上面的清理/卸载
        带走后计时器引用也跟着失效，不需要（也没法）在这里统一遍历清除。 */
@@ -7743,7 +7762,10 @@ if (CLAUDE_ENABLED) {
     if (viewportSettleTimer) hostWindow.clearTimeout(viewportSettleTimer);
     viewportSettleTimer = 0;
     scrollHost = null;
-    if (frameId) hostWindow.cancelAnimationFrame(frameId);
+    if (frameId) {
+      hostWindow.cancelAnimationFrame(frameId);
+      frameId = 0;
+    }
     emptyTimers.forEach(timer => hostWindow.clearTimeout(timer));
     emptyTimers.clear();
     dirtyMessages.clear();
