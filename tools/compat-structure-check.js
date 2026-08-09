@@ -52,15 +52,16 @@ if (topLevelLayers.length !== 1 || normalize(csstree.generate(topLevelLayers[0].
 
 const resetRules = rules.filter(rule => rule.declarations.some(declaration =>
   declaration.property === 'all' && declaration.value === 'revert-layer' && declaration.important));
-if (resetRules.length !== 1) errors.push(`expected one owned-subtree reset rule, found ${resetRules.length}`);
+if (resetRules.length !== 2) errors.push(`expected owned-subtree and welcome-container reset rules, found ${resetRules.length}`);
 const resetSelectors = resetRules.flatMap(rule => rule.selectors);
 if (!resetSelectors.every(selector => selector.includes(':where('))) {
   errors.push('owned-subtree reset must use low-specificity :where()');
 }
-for (const forbidden of ['.drawer-content', '#chat']) {
-  if (resetSelectors.some(selector => selector.includes(forbidden))) {
-    errors.push(`owned-subtree reset must not include ${forbidden}`);
-  }
+if (resetSelectors.some(selector => selector.includes('.drawer-content'))) {
+  errors.push('owned-subtree reset must not include .drawer-content');
+}
+if (resetSelectors.some(selector => selector.includes('#chat') && !selector.includes('body.clawd-welcome'))) {
+  errors.push('owned-subtree reset may include #chat only as the welcome-state container');
 }
 for (const requiredOwned of [
   '.clawd-rail-brand', '.clawd-rail-recents', '.recentChat', '.clawd-user-face',
