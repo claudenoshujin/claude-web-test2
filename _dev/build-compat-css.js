@@ -100,13 +100,37 @@ function render(node) {
   return `@${node.name}${prelude}{${body}}`;
 }
 
+/* 框架层里的重置规则是 all:revert-layer!important。
+   同层里任何普通声明都会被它压掉，所以框架自己的声明必须一律 !important。
+   两个例外：
+     · 自定义属性（--x）不能强制 —— 那是留给主题覆盖的换皮通道
+     · @keyframes 里的声明加 !important 无效，会被浏览器丢弃 */
+function forceImportant(cssText) {
+  const ast = csstree.parse(cssText);
+  csstree.walk(ast, {
+    visit: 'Declaration',
+    enter(node, item, list) {
+      if (node.property.startsWith('--')) return;
+      if (this.atrule && /keyframes$/i.test(String(this.atrule.name))) return;
+      node.important = true;
+    },
+  });
+  return csstree.generate(ast);
+}
+
 const generated = sourceAst.children.toArray().map(render).filter(Boolean).join('\n');
 const base = fs.readFileSync(basePath, 'utf8').trim();
 const structurePatch = fs.readFileSync(patchPath, 'utf8').trim();
 const welcomeException = `@media (min-width:701px){\n${WELCOME_PLACEHOLDER_SELECTOR}{display:none!important}\n}`;
+/* 换皮插槽不能进归零范围：主题在这里画图标是被允许的。
+   框架只锁它的盒子（见 compat-structure-patch.css），不锁内容。 */
+const SUBTREE_EXCLUDE = {
+  '#top-settings-holder>.drawer>.drawer-toggle': ':not(.drawer-icon)',
+};
+
 const ownedSelectors = [
   ...OWNED_ROOTS,
-  ...OWNED_SUBTREES.map(selector => `${selector} *`),
+  ...OWNED_SUBTREES.map(selector => `${selector} *${SUBTREE_EXCLUDE[selector] || ''}`),
 ];
 const ownedReset = [
   '/* Framework-owned nodes: cancel every declaration supplied by the external theme.',
@@ -116,13 +140,9 @@ const ownedReset = [
   '@media (min-width:701px){',
   ':where(html[data-claude-mode="compat"] body.clawd-welcome) :where(#chat,#form_sheld){all:revert-layer!important}',
   '}',
-  '/* Explicit skin channel: external themes may replace rail icon artwork, never its geometry. */',
-  '@media (min-width:701px){',
-  'html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{',
-  'background-image:revert-layer!important;mask-image:revert-layer!important;-webkit-mask-image:revert-layer!important',
-  '}',
-  'html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before{content:revert-layer!important}',
-  '}',
+  /* 放行 = 不声明，不是声明成 revert-layer。revert-layer 在 cw-frame（第一层）里等于清空，
+   * 主题永远画不回来。.drawer-icon 的换皮插槽边界靠上面归零选择器里的 :not(.drawer-icon) 排除来保证，
+   * 这里不需要、也不允许再写任何 .drawer-icon 相关规则。 */
 ].join('\n');
 
 const expectedSelectors = new Set();
@@ -164,10 +184,87 @@ const frameBody = [
   welcomeException,
   structurePatch,
 ].join('\n\n');
+const frameBodyForced = forceImportant(frameBody);
+
+/* ---- 构建期断言：写文件之前必须全过，任何一条不过就 throw ---- */
+const assertAst = csstree.parse(frameBodyForced);
+
+// 1. cw-frame 层里不允许存在普通声明（自定义属性和 @keyframes 内除外）
+const plainDeclarations = [];
+csstree.walk(assertAst, {
+  visit: 'Declaration',
+  enter(node) {
+    if (node.property.startsWith('--')) return;
+    if (this.atrule && /keyframes$/i.test(String(this.atrule.name))) return;
+    if (!node.important) plainDeclarations.push(node.property);
+  },
+});
+if (plainDeclarations.length) {
+  throw new Error(`compat.css 断言1失败：存在会被 all:revert-layer!important 压掉的普通声明: ${plainDeclarations.join(', ')}`);
+}
+
+// 2. 不允许出现 revert-layer，除了 all:revert-layer 那两条重置（按 property === 'all' 豁免）
+const badRevertLayer = [];
+csstree.walk(assertAst, {
+  visit: 'Declaration',
+  enter(node) {
+    if (node.property === 'all') return;
+    const value = csstree.generate(node.value);
+    if (/revert-layer/i.test(value)) badRevertLayer.push(`${node.property}:${value}`);
+  },
+});
+if (badRevertLayer.length) {
+  throw new Error(`compat.css 断言2失败：出现非 all 的 revert-layer（放行只能靠不声明，不是 revert-layer）: ${badRevertLayer.join(', ')}`);
+}
+
+// 3. 引用的每个 var(--x)，若不以宿主变量前缀开头，必须在最终输出里有定义
+const HOST_VAR_PREFIXES = ['--SmartTheme', '--mainFontFamily', '--fontScale', '--topBar'];
+const definedVars = new Set();
+csstree.walk(assertAst, {
+  visit: 'Declaration',
+  enter(node) {
+    if (node.property.startsWith('--')) definedVars.add(node.property);
+  },
+});
+const referencedVars = new Set();
+csstree.walk(assertAst, {
+  visit: 'Function',
+  enter(node) {
+    if (node.name !== 'var') return;
+    const first = node.children.first;
+    if (first && first.type === 'Identifier') referencedVars.add(first.name);
+  },
+});
+const undefinedVars = [...referencedVars].filter(name =>
+  !definedVars.has(name) && !HOST_VAR_PREFIXES.some(prefix => name.startsWith(prefix)));
+if (undefinedVars.length) {
+  throw new Error(`compat.css 断言3失败：引用了未定义的自定义属性: ${undefinedVars.join(', ')}`);
+}
+
+// 4. 框架层里不允许对 .drawer-icon（含伪元素）声明换皮通道属性
+const SKIN_CHANNEL_PROPERTIES = new Set(['background-image', 'mask-image', '-webkit-mask-image', 'content', 'color']);
+const drawerIconViolations = [];
+csstree.walk(assertAst, {
+  visit: 'Rule',
+  enter(node) {
+    if (node.prelude?.type !== 'SelectorList') return;
+    const selectors = node.prelude.children.toArray().map(selector => csstree.generate(selector));
+    if (!selectors.some(selector => /\.drawer-icon\b/.test(selector))) return;
+    for (const child of node.block.children.toArray()) {
+      if (child.type === 'Declaration' && SKIN_CHANNEL_PROPERTIES.has(child.property)) {
+        drawerIconViolations.push(`${selectors.join(',')} { ${child.property} }`);
+      }
+    }
+  },
+});
+if (drawerIconViolations.length) {
+  throw new Error(`compat.css 断言4失败：.drawer-icon 上声明了换皮通道属性（应交给主题）: ${drawerIconViolations.join('; ')}`);
+}
+
 const output = [
   '/* GENERATED by _dev/build-compat-css.js. Do not edit this file directly. */',
   '@layer cw-frame {',
-  frameBody,
+  frameBodyForced,
   '}',
 ].join('\n\n').trimEnd() + '\n';
 

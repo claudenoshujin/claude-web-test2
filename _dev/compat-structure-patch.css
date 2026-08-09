@@ -8,6 +8,24 @@
        font-family、font-weight、图标 content / mask-image、标签文字
    —— 字号和行高算在"锁"里，是因为它们直接决定行高和是否溢出（见原始日志 §2）。 */
 @media (min-width:701px){
+/* ---- 0. 侧栏图标插槽：只锁盒子，不锁内容 ----
+   绝对不要在这里对 .drawer-icon 或它的伪元素声明
+   background-image / mask-image / -webkit-mask-image / content / color —— 那四样是换皮通道。
+   主题写了图标就用主题的，没写就让 Font Awesome 的字形自然显示。
+   background-size:contain 属于盒子：狸猫的图源是 26×26，装在 24px 槽里不锁会溢出挤到标签文字。 */
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{
+  position:absolute;left:8px;top:50%;right:auto;bottom:auto;
+  display:grid;place-items:center;
+  flex:0 0 24px;width:24px;min-width:24px;max-width:24px;
+  height:24px;min-height:24px;max-height:24px;
+  margin:0;padding:0;transform:translateY(-50%);
+  background-position:center;background-repeat:no-repeat;background-size:contain;
+  overflow:hidden;
+}
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before{
+  max-width:24px;max-height:24px;
+}
+
 /* ---- 1. 用户区钉底 ---- */
 html[data-claude-mode="compat"] body #top-settings-holder>.drawer#persona-management-button{
   order:5!important;margin-top:auto!important;padding-top:10px!important;

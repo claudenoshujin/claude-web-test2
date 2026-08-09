@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const csstree = require('css-tree');
+const { JSDOM } = require('jsdom');
 
 const root = path.resolve(__dirname, '..');
 const cssPath = path.join(root, 'styles', 'compat.css');
@@ -130,6 +131,169 @@ for (const surfaceFragment of [
 }
 for (const fragment of ['id="qr--bar"', 'id="nonQRFormItems"', 'recentList.className = "recentChatList"', 'id="persona-management-button"']) {
   if (!fixture.includes(fragment)) errors.push(`fixture missing ${fragment}`);
+}
+
+/* ================================================================
+   图标可见性回归测试（这一轮的直接回归目标）。
+   2.0.84 的教训：外框全对、图标全没——图标可见性必须是断言，不能靠看截图。
+
+   做法：对 cw-frame（compat.css）+ 每份主题的 custom_css（视作 st-theme 层）
+   做一次简化的层叠裁决，只看会决定图标观感的五个属性
+   （background-image / mask-image / -webkit-mask-image / content / color），
+   判定每个 .drawer-icon（含 ::before）最终是"主题画了图标"还是
+   "什么都没画、留给 Font Awesome 字形"——两者都算通过；
+   只有"主题清空了内容但没补图"（比如只写 content:'' 不补 background-image）
+   这种两头落空的情况才算失败。
+   几何属性（width/height/position）不需要跑六主题分别验证：cw-frame 的声明
+   经 forceImportant 后处于最早层的 !important，层叠优先级天然高于主题的任何
+   声明（无论主题是否也写 !important），这里只做一次静态断言防回归。 ================================================================ */
+const themesDir = path.resolve(root, '..', '..', '其他酒馆美化json');
+
+function specificity(sel) {
+  let s = sel;
+  let a = 0, b = 0, c = 0;
+  s = s.replace(/:(is|not|has|matches)\(([^()]*)\)/g, (_, fn, inner) => {
+    if (fn === 'where') return '';
+    const best = inner.split(',').map(part => specificity(part.trim()))
+      .sort((x, y) => (y[0] - x[0]) || (y[1] - x[1]) || (y[2] - x[2]))[0] || [0, 0, 0];
+    a += best[0]; b += best[1]; c += best[2];
+    return '';
+  });
+  s = s.replace(/:where\([^()]*\)/g, '');
+  a += (s.match(/#[\w-]+/g) || []).length;
+  b += (s.match(/\.[\w-]+/g) || []).length;
+  b += (s.match(/\[[^\]]+\]/g) || []).length;
+  b += (s.match(/:[a-z-]+(\([^)]*\))?/gi) || []).length;
+  c += (s.match(/::[a-z-]+/gi) || []).length;
+  s = s.replace(/::?[a-z-]+(\([^)]*\))?/gi, '');
+  c += (s.match(/(^|[\s>+~])([a-z][\w-]*)/gi) || []).length;
+  return [a, b, c];
+}
+
+const ICON_WATCHED_PROPERTIES = new Set(['background-image', 'mask-image', '-webkit-mask-image', 'content', 'color']);
+
+function collectIconDeclarations(cssText, tierNormal, tierImportant) {
+  const items = [];
+  let iconAst;
+  try {
+    iconAst = csstree.parse(cssText, { onParseError: () => {} });
+  } catch {
+    return items;
+  }
+  let order = 0;
+  csstree.walk(iconAst, {
+    visit: 'Rule',
+    enter(node) {
+      if (node.prelude?.type !== 'SelectorList') return;
+      const selectors = node.prelude.children.toArray().map(selector => csstree.generate(selector));
+      const declarations = node.block.children.toArray().filter(child => child.type === 'Declaration');
+      for (const selectorText of selectors) {
+        order += 1;
+        if (!/\.drawer-icon\b/.test(selectorText)) continue;
+        const pseudoMatch = selectorText.match(/::(before|after)\b/);
+        const pseudo = pseudoMatch ? pseudoMatch[1] : null;
+        const probe = selectorText.replace(/::(before|after|placeholder|selection|marker|first-line|first-letter|-webkit-[\w-]+)/g, '').trim();
+        if (!probe) continue;
+        const spec = specificity(selectorText);
+        for (const declaration of declarations) {
+          const property = declaration.property.toLowerCase();
+          if (!ICON_WATCHED_PROPERTIES.has(property)) continue;
+          items.push({
+            probe,
+            pseudo,
+            property,
+            value: csstree.generate(declaration.value).trim(),
+            tier: declaration.important ? tierImportant : tierNormal,
+            spec,
+            order,
+          });
+        }
+      }
+    },
+  });
+  return items;
+}
+
+function compareHits(x, y) {
+  if (x.tier !== y.tier) return x.tier - y.tier;
+  for (let i = 0; i < 3; i += 1) if (x.spec[i] !== y.spec[i]) return x.spec[i] - y.spec[i];
+  return x.order - y.order;
+}
+
+function pickWinners(items, el) {
+  const hits = items.filter(item => {
+    try { return el.matches(item.probe); } catch { return false; }
+  });
+  const byKey = new Map();
+  for (const hit of hits) {
+    const key = `${hit.pseudo || ''}:${hit.property}`;
+    const current = byKey.get(key);
+    if (!current || compareHits(hit, current) > 0) byKey.set(key, hit);
+  }
+  return byKey;
+}
+
+function isEmptyContent(value) {
+  return value === undefined || /^(?:none|""|'')$/i.test(value.trim());
+}
+function isEmptyImage(value) {
+  return value === undefined || /^none$/i.test(value.trim());
+}
+
+if (!fs.existsSync(themesDir)) {
+  errors.push(`theme fixtures directory not found: ${path.relative(root, themesDir)}`);
+} else {
+  const themeFiles = fs.readdirSync(themesDir).filter(file => file.endsWith('.json'));
+  if (themeFiles.length < 6) {
+    errors.push(`expected at least 6 theme fixtures under ${path.relative(root, themesDir)}, found ${themeFiles.length}`);
+  }
+
+  // cw-frame 的图标相关声明：tier 3（最高，代表最早层的 !important 恒赢）。
+  // 构建期断言 4 已经保证这里不会命中 background-image/mask-image/content/color——
+  // 这里再算一遍纯粹是防止有人绕过 build 脚本手改 compat.css。
+  const frameIconItems = collectIconDeclarations(css, 0, 3);
+  const frameForbiddenHit = frameIconItems.find(item => item.tier === 3);
+  if (frameForbiddenHit) {
+    errors.push(`compat.css 在 .drawer-icon 上仍有换皮通道声明（应交给主题）: ${frameForbiddenHit.property}`);
+  }
+
+  const dom = new JSDOM(fixture);
+  const doc = dom.window.document;
+  doc.documentElement.setAttribute('data-claude-mode', 'compat');
+  const iconEls = Array.from(doc.querySelectorAll('#top-settings-holder .drawer-icon'));
+  if (iconEls.length < 9) errors.push(`fixture 里 .drawer-icon 少于 9 个（找到 ${iconEls.length} 个）`);
+
+  for (const file of themeFiles) {
+    let themeCss = '';
+    try {
+      const themeJson = JSON.parse(fs.readFileSync(path.join(themesDir, file), 'utf8'));
+      themeCss = themeJson.custom_css || '';
+    } catch (error) {
+      errors.push(`无法解析主题 ${file}: ${error.message}`);
+      continue;
+    }
+    // st-theme 层：normal tier 1，important tier 2 —— 恒低于 cw-frame 的 tier 3。
+    const themeIconItems = collectIconDeclarations(themeCss, 1, 2);
+    const allItems = [...frameIconItems, ...themeIconItems];
+
+    for (const el of iconEls) {
+      const winners = pickWinners(allItems, el);
+      const bgImage = winners.get(':background-image')?.value;
+      const maskImage = winners.get(':mask-image')?.value || winners.get(':-webkit-mask-image')?.value;
+      const beforeContent = winners.get('before:content')?.value;
+      const beforeBgImage = winners.get('before:background-image')?.value;
+
+      const themeDrewIcon = !isEmptyImage(bgImage) || !isEmptyImage(maskImage) || !isEmptyImage(beforeBgImage);
+      const themeBlockedGlyph = isEmptyContent(beforeContent) && beforeContent !== undefined;
+
+      // 通过条件：主题画了图标；或者主题什么都没声明，字形留给 Font Awesome 默认值。
+      // 失败条件：主题把 ::before 的 content 清空了，却没有配一张背景图/mask 顶上——两头落空。
+      if (!themeDrewIcon && themeBlockedGlyph) {
+        const iconClass = [...el.classList].find(cls => cls.startsWith('fa-')) || el.id || '(unknown icon)';
+        errors.push(`主题 ${file} 清空了 ${iconClass} 的 content 但没有提供 background-image/mask-image，图标会消失`);
+      }
+    }
+  }
 }
 
 if (errors.length) {

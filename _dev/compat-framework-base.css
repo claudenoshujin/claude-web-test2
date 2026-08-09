@@ -13,6 +13,27 @@
   --cw-column:min(760px,100%);
   --cw-composer:min(760px,100%);
   --cl-sans:var(--mainFontFamily,system-ui,sans-serif);
+  --aq-m:16px;
+  --aq-s:12.5px;
+  --cl-fs-display:clamp(26px,3.1vw,40px);
+  --cl-fs-md:calc(15px * var(--fontScale,1));
+  --cl-fs-meta:calc(12px * var(--fontScale,1));
+  --cl-fs-micro:calc(11px * var(--fontScale,1));
+  --cl-fs-xs:calc(13px * var(--fontScale,1));
+  --cl-icon-hit:32px;
+  --cl-icon-size:16px;
+  --cl-pc-composer-font-size:.80em;
+  --cl-ui-density:4px;
+  --cw-c-cast:280px;
+  --cw-c-list:330px;
+  --cw-c-nav:216px;
+  --cw-drawer:820px;
+  --cw-fs-m:16px;
+  --cw-fs-s:12.5px;
+  --cw-gut:24px;
+  --cw-lh-m:1.5;
+  --cw-lh-s:1.35;
+  --cw-pb-top:52px;
 }
 
 @media (min-width:701px){
@@ -50,20 +71,6 @@
     align-items:center!important;justify-content:flex-start!important;gap:0!important;
     width:100%!important;min-width:0!important;max-width:none!important;min-height:36px!important;height:36px!important;
     margin:0!important;padding:0!important;overflow:visible!important;
-  }
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{
-    position:absolute!important;left:8px!important;right:auto!important;top:50%!important;bottom:auto!important;
-    display:grid!important;place-items:center!important;flex:0 0 24px!important;
-    width:24px!important;min-width:24px!important;max-width:24px!important;
-    height:24px!important;min-height:24px!important;max-height:24px!important;
-    margin:0!important;padding:0!important;transform:translateY(-50%)!important;
-    font-size:16px!important;line-height:24px!important;overflow:visible!important;
-  }
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before{
-    max-width:24px!important;max-height:24px!important;
-  }
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon:not(.clawd-external-icon){
-    color:var(--SmartThemeBodyColor,var(--cw-text-body))!important;opacity:1!important;
   }
   html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.clawd-rail-label{
     pointer-events:none;position:relative!important;z-index:1!important;flex:1 1 auto!important;
