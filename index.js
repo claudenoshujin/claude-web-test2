@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.87-compat-native-toggle-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.88-compat-native-defaults-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -9173,7 +9173,14 @@ if (CLAUDE_ENABLED) {
     const base = typeof CLAUDE_EXTENSION_BASE !== 'undefined'
       ? CLAUDE_EXTENSION_BASE
       : new URL('.', import.meta.url).href;
-    const styleUrl = new URL(`styles/${variant}-${layout}.css`, base);
+    /* 兼容模式的样式表是 compat-<明暗>.css，不分 pc/mobile。
+       2.0.87 漏了这条：面板里切明暗会去请求 styles/night-pc.css，
+       等于把完整模式的样式表塞进兼容模式，所以看起来"切了没反应"。 */
+    const compatNow = read('mode', ['full', 'compat'], 'full') === 'compat';
+    const styleUrl = new URL(
+      compatNow ? `styles/compat-${variant}.css` : `styles/${variant}-${layout}.css`,
+      base,
+    );
     styleUrl.searchParams.set(
       'v',
       typeof CLAUDE_KEYBOARD_BUILD !== 'undefined' ? CLAUDE_KEYBOARD_BUILD.id : 'live',
@@ -9989,10 +9996,13 @@ if (CLAUDE_ENABLED) {
     const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)');
     const syncAutomaticTheme = () => {
       if (compatibilityMode) {
-        variantSelect.disabled = true;
+        /* 明暗在兼容模式下是有意义的：外壳整块是 Claude 的皮肤，
+           深色美化配一条亮白侧栏很难看。它只换 compat-<明暗>.css，
+           不碰外部美化自己的明暗。按时间自动切仍然关着（那条要动酒馆的主题记录）。 */
+        variantSelect.disabled = false;
         autoSelect.disabled = true;
         autoTimes.hidden = true;
-        autoHint.textContent = '兼容框架模式不接管外部美化的明暗主题。';
+        autoHint.textContent = '明暗只切换 Claude 外壳，外部美化的配色不受影响。';
         return;
       }
       const mode = autoSelect.value;
@@ -10295,7 +10305,14 @@ if (CLAUDE_ENABLED) {
       clawdOptions.hidden = !clawdBox.checked;
       bgBlurOptions.hidden = !bgBlurBox.checked;
       bgImageOptions.hidden = !bgImageBlurBox.checked;
-      fullAppearance.hidden = compatibilityMode;
+      /* 兼容模式下配色预设和字体都不生效，但「当前明暗」要留着 ——
+         它决定加载 compat-day 还是 compat-night。所以不整块隐藏 fullAppearance，
+         只隐藏它除明暗以外的子项。 */
+      const variantField = variantSelect.closest('.claude-web-field');
+      fullAppearance.hidden = false;
+      for (const child of fullAppearance.children) {
+        child.hidden = compatibilityMode && child !== variantField;
+      }
       layoutSection.hidden = compatibilityMode;
       backgroundSection.hidden = compatibilityMode;
     }

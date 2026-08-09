@@ -72,14 +72,26 @@ if (resetSelectors.some(selector => /\.drawer-content\s*[\s>+~*]/.test(selector)
 if (resetSelectors.some(selector => selector.includes('#chat') && !selector.includes('body.clawd-welcome'))) {
   errors.push('owned-subtree reset may include #chat only as the welcome-state container');
 }
+/* 归零范围只能是框架自己创建的节点。
+   原生节点不许进：day-pc.css 有大量地方直接吃酒馆 style.css 的默认值
+   （最典型的是 #send_form 的 display:flex，桌面端 day-pc.css 里根本没写），
+   归零等于清空，那些默认值会一起没掉。2.0.87 输入框按钮竖排就是这么来的。 */
 for (const requiredOwned of [
   '.clawd-rail-brand', '.clawd-rail-recents', '.recentChat', '.clawd-user-face',
-  '#top-settings-holder>.drawer>.drawer-toggle', '#send_form', '#qr--bar', '#nonQRFormItems',
-  '#leftSendForm', '#rightSendForm', '#send_textarea',
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
 ]) {
   if (!resetSelectors.some(selector => normalize(selector).includes(normalize(requiredOwned)))) {
     errors.push(`owned-subtree reset missing ${requiredOwned}`);
+  }
+}
+for (const forbiddenOwned of [
+  '#send_form', '#form_sheld', '#nonQRFormItems', '#leftSendForm', '#rightSendForm',
+  '#send_textarea', '#qr--bar', '#top-bar', '#top-settings-holder', '.drawer-toggle', '.drawer-content',
+]) {
+  const welcomeContainerReset = selector => selector.includes('body.clawd-welcome');
+  if (resetSelectors.some(selector => !welcomeContainerReset(selector)
+    && normalize(selector).includes(normalize(forbiddenOwned)))) {
+    errors.push(`owned-subtree reset must not include native node ${forbiddenOwned}`);
   }
 }
 

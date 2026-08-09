@@ -60,17 +60,19 @@ const WELCOME_PLACEHOLDER_SELECTOR =
 /* 子树归零（R2）。范围只覆盖框架自有节点和框架完全重定位的容器。
  * 绝对不要把 .drawer-content 的后代或 #chat 的后代加进来：那些是酒馆原生控件，
  * 归零会连酒馆自己未分层的基础样式一起够不到，面板会变成裸控件。 */
+/* 归零范围：只能是框架自己创建、并且 day-pc.css 自己把几何写全了的节点。
+ *
+ * 2.0.87 真机的教训：day-pc.css 是「坐在酒馆上面」写的，很多地方直接吃酒馆
+ * style.css 的默认值 —— 比如 #send_form 的 display:flex，桌面端 day-pc.css
+ * 里根本没写，是酒馆自己给的。归零等于清空（包括未分层的酒馆样式），
+ * 于是兼容模式下 #send_form 变成 display:block，按钮竖着排。
+ * 所以原生节点（#send_form / #top-settings-holder / .drawer-* / #form_sheld …）
+ * 一律不归零，靠层序 + !important 压主题就够；框架没声明的地方让酒馆默认值露出来，
+ * 这比清空成裸元素安全得多。 */
 const RESET_ROOTS = [
-  '#top-bar',
-  '#top-settings-holder',
-  '#top-settings-holder>.drawer',
-  '#top-settings-holder>.drawer>.drawer-toggle',
-  '#top-settings-holder>.drawer>.drawer-content',
   '.clawd-rail-brand', '.clawd-rail-recents', '.clawd-rail-recents-label', '.clawd-pc-top-actions',
   '.recentChatList', '.recentChat',
   '.clawd-user-face', '.clawd-user-meta', '.clawd-user-name', '.clawd-user-plan', '.clawd-user-more',
-  '#form_sheld', '#send_form', '#qr--bar', '#nonQRFormItems',
-  '#leftSendForm', '#rightSendForm', '#send_textarea',
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
 ];
 
@@ -82,16 +84,13 @@ const RESET_ROOTS = [
    #dialogue_del_mes 这些「该藏的时候藏」的控件常驻显示。原生控件只归零它们的
    容器根，内部交给酒馆自己。 */
 const RESET_SUBTREES = [
-  '#top-settings-holder>.drawer>.drawer-toggle',
   '.clawd-rail-brand', '.clawd-rail-recents', '.clawd-pc-top-actions',
   '.recentChatList', '.recentChat', '.clawd-user-face', '.clawd-user-meta',
   '.clawd-welcome-hero', '.clawd-welcome-shortcuts',
 ];
 
 /* 换皮插槽不进归零范围。 */
-const SUBTREE_EXCLUDE = {
-  '#top-settings-holder>.drawer>.drawer-toggle': ':not(.drawer-icon)',
-};
+const SUBTREE_EXCLUDE = {};
 
 /* 框架自己建的节点。只有它们的 display/visibility 才强制 !important；
    原生控件的显隐必须留给酒馆的运行时逻辑，否则「该藏的时候藏不住」。 */
@@ -310,7 +309,11 @@ function build(variant) {
     buildResetRule(),
     base,
     `/* 外壳区域，原样搬自 styles/${variant}-pc.css。 */`,
-    `@media (min-width:701px){\n${generated}\n}`,
+    /* 不能再往外面套 @media (min-width:701px)。源文件自己带 53 个 @media，
+       套一层之后它们变成嵌套条件：里面的 (max-width:700px) 块和外层
+       (min-width:701px) 永远互斥，规则等于被删。#send_form 的 display:flex
+       正好只写在那个 max-width 块里，2.0.87 输入框按钮竖排就是这么来的。 */
+    generated,
     '/* 唯一一条消息选择器例外：酒馆原生欢迎占位。 */',
     welcomeException,
   ].join('\n\n');
