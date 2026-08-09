@@ -4788,7 +4788,8 @@ html body.claude-generation-active #rightSendForm #send_but::after {
     background:transparent !important;
     transform:translate3d(0, var(--cl-mobile-composer-translate-y, 0px), 0) !important;
     transition:none !important;
-    will-change:transform;
+    /* Android 14 + Via/WebView 113: a persistent promoted composer layer
+       enters a repaint/MutationObserver feedback loop during IME resize. */
   }
   html body.clawd-welcome #send_form {
     box-sizing:border-box !important;
@@ -4950,7 +4951,7 @@ html body.claude-generation-active #rightSendForm #send_but::after {
     background:var(--cw-surface-page) !important;
     transform:translate3d(0, var(--cl-mobile-composer-translate-y, 0px), 0) !important;
     transition:none !important;
-    will-change:transform;
+    /* Keep the transform, but let WebView promote it only while it changes. */
   }
   /* VirtualKeyboard API 的 overlay 模式不会缩放布局视口。键盘高度通过 CSS env
      直接交给输入框的合成层，整段聊天 DOM 不参与键盘每一帧的 layout。 */

@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.68";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.72";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -302,7 +302,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.68-via-geometry-diagnostics-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+  id: '2.0.72-via-composer-layer-fix-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
@@ -1686,6 +1686,9 @@ if (CLAUDE_ENABLED) {
   let mobileKeyboardPollTimer = 0;
   let mobileKeyboardPollSignature = '';
   let keyboardDiagnostics = null;
+  let diagnosticRefreshPaused = false;
+  let diagnosticIsolationMode = 'standard';
+  const DIAGNOSTIC_COMPOSITOR_STYLE_ID = 'clawd-via-compositor-isolation';
 
   hostWindow[INSTANCE_KEY]?.destroy?.();
 
@@ -7163,7 +7166,7 @@ if (CLAUDE_ENABLED) {
   const MOBILE_GENERATION_REFRESH_MIN_GAP = 140;
 
   function scheduleRefresh() {
-    if (destroyed || frameId || throttleTimer) return;
+    if (destroyed || diagnosticRefreshPaused || frameId || throttleTimer) return;
     const minGap = isMobileLayout() && previousTypingActive
       ? MOBILE_GENERATION_REFRESH_MIN_GAP
       : REFRESH_MIN_GAP;
@@ -7365,7 +7368,71 @@ if (CLAUDE_ENABLED) {
         mobileKeyboardSettling: Date.now() < mobileKeyboardSettlingUntil,
         mobileKeyboardPollRunning: Boolean(mobileKeyboardPollTimer),
         keyboardBaselineMode,
+        diagnosticRefreshPaused,
+        diagnosticIsolationMode,
+        diagnosticCompositorIsolationActive: Boolean(
+          hostDocument.getElementById(DIAGNOSTIC_COMPOSITOR_STYLE_ID),
+        ),
+        refreshStats: {
+          refreshes: refreshStats.refreshes,
+          totalMs: +refreshStats.totalMs.toFixed(3),
+          maxMs: +refreshStats.maxMs.toFixed(3),
+          lastMs: +refreshStats.lastMs.toFixed(3),
+          recordsSeen: refreshStats.recordsSeen,
+          recordsPassedFilter: refreshStats.recordsPassedFilter,
+          selfRecordsDropped: refreshStats.selfRecordsDropped,
+          externalStyleRecordsIgnored: refreshStats.externalStyleRecordsIgnored,
+        },
       }),
+      setIsolationMode: mode => {
+        diagnosticIsolationMode = ['refresh', 'root', 'composer', 'compositor'].includes(mode)
+          ? mode
+          : 'standard';
+        diagnosticRefreshPaused = diagnosticIsolationMode === 'refresh';
+        hostDocument.getElementById(DIAGNOSTIC_COMPOSITOR_STYLE_ID)?.remove();
+        if (['root', 'composer', 'compositor'].includes(diagnosticIsolationMode)) {
+          const isolationStyle = hostDocument.createElement('style');
+          isolationStyle.id = DIAGNOSTIC_COMPOSITOR_STYLE_ID;
+          isolationStyle.textContent = diagnosticIsolationMode === 'root'
+            ? `
+            html {
+              transform: none !important;
+              perspective: none !important;
+            }
+          `
+            : diagnosticIsolationMode === 'composer'
+              ? `
+            html body #form_sheld {
+              will-change: auto !important;
+            }
+          `
+              : `
+            html,
+            html body {
+              transform: none !important;
+              perspective: none !important;
+              filter: none !important;
+              -webkit-filter: none !important;
+              backdrop-filter: none !important;
+              -webkit-backdrop-filter: none !important;
+              contain: none !important;
+              will-change: auto !important;
+            }
+            html body #form_sheld {
+              will-change: auto !important;
+            }
+          `;
+          hostDocument.head.append(isolationStyle);
+        }
+        if (diagnosticRefreshPaused) {
+          if (frameId) hostWindow.cancelAnimationFrame(frameId);
+          frameId = 0;
+          if (throttleTimer) hostWindow.clearTimeout(throttleTimer);
+          throttleTimer = 0;
+        } else {
+          scheduleRefresh();
+        }
+      },
     });
     startMobileKeyboardPoll();
     scheduleRefresh();
@@ -7447,6 +7514,9 @@ if (CLAUDE_ENABLED) {
     stopKeyboardTrace();
     keyboardDiagnostics?.destroy?.();
     keyboardDiagnostics = null;
+    diagnosticRefreshPaused = false;
+    diagnosticIsolationMode = 'standard';
+    hostDocument.getElementById(DIAGNOSTIC_COMPOSITOR_STYLE_ID)?.remove();
     restoreVirtualKeyboardOverlay();
     hostDocument.querySelectorAll('.' + RAIL_BRAND_CLASS).forEach(brand => brand.remove());
     hostDocument.querySelectorAll('.' + PC_TOP_ACTIONS_CLASS).forEach(actions => actions.remove());

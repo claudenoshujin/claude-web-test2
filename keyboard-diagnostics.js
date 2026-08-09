@@ -9,6 +9,7 @@ export function installKeyboardDiagnostics(options) {
   const buildId = options.buildId || "unknown";
   const isMobileLayout = options.isMobileLayout || (() => true);
   const getRuntimeState = options.getRuntimeState || (() => ({}));
+  const setIsolationMode = options.setIsolationMode || (() => {});
 
   if (!hostWindow || !hostDocument || !isMobileLayout()) return null;
   hostWindow.__claudeClawdViaDiagnostics?.destroy?.();
@@ -29,6 +30,13 @@ export function installKeyboardDiagnostics(options) {
   let marks = [];
   let listeners = [];
   let repositionRaf = 0;
+  let frameTraceRaf = 0;
+  let frameTraceLastAt = 0;
+  let longTaskObserver = null;
+  let longTaskObserverSupported = false;
+  let sessionIsolationMode = "standard";
+  let longTasks = [];
+  let frameGaps = [];
   const lastEventAt = new Map();
 
   function finite(value, digits = 2) {
@@ -127,7 +135,7 @@ export function installKeyboardDiagnostics(options) {
       } : null,
       formSheld: {
         rect: rectOf(formSheld),
-        computed: computedOf(formSheld, ["position", "bottom", "transform"]),
+        computed: computedOf(formSheld, ["position", "bottom", "transform", "willChange"]),
         inlineComposerTranslateY: formSheld?.style
           .getPropertyValue("--cl-mobile-composer-translate-y") || "",
         containingBlockAncestors: containingBlockAncestors(formSheld),
@@ -157,9 +165,98 @@ export function installKeyboardDiagnostics(options) {
   }
 
   function pushSample(source, late = 0, eventTarget = null) {
+    const measureStart = hostWindow.performance?.now?.() ?? Date.now();
     if (samples.length >= MAX_SAMPLES) samples.shift();
-    samples.push(snapshot(source, late, eventTarget));
+    const sample = snapshot(source, late, eventTarget);
+    const measureEnd = hostWindow.performance?.now?.() ?? Date.now();
+    sample.diagnosticSampleCostMs = finite(measureEnd - measureStart, 3);
+    samples.push(sample);
     updateStatus();
+  }
+
+  function normalizeLongTask(entry) {
+    return {
+      name: entry.name || "",
+      startTime: finite(entry.startTime, 3),
+      duration: finite(entry.duration, 3),
+      attribution: Array.from(entry.attribution || []).map(item => ({
+        name: item.name || "",
+        entryType: item.entryType || "",
+        startTime: finite(item.startTime, 3),
+        duration: finite(item.duration, 3),
+        containerType: item.containerType || "",
+        containerName: item.containerName || "",
+        containerId: item.containerId || "",
+        containerSrc: item.containerSrc || "",
+      })),
+    };
+  }
+
+  function startLongTaskObserver() {
+    longTaskObserverSupported = false;
+    if (!hostWindow.PerformanceObserver) return;
+    try {
+      longTaskObserver = new hostWindow.PerformanceObserver(list => {
+        for (const entry of list.getEntries()) {
+          if (longTasks.length >= 400) longTasks.shift();
+          longTasks.push(normalizeLongTask(entry));
+        }
+      });
+      longTaskObserver.observe({ type: "longtask", buffered: false });
+      longTaskObserverSupported = true;
+    } catch {
+      try {
+        longTaskObserver?.disconnect?.();
+        longTaskObserver = new hostWindow.PerformanceObserver(list => {
+          for (const entry of list.getEntries()) {
+            if (longTasks.length >= 400) longTasks.shift();
+            longTasks.push(normalizeLongTask(entry));
+          }
+        });
+        longTaskObserver.observe({ entryTypes: ["longtask"] });
+        longTaskObserverSupported = true;
+      } catch {
+        longTaskObserver?.disconnect?.();
+        longTaskObserver = null;
+      }
+    }
+  }
+
+  function traceFrame(timestamp) {
+    frameTraceRaf = 0;
+    if (!running) return;
+    if (frameTraceLastAt) {
+      const gap = timestamp - frameTraceLastAt;
+      if (gap >= 120) {
+        if (frameGaps.length >= 400) frameGaps.shift();
+        frameGaps.push({
+          timestamp: Date.now(),
+          elapsedMs: Date.now() - startedAt,
+          performanceTime: finite(timestamp, 3),
+          gapMs: finite(gap, 3),
+        });
+      }
+    }
+    frameTraceLastAt = timestamp;
+    frameTraceRaf = hostWindow.requestAnimationFrame(traceFrame);
+  }
+
+  function startFrameTrace() {
+    frameTraceLastAt = 0;
+    if (frameTraceRaf) hostWindow.cancelAnimationFrame(frameTraceRaf);
+    frameTraceRaf = hostWindow.requestAnimationFrame(traceFrame);
+  }
+
+  function stopPerformanceTracing() {
+    for (const entry of longTaskObserver?.takeRecords?.() || []) {
+      if (longTasks.length >= 400) longTasks.shift();
+      longTasks.push(normalizeLongTask(entry));
+    }
+    longTaskObserver?.disconnect?.();
+    longTaskObserver = null;
+    if (frameTraceRaf) hostWindow.cancelAnimationFrame(frameTraceRaf);
+    frameTraceRaf = 0;
+    frameTraceLastAt = 0;
   }
 
   function clearListeners() {
@@ -209,6 +306,8 @@ export function installKeyboardDiagnostics(options) {
       stoppedAt = Date.now();
       stopReason = reason;
     }
+    stopPerformanceTracing();
+    setIsolationMode("standard");
     updateStatus();
     return payload();
   }
@@ -231,6 +330,8 @@ export function installKeyboardDiagnostics(options) {
     stop("restart");
     samples = [];
     marks = [];
+    longTasks = [];
+    frameGaps = [];
     sequence = 0;
     sessionId = "via-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
     startedAt = Date.now();
@@ -239,8 +340,14 @@ export function installKeyboardDiagnostics(options) {
     const durationMs = Math.min(Math.max(Number(startOptions.duration) || 15000, 1000), 30000);
     intervalMs = Math.min(Math.max(Number(startOptions.interval) || 250, 100), 2000);
     deadline = startedAt + durationMs;
+    sessionIsolationMode = ["refresh", "root", "composer", "compositor"].includes(startOptions.isolationMode)
+      ? startOptions.isolationMode
+      : "standard";
+    setIsolationMode(sessionIsolationMode);
     running = true;
     installListeners();
+    startLongTaskObserver();
+    startFrameTrace();
     pushSample("start");
     expectedAt = startedAt + intervalMs;
     timer = hostWindow.setTimeout(tick, intervalMs);
@@ -276,7 +383,14 @@ export function installKeyboardDiagnostics(options) {
       stopReason,
       requestedDurationMs: deadline && startedAt ? deadline - startedAt : null,
       intervalMs,
+      isolationMode: sessionIsolationMode,
       exportedAt: Date.now(),
+      performance: {
+        timeOrigin: hostWindow.performance?.timeOrigin ?? null,
+        longTaskObserverSupported,
+        longTasks: longTasks.slice(),
+        frameGaps: frameGaps.slice(),
+      },
       page: {
         url: hostWindow.location?.href || "",
         userAgent: hostWindow.navigator?.userAgent || "",
@@ -323,7 +437,17 @@ export function installKeyboardDiagnostics(options) {
     if (message) status.value = message;
     else if (running) {
       const elapsed = Math.max(0, Date.now() - startedAt);
-      status.value = "采集中 " + (elapsed / 1000).toFixed(1) + " / "
+      const modeLabel = sessionIsolationMode === "refresh"
+        ? "刷新隔离采集中 "
+        : sessionIsolationMode === "root"
+          ? "根节点隔离采集中 "
+          : sessionIsolationMode === "composer"
+            ? "输入框层隔离采集中 "
+        : sessionIsolationMode === "compositor"
+          ? "合成层隔离采集中 "
+          : "标准采集中 ";
+      status.value = modeLabel
+        + (elapsed / 1000).toFixed(1) + " / "
         + ((deadline - startedAt) / 1000).toFixed(0) + " 秒 · " + samples.length + " 样本";
     } else if (samples.length) {
       status.value = "采集结束 · " + samples.length + " 样本 · " + marks.length + " 个异常标记";
@@ -398,7 +522,11 @@ export function installKeyboardDiagnostics(options) {
     const actions = hostDocument.createElement("div");
     actions.className = "clawd-kbd-diag-actions";
     actions.append(
-      button("start", "开始 15 秒"),
+      button("start", "标准 15 秒"),
+      button("isolate", "隔离刷新 15 秒"),
+      button("root", "仅根节点 15 秒"),
+      button("composer", "仅输入框层 15 秒"),
+      button("compositor", "隔离合成层 15 秒"),
       button("stop", "停止"),
       button("mark", "异常已出现"),
       button("export", "导出 JSON"),
@@ -415,7 +543,11 @@ export function installKeyboardDiagnostics(options) {
       event.preventDefault();
       event.stopPropagation();
       if (action === "toggle") root.dataset.open = root.dataset.open === "true" ? "false" : "true";
-      else if (action === "start") start({ duration: 15000, interval: 250 });
+      else if (action === "start") start({ duration: 15000, interval: 250, isolationMode: "standard" });
+      else if (action === "isolate") start({ duration: 15000, interval: 250, isolationMode: "refresh" });
+      else if (action === "root") start({ duration: 15000, interval: 250, isolationMode: "root" });
+      else if (action === "composer") start({ duration: 15000, interval: 250, isolationMode: "composer" });
+      else if (action === "compositor") start({ duration: 15000, interval: 250, isolationMode: "compositor" });
       else if (action === "stop") stop("user-stop");
       else if (action === "mark") markAnomaly();
       else if (action === "export") exportJson();
