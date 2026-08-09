@@ -10,7 +10,7 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.79";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.80";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -119,7 +119,7 @@ function claudeReadSetting(key, allowed, fallback) {
 const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
 /* 框架兼容模式保留 Claude Web 的桌面外壳：左侧栏、内容区让位和输入框。
    外部主题继续负责配色、字体、背景、欢迎页和消息内容。 */
-const CLAUDE_COMPAT_MODE = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
+const CLAUDE_COMPAT_REQUESTED = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
 const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
 const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'], 'on') !== 'off';
 /* 生成计时器默认关（2.0.33 起改的，原来默认开）。
@@ -188,7 +188,7 @@ const CLAUDE_BG_IMAGE_BLUR = claudeReadNumberSetting('bgImageBlurRadius', 12, 0,
 const CLAUDE_BG_IMAGE_DIM = claudeReadNumberSetting('bgImageDim', 28, 0, 70);
 
 document.documentElement.dataset.claudeMotion = CLAUDE_MOTION_ENABLED ? 'on' : 'off';
-document.documentElement.dataset.claudeMode = CLAUDE_COMPAT_MODE ? 'compat' : 'full';
+document.documentElement.dataset.claudeMode = CLAUDE_COMPAT_REQUESTED ? 'compat' : 'full';
 document.documentElement.dataset.claudeDecorations = CLAUDE_DECORATIONS_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeGenTimer = CLAUDE_GEN_TIMER_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeBgTransparent = CLAUDE_BG_TRANSPARENT_ENABLED ? 'on' : 'off';
@@ -215,10 +215,6 @@ if (document.documentElement.dataset.claudeSkin === 'playbill') {
 }
 /* 兼容模式不能让上次保存的 Playbill/Linear 状态继续创建专属结构。设置值保留，
    切回完整模式时仍能恢复，但本次运行只暴露外部主题的原生结构。 */
-if (CLAUDE_COMPAT_MODE) {
-  document.documentElement.dataset.claudeSkin = 'classic';
-  document.documentElement.dataset.claudeStructure = 'rail';
-}
 try {
   const cf = window.localStorage.getItem('claude-web:fontCustom');
   if (cf) document.documentElement.style.setProperty('--cw-font-custom', cf);
@@ -282,6 +278,18 @@ const CLAUDE_LAYOUT = (() => {
   }
 })();
 
+/* 兼容框架本轮只实现桌面结构层。窄屏若仍加载 760px composer 外壳，
+   会在没有侧栏规则的情况下把原生手机界面撑出横向滚动；因此已选择兼容
+   模式的用户在 <=700px 自动回退到完整手机版，保存的选择不被改写。 */
+const CLAUDE_COMPAT_MODE = CLAUDE_COMPAT_REQUESTED && CLAUDE_LAYOUT === 'pc';
+document.documentElement.dataset.claudeMode = CLAUDE_COMPAT_MODE ? 'compat' : 'full';
+if (CLAUDE_COMPAT_MODE) {
+  document.documentElement.dataset.claudeSkin = 'classic';
+  document.documentElement.dataset.claudeStructure = 'rail';
+} else if (CLAUDE_COMPAT_REQUESTED) {
+  console.info('[Claude Web] 兼容框架暂限桌面端；当前窄屏已回退到完整手机版。');
+}
+
 /* 自动布局不能只在启动时判断一次。跨过主断点时自动刷新，让 JS 功能分支和
    对应的 PC / 手机样式表一起切换；只改 CSS 会留下半桌面半手机的状态。 */
 if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
@@ -303,7 +311,7 @@ if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
 
 const CLAUDE_FEATURES = {
   rail: !CLAUDE_COMPAT_MODE || CLAUDE_LAYOUT === 'pc',
-  welcome: !CLAUDE_COMPAT_MODE,
+  welcome: true,
   mobile: !CLAUDE_COMPAT_MODE && CLAUDE_LAYOUT === 'mobile',
 };
 
@@ -312,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.79-refresh-recovery-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.80-compat-structure-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -964,6 +972,7 @@ if (CLAUDE_ENABLED) {
   let disableCheckTimer = 0;
   let runnerRemovalTimer = 0;
   let runnerPresenceObserver = null;
+  let compatibilityStyleOrderObserver = null;
   let neutralizedHostRules = [];
   const runnerFrame = window.frameElement;
 
@@ -1023,6 +1032,30 @@ if (CLAUDE_ENABLED) {
       node.textContent = LIVE_CSS;
     }
     hostDocument.documentElement.dataset.claudeIntegratedTheme = CLAUDE_THEME_VARIANT;
+  }
+
+  function ensureCompatibilityStyleOrder() {
+    if (!compatibilityMode || destroyed) return;
+    const frameworkStyle = hostDocument.getElementById(STYLE_ID);
+    const customStyle = hostDocument.getElementById('custom-style');
+    if (!frameworkStyle || !customStyle || frameworkStyle.parentElement !== hostDocument.head) return;
+    const children = [...hostDocument.head.children];
+    const customIndex = children.indexOf(customStyle);
+    const frameworkIndex = children.indexOf(frameworkStyle);
+    if (customIndex < 0 || frameworkIndex > customIndex) return;
+    hostDocument.head.append(frameworkStyle);
+    console.warn('[Claude Web] 外部主题样式在兼容结构层之后重建；已恢复结构层层叠顺序。');
+  }
+
+  function watchCompatibilityStyleOrder() {
+    if (!compatibilityMode || compatibilityStyleOrderObserver) return;
+    ensureCompatibilityStyleOrder();
+    compatibilityStyleOrderObserver = new hostWindow.MutationObserver(records => {
+      if (!records.some(record => [...record.addedNodes].some(node =>
+        node?.id === 'custom-style' || node?.id === STYLE_ID))) return;
+      hostWindow.queueMicrotask(ensureCompatibilityStyleOrder);
+    });
+    compatibilityStyleOrderObserver.observe(hostDocument.head, { childList: true });
   }
 
   /* SillyTavern's delete-mode stylesheet contains a selector shaped like:
@@ -1506,6 +1539,7 @@ if (CLAUDE_ENABLED) {
     neutralizeStyleAttributeRules();
     if (compatibilityMode) {
       releaseClaudeThemeForCompatibility();
+      watchCompatibilityStyleOrder();
       return;
     }
     const changed = persistFullTheme();
@@ -1523,6 +1557,8 @@ if (CLAUDE_ENABLED) {
 
   function destroy({ restore = false } = {}) {
     if (destroyed) return;
+    compatibilityStyleOrderObserver?.disconnect();
+    compatibilityStyleOrderObserver = null;
     destroyed = true;
     if (retryTimer) hostWindow.clearTimeout(retryTimer);
     if (disableCheckTimer) hostWindow.clearTimeout(disableCheckTimer);
@@ -7161,10 +7197,13 @@ if (CLAUDE_ENABLED) {
       return;
     }
     refreshComposerPhrase(typingActive);
-    /* 框架兼容模式不能碰消息 DOM。外部美化常用 .mes/.mes_block/.mes_text
-       的定位和伪元素拼整张卡片；插入落款、操作键、reasoning class 或欢迎页
-       助手都会把它们的坐标系拆开。这里只刷新框架节点和原生 typing 状态。 */
+    /* 框架兼容模式不能装饰消息 DOM。外部美化常用 .mes/.mes_block/.mes_text
+       的定位和伪元素拼整张卡片；插入落款、操作键或 reasoning class 会把
+       坐标系拆开。欢迎态本身仍归 Claude Web，所以只读取现有消息来判断
+       welcome/chat，不调用会给消息加 class 的 refreshMessageStates()。 */
     if (frameworkCompatibilityMode) {
+      const welcomeMessages = [...hostDocument.querySelectorAll('#chat > .mes[is_user="false"]')];
+      refreshWelcomeMode(welcomeMessages);
       if (generationJustEnded) {
         recentSignature = null;
         refreshRailRecents({ force: true });
@@ -7174,6 +7213,8 @@ if (CLAUDE_ENABLED) {
       refreshRailLabels();
       watchChatDeleted();
       refreshRailRecents();
+      refreshWelcomeShortcuts();
+      refreshCharacterSwitcher();
       refreshRailUser();
       refreshRailGrip();
       return;

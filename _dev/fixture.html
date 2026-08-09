@@ -154,9 +154,18 @@
     <div class="clawd-rail-recents-label">Recents</div>
   </div>
 
-  <div class="clawd-user-meta">
-    <div class="clawd-user-name">零</div>
-    <div class="clawd-user-plan">Max plan</div>
+  <div class="drawer" id="persona-management-button">
+    <div class="drawer-toggle">
+      <div class="drawer-icon fa-solid fa-face-smile"></div>
+      <div class="clawd-rail-label">玩家角色</div>
+      <div class="clawd-user-face"><img src="" alt=""></div>
+      <div class="clawd-user-meta">
+        <div class="clawd-user-name">零</div>
+        <div class="clawd-user-plan">Max plan</div>
+      </div>
+      <div class="clawd-user-more">⌄</div>
+    </div>
+    <div class="drawer-content closedDrawer"></div>
   </div>
 </div>
 
@@ -167,13 +176,17 @@
 
   <div id="form_sheld">
     <form id="send_form" class="compact">
-      <div id="leftSendForm">
-        <div id="options_button" class="fa-solid fa-bars interactable" title="选项"></div>
-        <div id="extensionsMenuButton" class="fa-solid fa-wand-magic-sparkles interactable" title="扩展"></div>
-      </div>
-      <textarea id="send_textarea" rows="1" placeholder="写下你的台词……"></textarea>
-      <div id="rightSendForm">
-        <div id="send_but" class="fa-solid fa-paper-plane interactable"></div>
+      <div id="qr--bar"></div>
+      <div id="nonQRFormItems">
+        <div id="leftSendForm">
+          <div id="options_button" class="fa-solid fa-bars interactable" title="选项"></div>
+          <div id="extensionsMenuButton" class="fa-solid fa-wand-magic-sparkles interactable" title="扩展"></div>
+        </div>
+        <textarea id="send_textarea" rows="1" placeholder="写下你的台词……"></textarea>
+        <div id="rightSendForm">
+          <div id="mes_stop" class="fa-solid fa-stop interactable" style="display:none"></div>
+          <div id="send_but" class="fa-solid fa-paper-plane interactable"></div>
+        </div>
       </div>
     </form>
   </div>
@@ -259,6 +272,10 @@ function roman(n){const t=[[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];let s="";
 
 /* ---- 会话列表 ---- */
 const recents = document.querySelector(".clawd-rail-recents");
+const recentList = document.createElement("div");
+recentList.className = "recentChatList";
+recentList.dataset.clawdOwned = "1";
+recents.appendChild(recentList);
 /* 幕号 = 这个存档在全部历史里的序号，**最旧的是 Act I**。CHATS 是新→旧，
    所以倒着数。右栏幕次表用的是同一套编号，两处必须一致。 */
 CHATS.forEach(([name, date], i) => {
@@ -281,7 +298,7 @@ CHATS.forEach(([name, date], i) => {
   +     '<div class="chatPreview">' + CHATS[i][3] + '</div>'
   +   '</div>'
   + '</div>';
-  recents.appendChild(row);
+  recentList.appendChild(row);
 });
 
 /* ---- 一条消息的真实 DOM。**照抄，不要简化。** ---- */

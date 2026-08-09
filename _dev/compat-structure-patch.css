@@ -1,0 +1,101 @@
+/* ===== 兼容模式结构层补丁 =====
+   只写结构属性，不碰 #chat > .mes / .mes_block / .mes_text。
+   全部挂在 html[data-claude-mode="compat"] 上，特异性 ≥ (1,1,2)。
+
+   锁：display / position / inset / order / flex / grid / 尺寸 / margin / padding /
+       gap / overflow / transform / align-* / justify-* / 截断 / font-size / line-height
+   不锁（留给 JSON 换皮）：color、background、border-color、border-radius、
+       font-family、font-weight、图标 content / mask-image、标签文字
+   —— 字号和行高算在"锁"里，是因为它们直接决定行高和是否溢出（见原始日志 §2）。 */
+@media (min-width:701px){
+/* ---- 1. 用户区钉底 ---- */
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer#persona-management-button{
+  order:5!important;margin-top:auto!important;padding-top:10px!important;
+}
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer#persona-management-button>.drawer-toggle{
+  gap:9px!important;min-height:44px!important;height:auto!important;padding:6px 9px!important;z-index:1!important;
+}
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer#persona-management-button>.drawer-toggle>:is(.drawer-icon,.clawd-rail-label){display:none!important}
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer#persona-management-button>.drawer-toggle>*{pointer-events:none!important}
+html[data-claude-mode="compat"] body .clawd-user-face{flex:0 0 30px!important;width:30px!important;height:30px!important;overflow:hidden!important;display:grid!important;place-items:center!important;transform:none!important}
+html[data-claude-mode="compat"] body .clawd-user-face img{width:100%!important;height:100%!important;object-fit:cover!important;display:block!important;transform:none!important}
+html[data-claude-mode="compat"] body .clawd-user-meta{flex:1 1 auto!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:1px!important;text-align:left!important;transform:none!important}
+html[data-claude-mode="compat"] body .clawd-user-name{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-size:12.5px!important;line-height:1.25!important}
+html[data-claude-mode="compat"] body .clawd-user-plan{font-size:11.5px!important;line-height:1.25!important}
+html[data-claude-mode="compat"] body .clawd-user-more{flex:0 0 auto!important}
+
+/* ---- 2. Recents：改用 Claude 自己的稳定行 wrapper，四个槽显式指派 ---- */
+html[data-claude-mode="compat"] body .clawd-rail-recents{flex:1 1 auto!important;min-height:0!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;transform:none!important;filter:none!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents>.recentChatList{display:contents!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .recentChat{
+  display:grid!important;grid-template-columns:30px minmax(0,1fr)!important;grid-template-rows:auto auto!important;
+  column-gap:9px!important;row-gap:1px!important;align-items:start!important;position:relative!important;
+  width:100%!important;max-width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;
+  box-sizing:border-box!important;margin:0 0 1px!important;padding:7px 9px!important;border:0!important;
+  overflow:hidden!important;transform:none!important;filter:none!important;float:none!important;
+}
+html[data-claude-mode="compat"] body .clawd-rail-recents .recentChat>.avatar{grid-column:1!important;grid-row:1/span 2!important;display:block!important;position:static!important;width:30px!important;height:30px!important;min-width:30px!important;max-width:30px!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;transform:none!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .recentChat>.avatar img{width:100%!important;height:100%!important;min-width:0!important;max-width:100%!important;object-fit:cover!important;display:block!important;margin:0!important;padding:0!important;border:0!important;transform:none!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .recentChat>.recentChatInfo{grid-column:2!important;grid-row:1/span 2!important;display:block!important;position:static!important;min-width:0!important;max-width:100%!important;width:auto!important;height:auto!important;margin:0!important;padding:0!important;overflow:hidden!important;transform:none!important;float:none!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .chatNameContainer{display:block!important;position:static!important;min-width:0!important;max-width:100%!important;width:auto!important;height:auto!important;max-height:none!important;margin:0!important;padding:0!important;overflow:hidden!important;transform:none!important;float:none!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .chatName{
+  display:block!important;position:static!important;width:auto!important;margin:0!important;padding:0 34px 0 0!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+  font-size:12.5px!important;line-height:1.35!important;transform:none!important;float:none!important;
+}
+html[data-claude-mode="compat"] body .clawd-rail-recents .chatName>*{display:inline!important;float:none!important;position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;line-height:inherit!important;transform:none!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .chatPreview{
+  display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;
+  position:static!important;width:auto!important;max-width:100%!important;height:auto!important;max-height:none!important;
+  margin:1px 0 0!important;padding:0!important;overflow:hidden!important;white-space:normal!important;
+  font-size:11.5px!important;line-height:1.4!important;transform:none!important;float:none!important;
+}
+html[data-claude-mode="compat"] body .clawd-rail-recents :is(.chatDate,.chatMeta,small,.timestamp){display:none!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .chatActions{
+  position:absolute!important;top:5px!important;right:5px!important;left:auto!important;bottom:auto!important;
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:2px!important;
+  width:auto!important;height:20px!important;margin:0!important;padding:0!important;transform:none!important;float:none!important;
+  opacity:0!important;transition:opacity 120ms ease!important;
+}
+html[data-claude-mode="compat"] body .clawd-rail-recents .recentChat:hover .chatActions,
+html[data-claude-mode="compat"] body .clawd-rail-recents .recentChat:focus-within .chatActions{opacity:.85!important}
+html[data-claude-mode="compat"] body .clawd-rail-recents .chatActions button{
+  position:static!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:20px!important;min-width:20px!important;height:20px!important;min-height:20px!important;
+  margin:0!important;padding:0!important;border:0!important;
+  font-size:11px!important;line-height:1!important;transform:none!important;float:none!important;
+}
+}
+
+/* ---- 3. 输入框：显式三槽，且停止键交回酒馆控制 ---- */
+@media (min-width:701px){
+html[data-claude-mode="compat"] body #send_form>#nonQRFormItems{flex:1 1 100%!important;order:0!important}
+/* 真机实测：空的 #qr--bar（h=0、无子元素）和 #nonQRFormItems 平分了 760px 输入框（368:368），
+   textarea 只剩 232px。有快捷回复时同排还会再抢一次（实测 textarea 掉到 400px）。
+   所以不是隐藏空条就完了：让 #send_form 换行，快捷回复条独占上面一行。
+   实测（1600px，六主题）：空条时 textarea 598px，三个快捷回复时仍是 598px。 */
+html[data-claude-mode="compat"] body #send_form{flex-wrap:wrap!important;align-items:center!important}
+html[data-claude-mode="compat"] body #send_form>#qr--bar{
+  flex:0 0 100%!important;order:-1!important;width:100%!important;min-width:0!important;max-width:100%!important;
+  margin:0 0 4px!important;padding:0!important;
+}
+html[data-claude-mode="compat"] body #send_form>#qr--bar:empty{display:none!important;margin:0!important}
+/* #file_form 平时 display:none，但别的扩展也可能往 #send_form 塞兄弟节点；
+   凡是不认识的直接子元素一律不许伸展，免得再来一次平分。 */
+html[data-claude-mode="compat"] body #send_form>*:not(#nonQRFormItems):not(#qr--bar){flex:0 0 auto!important}
+html[data-claude-mode="compat"] body #leftSendForm{order:1!important}
+html[data-claude-mode="compat"] body #send_textarea{order:2!important}
+html[data-claude-mode="compat"] body #rightSendForm{order:3!important}
+html[data-claude-mode="compat"] body :is(#leftSendForm,#rightSendForm)>*:not(#send_but):not(#mes_stop){
+  flex:0 0 30px!important;width:30px!important;min-width:30px!important;height:34px!important;min-height:34px!important;
+  margin:0!important;padding:0!important;position:static!important;transform:none!important;
+}
+/* 停止键：只换皮，一条 display 都不写，显隐完全交回酒馆 */
+html[data-claude-mode="compat"] body #rightSendForm #mes_stop,
+html[data-claude-mode="compat"] body.claude-generation-active #rightSendForm #send_but{
+  align-items:center!important;justify-content:center!important;box-sizing:border-box!important;
+  flex:0 0 34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;max-height:34px!important;
+  padding:0!important;transform:none!important;
+}
+html[data-claude-mode="compat"] body :is(#send_but,#rightSendForm #mes_stop){transform:none!important;translate:none!important;scale:none!important;rotate:none!important}
+}
