@@ -4,13 +4,15 @@ const csstree = require('css-tree');
 const { JSDOM } = require('jsdom');
 
 const root = path.resolve(__dirname, '..');
-const cssPath = path.join(root, 'styles', 'compat.css');
+/* 2.0.86：兼容样式表分了明暗两份，结构断言跑白天那份，
+   夜间那份只校验存在且规则数一致（两份出自同一个生成器、同一套区域清单）。 */
+const cssPath = path.join(root, 'styles', 'compat-day.css');
+const nightCssPath = path.join(root, 'styles', 'compat-night.css');
 const fixturePath = path.join(root, '_dev', 'fixture.html');
-const patchPath = path.join(root, '_dev', 'compat-structure-patch.css');
 const runtimePath = path.join(root, 'index.js');
 const css = fs.readFileSync(cssPath, 'utf8');
+const nightCss = fs.readFileSync(nightCssPath, 'utf8');
 const fixture = fs.readFileSync(fixturePath, 'utf8');
-const structurePatch = fs.readFileSync(patchPath, 'utf8');
 const runtime = fs.readFileSync(runtimePath, 'utf8');
 const ast = csstree.parse(css);
 const errors = [];
@@ -48,7 +50,7 @@ csstree.walk(ast, {
 const topLevelLayers = ast.children.toArray().filter(node => node.type === 'Atrule' && node.name === 'layer');
 if (topLevelLayers.length !== 1 || normalize(csstree.generate(topLevelLayers[0].prelude)) !== 'cw-frame'
   || !topLevelLayers[0].block) {
-  errors.push('compat.css must contain one top-level @layer cw-frame block');
+  errors.push('compat-day.css must contain one top-level @layer cw-frame block');
 }
 
 const resetRules = rules.filter(rule => rule.declarations.some(declaration =>
@@ -58,8 +60,10 @@ const resetSelectors = resetRules.flatMap(rule => rule.selectors);
 if (!resetSelectors.every(selector => selector.includes(':where('))) {
   errors.push('owned-subtree reset must use low-specificity :where()');
 }
-if (resetSelectors.some(selector => selector.includes('.drawer-content'))) {
-  errors.push('owned-subtree reset must not include .drawer-content');
+/* 归零可以覆盖 .drawer-content 这个盒子本身（面板整块归框架，2.0.86 定的边界），
+   但绝不能覆盖它的后代：那些是酒馆原生控件，归零会把酒馆自己的基础样式一起断掉。 */
+if (resetSelectors.some(selector => /\.drawer-content\s*[\s>+~*]/.test(selector))) {
+  errors.push('owned-subtree reset must not reach .drawer-content descendants');
 }
 if (resetSelectors.some(selector => selector.includes('#chat') && !selector.includes('body.clawd-welcome'))) {
   errors.push('owned-subtree reset may include #chat only as the welcome-state container');
@@ -86,12 +90,12 @@ const required = [
   ['#leftSendForm', 'order', '1'],
   ['#send_textarea', 'order', '2'],
   ['#rightSendForm', 'order', '3'],
-  ['.chatActions', 'position', 'absolute'],
   ['.chatName', 'white-space', 'nowrap'],
   ['.chatName', 'text-overflow', 'ellipsis'],
-  ['.chatPreview', '-webkit-line-clamp', '2'],
+  /* .chatDate / .chatPreview / .chatActions 的显隐和定位不再单独断言：
+     2.0.86 起兼容模式的验收标准是「和完整模式一致」，完整模式怎么画就怎么画，
+     由 tools/compat-vs-full-check.js 统一对拍。这里只留框架必须拥有的几何。 */
   ['.chatMeta', 'display', 'none'],
-  ['.chatDate', 'display', 'none'],
   ['#qr--bar:empty', 'display', 'none'],
   ['body.clawd-welcome #send_form', 'display', 'grid'],
 ];
@@ -109,9 +113,30 @@ for (const rule of rules) {
 }
 
 if (/@media\s*\(max-width\s*:\s*0px\)/.test(css)) errors.push('legacy max-width:0px block still exists');
-if (/(?:transform|filter|translate|scale|rotate)\s*:\s*none\s*!important|float\s*:\s*none\s*!important|position\s*:\s*static\s*!important/i.test(structurePatch)) {
-  errors.push('compat-structure-patch.css still contains defensive property declarations');
+
+/* 2.0.86 拆掉的东西不许回来：手写结构补丁、背板机制。
+   它们都是「属性过滤器筛掉了外壳的外观」这个前提下的产物，前提没了就不该再出现。 */
+if (fs.existsSync(path.join(root, '_dev', 'compat-structure-patch.css'))) {
+  errors.push('compat-structure-patch.css should be gone: 外壳规则一律写进 day-pc.css，由生成器搬运');
 }
+if (/clawd-surface-backing|clawd-surface-host/.test(css)) {
+  errors.push('compat CSS still contains the surface backing hack');
+}
+if (/backing\.setAttribute\(/.test(runtime)) {
+  errors.push('runtime still injects surface backing elements');
+}
+
+/* 外壳整块归框架的直接体现：这三处必须有真实背景色，不再靠背板顶。 */
+for (const [selectorPart, property] of [
+  ['#top-settings-holder', 'background'],
+  ['.drawer-content', 'background'],
+  ['#send_form', 'background'],
+]) {
+  if (!hasDeclaration(selectorPart, property)) {
+    errors.push(`compat CSS missing real ${property} on ${selectorPart}`);
+  }
+}
+
 for (const runtimeFragment of [
   "const LAYER_ORDER_ID = 'claude-layer-order'",
   "layerOrder.textContent = '@layer cw-frame, st-theme;'",
@@ -119,15 +144,15 @@ for (const runtimeFragment of [
   '@layer st-theme {',
   'layer(st-theme)',
   "new hostWindow.MutationObserver(() =>",
-  "backing.setAttribute('aria-hidden', 'true')",
+  "'styles/compat-' + CLAUDE_THEME_VARIANT + '.css'",
 ]) {
   if (!runtime.includes(runtimeFragment)) errors.push(`runtime missing ${runtimeFragment}`);
 }
-for (const surfaceFragment of [
-  '.clawd-surface-host>.clawd-surface-backing',
-  'background-color:Canvas!important',
-]) {
-  if (!css.includes(surfaceFragment)) errors.push(`surface backing CSS missing ${surfaceFragment}`);
+
+const nightRuleCount = (nightCss.match(/\{/g) || []).length;
+const dayRuleCount = (css.match(/\{/g) || []).length;
+if (nightRuleCount !== dayRuleCount) {
+  errors.push(`compat-night.css 与 compat-day.css 规则数不一致 (${nightRuleCount} vs ${dayRuleCount})`);
 }
 for (const fragment of ['id="qr--bar"', 'id="nonQRFormItems"', 'recentList.className = "recentChatList"', 'id="persona-management-button"']) {
   if (!fixture.includes(fragment)) errors.push(`fixture missing ${fragment}`);
@@ -137,7 +162,7 @@ for (const fragment of ['id="qr--bar"', 'id="nonQRFormItems"', 'recentList.class
    图标可见性回归测试（这一轮的直接回归目标）。
    2.0.84 的教训：外框全对、图标全没——图标可见性必须是断言，不能靠看截图。
 
-   做法：对 cw-frame（compat.css）+ 每份主题的 custom_css（视作 st-theme 层）
+   做法：对 cw-frame（compat-day.css）+ 每份主题的 custom_css（视作 st-theme 层）
    做一次简化的层叠裁决，只看会决定图标观感的五个属性
    （background-image / mask-image / -webkit-mask-image / content / color），
    判定每个 .drawer-icon（含 ::before）最终是"主题画了图标"还是
@@ -250,11 +275,11 @@ if (!fs.existsSync(themesDir)) {
 
   // cw-frame 的图标相关声明：tier 3（最高，代表最早层的 !important 恒赢）。
   // 构建期断言 4 已经保证这里不会命中 background-image/mask-image/content/color——
-  // 这里再算一遍纯粹是防止有人绕过 build 脚本手改 compat.css。
+  // 这里再算一遍纯粹是防止有人绕过 build 脚本手改 compat-day.css。
   const frameIconItems = collectIconDeclarations(css, 0, 3);
   const frameForbiddenHit = frameIconItems.find(item => item.tier === 3);
   if (frameForbiddenHit) {
-    errors.push(`compat.css 在 .drawer-icon 上仍有换皮通道声明（应交给主题）: ${frameForbiddenHit.property}`);
+    errors.push(`compat-day.css 在 .drawer-icon 上仍有换皮通道声明（应交给主题）: ${frameForbiddenHit.property}`);
   }
 
   const dom = new JSDOM(fixture);

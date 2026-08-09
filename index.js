@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.85-compat-important-fix-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.86-compat-region-ownership-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -331,9 +331,11 @@ const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web';
 
 const CLAUDE_THEME = CLAUDE_THEMES[CLAUDE_THEME_VARIANT];
 
+/* 兼容模式从 2.0.86 起也分明暗：外壳整块用 Claude 自己的皮肤，
+   那就必须跟着明暗开关走，否则深色美化配一条亮白侧栏。 */
 const CLAUDE_STYLE_URL = new URL(
   CLAUDE_COMPAT_MODE
-    ? 'styles/compat.css'
+    ? 'styles/compat-' + CLAUDE_THEME_VARIANT + '.css'
     : 'styles/' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '.css',
   CLAUDE_EXTENSION_BASE,
 );
@@ -1730,6 +1732,10 @@ if (CLAUDE_ENABLED) {
   const PRESET_REASONING_CLASS = 'claude-has-preset-reasoning';
   const SWIPE_VIEW_CLASS = 'claude-swipe-in-viewport';
   const USER_ACTIONS_CLASS = 'claude-user-message-actions';
+  /* R3「表面自持」在 2.0.86 拆掉了。它存在的理由是属性过滤器把外壳的背景色筛掉了，
+     于是要靠注入一个背板子元素把面板重新填成不透明。生成器改成区域制之后，
+     真正的 background 直接从 day-pc.css 搬过来，背板没有用了。
+     这两个类名保留是为了 destroy() 能清掉旧版本残留在页面上的节点。 */
   const SURFACE_BACKING_CLASS = 'clawd-surface-backing';
   const SURFACE_HOST_CLASS = 'clawd-surface-host';
   const USER_EDIT_CLASS = 'claude-user-message-edit';
@@ -7184,36 +7190,17 @@ if (CLAUDE_ENABLED) {
   let refreshing = false;
   let dirtyWhileRefreshing = false;
 
+  /* 只负责清扫：把 2.0.85 及更早版本留在页面上的背板节点摘掉。
+     不再注入任何新的背板 —— 外壳的不透明由 compat-*.css 里真实的 background 负责。
+     3.2「抽屉面板底部透明」就是背板 position:absolute 装在滚动容器里的产物，
+     背板拆掉之后那条自然消失。 */
   function refreshCompatibilitySurfaceBackings() {
-    const previousHosts = [...hostDocument.querySelectorAll(`.${SURFACE_HOST_CLASS}`)];
-    if (!frameworkCompatibilityMode || isMobileLayout()) {
-      previousHosts.forEach(host => {
-        host.classList.remove(SURFACE_HOST_CLASS);
-        host.querySelector(`:scope > .${SURFACE_BACKING_CLASS}`)?.remove();
-      });
-      return;
-    }
-    const targets = [
-      hostDocument.querySelector('#top-settings-holder'),
-      ...hostDocument.querySelectorAll('#top-settings-holder > .drawer > .drawer-content'),
-      hostDocument.querySelector('#send_form'),
-      hostDocument.body.classList.contains('clawd-welcome') ? hostDocument.querySelector('#sheld') : null,
-    ].filter(Boolean);
-    const targetSet = new Set(targets);
-    previousHosts.filter(host => !targetSet.has(host)).forEach(host => {
+    const staleHosts = hostDocument.querySelectorAll(`.${SURFACE_HOST_CLASS}`);
+    if (!staleHosts.length) return;
+    staleHosts.forEach(host => {
       host.classList.remove(SURFACE_HOST_CLASS);
       host.querySelector(`:scope > .${SURFACE_BACKING_CLASS}`)?.remove();
     });
-    for (const host of targets) {
-      host.classList.add(SURFACE_HOST_CLASS);
-      let backing = host.querySelector(`:scope > .${SURFACE_BACKING_CLASS}`);
-      if (!backing) {
-        backing = hostDocument.createElement('div');
-        backing.className = SURFACE_BACKING_CLASS;
-        backing.setAttribute('aria-hidden', 'true');
-        host.prepend(backing);
-      }
-    }
   }
 
   /* 5.11 第一版在这里 disconnect / observe，那是错的：
