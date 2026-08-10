@@ -155,8 +155,14 @@ const ROOT_PAINT = new Set([
   'background', 'background-image', 'background-color', 'color', 'color-scheme',
   'font-family', 'text-shadow', 'transition', '-webkit-tap-highlight-color',
 ]);
+/* 跟 _dev/build-compat-css.js 里的 SKIN_CHANNEL_PROPERTIES 保持一致，改一边要改两边。
+   2.0.103 补了 mask / -webkit-mask 两个简写，以及 background / background-color ——
+   .drawer-icon 本身带蒙版，它上面的任何底色都是被抠过的图案，不是盒子的高亮。
+   只丢蒙版留底色，图标会变成一整块实心方块（2.0.102 及之前兼容模式的表现）。 */
 const SKIN_CHANNEL = new Set([
   'background-image', 'mask-image', '-webkit-mask-image', 'content', 'color',
+  'mask', '-webkit-mask',
+  'background', 'background-color',
 ]);
 
 function isExpectedGap(element, property) {

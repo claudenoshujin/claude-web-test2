@@ -68,9 +68,29 @@ const ROOT_ALLOWED = new Set([
 const CONTAINER_ONLY_SUBJECT = /^#(?:chat|sheld)$/;
 const CONTAINER_PAINT = /^(?:background|backdrop-filter|-webkit-backdrop-filter|box-shadow|border|outline|color|filter|opacity)(?:-|$)/;
 
-/* 换皮插槽：主题写了图标就用主题的，没写就让 Font Awesome 的字形自然显示。 */
+/* 换皮插槽：主题写了图标就用主题的，没写就让 Font Awesome 的字形自然显示。
+ *
+ * 2.0.103 补了三类，起因是兼容模式下所有侧栏图标都变成实心方块：
+ *
+ *   1. `mask` / `-webkit-mask` 两个简写。day-*.css 里 .drawer-icon::before 用的是
+ *      简写，只列长写会整条漏掉。
+ *   2. `background` / `background-color`。这是黑方块的直接原因 ——
+ *      day-mobile.css 里每个图标都是「底色铺满 24px 盒子 + 蒙版抠出形状」：
+ *        background-color:var(--cl-rail-icon,currentColor);
+ *        mask-image:url(../icons/01-presets.svg);
+ *      生成器把 mask-image 丢进换皮通道、把 background-color 留下了，
+ *      于是镂空板没了、墨还在，整块糊死。
+ *
+ * 关键认识：`.drawer-icon` 这个元素本身是带蒙版的，所以它上面的**任何** background
+ * 都是被抠过的图案，没有一条是「盒子的悬停高亮」。`:hover{background:var(--cw-surface-hover)}`
+ * 和 `.openIcon{background-color:var(--cl-accent)}` 都属于「图标变色」，一样归主题。
+ * 框架在这个插槽上只锁盒子（位置、尺寸、background-position/size/repeat 这些排布属性），
+ * 一滴墨都不许下。
+ */
 const SKIN_CHANNEL_PROPERTIES = new Set([
   'background-image', 'mask-image', '-webkit-mask-image', 'content', 'color',
+  'mask', '-webkit-mask',
+  'background', 'background-color',
 ]);
 
 const WELCOME_PLACEHOLDER_SELECTOR =
