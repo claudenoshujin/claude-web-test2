@@ -1,7 +1,10 @@
 /* Claude Web 2.0 —— SillyTavern 扩展形态入口。
  *
- * 这个文件由 tools/build-extension.js 生成，不要手改。
- * 真正的源码在仓库的 src/ 下，改完跑 node tools/build-extension.js 重出。
+ * 【2026-08-10 更正】这个文件现在就是源码，直接改它。
+ * 上面那句「由 tools/build-extension.js 生成、真正的源码在 src/」已经作废：
+ * src/clawd-interaction.js 停在 2026-08-08，整个兼容框架（frameworkCompatibilityMode、
+ * 区域制生成器、手机端接管）都只写在这里。跑一次 build-extension.js 会把它们全冲掉。
+ * 要么先把 src/ 补齐再恢复那套流程，要么把 tools/build-extension.js 删掉。
  *
  * 设置在酒馆的「扩展」面板里，标题 Claude Web。
  * 底层存的是 localStorage，因为这个文件在模块求值时就要读出 variant/layout
@@ -129,6 +132,7 @@ try {
     ['claudemode', 'mode', ['full', 'compat']],
     ['claudelayout', 'layout', ['auto', 'pc', 'mobile']],
     ['claude', 'enabled', ['on', 'off']],
+    ['claudekbddiag', 'kbdDiag', ['on', 'off']],
   ];
   for (const [param, key, allowed] of wanted) {
     const value = escapeQuery.get(param);
@@ -143,6 +147,11 @@ const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'of
    外部主题继续负责配色、字体、背景、欢迎页和消息内容。 */
 const CLAUDE_COMPAT_REQUESTED = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
 const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
+/* Via 输入框几何诊断器（右上角那个「诊断」胶囊）。默认关。
+   它自己的守卫是「只在手机布局出现」，而手机端兼容模式到 2.0.101 才第一次真正
+   跑起来，所以以前从没露过面，一开就变成常驻遮挡。需要时用 ?claudekbddiag=on
+   打开、?claudekbddiag=off 关掉（跟其他逃生口一样写 localStorage，永久生效）。 */
+const CLAUDE_KBD_DIAG_ENABLED = claudeReadSetting('kbdDiag', ['on', 'off'], 'off') === 'on';
 const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'], 'on') !== 'off';
 /* 生成计时器默认关（2.0.33 起改的，原来默认开）。
    原因是性能：这个徽标是 position:fixed + z-index:10015 + 18px 扩散阴影，
@@ -353,7 +362,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.101-compat-mobile-chrome-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.102-root-containing-block-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -7887,7 +7896,7 @@ if (CLAUDE_ENABLED) {
     hostDocument.addEventListener('focusout', handleFocusOut, true);
     hostWindow.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
     hostWindow.visualViewport?.addEventListener('scroll', handleViewportChange, { passive: true });
-    keyboardDiagnostics = installKeyboardDiagnostics({
+    keyboardDiagnostics = !CLAUDE_KBD_DIAG_ENABLED ? null : installKeyboardDiagnostics({
       window: hostWindow,
       document: hostDocument,
       buildId: KEYBOARD_BUILD.id,

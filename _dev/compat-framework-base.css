@@ -6,6 +6,34 @@
  * <variant>-mobile.css，生成器会自动搬。写在这里的每一条都是手工维护成本。
  */
 
+/* ---- 根元素不许当定位基准 ----
+ *
+ * 为什么完整模式不需要：完整模式用的是框架自己那套主题，没有外部 CSS 会去
+ * 动 html/body 的合成属性。
+ * 为什么兼容模式需要：只要 html 或 body 上出现 transform / perspective /
+ * filter / backdrop-filter / contain / will-change 里的任意一个（哪怕值是
+ * 单位矩阵、什么都不做），它就会成为所有 position:fixed 后代的定位基准。
+ * 外壳里 #form_sheld、#top-bar、#top-settings-holder、手机汉堡全是 fixed，
+ * 一旦基准从视口换成根元素，它们的 bottom/top 就改为相对根元素的盒子解算 ——
+ * 而 body 一旦是 fixed，html 的高度就是 0，于是 bottom:0 把输入框顶到
+ * y=-124（实测：草木青时 + 兼容 + 手机，#form_sheld 整个跑到视口上方外面）。
+ *
+ * 这不是给某个主题打补丁：这六个属性里任何一个落在根上，症状都一模一样，
+ * 所以按整类堵，而不是逐个主题枚举。合成属性属于结构，归框架；主题要做
+ * 视觉效果，往下一层的容器上写。
+ *
+ * 2.0.85 那次查浮窗拖拽卡顿时其实已经撞见过同一件事，当时只做成了
+ * 诊断器里的 isolation 开关（index.js 的 DIAGNOSTIC_COMPOSITOR_STYLE_ID），
+ * 没有变成常规防护。这里补上。 */
+html[data-claude-mode="compat"],
+html[data-claude-mode="compat"] body{
+  transform:none;perspective:none;
+  filter:none;-webkit-filter:none;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  contain:none;will-change:auto;
+}
+
+
 /* ---- 侧栏条目：锁成竖排 ----
  *
  * 为什么完整模式不需要：没有外部主题的时候，酒馆默认就是这个形态。
