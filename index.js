@@ -331,7 +331,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.99b-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.99c-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -416,7 +416,18 @@ if (new URLSearchParams(location.search).has('shellcheck')) {
     document.getElementById('claude-shellcheck')?.remove();
     document.body.appendChild(pre);
   };
-  window.addEventListener('load', () => setTimeout(dumpShell, 2500));
+  /* 不能用 window.addEventListener('load')：酒馆的扩展是 load 之后才 import 进来的，
+     那个事件早就过去了，监听器永远不会触发 —— 第一版就是这么空跑的。
+     这里直接排定时器，并且量两次：2.5 秒看首屏，7 秒看外壳建完之后。 */
+  const schedule = () => {
+    setTimeout(dumpShell, 2500);
+    setTimeout(dumpShell, 7000);
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', schedule, { once: true });
+  } else {
+    schedule();
+  }
 }
 
 /* 总开关。关掉之后除了设置面板什么都不跑 ——
