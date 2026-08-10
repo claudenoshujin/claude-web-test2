@@ -6417,3 +6417,51 @@ html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !imp
     left:510px !important; width:auto !important; right:248px !important;
   }
 }
+
+/* 2.0.99 手机端：消息里塞进来的第三方内容比列宽还宽时，给它自己一条横向滚动条。
+
+   背景：手机端 html/body 和 #chat 都是 overflow-x:hidden（防止整页横向漂移，
+   这条必须留着）。代价是任何超宽内容被静默裁掉，用户既看不见也划不到。
+   状态栏类脚本会自己量 #chat 宽度再写死 px 宽度，内部还有 min-width 和
+   flex-wrap:nowrap 的行，超宽是常态。
+
+   做法：把滚动条放在超宽的那个块自己身上，而不是放宽 #chat / body。
+   不超宽时 overflow-x:auto 不产生任何视觉变化，所以这条对正常消息是零影响。
+   排除清单是酒馆自己的消息部件——它们由框架排版，不该变成滚动容器。
+   注意副作用：滚动容器会裁掉溢出到框外的绝对定位子元素（下拉菜单、气泡）。
+   caikis 状态栏把弹层挂在 body 下，不受影响；别的插件如果把弹层留在块内会被裁。 */
+@media (max-width:700px) {
+  html body:not(.clawd-welcome) #chat > .mes .mes_block > :not(.ch_name):not(.mes_text):not(.mes_reasoning_details):not(.mes_buttons):not(.mes_edit_buttons):not(.swipeRightBlock):not(.mes_img_container):not(.mesIDDisplay),
+  html body:not(.clawd-welcome) #chat > .mes .mes_text > :is(table, pre, .clawd-scroll-x) {
+    max-width:100% !important;
+    overflow-x:auto !important;
+    overscroll-behavior-x:contain !important;
+    touch-action:pan-x pan-y !important;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    scrollbar-color:var(--cw-rule-strong) transparent;
+  }
+  /* 手机默认是覆盖式滚动条，不划就看不见，用户不知道右边还有内容。
+     这里让它常驻，细一点。 */
+  html body:not(.clawd-welcome) #chat > .mes .mes_block > :not(.ch_name):not(.mes_text):not(.mes_reasoning_details):not(.mes_buttons):not(.mes_edit_buttons):not(.swipeRightBlock):not(.mes_img_container):not(.mesIDDisplay)::-webkit-scrollbar,
+  html body:not(.clawd-welcome) #chat > .mes .mes_text > :is(table, pre, .clawd-scroll-x)::-webkit-scrollbar {
+    height:5px !important;
+    -webkit-appearance:none;
+  }
+  html body:not(.clawd-welcome) #chat > .mes .mes_block > :not(.ch_name):not(.mes_text):not(.mes_reasoning_details):not(.mes_buttons):not(.mes_edit_buttons):not(.swipeRightBlock):not(.mes_img_container):not(.mesIDDisplay)::-webkit-scrollbar-thumb,
+  html body:not(.clawd-welcome) #chat > .mes .mes_text > :is(table, pre, .clawd-scroll-x)::-webkit-scrollbar-thumb {
+    background:var(--cw-rule-strong) !important;
+    border-radius:3px !important;
+  }
+  html body:not(.clawd-welcome) #chat > .mes .mes_block > :not(.ch_name):not(.mes_text):not(.mes_reasoning_details):not(.mes_buttons):not(.mes_edit_buttons):not(.swipeRightBlock):not(.mes_img_container):not(.mesIDDisplay)::-webkit-scrollbar-track,
+  html body:not(.clawd-welcome) #chat > .mes .mes_text > :is(table, pre, .clawd-scroll-x)::-webkit-scrollbar-track {
+    background:transparent !important;
+  }
+
+  /* 顺手把左右占位收窄：正文本来就顶到左边缘，只有 .mes 自己还留着 8px。
+     手机端一寸都不宽裕，收到 4px，左右各多出 4px 给正文。 */
+  html body:not(.clawd-welcome) #chat > .mes {
+    padding-left:4px !important;
+    padding-right:4px !important;
+  }
+}
