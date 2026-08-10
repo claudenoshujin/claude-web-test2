@@ -93,6 +93,43 @@ const SKIN_CHANNEL_PROPERTIES = new Set([
   'background', 'background-color',
 ]);
 
+/* 2.0.104：图案的**排布**也不能从源文件搬。
+ *
+ * day-*.css 里图标是这么摆的：`.drawer-icon` 是 inset:0 的整行宽盒子、padding-left:11px，
+ * 于是 `background-position:11px center` 正好落在行内缩进上。
+ * 但兼容模式下 compat-framework-base.css 把插槽改成了 24×24、left:8px、overflow:hidden ——
+ * 11px 起画一张 22px 宽的图，右边界到 33px，盒子只有 24px，看得见的只剩六成。
+ * （实测雨中曲 / 狸猫：bg-pos 11px 50%，width 24px，left 8px，图标只有一半。）
+ *
+ * 而且 base 改不动它：搬过来那条带 `:is(#ai-config-button,…)` 一串 id，权重压过 base。
+ * 所以坐标系归谁定，就由谁全包：兼容模式下插槽是 base 定的，排布也由 base 写
+ * （center / no-repeat / contain），源文件那套一律不搬。
+ *
+ * 这一组只在 renderGroup 里丢，不进 SKIN_CHANNEL_PROPERTIES ——
+ * 否则 base 自己声明的 background-position:center 会被生成期断言 3 判成违规。 */
+const ICON_BOX_LAYOUT_PROPERTIES = new Set([
+  'background-position', 'background-position-x', 'background-position-y',
+  'background-size', 'background-repeat', 'background-origin', 'background-clip',
+  'mask-position', 'mask-size', 'mask-repeat', 'mask-origin', 'mask-clip',
+  '-webkit-mask-position', '-webkit-mask-size', '-webkit-mask-repeat',
+  '-webkit-mask-origin', '-webkit-mask-clip',
+]);
+
+/* `.drawer-icon::before` 上的 display 是「关掉字形」的开关，属于换皮抑制。
+ *
+ * 完整模式下框架自己用蒙版在元素上画图标，所以要把 Font Awesome 的字形关掉，
+ * `::before{display:none}` 是对的。兼容模式下元素上的图案已经归主题了，再把字形
+ * 关掉就等于连最后的退路一起砍掉 —— 实测天使爱、草木青时完全没有图标，就是这条。
+ *
+ * 放开之后两类主题各自正确，不需要框架判断：
+ *   · 用图片画图标的（狸猫、雨中曲）自己把 content 清成了空串，字形不会冒出来
+ *   · 用字形的（天使爱、草木青时）content 里有字形，正常显示
+ *
+ * 只对 ::before 生效。元素本身的 display 不能碰 ——
+ * `#persona-management-button>.drawer-toggle>.drawer-icon{display:none}` 是有意隐藏
+ * 某个抽屉的图标，丢了会让它冒出来。 */
+const ICON_GLYPH_SUPPRESSION_PROPERTIES = new Set(['display']);
+
 const WELCOME_PLACEHOLDER_SELECTOR =
   'html[data-claude-mode="compat"] body.clawd-welcome #chat>:is(.welcomePanel,.mes[type="assistant_message"],.mes[type="welcome_prompt"])';
 
@@ -201,6 +238,12 @@ function isDrawerIconSubject(selector) {
   return /\.drawer-icon\b/.test(selectorSubject(selector));
 }
 
+/* 主语是 .drawer-icon 的 ::before（换皮插槽里画字形的那一层）。 */
+function isDrawerIconPseudoSubject(selector) {
+  const subject = selectorSubject(selector);
+  return /\.drawer-icon\b/.test(subject) && /::?before\b/.test(subject);
+}
+
 function scopeSelector(selector) {
   const value = String(selector).trim();
   if (/html\[data-claude-mode=["']compat["']\]/.test(value)) return value;
@@ -267,6 +310,7 @@ function renderGroup(node, kept, containerOnly) {
   if (!kept.length) return '';
   const rootOnly = kept.every(isRootLevel);
   const iconSlot = kept.some(isDrawerIconSubject);
+  const iconGlyphLayer = kept.some(isDrawerIconPseudoSubject);
   const declarations = node.block.children.toArray()
     .filter(child => child.type === 'Declaration')
     .filter(child => {
@@ -275,6 +319,8 @@ function renderGroup(node, kept, containerOnly) {
       if (rootOnly) return ROOT_ALLOWED.has(property);
       if (containerOnly && CONTAINER_PAINT.test(property)) return false;
       if (iconSlot && SKIN_CHANNEL_PROPERTIES.has(property)) return false;
+      if (iconSlot && ICON_BOX_LAYOUT_PROPERTIES.has(property)) return false;
+      if (iconGlyphLayer && ICON_GLYPH_SUPPRESSION_PROPERTIES.has(property)) return false;
       return true;
     })
     .map(child => csstree.generate(child));

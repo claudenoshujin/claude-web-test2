@@ -71,7 +71,15 @@ html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle
   flex:0 0 24px;width:24px;min-width:24px;max-width:24px;
   height:24px;min-height:24px;max-height:24px;
   margin:0;padding:0;transform:translateY(-50%);
+  /* 图案的排布归框架：插槽是这里定的 24px 方格，坐标系也必须由这里定。
+     源文件那套 `background-position:11px center` 是给完整模式的整行宽盒子写的，
+     照搬进 24px 方格会把图标推出右边界、被 overflow 切掉六成（2.0.103 及之前
+     雨中曲 / 狸猫「图标只有一半」就是这么来的）。生成器已经不再搬这一组，
+     见 build-compat-css.js 的 ICON_BOX_LAYOUT_PROPERTIES。
+     蒙版和背景图两条通道都要写全 —— 主题用哪种画法都不该错位。 */
   background-position:center;background-repeat:no-repeat;background-size:contain;
+  -webkit-mask-position:center;-webkit-mask-repeat:no-repeat;-webkit-mask-size:contain;
+  mask-position:center;mask-repeat:no-repeat;mask-size:contain;
   overflow:hidden;
 }
 html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before{
