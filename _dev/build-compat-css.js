@@ -55,6 +55,13 @@ const ROOT_ALLOWED = new Set([
   'overflow-x', 'overscroll-behavior-x', 'overscroll-behavior',
 ]);
 
+/* #chat / #sheld 是对话区的容器：框架只管它们的几何（位置、尺寸、留给侧栏的
+   内边距），上色归主题。实测雨中曲的「黄卡片浮在白底上」就是这里来的 ——
+   酒馆自己有 #chat{background:var(--SmartThemeChatTintColor)}（主题的黄），
+   被我们搬过来的 #chat{background:transparent} 顶掉了。 */
+const CONTAINER_ONLY_SUBJECT = /^#(?:chat|sheld)$/;
+const CONTAINER_PAINT = /^(?:background|backdrop-filter|-webkit-backdrop-filter|box-shadow|border|outline|color|filter|opacity)(?:-|$)/;
+
 /* 换皮插槽：主题写了图标就用主题的，没写就让 Font Awesome 的字形自然显示。 */
 const SKIN_CHANNEL_PROPERTIES = new Set([
   'background-image', 'mask-image', '-webkit-mask-image', 'content', 'color',
@@ -196,6 +203,22 @@ function renderRule(node) {
     .flatMap(selector => (isShellAnchored(selector) ? [selector] : anchorSelector(selector)));
   if (!kept.length) return '';
 
+  /* 一条规则里可能既有 #chat 又有别的主语（day-pc.css 里 `#sheld,#chat,.foo{...}`
+     这种写法很多）。整条按「是不是容器」判断会一刀切错，所以按主语拆成两组，
+     各自套各自的声明过滤。 */
+  const containerSelectors = kept.filter(selector => CONTAINER_ONLY_SUBJECT.test(selectorSubject(selector)));
+  const otherSelectors = kept.filter(selector => !CONTAINER_ONLY_SUBJECT.test(selectorSubject(selector)));
+  if (containerSelectors.length && otherSelectors.length) {
+    return [
+      renderGroup(node, containerSelectors, true),
+      renderGroup(node, otherSelectors, false),
+    ].filter(Boolean).join('\n');
+  }
+  return renderGroup(node, kept, containerSelectors.length > 0);
+}
+
+function renderGroup(node, kept, containerOnly) {
+  if (!kept.length) return '';
   const rootOnly = kept.every(isRootLevel);
   const iconSlot = kept.some(isDrawerIconSubject);
   const declarations = node.block.children.toArray()
@@ -204,6 +227,7 @@ function renderRule(node) {
       const property = String(child.property).toLowerCase();
       if (property.startsWith('--')) return !(rootOnly && HOST_OWNED_VAR.test(property));
       if (rootOnly) return ROOT_ALLOWED.has(property);
+      if (containerOnly && CONTAINER_PAINT.test(property)) return false;
       if (iconSlot && SKIN_CHANNEL_PROPERTIES.has(property)) return false;
       return true;
     })

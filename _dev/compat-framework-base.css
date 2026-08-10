@@ -7,6 +7,24 @@
  * 留下的补丁，区域制之后不需要了）。下面这一块是 2.0.89 加回来的，理由见注释。
  */
 
+/* ---- 侧栏条目：锁成竖排 ----
+ *
+ * 为什么完整模式不需要：没有外部主题的时候，酒馆默认就是这个形态。
+ * 为什么兼容模式需要：天使爱这类主题会把顶栏整体改写成一条横排图标带 ——
+ *   #top-settings-holder .drawer{flex:1 1 0; display:flex; justify-content:center}
+ * day-pc.css 在 .drawer 上只写了 width/margin/padding，没写 display 和 flex，
+ * 于是主题这两条赢了：每个条目被拉成等宽 flex 项、图标居中、标签被挤没。
+ * 这三条把条目锁回「块级、自然高度、内容靠左」。 */
+@media (min-width:701px){
+  html[data-claude-mode="compat"] body #top-settings-holder>.drawer{
+    display:block;flex:0 0 auto;align-items:stretch;justify-content:flex-start;
+  }
+  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle{
+    flex:0 0 auto;justify-content:flex-start;align-items:center;
+    width:100%;min-width:0;max-width:none;
+  }
+}
+
 /* ---- 侧栏图标插槽：只锁盒子，不锁内容 ----
  *
  * 为什么完整模式不需要：完整模式下没有外部主题，图标盒子吃酒馆默认值就够了。
