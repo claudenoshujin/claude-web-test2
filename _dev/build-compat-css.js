@@ -107,7 +107,12 @@ const SUBTREE_EXCLUDE = {};
 
 /* 框架自己建的节点。只有它们的 display/visibility 才强制 !important；
    原生控件的显隐必须留给酒馆的运行时逻辑，否则「该藏的时候藏不住」。 */
-const FRAME_OWNED_SUBJECT = /\.clawd-[\w-]+|\.recentChatList\b|\.recentChat\b|#top-bar\b|#top-settings-holder\b|#form_sheld\b|#send_form\b|#qr--bar\b|#nonQRFormItems\b|#leftSendForm\b|#rightSendForm\b|#send_textarea\b|#sheld\b|#chat\b|\.drawer-content\b|\.drawer-toggle\b/;
+/* 侧栏 Recents 那一行里的 .chatName / .chatPreview / .chatMeta / .chatDate /
+   .chatActions / .avatar 也是框架自己 createElement 出来的（index.js 的 buildRecentRow），
+   只是沿用了酒馆的类名。它们必须算框架自有节点，否则 display 不强制，
+   主题一写就赢 —— 2.0.96 侧栏 Recents 里冒出「第 XIV 幕 · 27 句」和整段预览文字
+   叠在一起，就是 .chatMeta 的 display:none 没带 !important。 */
+const FRAME_OWNED_SUBJECT = /\.clawd-[\w-]+|\.recentChatList\b|\.recentChat\b|\.recentChatInfo\b|\.chat(?:Name|NameContainer|Preview|Meta|Date|Actions)\b|\.avatar\b|#top-bar\b|#top-settings-holder\b|#form_sheld\b|#send_form\b|#qr--bar\b|#nonQRFormItems\b|#leftSendForm\b|#rightSendForm\b|#send_textarea\b|#sheld\b|#chat\b|\.drawer-content\b|\.drawer-toggle\b/;
 const RUNTIME_TOGGLED_PROPERTIES = new Set(['display', 'visibility']);
 
 function keepsNativeToggle(rule) {
