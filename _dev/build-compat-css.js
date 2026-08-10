@@ -13,7 +13,13 @@
  *       - html/:root/body 只保留自定义属性和少量布局声明，背景/文字色不搬；
  *       - .drawer-icon 是换皮插槽，只锁盒子，不写 background-image/content/color。
  *
- * 输出两份：styles/compat-day.css、styles/compat-night.css，跟随明暗开关。
+ * 输出四份：
+ *   桌面 styles/compat-day.css / compat-night.css        —— 整个外壳归框架
+ *   手机 styles/compat-mobile-day.css / -night.css       —— 只接管输入区和欢迎页
+ *
+ * 手机端为什么只接管两块：手机版本来就没有常驻侧栏，抽屉和顶栏都是酒馆自己的，
+ * 框架去接管它们既没有对应的 Claude 形态，也会跟美化的手机适配正面对撞。
+ * 输入框和欢迎页是「Claude 外壳」在手机上唯一成立的部分。
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -150,6 +156,27 @@ const FRAME_SCOPED = new RegExp([
   '\\.recentChatList\\b', '\\.recentChat\\b',
 ].join('|'));
 
+/* 手机端只接管输入区和欢迎页。手机版没有常驻侧栏，抽屉和顶栏都是酒馆自己的，
+   框架去接管它们既没有对应的 Claude 形态，也会跟美化的手机适配正面对撞。 */
+let LAYOUT = 'pc';
+const MOBILE_OWNED = new RegExp([
+  '#form_sheld\\b', '#send_form\\b', '#qr--bar\\b', '#nonQRFormItems\\b',
+  '#leftSendForm\\b', '#rightSendForm\\b', '#send_textarea\\b', '#send_but\\b', '#mes_stop\\b',
+  '\\.clawd-welcome-(?:hero|shortcuts)\\b', '\\.clawd-fake-mic\\b',
+].join('|'));
+
+function isOutsideLayoutRegion(selector) {
+  if (LAYOUT !== 'mobile') return false;
+  if (isRootLevel(selector)) return false;
+  return !MOBILE_OWNED.test(selector);
+}
+
+function shellScope() {
+  return LAYOUT === 'mobile'
+    ? ':is(#form_sheld)'
+    : ':is(#top-bar,#top-settings-holder,#form_sheld)';
+}
+
 function isChatContent(selector) {
   if (WELCOME_OWNED.test(selector)) return false;
   if (FRAME_SCOPED.test(selector)) return false;
@@ -187,7 +214,6 @@ function isShellAnchored(selector) {
 /* 没有外壳锚点的选择器不是直接丢掉，而是给它套一层外壳作用域。
    丢掉会连抽屉面板里的排版一起丢（面板里全是原生控件，很多规则写的是
    纯元素选择器）；套一层之后它既进不了 #chat，又还能管面板内部。 */
-const SHELL_SCOPE = ':is(#top-bar,#top-settings-holder,#form_sheld)';
 
 function anchorSelector(selector) {
   const value = String(selector).trim();
@@ -197,14 +223,15 @@ function anchorSelector(selector) {
   if (!rest) return [value];
   /* 两条：外壳容器的后代，以及外壳容器自己。
      只写后代的话，像 `*{transition:...}` 这种通用规则管不到 #form_sheld 本身。 */
-  return [`${prefix}${SHELL_SCOPE} ${rest}`, `${prefix}${SHELL_SCOPE}:is(${rest})`];
+  const scope = shellScope();
+  return [`${prefix}${scope} ${rest}`, `${prefix}${scope}:is(${rest})`];
 }
 
 function renderRule(node) {
   if (node.prelude?.type !== 'SelectorList') return '';
   const selectors = node.prelude.children.toArray().map(selector => csstree.generate(selector));
   const kept = selectors
-    .filter(selector => !isChatContent(selector))
+    .filter(selector => !isChatContent(selector) && !isOutsideLayoutRegion(selector))
     .flatMap(selector => (isShellAnchored(selector) ? [selector] : anchorSelector(selector)));
   if (!kept.length) return '';
 
@@ -289,16 +316,24 @@ function collectImports(sourceCss) {
 }
 
 function buildResetRule() {
+  /* 手机端框架只拥有欢迎页那两个节点，归零范围跟着缩到它们。 */
+  const roots = LAYOUT === 'mobile'
+    ? RESET_ROOTS.filter(selector => WELCOME_OWNED.test(selector))
+    : RESET_ROOTS;
+  const subtrees = LAYOUT === 'mobile'
+    ? RESET_SUBTREES.filter(selector => WELCOME_OWNED.test(selector))
+    : RESET_SUBTREES;
+  const media = LAYOUT === 'mobile' ? '@media (max-width:700px)' : '@media (min-width:701px)';
   const owned = [
-    ...RESET_ROOTS,
-    ...RESET_SUBTREES.map(selector => `${selector} *${SUBTREE_EXCLUDE[selector] || ''}`),
+    ...roots,
+    ...subtrees.map(selector => `${selector} *${SUBTREE_EXCLUDE[selector] || ''}`),
   ];
   return [
     '/* R2 子树归零：撤销外部主题写在框架自有节点上的一切声明。',
     ' * 必须排在框架所有结构规则之前。永远不要加入 .drawer-content 的后代或 #chat 的后代。 */',
-    `@media (min-width:701px){\n:where(html[data-claude-mode="compat"] body) :where(\n${owned.join(',\n')}\n){all:revert-layer!important}\n}`,
+    `${media}{\n:where(html[data-claude-mode="compat"] body) :where(\n${owned.join(',\n')}\n){all:revert-layer!important}\n}`,
     '/* 欢迎态下框架接管 #chat 和 #form_sheld 这两个容器本身，但不碰任何消息后代。 */',
-    '@media (min-width:701px){',
+    `${media}{`,
     ':where(html[data-claude-mode="compat"] body.clawd-welcome) :where(#chat,#form_sheld){all:revert-layer!important}',
     '}',
   ].join('\n');
@@ -362,20 +397,25 @@ function assertOutput(variant, cssText) {
   }
 }
 
-function build(variant) {
-  const sourcePath = path.join(root, 'styles', `${variant}-pc.css`);
-  const outputPath = path.join(root, 'styles', `compat-${variant}.css`);
+function build(variant, layout) {
+  LAYOUT = layout;
+  const sourcePath = path.join(root, 'styles', `${variant}-${layout}.css`);
+  const outputPath = path.join(root, 'styles',
+    layout === 'mobile' ? `compat-mobile-${variant}.css` : `compat-${variant}.css`);
   const sourceCss = fs.readFileSync(sourcePath, 'utf8');
   const sourceAst = csstree.parse(sourceCss);
 
   const generated = sourceAst.children.toArray().map(render).filter(Boolean).join('\n');
-  const base = fs.readFileSync(basePath, 'utf8').trim();
-  const welcomeException = `@media (min-width:701px){\n${WELCOME_PLACEHOLDER_SELECTOR}{display:none!important}\n}`;
+  /* compat-framework-base.css 里全是侧栏（PC）专用的补丁，手机端不接管侧栏，
+     整份跳过，免得在手机样式表里留一堆永远不命中的规则。 */
+  const base = layout === 'mobile' ? '' : fs.readFileSync(basePath, 'utf8').trim();
+  const welcomeMedia = layout === 'mobile' ? '@media (max-width:700px)' : '@media (min-width:701px)';
+  const welcomeException = `${welcomeMedia}{\n${WELCOME_PLACEHOLDER_SELECTOR}{display:none!important}\n}`;
 
   const frameBody = [
     buildResetRule(),
     base,
-    `/* 外壳区域，原样搬自 styles/${variant}-pc.css。 */`,
+    `/* 外壳区域，原样搬自 styles/${variant}-${layout}.css。 */`,
     /* 不能再往外面套 @media (min-width:701px)。源文件自己带 53 个 @media，
        套一层之后它们变成嵌套条件：里面的 (max-width:700px) 块和外层
        (min-width:701px) 永远互斥，规则等于被删。#send_form 的 display:flex
@@ -386,7 +426,7 @@ function build(variant) {
   ].join('\n\n');
 
   const forced = forceImportant(frameBody);
-  assertOutput(variant, forced);
+  assertOutput(`${variant}-${layout}`, forced);
 
   /* @import 必须排在所有规则之前，不能落在 @layer 块里面。 */
   const output = [
@@ -401,4 +441,7 @@ function build(variant) {
   console.log(`Wrote ${path.relative(root, outputPath)} (${(Buffer.byteLength(output) / 1024).toFixed(0)} KB)`);
 }
 
-for (const variant of VARIANTS) build(variant);
+for (const variant of VARIANTS) {
+  build(variant, 'pc');
+  build(variant, 'mobile');
+}

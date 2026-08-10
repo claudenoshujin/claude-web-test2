@@ -162,9 +162,24 @@ for (const runtimeFragment of [
   'function guardMessageRulesForCompatibility(',
   'style.textContent = guardMessageRulesForCompatibility(',
   "new hostWindow.MutationObserver(() =>",
-  "'styles/compat-' + CLAUDE_THEME_VARIANT + '.css'",
+  "'styles/compat-' + (CLAUDE_LAYOUT === 'mobile' ? 'mobile-' : '') + CLAUDE_THEME_VARIANT + '.css'",
 ]) {
   if (!runtime.includes(runtimeFragment)) errors.push(`runtime missing ${runtimeFragment}`);
+}
+
+/* 手机端只接管输入区和欢迎页：两份 compat-mobile-*.css 里不许出现侧栏选择器。 */
+for (const mobileName of ['compat-mobile-day.css', 'compat-mobile-night.css']) {
+  const mobilePath = path.join(root, 'styles', mobileName);
+  if (!fs.existsSync(mobilePath)) {
+    errors.push(`${mobileName} missing: 手机端兼容样式表没生成`);
+    continue;
+  }
+  const mobileCss = fs.readFileSync(mobilePath, 'utf8');
+  for (const forbidden of ['#top-settings-holder', '#top-bar', '.clawd-rail', '.recentChat', '.drawer-toggle']) {
+    if (mobileCss.includes(forbidden)) {
+      errors.push(`${mobileName} 越界：手机端不接管侧栏，却出现了 ${forbidden}`);
+    }
+  }
 }
 
 const nightRuleCount = (nightCss.match(/\{/g) || []).length;

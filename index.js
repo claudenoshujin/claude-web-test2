@@ -278,16 +278,22 @@ const CLAUDE_LAYOUT = (() => {
   }
 })();
 
-/* 兼容框架本轮只实现桌面结构层。窄屏若仍加载 760px composer 外壳，
-   会在没有侧栏规则的情况下把原生手机界面撑出横向滚动；因此已选择兼容
-   模式的用户在 <=700px 自动回退到完整手机版，保存的选择不被改写。 */
-const CLAUDE_COMPAT_MODE = CLAUDE_COMPAT_REQUESTED && CLAUDE_LAYOUT === 'pc';
+/* 2.0.98 之前这里写的是 `CLAUDE_COMPAT_REQUESTED && CLAUDE_LAYOUT === 'pc'`，
+   也就是窄屏一律回退到完整手机版 —— 兼容模式在手机上根本没生效过。
+   现在手机端也进兼容模式，但接管范围不一样：
+     桌面：整个外壳（侧栏 / 欢迎页 / 输入区 / 抽屉面板）
+     手机：只有输入区和欢迎页
+   手机版本来就没有常驻侧栏，抽屉和顶栏都是酒馆自己的，框架去接管它们既没有
+   对应的 Claude 形态，也会跟美化自己的手机适配正面对撞。范围差异体现在
+   styles/compat-mobile-*.css 里，由 _dev/build-compat-css.js 生成。 */
+const CLAUDE_COMPAT_MODE = CLAUDE_COMPAT_REQUESTED;
 document.documentElement.dataset.claudeMode = CLAUDE_COMPAT_MODE ? 'compat' : 'full';
 if (CLAUDE_COMPAT_MODE) {
+  /* 皮肤和结构在兼容模式下一律回到基线。否则从完整模式带过来的
+     data-claude-skin="playbill" 会继续生效，侧栏 Recents 里冒出
+     「第 XIV 幕 · N 句」这种只属于剧场皮的内容，而用户并没有选它。 */
   document.documentElement.dataset.claudeSkin = 'classic';
   document.documentElement.dataset.claudeStructure = 'rail';
-} else if (CLAUDE_COMPAT_REQUESTED) {
-  console.info('[Claude Web] 兼容框架暂限桌面端；当前窄屏已回退到完整手机版。');
 }
 
 /* 自动布局不能只在启动时判断一次。跨过主断点时自动刷新，让 JS 功能分支和
@@ -320,7 +326,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.97-compat-rail-row-important-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.98-compat-mobile-composer-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -335,7 +341,7 @@ const CLAUDE_THEME = CLAUDE_THEMES[CLAUDE_THEME_VARIANT];
    那就必须跟着明暗开关走，否则深色美化配一条亮白侧栏。 */
 const CLAUDE_STYLE_URL = new URL(
   CLAUDE_COMPAT_MODE
-    ? 'styles/compat-' + CLAUDE_THEME_VARIANT + '.css'
+    ? 'styles/compat-' + (CLAUDE_LAYOUT === 'mobile' ? 'mobile-' : '') + CLAUDE_THEME_VARIANT + '.css'
     : 'styles/' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '.css',
   CLAUDE_EXTENSION_BASE,
 );
@@ -9245,7 +9251,9 @@ if (CLAUDE_ENABLED) {
        等于把完整模式的样式表塞进兼容模式，所以看起来"切了没反应"。 */
     const compatNow = read('mode', ['full', 'compat'], 'full') === 'compat';
     const styleUrl = new URL(
-      compatNow ? `styles/compat-${variant}.css` : `styles/${variant}-${layout}.css`,
+      compatNow
+        ? `styles/compat-${layout === 'mobile' ? 'mobile-' : ''}${variant}.css`
+        : `styles/${variant}-${layout}.css`,
       base,
     );
     styleUrl.searchParams.set(
