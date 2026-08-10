@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.93-compat-keep-native-mes-buttons-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.94-compat-runtime-guard-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1889,11 +1889,41 @@ if (CLAUDE_ENABLED) {
 
   hostWindow[INSTANCE_KEY]?.destroy?.();
 
+  /* 运行时注入的这份交互样式表是兼容模式的第三条越界通道。
+     它不走 _dev/build-compat-css.js，所以生成期那套区域过滤和断言完全管不到它，
+     里面有四十来条 #chat > .mes ... 规则。它们的前提是「完整模式会把酒馆自己的
+     消息控件换成 Claude 的」，可兼容模式按边界不注入任何 Claude 消息控件，
+     于是这些规则只剩下破坏力：2.0.92 的用户消息编辑键消失就是其中一条。
+
+     这里不逐条加守卫，而是在注入前统一改写：凡是选择器能选到消息的，
+     一律加上 html:not([data-claude-mode="compat"])。以后往这份样式表里加规则
+     不需要记得这件事，新规则会自动被挡在兼容模式之外。 */
+  const MESSAGE_SCOPED_SELECTOR = /#chat\s*>|\.mes(?:_|\b)|\.last_mes\b/;
+  const COMPAT_GUARD = 'html:not([data-claude-mode="compat"])';
+
+  function guardMessageRulesForCompatibility(css) {
+    if (!frameworkCompatibilityMode) return String(css);
+    return String(css).replace(/([^{}]+)\{/g, (match, prelude) => {
+      const text = prelude.trim();
+      if (!text || text.startsWith('@')) return match;
+      if (!MESSAGE_SCOPED_SELECTOR.test(text)) return match;
+      const leading = prelude.slice(0, prelude.length - prelude.trimStart().length);
+      const guarded = text.split(',')
+        .map(part => part.trim())
+        .filter(Boolean)
+        .map(part => (MESSAGE_SCOPED_SELECTOR.test(part) && !part.startsWith(COMPAT_GUARD)
+          ? `${COMPAT_GUARD} ${part}`
+          : part))
+        .join(',\n');
+      return `${leading}${guarded}{`;
+    });
+  }
+
   function installStyle() {
     hostDocument.getElementById(STYLE_ID)?.remove();
     const style = hostDocument.createElement('style');
     style.id = STYLE_ID;
-    style.textContent = `
+    style.textContent = guardMessageRulesForCompatibility(`
       body.${READY_CLASS} #chat > .mes.last_mes[is_user="false"] .mes_text::before,
       body.${READY_CLASS} #chat > .mes[is_user="false"]:last-child .mes_text::before,
       body.${READY_CLASS} #chat > .mes.last_mes[is_user="false"] .mes_text::after,
@@ -2814,7 +2844,7 @@ if (CLAUDE_ENABLED) {
           translate: 0 0;
         }
       }
-    `;
+    `);
     hostDocument.head.append(style);
     hostDocument.documentElement.style.setProperty('--clawd-signoff-image', `url("${CLAWD_IMAGE}")`);
   }

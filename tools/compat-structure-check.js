@@ -158,6 +158,9 @@ for (const runtimeFragment of [
   "layerOrder.textContent = '@layer cw-frame;'",
   'hostDocument.head.prepend(layerOrder)',
   'unwrapCompatibilityCustomStyle(',
+  /* 运行时注入的交互样式表必须经过消息守卫改写，否则它会绕过所有生成期边界检查。 */
+  'function guardMessageRulesForCompatibility(',
+  'style.textContent = guardMessageRulesForCompatibility(',
   "new hostWindow.MutationObserver(() =>",
   "'styles/compat-' + CLAUDE_THEME_VARIANT + '.css'",
 ]) {
