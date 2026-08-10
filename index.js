@@ -353,7 +353,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.99d-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.99e-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -428,6 +428,24 @@ if (new URLSearchParams(location.search).has('shellcheck')) {
         }
       }
     }
+    /* #sheld 被藏的时候，光知道「第一个藏它的祖先」不够 —— 那个祖先是谁、
+       谁把它插进来的才是关键。把整条链打出来。 */
+    const describe = el => {
+      const cs = getComputedStyle(el);
+      const cls = String(el.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 4).join('.');
+      return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : '')
+        + ' ' + cs.display + '/' + cs.visibility + '/op' + cs.opacity + '/' + cs.position;
+    };
+    for (const sel of ['#sheld', '#form_sheld']) {
+      const el = document.querySelector(sel);
+      if (!el) continue;
+      rows.push('--- ' + sel + ' 的祖先链 ---');
+      let depth = 0;
+      for (let p = el.parentElement; p && depth < 8; p = p.parentElement, depth += 1) {
+        rows.push('  ' + '  '.repeat(depth) + describe(p));
+      }
+    }
+
     const pre = document.createElement('pre');
     pre.id = 'claude-shellcheck';
     pre.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:2147483647;margin:0;'
