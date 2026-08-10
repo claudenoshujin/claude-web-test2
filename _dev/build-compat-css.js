@@ -152,10 +152,42 @@ function scopeSelector(selector) {
   return `html[data-claude-mode="compat"] body ${value}`;
 }
 
+/* 只丢「明确提到消息」的选择器是不够的。
+ * day-pc.css 里有大量不带任何容器前缀的排版规则（h1 / p / table / code /
+ * :is(small,.chatDate) 这类），它们本来就是写给消息正文看的。搬进兼容模式之后
+ * 照样命中 #chat 里的内容，于是雨中曲那种重排版的美化被压得七零八落。
+ *
+ * 所以判据反过来：一条选择器必须**证明自己在外壳里**才发出去。
+ * 证据是它至少带一个 id，或者带一个外壳专有的 class。纯元素/伪类选择器
+ * 一律丢弃 —— 那是正文的地盘。 */
+const SHELL_ANCHOR = /#[\w-]+|\.clawd-[\w-]+|\.recentChat(?:List)?\b|\.drawer(?:-[\w-]+)?\b/;
+
+function isShellAnchored(selector) {
+  return isRootLevel(selector) || SHELL_ANCHOR.test(selector);
+}
+
+/* 没有外壳锚点的选择器不是直接丢掉，而是给它套一层外壳作用域。
+   丢掉会连抽屉面板里的排版一起丢（面板里全是原生控件，很多规则写的是
+   纯元素选择器）；套一层之后它既进不了 #chat，又还能管面板内部。 */
+const SHELL_SCOPE = ':is(#top-bar,#top-settings-holder,#form_sheld)';
+
+function anchorSelector(selector) {
+  const value = String(selector).trim();
+  const head = /^((?::root|html)(?:\[[^\]]*\])*(?:\s+body)?|body)(?:\s+|$)/.exec(value);
+  const prefix = head ? `${head[1]} ` : '';
+  const rest = head ? value.slice(head[0].length).trim() : value;
+  if (!rest) return [value];
+  /* 两条：外壳容器的后代，以及外壳容器自己。
+     只写后代的话，像 `*{transition:...}` 这种通用规则管不到 #form_sheld 本身。 */
+  return [`${prefix}${SHELL_SCOPE} ${rest}`, `${prefix}${SHELL_SCOPE}:is(${rest})`];
+}
+
 function renderRule(node) {
   if (node.prelude?.type !== 'SelectorList') return '';
   const selectors = node.prelude.children.toArray().map(selector => csstree.generate(selector));
-  const kept = selectors.filter(selector => !isChatContent(selector));
+  const kept = selectors
+    .filter(selector => !isChatContent(selector))
+    .flatMap(selector => (isShellAnchored(selector) ? [selector] : anchorSelector(selector)));
   if (!kept.length) return '';
 
   const rootOnly = kept.every(isRootLevel);

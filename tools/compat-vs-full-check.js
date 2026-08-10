@@ -129,13 +129,20 @@ function compareRank(a, b) {
   return 0;
 }
 
+/* 对拍范围就是框架声明自己拥有的那几块，不是「除对话区以外的一切」。
+   外壳容器之外的元素（fixture 里的裸 button、#clawd-aside 之类）在完整模式下
+   靠 day-pc.css 的通用规则上色，兼容模式里那些通用规则被限定进外壳作用域，
+   自然就没有 —— 那不是缺口，是边界。 */
+const SHELL_ROOTS = '#top-bar, #top-settings-holder, #form_sheld';
+const OWN_NODES = '[class*="clawd-"], .recentChat, .recentChatList';
+
 function shellElements(document) {
   const chat = document.querySelector(CHAT_SCOPE);
   return [...document.querySelectorAll('*')].filter(element => {
     if (element === document.documentElement || element.tagName === 'HEAD') return false;
     if (element.closest('head, script, style')) return false;
     if (chat && chat.contains(element) && !WELCOME_OWNED.test(element.className || '')) return false;
-    return true;
+    return Boolean(element.closest(SHELL_ROOTS) || element.matches(OWN_NODES));
   });
 }
 
