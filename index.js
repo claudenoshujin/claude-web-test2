@@ -353,7 +353,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.100-mcprobe-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.101-compat-mobile-chrome-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -6121,32 +6121,15 @@ if (CLAUDE_ENABLED) {
   }
 
   function refreshMobileChrome() {
-    /* 临时探针（查完删掉）。手机外壳建不出来时，断点在这套环境里绑不上，
-       所以把闭包里的真实值挂到宿主 window，控制台读 __mcProbe 即可。
-       只写对象不打日志，避免每帧刷屏。 */
-    const probe = {
-      mobileEnabled,
-      welcomeEnabled,
-      narrow: hostWindow.matchMedia?.('(max-width:700px)').matches,
-      hasMobileChrome: Boolean(mobileChrome),
-      connected: mobileChrome?.root?.isConnected ?? null,
-      sameDocument: hostDocument === window.document,
-      sameWindow: hostWindow === window,
-      stage: 'enter',
-      passes: (hostWindow.__mcProbe?.passes ?? 0) + 1,
-    };
-    hostWindow.__mcProbe = probe;
-    if (!mobileEnabled || !welcomeEnabled) { probe.stage = 'guard-features'; return; }
+    if (!mobileEnabled || !welcomeEnabled) return;
     const narrow = hostWindow.matchMedia?.('(max-width:700px)').matches;
     if (!narrow) {
-      probe.stage = 'guard-narrow';
       closeMobileMenu();
       mobileChrome?.root?.remove();
       mobileChrome = null;
       return;
     }
-    if (mobileChrome?.root?.isConnected) { probe.stage = 'guard-connected'; return; }
-    probe.stage = 'building';
+    if (mobileChrome?.root?.isConnected) return;
 
     const root = hostDocument.createElement('div');
     root.className = 'clawd-mobile-chrome';
@@ -6184,9 +6167,6 @@ if (CLAUDE_ENABLED) {
     root.append(menu, clawd, scrim);
     hostDocument.body.append(root);
     mobileChrome = { root, menu, clawd, scrim };
-    probe.stage = 'built';
-    probe.rootConnected = root.isConnected;
-    probe.foundByQuery = Boolean(window.document.querySelector('.clawd-mobile-chrome'));
 
     /* 手机抽屉里的入口打开全屏设置页后，普通 SillyTavern 的导航应立即滑走。
        TauriTavern 会把多数设置页停放在 #top-settings-holder 内：如果捕获阶段
@@ -7516,6 +7496,14 @@ if (CLAUDE_ENABLED) {
       refreshRailRecents();
       refreshWelcomeShortcuts();
       refreshCharacterSwitcher();
+      /* 2.0.101：这两行以前只写在下面的完整模式路径里，被上面那个 return 挡住。
+         2.0.98 之前兼容模式只在桌面成立（CLAUDE_COMPAT_MODE 里带着 layout==='pc'），
+         这条分支不用管手机；2.0.99 让手机进了兼容模式，却只改了 CLAUDE_FEATURES，
+         没回头补这里。结果是兼容样式表照着「手机外壳归框架」把顶栏清空、抽屉滑出
+         屏幕，而开抽屉的汉堡从来没被建出来 —— 整个界面没有任何导航入口。
+         两个函数自带 mobileEnabled / narrow 守卫，桌面兼容模式下会自己返回。 */
+      refreshMobileChrome();
+      refreshMobileNewChat();
       refreshRailUser();
       refreshRailGrip();
       return;
