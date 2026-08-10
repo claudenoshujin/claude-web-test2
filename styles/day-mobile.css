@@ -6465,3 +6465,20 @@ html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !imp
     padding-right:4px !important;
   }
 }
+
+/* ===== 近期对话的元信息行：手机端也要默认藏起来 =====
+ *
+ * `.chatMeta`（「角色 · 第 X 幕 · N 句」）这个节点由 index.js 的 buildRecentRow
+ * **无条件建**，显隐交给皮肤 —— 只有 THE PLAYBILL 打开它。那条默认的
+ * `.chatMeta{display:none}` 原本只写在 <variant>-pc.css 里，
+ * index.js 4960 的注释说它是「styles 里全局一条」，其实不是。
+ *
+ * 于是手机端 .chatMeta 一直可见，跟 .chatPreview 叠在同一行上，
+ * 近期对话列表看起来像乱码。完整模式和兼容模式都中招，只是手机端到
+ * 2.0.101 才真正跑起来，之前没人撞见。
+ *
+ * 这里补上默认隐藏。**没有**同时补 playbill 的显示规则 ——
+ * 那条用的是桌面 .recentChat 的 grid-column / grid-row 坐标，
+ * 手机端 recents 的排布是另一套（见上面 .welcomeRecent .recentChatList 那段），
+ * 照搬会错位。手机端的剧场皮要单独设计，不在这次范围里。 */
+.chatMeta{ display:none; }

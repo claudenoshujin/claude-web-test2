@@ -362,7 +362,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.104-icon-slot-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.105-mobile-chatmeta-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4957,10 +4957,15 @@ if (CLAUDE_ENABLED) {
 
     /* 元信息行：角色 · 第 X 幕 · N 句。参考稿 剧场主题_THE_PLAYBILL.html 的
        列表行第二行就是这个，不是正文预览。
-       **这个节点始终建，默认 display:none**（styles 里全局一条），只有 playbill
+       **这个节点始终建，默认 display:none**，只有 playbill
        打开它。原因见下面那段注释：这里的 DOM 结构是手机端 CSS 的地基，
        改结构会连带炸掉 module-mobile.css，所以只加不改、显隐交给皮肤。
-       取不到的段直接不拼进去，宁可少一段也不显示「第 undefined 幕」。 */
+       取不到的段直接不拼进去，宁可少一段也不显示「第 undefined 幕」。
+
+       2.0.105 更正：那条默认隐藏原本只写在 <variant>-pc.css 里，不是「全局一条」。
+       手机端一直漏着，.chatMeta 跟 .chatPreview 叠在同一行，近期对话看起来像乱码
+       （完整模式和兼容模式都中招）。现在 <variant>-mobile.css 里也补了一条。
+       以后往这个节点上加显隐规则，四份源文件都要过一遍。 */
     const meta = hostDocument.createElement('div');
     meta.className = 'chatMeta';
     meta.textContent = [
