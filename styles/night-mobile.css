@@ -4659,7 +4659,12 @@ html body.claude-generation-active #rightSendForm #send_but::after {
     overflow:hidden !important;
   }
   html body .clawd-rail-recents .chatName > span { display:none !important; }
-  .clawd-rail-recents :is(.chat_preview,.chat_mes,.chat_timestamp,.chatMessageContainer,.chatMessage,.chatActions,.renameChatButton,.deleteChatButton,small) {
+  /* 注意驼峰：.chat_preview 是酒馆原生 recents 的类名，而框架自己 createElement
+   建的那个节点叫 .chatPreview（见 index.js buildRecentRow）。这张名单原本是照
+   酒馆原生结构写的，后来框架改成自己渲染行内容，只有 .chatActions 跟着改了驼峰，
+   .chatPreview 漏了 —— 预览文字在 height:34px 的单行容器里换行成三行、被拦腰切断。
+   2.0.106 补上。以后往这张名单加东西，先确认节点到底叫哪个名字。 */
+.clawd-rail-recents :is(.chat_preview,.chatPreview,.chat_mes,.chat_timestamp,.chatMessageContainer,.chatMessage,.chatActions,.renameChatButton,.deleteChatButton,small) {
     display:none !important;
   }
   .clawd-rail-recents :is(.chatName,.chat_name,.character_name,.name_text) {
