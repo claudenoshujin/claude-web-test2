@@ -280,12 +280,10 @@ const CLAUDE_LAYOUT = (() => {
 
 /* 2.0.98 之前这里写的是 `CLAUDE_COMPAT_REQUESTED && CLAUDE_LAYOUT === 'pc'`，
    也就是窄屏一律回退到完整手机版 —— 兼容模式在手机上根本没生效过。
-   现在手机端也进兼容模式，但接管范围不一样：
-     桌面：整个外壳（侧栏 / 欢迎页 / 输入区 / 抽屉面板）
-     手机：只有输入区和欢迎页
-   手机版本来就没有常驻侧栏，抽屉和顶栏都是酒馆自己的，框架去接管它们既没有
-   对应的 Claude 形态，也会跟美化自己的手机适配正面对撞。范围差异体现在
-   styles/compat-mobile-*.css 里，由 _dev/build-compat-css.js 生成。 */
+   2.0.98 让手机也进兼容模式，但只接管输入区和欢迎页，结果是顶栏和抽屉两边都没人管。
+   2.0.99 起手机和桌面用同一套边界：外壳（侧栏 / 抽屉 / 输入区 / 欢迎页）的结构
+   全部归框架，美化只保留换皮通道和对话区。两个断点的差别只剩源文件不同
+   （day-pc.css vs day-mobile.css），由 _dev/build-compat-css.js 生成。 */
 const CLAUDE_COMPAT_MODE = CLAUDE_COMPAT_REQUESTED;
 document.documentElement.dataset.claudeMode = CLAUDE_COMPAT_MODE ? 'compat' : 'full';
 if (CLAUDE_COMPAT_MODE) {
@@ -315,10 +313,17 @@ if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
   }
 }
 
+/* 2.0.99：手机端的接管范围跟桌面对齐。
+   2.0.98 里这两条是 `rail: !COMPAT || layout==='pc'` 和 `mobile: !COMPAT && layout==='mobile'`，
+   两条在「兼容 + 手机」这一格同时为 false —— 框架既不建 Claude 的手机外壳，
+   也不建侧栏，而顶栏和抽屉又已经交还给酒馆和美化。真机结果是酒馆原生顶栏被挤成
+   一条 8px 竖排小字，欢迎页连输入框都没有。
+   现在：外壳（侧栏 / 抽屉 / 输入区 / 欢迎页）的结构一律归框架，手机和桌面同一套边界；
+   放行给美化的只有换皮通道（图标图案、字体）和对话区内部。 */
 const CLAUDE_FEATURES = {
-  rail: !CLAUDE_COMPAT_MODE || CLAUDE_LAYOUT === 'pc',
+  rail: true,
   welcome: true,
-  mobile: !CLAUDE_COMPAT_MODE && CLAUDE_LAYOUT === 'mobile',
+  mobile: CLAUDE_LAYOUT === 'mobile',
 };
 
 const CLAUDE_KEYBOARD_BUILD = {
@@ -326,7 +331,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.98-compat-mobile-composer-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.99-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };

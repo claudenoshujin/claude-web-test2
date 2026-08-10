@@ -167,7 +167,8 @@ for (const runtimeFragment of [
   if (!runtime.includes(runtimeFragment)) errors.push(`runtime missing ${runtimeFragment}`);
 }
 
-/* 手机端只接管输入区和欢迎页：两份 compat-mobile-*.css 里不许出现侧栏选择器。 */
+/* 2.0.99：断言反过来了。2.0.98 这里断言手机端「不许出现」侧栏选择器，
+   现在手机和桌面同一套边界，外壳结构必须都在，缺一个就是范围又缩回去了。 */
 for (const mobileName of ['compat-mobile-day.css', 'compat-mobile-night.css']) {
   const mobilePath = path.join(root, 'styles', mobileName);
   if (!fs.existsSync(mobilePath)) {
@@ -175,10 +176,14 @@ for (const mobileName of ['compat-mobile-day.css', 'compat-mobile-night.css']) {
     continue;
   }
   const mobileCss = fs.readFileSync(mobilePath, 'utf8');
-  for (const forbidden of ['#top-settings-holder', '#top-bar', '.clawd-rail', '.recentChat', '.drawer-toggle']) {
-    if (mobileCss.includes(forbidden)) {
-      errors.push(`${mobileName} 越界：手机端不接管侧栏，却出现了 ${forbidden}`);
+  for (const required of ['#top-settings-holder', '#top-bar', '.clawd-rail', '.recentChat', '.drawer-toggle', '#form_sheld']) {
+    if (!mobileCss.includes(required)) {
+      errors.push(`${mobileName} 范围不足：手机端应与桌面同一套边界，却没有 ${required}`);
     }
+  }
+  /* 手机端的规则必须落在 max-width:700px 里，否则等于在桌面上又叠了一份。 */
+  if (!mobileCss.includes('@media (max-width:700px)')) {
+    errors.push(`${mobileName} 缺少 @media (max-width:700px) 包裹`);
   }
 }
 

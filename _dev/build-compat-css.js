@@ -156,25 +156,19 @@ const FRAME_SCOPED = new RegExp([
   '\\.recentChatList\\b', '\\.recentChat\\b',
 ].join('|'));
 
-/* 手机端只接管输入区和欢迎页。手机版没有常驻侧栏，抽屉和顶栏都是酒馆自己的，
-   框架去接管它们既没有对应的 Claude 形态，也会跟美化的手机适配正面对撞。 */
+/* 2.0.99：手机和桌面用同一张区域表。
+   2.0.98 这里有一张 MOBILE_OWNED 白名单，手机端只放行输入区和欢迎页，
+   顶栏和抽屉交还给酒馆和美化。真机结果是两边都没人管：酒馆原生顶栏被挤成
+   一条 8px 竖排小字，欢迎页连输入框都没有。现在这张白名单没了，
+   两个断点唯一的差别只剩源文件（day-pc.css vs day-mobile.css）。 */
 let LAYOUT = 'pc';
-const MOBILE_OWNED = new RegExp([
-  '#form_sheld\\b', '#send_form\\b', '#qr--bar\\b', '#nonQRFormItems\\b',
-  '#leftSendForm\\b', '#rightSendForm\\b', '#send_textarea\\b', '#send_but\\b', '#mes_stop\\b',
-  '\\.clawd-welcome-(?:hero|shortcuts)\\b', '\\.clawd-fake-mic\\b',
-].join('|'));
 
-function isOutsideLayoutRegion(selector) {
-  if (LAYOUT !== 'mobile') return false;
-  if (isRootLevel(selector)) return false;
-  return !MOBILE_OWNED.test(selector);
+function isOutsideLayoutRegion() {
+  return false;
 }
 
 function shellScope() {
-  return LAYOUT === 'mobile'
-    ? ':is(#form_sheld)'
-    : ':is(#top-bar,#top-settings-holder,#form_sheld)';
+  return ':is(#top-bar,#top-settings-holder,#form_sheld)';
 }
 
 function isChatContent(selector) {
@@ -316,13 +310,10 @@ function collectImports(sourceCss) {
 }
 
 function buildResetRule() {
-  /* 手机端框架只拥有欢迎页那两个节点，归零范围跟着缩到它们。 */
-  const roots = LAYOUT === 'mobile'
-    ? RESET_ROOTS.filter(selector => WELCOME_OWNED.test(selector))
-    : RESET_ROOTS;
-  const subtrees = LAYOUT === 'mobile'
-    ? RESET_SUBTREES.filter(selector => WELCOME_OWNED.test(selector))
-    : RESET_SUBTREES;
+  /* 2.0.99：归零范围两端一致。它本来就只覆盖框架自己 createElement 出来的节点，
+     跟断点无关 —— 手机端一样会建侧栏 Recents 和欢迎页。 */
+  const roots = RESET_ROOTS;
+  const subtrees = RESET_SUBTREES;
   const media = LAYOUT === 'mobile' ? '@media (max-width:700px)' : '@media (min-width:701px)';
   const owned = [
     ...roots,
@@ -406,10 +397,12 @@ function build(variant, layout) {
   const sourceAst = csstree.parse(sourceCss);
 
   const generated = sourceAst.children.toArray().map(render).filter(Boolean).join('\n');
-  /* compat-framework-base.css 里全是侧栏（PC）专用的补丁，手机端不接管侧栏，
-     整份跳过，免得在手机样式表里留一堆永远不命中的规则。 */
-  const base = layout === 'mobile' ? '' : fs.readFileSync(basePath, 'utf8').trim();
   const welcomeMedia = layout === 'mobile' ? '@media (max-width:700px)' : '@media (min-width:701px)';
+  /* 2.0.99：补充层两端都要。里面两块（侧栏条目锁竖排、图标插槽锁盒子）针对的是
+     「主题改了、而 <variant>-*.css 没声明」这类洞，手机端只会更多不会更少。
+     文件本身不带 @media，在这里按断点包一层。 */
+  const baseCss = fs.readFileSync(basePath, 'utf8').trim();
+  const base = baseCss ? `${welcomeMedia}{\n${baseCss}\n}` : '';
   const welcomeException = `${welcomeMedia}{\n${WELCOME_PLACEHOLDER_SELECTOR}{display:none!important}\n}`;
 
   const frameBody = [

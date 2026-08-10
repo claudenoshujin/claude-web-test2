@@ -1,10 +1,9 @@
 /* 兼容框架的补充层：只放「完整模式不需要、单独在兼容模式下才成立」的规则。
  *
- * 判断标准：这条规则在完整模式下也需要吗？需要就写进 styles/day-pc.css，
- * 生成器会自动带过来。写在这里的每一条都是手工维护成本。
- *
- * 2.0.86 起这里清空过一次（原来那两块是令牌重抄和背板机制，都是属性过滤器
- * 留下的补丁，区域制之后不需要了）。下面这一块是 2.0.89 加回来的，理由见注释。
+ * 2.0.99：这份文件不再自带 @media —— 生成器会按断点把它整份包进
+ * (min-width:701px) 或 (max-width:700px)，桌面和手机各拿一份。
+ * 加规则前先问：完整模式也需要吗？需要就写进 styles/<variant>-pc.css 和
+ * <variant>-mobile.css，生成器会自动搬。写在这里的每一条都是手工维护成本。
  */
 
 /* ---- 侧栏条目：锁成竖排 ----
@@ -15,15 +14,14 @@
  * day-pc.css 在 .drawer 上只写了 width/margin/padding，没写 display 和 flex，
  * 于是主题这两条赢了：每个条目被拉成等宽 flex 项、图标居中、标签被挤没。
  * 这三条把条目锁回「块级、自然高度、内容靠左」。 */
-@media (min-width:701px){
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer{
-    display:block;flex:0 0 auto;align-items:stretch;justify-content:flex-start;
-  }
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle{
-    flex:0 0 auto;justify-content:flex-start;align-items:center;
-    width:100%;min-width:0;max-width:none;
-  }
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer{
+  display:block;flex:0 0 auto;align-items:stretch;justify-content:flex-start;
 }
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle{
+  flex:0 0 auto;justify-content:flex-start;align-items:center;
+  width:100%;min-width:0;max-width:none;
+}
+
 
 /* ---- 侧栏图标插槽：只锁盒子，不锁内容 ----
  *
@@ -39,24 +37,22 @@
  *
  * background-size:contain 属于盒子：狸猫的图源是 26×26，装在 24px 槽里
  * 不锁会溢出挤到标签文字。 */
-@media (min-width:701px){
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{
-    position:absolute;left:8px;top:50%;right:auto;bottom:auto;
-    display:grid;place-items:center;
-    flex:0 0 24px;width:24px;min-width:24px;max-width:24px;
-    height:24px;min-height:24px;max-height:24px;
-    margin:0;padding:0;transform:translateY(-50%);
-    background-position:center;background-repeat:no-repeat;background-size:contain;
-    overflow:hidden;
-  }
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before{
-    max-width:24px;max-height:24px;font-size:16px;line-height:1;
-  }
-  /* 标签是框架自己的节点，主题不该动它，但图标错位时它常常被一起挤掉，
-     这里把它的位置也一并钉住。 */
-  html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.clawd-rail-label{
-    position:relative;z-index:1;flex:1 1 auto;
-    min-width:0;margin:0 0 0 42px;padding:0;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{
+  position:absolute;left:8px;top:50%;right:auto;bottom:auto;
+  display:grid;place-items:center;
+  flex:0 0 24px;width:24px;min-width:24px;max-width:24px;
+  height:24px;min-height:24px;max-height:24px;
+  margin:0;padding:0;transform:translateY(-50%);
+  background-position:center;background-repeat:no-repeat;background-size:contain;
+  overflow:hidden;
+}
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before{
+  max-width:24px;max-height:24px;font-size:16px;line-height:1;
+}
+/* 标签是框架自己的节点，主题不该动它，但图标错位时它常常被一起挤掉，
+   这里把它的位置也一并钉住。 */
+html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-toggle>.clawd-rail-label{
+  position:relative;z-index:1;flex:1 1 auto;
+  min-width:0;margin:0 0 0 42px;padding:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
