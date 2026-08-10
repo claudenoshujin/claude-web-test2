@@ -331,7 +331,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.99-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.99b-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -358,6 +358,66 @@ console.info(
   + ' / ' + CLAUDE_LAYOUT
   + '（在酒馆「扩展」面板的 Claude Web 里可切换）',
 );
+
+/* ---- 外壳自检：`?shellcheck=1` ----
+ * 手机端（尤其 Via / WebView）没有控制台，截图又只能看见「有没有」，
+ * 看不见「为什么没有」。带上这个查询参数会在页面顶上盖一层纯文本，
+ * 把外壳关键节点的存在性和实测几何直接打出来，可以直接截图读。
+ * 它不改任何样式，也不参与正常渲染路径；不带参数时一行都不跑。 */
+if (new URLSearchParams(location.search).has('shellcheck')) {
+  const dumpShell = () => {
+    const rows = [];
+    const root = document.documentElement;
+    rows.push('mode=' + (root.dataset.claudeMode || '-')
+      + ' layout=' + (typeof CLAUDE_LAYOUT === 'string' ? CLAUDE_LAYOUT : '-')
+      + ' skin=' + (root.dataset.claudeSkin || '-')
+      + ' build=' + CLAUDE_KEYBOARD_BUILD.id);
+    rows.push('features rail=' + CLAUDE_FEATURES.rail + ' mobile=' + CLAUDE_FEATURES.mobile
+      + ' welcome=' + CLAUDE_FEATURES.welcome);
+    rows.push('vw=' + window.innerWidth + 'x' + window.innerHeight
+      + ' mm700=' + window.matchMedia('(max-width:700px)').matches);
+    rows.push('body.class=' + (document.body?.className || '(空)'));
+    rows.push('--- 节点 ---');
+    for (const sel of [
+      '.clawd-mobile-chrome', '.clawd-mobile-menu-button', '.clawd-mobile-clawd-button',
+      '.clawd-mobile-new-chat', '#top-settings-holder', '#top-settings-holder>.clawd-rail-brand',
+      '#sheld', '#chat', '#form_sheld', '#send_form', '#send_textarea',
+    ]) {
+      const el = document.querySelector(sel);
+      if (!el) { rows.push(sel + '  ✗ 不在 DOM 里'); continue; }
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      const round = n => Math.round(n);
+      rows.push(sel + '  ' + cs.display + '/' + cs.visibility + '/op' + cs.opacity
+        + ' ' + cs.position + ' z' + cs.zIndex
+        + ' [' + round(r.left) + ',' + round(r.top) + ' ' + round(r.width) + 'x' + round(r.height) + ']'
+        + (cs.transform !== 'none' ? ' tf=' + cs.transform : '')
+        + (cs.overflow !== 'visible' ? ' ov=' + cs.overflow : ''));
+      /* 隐形时把链路上第一个「把它藏起来」的祖先找出来。 */
+      if (r.width === 0 || r.height === 0 || cs.display === 'none' || cs.visibility === 'hidden') {
+        for (let p = el.parentElement; p && p !== root; p = p.parentElement) {
+          const ps = getComputedStyle(p);
+          if (ps.display === 'none' || ps.visibility === 'hidden' || ps.opacity === '0') {
+            rows.push('    ↑ 被祖先藏了: ' + (p.id ? '#' + p.id : p.tagName.toLowerCase()
+              + '.' + String(p.className).trim().split(/\s+/).join('.'))
+              + ' ' + ps.display + '/' + ps.visibility + '/op' + ps.opacity);
+            break;
+          }
+        }
+      }
+    }
+    const pre = document.createElement('pre');
+    pre.id = 'claude-shellcheck';
+    pre.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:2147483647;margin:0;'
+      + 'max-height:86vh;overflow:auto;padding:8px;background:#000;color:#0f0;'
+      + 'font:11px/1.45 monospace;white-space:pre-wrap;word-break:break-all';
+    pre.textContent = rows.join('\n');
+    pre.addEventListener('click', () => pre.remove());
+    document.getElementById('claude-shellcheck')?.remove();
+    document.body.appendChild(pre);
+  };
+  window.addEventListener('load', () => setTimeout(dumpShell, 2500));
+}
 
 /* 总开关。关掉之后除了设置面板什么都不跑 ——
    面板必须留着，不然没有地方把它开回来。 */
