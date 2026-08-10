@@ -44,6 +44,12 @@ const WELCOME_OWNED = /\.clawd-welcome-(?:hero|shortcuts)\b/;
 
 /* 根级声明里唯一允许搬的普通属性。其余（background / color / font-family /
    color-scheme）会继承或透进对话区，属于主题的地盘。 */
+/* 酒馆自己的变量，兼容模式下归主题。
+   在 :root 上覆盖它们等于隔着变量去改对话区：--avatar-base-* 会改消息头像，
+   --SmartTheme* 会改页面底色和正文色。框架要用自己的令牌（--cw-* / --cl-*），
+   不许改酒馆的。作用域在外壳容器里的同名声明不受这条限制。 */
+const HOST_OWNED_VAR = /^--(?:SmartTheme|main|avatar|font|blur|topbar|top-bar)/i;
+
 const ROOT_ALLOWED = new Set([
   'interpolate-size', 'width', 'max-width', 'min-width',
   'overflow-x', 'overscroll-behavior-x', 'overscroll-behavior',
@@ -196,7 +202,7 @@ function renderRule(node) {
     .filter(child => child.type === 'Declaration')
     .filter(child => {
       const property = String(child.property).toLowerCase();
-      if (property.startsWith('--')) return true;
+      if (property.startsWith('--')) return !(rootOnly && HOST_OWNED_VAR.test(property));
       if (rootOnly) return ROOT_ALLOWED.has(property);
       if (iconSlot && SKIN_CHANNEL_PROPERTIES.has(property)) return false;
       return true;

@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.89-compat-shell-scope-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.90-compat-host-vars-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2310,10 +2310,15 @@ if (CLAUDE_ENABLED) {
          color-mix。毛玻璃单独开、透传没开的组合不会走到这条规则——它依赖
          透传先开这条既有约束在设置面板里已经保证（见 bgBlur 的 change
          处理器，勾选毛玻璃会连带勾上透传）。 */
-      html {
+      /* 2.0.90：兼容模式必须排除在外。--SmartThemeBlurTintColor 是酒馆自己的
+         变量，外部美化拿它当页面底色用。在 :root 上把它改成 Claude 的
+         --cw-surface-page，等于把整页底色换成 Claude 纸色 —— 雨中曲的正文
+         于是变成「黄色卡片浮在白底上」，中间一条条白带。兼容模式下这个变量
+         归主题。 */
+      html:not([data-claude-mode="compat"]) {
         --SmartThemeBlurTintColor: var(--cw-surface-page) !important;
       }
-      html[data-claude-bg-transparent="on"] {
+      html[data-claude-bg-transparent="on"]:not([data-claude-mode="compat"]) {
         --SmartThemeBlurTintColor: color-mix(in srgb, var(--claude-glass-base, #96968f) var(--claude-drawer-tint-opacity, 18%), transparent) !important;
       }
 
