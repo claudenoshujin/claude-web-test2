@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.92-compat-unlayer-theme-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.93-compat-keep-native-mes-buttons-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2418,7 +2418,12 @@ if (CLAUDE_ENABLED) {
         position: relative !important;
       }
 
-      body.${READY_CLASS} #chat > .mes[is_user="true"] .mes_buttons {
+      /* 这条藏的是酒馆自带的用户消息按钮（编辑/删除），前提是完整模式会用
+         .claude-user-message-actions 顶上去。兼容模式按边界不往消息里注入任何
+         Claude 操作按钮，所以这里一藏就等于用户消息没有编辑键了 ——
+         2.0.92 在 MUJI / 天使爱 / 狸猫 / 苹果啵啵 上都是这个症状。
+         兼容模式下必须让酒馆自己的按钮留着。 */
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes[is_user="true"] .mes_buttons {
         display: none !important;
       }
 
