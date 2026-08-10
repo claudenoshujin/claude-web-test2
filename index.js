@@ -320,7 +320,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.91-compat-container-paint-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.92-compat-unlayer-theme-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1084,13 +1084,40 @@ if (CLAUDE_ENABLED) {
       layerOrder = hostDocument.createElement('style');
       layerOrder.id = LAYER_ORDER_ID;
     }
-    if (layerOrder.textContent !== '@layer cw-frame, st-theme;') {
-      layerOrder.textContent = '@layer cw-frame, st-theme;';
+    /* 2.0.92：不再把外部美化包进 st-theme 层。
+       层叠里有一条反直觉的规则：**未分层的作者样式在普通声明上胜过任何命名层**。
+       酒馆自己的 style.css 就是未分层的，而美化 JSON 的 custom_css 本来也是未分层、
+       且排在 style.css 之后，所以它能正常盖过酒馆默认值。一旦我们把它包进 st-theme，
+       它就掉到 style.css 下面 —— 主题里所有没写 !important 的规则集体失效。
+       雨中曲的 `.mes{padding-top:300px}` 和 `.mes::before{顶部装饰图}` 就是这么没的：
+       实测 .mes 的 padding 是酒馆默认的 14px 12px，::before 的 content 是 normal。
+
+       框架自己留在 cw-frame 层就够用：对 !important 声明，层的优先级是倒过来的，
+       命名层的 !important 胜过未分层的 !important，所以框架照样压得住主题，
+       而主题和酒馆之间的关系回到它本来的样子。 */
+    if (layerOrder.textContent !== '@layer cw-frame;') {
+      layerOrder.textContent = '@layer cw-frame;';
     }
     if (hostDocument.head.firstChild !== layerOrder) hostDocument.head.prepend(layerOrder);
-    const customStyle = hostDocument.getElementById('custom-style');
-    wrapCompatibilityCustomStyle(customStyle);
-    observeCompatibilityCustomStyle(customStyle);
+    /* 把旧版本（≤2.0.91）包过的 #custom-style 还原回去。 */
+    unwrapCompatibilityCustomStyle(hostDocument.getElementById('custom-style'));
+  }
+
+  /* 只做还原，不再包装。留着是为了从 2.0.91 及更早版本升上来时，
+     页面里那份已经被包进 st-theme 的 custom_css 能立刻恢复。 */
+  function unwrapCompatibilityCustomStyle(customStyle) {
+    if (!customStyle) return;
+    const text = customStyle.textContent || '';
+    if (!/@layer\s+st-theme\s*\{/.test(text)) return;
+    const raw = typeof customStyle.__claudeCompatRawCss === 'string'
+      ? customStyle.__claudeCompatRawCss
+      : text
+        .replace(/@import\s+([^;]*?)\s+layer\(st-theme\)([^;]*);/gi, (_m, source, tail) => `@import ${source}${tail};`)
+        .replace(/@layer\s+st-theme\s*\{([\s\S]*)\}\s*$/i, '$1');
+    delete customStyle.__claudeCompatRawCss;
+    delete customStyle.__claudeCompatWrappedCss;
+    compatibilityWrappedStyles.delete(customStyle);
+    if (raw !== text) customStyle.textContent = raw;
   }
 
   function restoreCompatibilityLayers() {

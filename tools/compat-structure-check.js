@@ -155,10 +155,9 @@ for (const [selectorPart, property] of [
 
 for (const runtimeFragment of [
   "const LAYER_ORDER_ID = 'claude-layer-order'",
-  "layerOrder.textContent = '@layer cw-frame, st-theme;'",
+  "layerOrder.textContent = '@layer cw-frame;'",
   'hostDocument.head.prepend(layerOrder)',
-  '@layer st-theme {',
-  'layer(st-theme)',
+  'unwrapCompatibilityCustomStyle(',
   "new hostWindow.MutationObserver(() =>",
   "'styles/compat-' + CLAUDE_THEME_VARIANT + '.css'",
 ]) {
