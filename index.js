@@ -114,6 +114,28 @@ function claudeReadSetting(key, allowed, fallback) {
   }
 }
 
+/* ---- 网址逃生口 ----
+ * 设置面板是长在扩展自己的界面里的。只要外壳出问题（手机兼容模式丢导航就是
+ * 现成的例子），用户就再也点不到那个面板，等于被锁在门外，只能去清 localStorage。
+ * 这几个查询参数在读设置之前先写进 localStorage，所以打开一次就永久生效：
+ *   ?claudemode=full     切回完整模式
+ *   ?claudemode=compat   切到框架兼容
+ *   ?claudelayout=pc|mobile|auto
+ *   ?claude=off          整个扩展关掉（?claude=on 开回来）
+ * 写完照常启动，不影响任何正常路径。 */
+try {
+  const escapeQuery = new URLSearchParams(location.search);
+  const wanted = [
+    ['claudemode', 'mode', ['full', 'compat']],
+    ['claudelayout', 'layout', ['auto', 'pc', 'mobile']],
+    ['claude', 'enabled', ['on', 'off']],
+  ];
+  for (const [param, key, allowed] of wanted) {
+    const value = escapeQuery.get(param);
+    if (value && allowed.includes(value)) window.localStorage.setItem('claude-web:' + key, value);
+  }
+} catch { /* 无痕或被禁用：逃生口本来就只是个方便，不是必须 */ }
+
 /* 总开关。默认开；只有明确写过 'off' 才算关，
    读不到 localStorage（无痕、被云端宿主禁用）时不能把整个扩展关掉。 */
 const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
@@ -331,7 +353,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.99c-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.99d-mobile-shell-parity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
