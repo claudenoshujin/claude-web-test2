@@ -362,7 +362,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.110-probe-offpath-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.111-probe-lite-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4222,35 +4222,37 @@ if (CLAUDE_ENABLED) {
         + (el.type ? '[' + el.type + ']' : '')
         + (el.isContentEditable ? '[CE]' : '')
       : 'null');
-    const boxH = el => (el ? Math.round(el.getBoundingClientRect().height) : '-');
 
+    /* 2.0.111：只读「免费」的东西 —— 不碰 getComputedStyle，不碰 getBoundingClientRect。
+     *
+     * 上一版每 300ms 对根元素读一次 getComputedStyle。对根元素读计算样式会把整篇文档的
+     * 样式失效重算跑一遍，而这件事在这个项目里的代价是有实测的（见 applyMobileViewportMetrics
+     * 上方那段注释：「重卡上每次全文档 recalc 都是数百毫秒起，主线程被堵住的这几秒
+     * 屏幕只能显示旧合成帧」）。结果是主线程基本没有空闲：按钮的高亮是 CSS 伪类所以照常亮，
+     * 但打开弹窗要跑 JS，排不上队，等一分钟也出不来（2.0.108~2.0.110 实测）。
+     *
+     * 而这三个数根本不需要计算样式：那两个变量是 applyMobileViewportMetrics 用
+     * root.style.setProperty 写进**行内样式**的，直接读 element.style 即可，零开销。
+     * activeElement 和 visualViewport 的读取也不触发布局。 */
     hostWindow.setInterval(() => {
       try {
-      const root = hostWindow.getComputedStyle(hostDocument.documentElement);
-      const active = hostDocument.activeElement;
-      const panel = active?.closest
-        ? active.closest('.drawer-content,.popup,[class*="popup"],#top-settings-holder')
-        : null;
-      const vv = hostWindow.visualViewport;
-      box.textContent = [
-        KEYBOARD_BUILD.id,
-        'inner ' + hostWindow.innerHeight
-          + '  visual ' + Math.round(vv?.height || 0)
-          + '  vtop ' + Math.round(vv?.offsetTop || 0),
-        'var  h=' + (root.getPropertyValue('--cl-mobile-viewport-height').trim() || '(未写)')
-          + '  t=' + (root.getPropertyValue('--cl-mobile-viewport-top').trim() || '(未写)'),
-        'focus ' + name(active)
-          + '  kbTarget=' + isSoftKeyboardTarget(active)
-          + '  h=' + boxH(active),
-        'panel ' + (panel ? (panel.id || String(panel.className).slice(0, 24)) : '-')
-          + '  h=' + boxH(panel)
-          + '  css=' + (panel ? hostWindow.getComputedStyle(panel).height : '-'),
-      ].join('\n');
+        const inline = hostDocument.documentElement.style;
+        const active = hostDocument.activeElement;
+        const vv = hostWindow.visualViewport;
+        box.textContent = [
+          KEYBOARD_BUILD.id,
+          'inner ' + hostWindow.innerHeight
+            + '  visual ' + Math.round(vv?.height || 0)
+            + '  vtop ' + Math.round(vv?.offsetTop || 0),
+          'var  h=' + (inline.getPropertyValue('--cl-mobile-viewport-height') || '(未写)')
+            + '  t=' + (inline.getPropertyValue('--cl-mobile-viewport-top') || '(未写)'),
+          'focus ' + name(active) + '  kb=' + isSoftKeyboardTarget(active),
+        ].join('\n');
       } catch (error) {
         /* 诊断器自己绝不能把页面搞挂。出错就把消息显示出来，循环继续。 */
         box.textContent = 'kbdprobe error: ' + (error?.message || error);
       }
-    }, 300);
+    }, 500);
   }
 
   function applyMobileViewportMetrics() {
