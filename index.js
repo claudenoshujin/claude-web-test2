@@ -362,7 +362,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.108-kbdprobe-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.109-kbdprobe-shadow-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4192,17 +4192,30 @@ if (CLAUDE_ENABLED) {
     } catch { return; }
     if (!enabled || !hostDocument.body) return;
 
-    const box = hostDocument.createElement('pre');
-    box.className = 'clawd-kbd-probe';
-    box.style.cssText = [
+    /* 读数必须放进 shadow root，不能直接改 body 里的文字节点。
+       框架在 body 上挂着 MutationObserver(subtree)，每 300ms 改一次 textContent
+       就等于每 300ms 强行触发一次完整 refreshClawdInner —— 刷新循环里有抽屉状态守卫，
+       被这么高频触发会跟用户点开抽屉的动作打架，表现是**抽屉根本点不开**（2.0.108 实测）。
+       MutationObserver 看不进影子树，所以放进去之后框架完全感知不到它。
+       附带好处：外部美化也改不到诊断器的样式。 */
+    const host = hostDocument.createElement('div');
+    host.className = 'clawd-kbd-probe';
+    host.style.cssText = [
       'position:fixed', 'left:0', 'top:0', 'z-index:2147483647',
+      'pointer-events:none', 'max-width:100vw',
+    ].join(';');
+    const shadow = host.attachShadow ? host.attachShadow({ mode: 'open' }) : null;
+    if (!shadow) return;
+    const box = hostDocument.createElement('pre');
+    box.style.cssText = [
       'margin:0', 'padding:4px 6px', 'max-width:100vw', 'box-sizing:border-box',
       'background:rgba(0,0,0,.82)', 'color:#0f0', 'border:0',
       'font:10px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace',
       'white-space:pre-wrap', 'word-break:break-all',
-      'pointer-events:none', 'text-shadow:none', 'letter-spacing:0',
+      'text-shadow:none', 'letter-spacing:0',
     ].join(';');
-    hostDocument.body.append(box);
+    shadow.append(box);
+    hostDocument.body.append(host);
 
     const name = el => (el
       ? el.tagName + (el.id ? '#' + el.id : '')
@@ -4212,6 +4225,7 @@ if (CLAUDE_ENABLED) {
     const boxH = el => (el ? Math.round(el.getBoundingClientRect().height) : '-');
 
     hostWindow.setInterval(() => {
+      try {
       const root = hostWindow.getComputedStyle(hostDocument.documentElement);
       const active = hostDocument.activeElement;
       const panel = active?.closest
@@ -4232,6 +4246,10 @@ if (CLAUDE_ENABLED) {
           + '  h=' + boxH(panel)
           + '  css=' + (panel ? hostWindow.getComputedStyle(panel).height : '-'),
       ].join('\n');
+      } catch (error) {
+        /* 诊断器自己绝不能把页面搞挂。出错就把消息显示出来，循环继续。 */
+        box.textContent = 'kbdprobe error: ' + (error?.message || error);
+      }
     }, 300);
   }
 
