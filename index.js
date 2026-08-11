@@ -362,7 +362,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.107-drawer-width-kbd-guard-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.108-kbdprobe-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4172,6 +4172,67 @@ if (CLAUDE_ENABLED) {
     if (tag === 'TEXTAREA') return true;
     if (tag !== 'INPUT') return false;
     return !NON_TYPING_INPUT_TYPES.has(String(element.type || 'text').toLowerCase());
+  }
+
+  /* `?kbdprobe=1`：在页面左上角画一小块实时读数。
+   *
+   * 为什么要有这个：软键盘只有真机/模拟器上才有，而控制台只有电脑上才有。
+   * 端口转发解决了后者，但桌面浏览器弹不出安卓键盘，两边永远碰不到一起；
+   * chrome://inspect 又依赖 Via 的 WebView 有没有开调试（release 版通常没开）。
+   * 所以照 ?shellcheck=1 的老路数，直接画在页面上，截图就能看。
+   * 区别是 shellcheck 只在 2.5s / 7s 各量一次，盯不住键盘开合这种动态过程。
+   *
+   * 这个参数**不写 localStorage**，刷新即失效 —— 不要做成 ?claude=off 那种
+   * 打开一次就永久生效的逃生口，诊断器留在页面上比没有更糟。
+   * 覆盖层是 pointer-events:none，不挡操作。 */
+  function installKeyboardProbe() {
+    let enabled = false;
+    try {
+      enabled = new URLSearchParams(hostWindow.location.search).get('kbdprobe') === '1';
+    } catch { return; }
+    if (!enabled || !hostDocument.body) return;
+
+    const box = hostDocument.createElement('pre');
+    box.className = 'clawd-kbd-probe';
+    box.style.cssText = [
+      'position:fixed', 'left:0', 'top:0', 'z-index:2147483647',
+      'margin:0', 'padding:4px 6px', 'max-width:100vw', 'box-sizing:border-box',
+      'background:rgba(0,0,0,.82)', 'color:#0f0', 'border:0',
+      'font:10px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace',
+      'white-space:pre-wrap', 'word-break:break-all',
+      'pointer-events:none', 'text-shadow:none', 'letter-spacing:0',
+    ].join(';');
+    hostDocument.body.append(box);
+
+    const name = el => (el
+      ? el.tagName + (el.id ? '#' + el.id : '')
+        + (el.type ? '[' + el.type + ']' : '')
+        + (el.isContentEditable ? '[CE]' : '')
+      : 'null');
+    const boxH = el => (el ? Math.round(el.getBoundingClientRect().height) : '-');
+
+    hostWindow.setInterval(() => {
+      const root = hostWindow.getComputedStyle(hostDocument.documentElement);
+      const active = hostDocument.activeElement;
+      const panel = active?.closest
+        ? active.closest('.drawer-content,.popup,[class*="popup"],#top-settings-holder')
+        : null;
+      const vv = hostWindow.visualViewport;
+      box.textContent = [
+        KEYBOARD_BUILD.id,
+        'inner ' + hostWindow.innerHeight
+          + '  visual ' + Math.round(vv?.height || 0)
+          + '  vtop ' + Math.round(vv?.offsetTop || 0),
+        'var  h=' + (root.getPropertyValue('--cl-mobile-viewport-height').trim() || '(未写)')
+          + '  t=' + (root.getPropertyValue('--cl-mobile-viewport-top').trim() || '(未写)'),
+        'focus ' + name(active)
+          + '  kbTarget=' + isSoftKeyboardTarget(active)
+          + '  h=' + boxH(active),
+        'panel ' + (panel ? (panel.id || String(panel.className).slice(0, 24)) : '-')
+          + '  h=' + boxH(panel)
+          + '  css=' + (panel ? hostWindow.getComputedStyle(panel).height : '-'),
+      ].join('\n');
+    }, 300);
   }
 
   function applyMobileViewportMetrics() {
@@ -8013,6 +8074,7 @@ if (CLAUDE_ENABLED) {
       },
     });
     startMobileKeyboardPoll();
+    installKeyboardProbe();
     scheduleRefresh();
   }
 

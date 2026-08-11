@@ -55,6 +55,10 @@ const RUNTIME_STYLE_CLASSES = new Map([
   ['clawd-react-nod', 'Clawd 点击反馈动画状态。'],
   ['clawd-react-peek', 'Clawd 点击反馈动画状态。'],
   ['clawd-saccade', 'Clawd 眼睛扫视过渡状态。'],
+  /* 2.0.108：?kbdprobe=1 的读数覆盖层。它的样式全部写在 element.style 上（inline），
+     不进任何样式表 —— 诊断器不该占用皮肤源文件，也不该被外部美化改到。
+     类名保留是为了能一句 querySelector 找到并移除它。 */
+  ['clawd-kbd-probe', '键盘诊断覆盖层；样式全部内联，故意不进四份源文件。'],
 ]);
 
 const GEOMETRY = new Set([
