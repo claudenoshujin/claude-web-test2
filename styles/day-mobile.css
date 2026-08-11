@@ -2438,6 +2438,8 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
    2.0.113：Via 113 会在键盘出现后把 100lvh 也按可视区域重新解算，弹窗圆角底边和
    保存按钮仍会一起被抬到键盘上沿。改绑 --cl-mobile-viewport-height：这个值在键盘
    出现前已经写成像素值，输入元素聚焦后 JS 会冻结它，键盘只能覆盖弹窗，不能改它高度。
+   2.0.114：冻结高度也会让滚动器误以为整屏仍然可见。用冻结高度与 100dvh 的差值
+   在内容末尾补出键盘遮挡区；弹窗仍不缩，底部按钮却能被手动滚到键盘上方。
    但 fixed 遇到祖先 transform/filter/contain 会退化成局部定位，所以只在编辑页打开
    期间清掉 html/body 这一整类包含块属性；关闭后规则不命中，主题状态自动恢复。 */
 html:has(#completion_prompt_manager_popup.openDrawer),
@@ -2467,6 +2469,15 @@ html:has(#completion_prompt_manager_popup.openDrawer) body {
   background-color:var(--cw-surface-page) !important;
   background-image:none !important;
   isolation:isolate;
+}
+#completion_prompt_manager_popup.openDrawer::after {
+  content:"";
+  display:block;
+  flex:0 0 max(0px, calc(var(--cl-mobile-viewport-height, 100vh) - 100dvh + 16px));
+  width:100%;
+  height:max(0px, calc(var(--cl-mobile-viewport-height, 100vh) - 100dvh + 16px));
+  min-height:max(0px, calc(var(--cl-mobile-viewport-height, 100vh) - 100dvh + 16px));
+  pointer-events:none;
 }
 html body:has(#completion_prompt_manager_popup.openDrawer) #form_sheld {
   visibility:hidden !important;
