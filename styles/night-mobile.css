@@ -2434,8 +2434,10 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
    避免不同酒馆版本的祖先层叠上下文仍把 fixed composer 抬到编辑按钮上方。
 
    2.0.112：这里原来是 absolute + height:100%，定位基准是酒馆那个 fixed body。
-   软键盘改变可视视口后 body 会缩，编辑页便跟着塌成一小条。改用 fixed + 100lvh，
-   尺寸绑定稳定的布局视口，让键盘覆盖下半部而不是重排弹窗，行为与酒馆原版一致。
+   软键盘改变可视视口后 body 会缩，编辑页便跟着塌成一小条，所以先改成 fixed。
+   2.0.113：Via 113 会在键盘出现后把 100lvh 也按可视区域重新解算，弹窗圆角底边和
+   保存按钮仍会一起被抬到键盘上沿。改绑 --cl-mobile-viewport-height：这个值在键盘
+   出现前已经写成像素值，输入元素聚焦后 JS 会冻结它，键盘只能覆盖弹窗，不能改它高度。
    但 fixed 遇到祖先 transform/filter/contain 会退化成局部定位，所以只在编辑页打开
    期间清掉 html/body 这一整类包含块属性；关闭后规则不命中，主题状态自动恢复。 */
 html:has(#completion_prompt_manager_popup.openDrawer),
@@ -2455,9 +2457,9 @@ html:has(#completion_prompt_manager_popup.openDrawer) body {
   z-index:10050 !important;
   box-sizing:border-box !important;
   width:100vw !important;
-  height:100lvh !important;
-  min-height:100lvh !important;
-  max-height:100lvh !important;
+  height:var(--cl-mobile-viewport-height, 100vh) !important;
+  min-height:var(--cl-mobile-viewport-height, 100vh) !important;
+  max-height:var(--cl-mobile-viewport-height, 100vh) !important;
   overflow-y:auto !important;
   overscroll-behavior:contain !important;
   -webkit-overflow-scrolling:touch;
