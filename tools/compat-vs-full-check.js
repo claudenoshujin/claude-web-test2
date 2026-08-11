@@ -179,11 +179,12 @@ function describe(element) {
   return `${element.tagName.toLowerCase()}${id}${cls}`;
 }
 
-const fixture = fs.readFileSync(fixturePath, 'utf8');
-const failures = [];
-const summary = [];
+function main() {
+  const fixture = fs.readFileSync(fixturePath, 'utf8');
+  const failures = [];
+  const summary = [];
 
-for (const variant of VARIANTS) {
+  for (const variant of VARIANTS) {
   const fullCss = fs.readFileSync(path.join(root, 'styles', `${variant}-pc.css`), 'utf8');
   const compatCss = fs.readFileSync(path.join(root, 'styles', `compat-${variant}.css`), 'utf8');
   const fullRules = collectRules(fullCss);
@@ -207,14 +208,22 @@ for (const variant of VARIANTS) {
     gaps += 1;
     failures.push(`[${variant}] ${describe(element)} 缺 ${missing.slice(0, 8).join(', ')}${missing.length > 8 ? ` (共 ${missing.length} 条)` : ''}`);
   }
-  summary.push(`${variant}: 对拍节点 ${checked}，覆盖缺口 ${gaps}`);
+    summary.push(`${variant}: 对拍节点 ${checked}，覆盖缺口 ${gaps}`);
+  }
+
+  console.log(summary.join('\n'));
+  if (failures.length) {
+    console.error('\n兼容模式相对完整模式存在覆盖缺口：');
+    for (const line of failures.slice(0, 40)) console.error('  ' + line);
+    if (failures.length > 40) console.error(`  ...另有 ${failures.length - 40} 条`);
+    process.exitCode = 1;
+    return false;
+  }
+  console.log('外壳区域覆盖对拍通过：完整模式画到的属性，兼容模式全部画到。');
+  return true;
 }
 
-console.log(summary.join('\n'));
-if (failures.length) {
-  console.error('\n兼容模式相对完整模式存在覆盖缺口：');
-  for (const line of failures.slice(0, 40)) console.error('  ' + line);
-  if (failures.length > 40) console.error(`  ...另有 ${failures.length - 40} 条`);
-  process.exit(1);
-}
-console.log('外壳区域覆盖对拍通过：完整模式画到的属性，兼容模式全部画到。');
+/* consistency-check 复用 SKIN_CHANNEL；require 时不执行完整对拍。 */
+module.exports = { SKIN_CHANNEL, main };
+
+if (require.main === module) main();

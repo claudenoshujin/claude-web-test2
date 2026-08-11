@@ -362,7 +362,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.106-mobile-recents-row-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.107-drawer-width-kbd-guard-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4157,6 +4157,23 @@ if (CLAUDE_ENABLED) {
     virtualKeyboardOverlayCaptured = false;
   }
 
+  /* 这个元素获得焦点时，安卓/iOS 会弹软键盘吗？
+     `<input>` 里只有文本类会弹；button / checkbox / radio / range / color / file
+     / submit / reset / image 都不弹。type 缺省视作 text（HTML 规范如此）。 */
+  const NON_TYPING_INPUT_TYPES = new Set([
+    'button', 'submit', 'reset', 'checkbox', 'radio', 'range',
+    'color', 'file', 'image', 'hidden',
+  ]);
+
+  function isSoftKeyboardTarget(element) {
+    if (!element || element.nodeType !== 1) return false;
+    if (element.isContentEditable) return true;
+    const tag = element.tagName;
+    if (tag === 'TEXTAREA') return true;
+    if (tag !== 'INPUT') return false;
+    return !NON_TYPING_INPUT_TYPES.has(String(element.type || 'text').toLowerCase());
+  }
+
   function applyMobileViewportMetrics() {
     const root = hostDocument.documentElement;
     if (!isMobileLayout()) {
@@ -4168,7 +4185,19 @@ if (CLAUDE_ENABLED) {
     if (keyboardBaselineMode) return;
     // 键盘开合时根节点指标保持在键盘出现前的稳定值；输入框另走 transform。
     // 否则一次普通 DOM refresh 也会把整棵重卡拖进根变量的样式失效范围。
-    if (hostDocument.activeElement?.id === 'send_textarea') return;
+    //
+    // 2.0.107：这条守卫原来只认 `#send_textarea`，也就是只把「聊天输入框」当成
+    // 会唤起软键盘的东西。但酒馆自己的面板里到处是输入框 —— 用户点开预设条目的
+    // 编辑弹窗、光标落进里面的 textarea，activeElement 不是 #send_textarea，
+    // 守卫不触发，于是 --cl-mobile-viewport-height 被写成「键盘占掉一半之后」的
+    // 可视视口高度。而这条变量喂给了 .drawer-content.openDrawer 的 height，
+    // 弹窗就当场被压成一小块，后面的预设列表从下面露出来（社区报的那个 bug）。
+    // 酒馆原版不受影响，因为它根本不用这个变量，键盘一起来页面正常滚动。
+    //
+    // 判据换成「当前焦点是不是一个会唤起软键盘的可输入元素」。不含 button /
+    // checkbox / range 这类：它们不弹键盘，焦点落上去时冻结指标反而会让
+    // 真实的旋转、分屏之类的视口变化更新不及时。
+    if (isSoftKeyboardTarget(hostDocument.activeElement)) return;
     /* 收键盘的收尾窗口内同样一个字也不写。根节点自定义属性继承到整篇 DOM，
        写一次就是一次全文档 style 失效重算；兜底定时器（300/900/2000/5000ms）
        若在键盘动画中途写入中间值，重卡上每次全文档 recalc 都是数百毫秒起，

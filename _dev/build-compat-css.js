@@ -500,7 +500,15 @@ function build(variant, layout) {
   console.log(`Wrote ${path.relative(root, outputPath)} (${(Buffer.byteLength(output) / 1024).toFixed(0)} KB)`);
 }
 
-for (const variant of VARIANTS) {
-  build(variant, 'pc');
-  build(variant, 'mobile');
+function main() {
+  for (const variant of VARIANTS) {
+    build(variant, 'pc');
+    build(variant, 'mobile');
+  }
 }
+
+/* consistency-check 直接复用这份名单，避免两边再各维护一份文本。
+   require 本模块时只读导出；命令行执行时的生成行为保持不变。 */
+module.exports = { SKIN_CHANNEL_PROPERTIES, main };
+
+if (require.main === module) main();
