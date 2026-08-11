@@ -362,7 +362,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.109-kbdprobe-shadow-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.110-probe-offpath-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -8092,8 +8092,16 @@ if (CLAUDE_ENABLED) {
       },
     });
     startMobileKeyboardPoll();
-    installKeyboardProbe();
     scheduleRefresh();
+    /* 诊断器一律排在核心启动之后，并且自己吃掉异常。
+       2.0.108/109 里它排在 scheduleRefresh() 前面 —— 一旦 installKeyboardProbe 抛异常，
+       刷新循环就整个起不来，症状是「加了诊断参数之后界面大面积失灵」，
+       而真正的故障点看起来却像在别处。诊断器永远不能挡在主线路上。 */
+    try {
+      installKeyboardProbe();
+    } catch (error) {
+      hostWindow.console?.warn?.('[Claude Web] kbdprobe 安装失败（不影响其余功能）', error);
+    }
   }
 
   function destroy() {
