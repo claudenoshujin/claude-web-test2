@@ -67,6 +67,19 @@ function stripBannedComments(text) {
 function publicIndex(source) {
   source = replaceOnce(
     source,
+    "const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web-test2';",
+    "const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web';",
+    'public repository URL',
+  );
+  source = replaceOnce(
+    source,
+    "    : 'https://github.com/claudenoshujin/claude-web-test2';",
+    "    : 'https://github.com/claudenoshujin/claude-web';",
+    'public repository fallback',
+  );
+  source = replaceOnce(source, "      return 'claude-web-test2';", "      return 'claude-web';", 'public folder fallback');
+  source = replaceOnce(
+    source,
     "document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');",
     "document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail'], 'rail');",
     'structure whitelist',
@@ -160,7 +173,7 @@ function publicIndex(source) {
   source = replaceOnce(source, "      playbillOptions.hidden = document.documentElement.dataset.claudeSkin !== 'playbill';\n", '', 'playbill presentation toggle');
 
   source = source.replace(
-    /id: '2\.0\.115-mobile-drawer-topbar-' \+ \(CLAUDE_COMPAT_MODE \? 'compat' : 'full'\)/,
+    /id: '2\.0\.116-test-repo-identity-' \+ \(CLAUDE_COMPAT_MODE \? 'compat' : 'full'\)/,
     `id: '${version}-public-compat-framework-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')`,
   );
   if (!source.includes(`${version}-public-compat-framework-`)) throw new Error('Failed to rewrite public build id');
@@ -229,6 +242,8 @@ function fail(message) {
 }
 const syntax = spawnSync(process.execPath, ['--check', path.join(dest, 'index.js')], { encoding: 'utf8' });
 if (syntax.status !== 0) fail(syntax.stderr || syntax.stdout || 'node --check index.js');
+if (indexOut.includes('claude-web-test2')) fail('test repository identity leaked into public index');
+if (!indexOut.includes("const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web';")) fail('public reinstall repository mismatch');
 for (const [label, pattern] of [
   ['LAYOUTS', /const LAYOUTS = \[/],
   ['read', /function read\(key, allowed, fallback\)/],

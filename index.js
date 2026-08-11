@@ -362,14 +362,14 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.115-mobile-drawer-topbar-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.116-test-repo-identity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
 
 /* 设置面板的「重新安装」要按地址重装，地址不能在面板里另写一份 ——
    写两处就有一天会对不上。这里从构建脚本的 REPO_URL 注入。 */
-const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web';
+const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web-test2';
 
 const CLAUDE_THEME = CLAUDE_THEMES[CLAUDE_THEME_VARIANT];
 
@@ -9878,7 +9878,7 @@ if (CLAUDE_ENABLED) {
      兜底值只在源码直接跑的时候用得上。 */
   const REPO_URL = typeof CLAUDE_EXTENSION_REPO !== 'undefined'
     ? CLAUDE_EXTENSION_REPO
-    : 'https://github.com/claudenoshujin/claude-web';
+    : 'https://github.com/claudenoshujin/claude-web-test2';
 
   function folderName() {
     try {
@@ -9887,7 +9887,7 @@ if (CLAUDE_ENABLED) {
         : new URL('.', import.meta.url).href;
       return decodeURIComponent(new URL(base).pathname.replace(/\/+$/, '').split('/').pop() || '');
     } catch {
-      return 'claude-web';
+      return 'claude-web-test2';
     }
   }
 

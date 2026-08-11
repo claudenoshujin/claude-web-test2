@@ -1,4 +1,9 @@
-# Claude Web 2.0
+# Claude Web 2.0 Test
+
+## 2.0.116 测试版
+
+- 测试版显示名、重新安装地址和安装目录独立使用 `claude-web-test2`，不再覆盖正式版 `claude-web`。
+- 正式版与测试版可以同时安装；由于两者都会接管同一套 SillyTavern 页面结构，请只启用其中一个。
 
 ## 2.0.84 测试
 
@@ -283,7 +288,7 @@ https://github.com/claudenoshujin/claude-web-test2
 把仓库内容完整放进：
 
 ```text
-SillyTavern/public/scripts/extensions/third-party/claude-web/
+SillyTavern/public/scripts/extensions/third-party/claude-web-test2/
 ```
 
 `manifest.json` 必须位于扩展目录根部。
