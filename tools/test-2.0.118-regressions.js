@@ -7,20 +7,20 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.117');
-assert.equal(manifest.js, 'loader-2.0.117.js');
+assert.equal(manifest.version, '2.0.118');
+assert.equal(manifest.js, 'loader-2.0.118.js');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.117/,
+  /index\.js\?v=2\.0\.118/,
   'loader must defeat Android WebView module cache',
 );
 
 assert.doesNotMatch(index, /function createUserActions\(/, 'the theme must not manufacture a replacement action bar');
-assert.match(index, /\.mes_buttons > :not\(script\):not\(style\)/, 'native and extension action nodes must be admitted');
-assert.match(index, /\.extraMesButtons > :not\(script\):not\(style\)/, 'third-party overflow actions must be admitted');
+assert.match(index, /#chat > \.mes \.extraMesButtons \{\s*display: none !important;/, 'message overflow actions must be folded by default');
+assert.match(index, /#chat > \.mes \.extraMesButtons\.visible \{\s*display: flex !important;/, 'the native ellipsis must still expand the real actions');
 assert.match(index, /\.mes:has\(\.edit_textarea\) \.mes_buttons \{\s*display: none !important;/, 'normal actions must stay hidden while editing');
 assert.ok(
-  index.indexOf('.mes:has(.edit_textarea) .mes_buttons') > index.indexOf('.mes_buttons > :not(script):not(style)'),
+  index.indexOf('.mes:has(.edit_textarea) .mes_buttons') > index.indexOf('#chat > .mes .extraMesButtons.visible'),
   'the edit-state exception must follow the action restore rule',
 );
 
@@ -44,5 +44,10 @@ assert.match(index, /MOBILE_POPUP_HEIGHT_PROPERTY = '--cl-mobile-popup-height'/)
 assert.match(index, /isSoftKeyboardTarget\(event\.target\)[\s\S]*MOBILE_POPUP_HEIGHT_PROPERTY/, 'popup height must be captured before keyboard resize');
 assert.match(index, /#completion_prompt_manager_popup\.openDrawer[\s\S]*MOBILE_POPUP_HEIGHT_PROPERTY/);
 assert.match(index, /#typing_indicator\.typing_indicator[\s\S]*visibility: visible !important/, 'official Typing Indicator must stay visible while generating');
+assert.match(index, /function usesNativeAndroidKeyboardLayout\(\)/);
+assert.match(index, /usesNativeAndroidKeyboardLayout\(\)[\s\S]*removeProperty\(MOBILE_COMPOSER_TRANSLATE_PROPERTY\)/, 'Android must not receive a second keyboard translation');
+assert.match(index, /userSettingsRowOne[\s\S]*grid-template-columns: minmax\(0,1fr\) minmax\(132px,1fr\)/, 'mobile settings header must use independent columns');
+assert.match(index, /completion_prompt_manager_prompt_name > :is\(\.fa-fw,\.fa-solid,\.fa-regular\)/, 'Prompt Manager icons must reserve their own width');
+assert.match(index, /MOBILE_REFRESH_MIN_GAP = 110/, 'mobile idle refreshes must be throttled for TT');
 
-console.log('✓ Claude Web 2.0.117 focused regressions passed');
+console.log('✓ Claude Web 2.0.118 focused regressions passed');

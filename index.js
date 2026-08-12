@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.117-actions-plugins-keyboard-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.118-mobile-drawers-actions-performance-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2714,11 +2714,10 @@ if (CLAUDE_ENABLED) {
         }
       }
 
-      /* 酒馆和第三方扩展已经把真正的消息操作挂在 .mes_buttons 里。不要再用
-         主题自造的“编辑/删除”替代栏覆盖它，否则分支、检查点、绘图、翻译、
-         Qvink 等动作会一起被白名单吞掉。窄屏允许横向滚动，不删任何真实节点。 */
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .mes_buttons,
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .extraMesButtons {
+      /* 真实动作仍全部保留，但默认折叠必须交还酒馆。2.0.117 把
+         .extraMesButtons 和它的每个孩子都强制 display:flex，等于绕过了
+         extraMesButtonsHint 的原生开关，P2/P5 才会整排常驻。 */
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .mes_buttons {
         display: flex !important;
         align-items: center !important;
         gap: 4px !important;
@@ -2731,9 +2730,25 @@ if (CLAUDE_ENABLED) {
         pointer-events: auto !important;
       }
 
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .mes_buttons > :not(script):not(style),
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .extraMesButtons > :not(script):not(style) {
-        display: inline-flex !important;
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .extraMesButtons {
+        display: none !important;
+        align-items: center !important;
+        gap: 4px !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        flex-wrap: nowrap !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}.expandMessageActions
+        #chat > .mes .extraMesButtons,
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes .extraMesButtons.visible {
+        display: flex !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes .mes_buttons > :not(script):not(style) {
         visibility: visible !important;
         opacity: .72 !important;
         pointer-events: auto !important;
@@ -2829,10 +2844,108 @@ if (CLAUDE_ENABLED) {
       }
 
       @media (max-width:700px) {
+        /* 移动抽屉自己从屏幕顶端铺开，但内容必须从 56px 顶栏下方开始。
+           这同时避免设置标题和右上角 Clawd 叠在一起。 */
+        html body.${MOBILE_LAYOUT_CLASS} #top-settings-holder
+          > .drawer > .drawer-content.openDrawer,
+        html body.${MOBILE_LAYOUT_CLASS} #top-settings-holder
+          > #rightNavHolder > .drawer-content.openDrawer {
+          top: 0 !important;
+          bottom: auto !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          max-height: 100dvh !important;
+          margin: 0 !important;
+          padding-top: calc(env(safe-area-inset-top, 0px) + 58px) !important;
+          scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 58px) !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #rightNavHolder
+          > .drawer-content.openDrawer > :is(#right-nav-panelheader,#CharListButtonAndHotSwaps,#rm_PinAndTabs,.scrollableInner),
+        html body.${MOBILE_LAYOUT_CLASS} #rightNavHolder
+          > .drawer-content.openDrawer #rm_characters_block,
+        html body.${MOBILE_LAYOUT_CLASS} #rightNavHolder
+          > .drawer-content.openDrawer #charListFixedTop {
+          inset: auto !important;
+          margin-top: 0 !important;
+          translate: none !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #user-settings-block
+          > .flex-container.flexFlowColumn:first-child {
+          gap: 8px !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #user-settings-block [name="userSettingsRowOne"] {
+          display: grid !important;
+          grid-template-columns: minmax(0,1fr) minmax(132px,1fr) !important;
+          align-items: start !important;
+          gap: 7px 10px !important;
+          width: 100% !important;
+          min-height: 0 !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #user-settings-block [name="userSettingsRowOne"]
+          > :first-child {
+          grid-column: 1 / 2 !important;
+          min-width: 0 !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #user-settings-block #UI-language-block {
+          grid-column: 2 / 3 !important;
+          display: grid !important;
+          grid-template-columns: 1fr !important;
+          gap: 4px !important;
+          min-width: 0 !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #user-settings-block #version_display {
+          grid-column: 1 / -1 !important;
+          display: block !important;
+          min-width: 0 !important;
+          overflow-wrap: anywhere !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #user-settings-block [name="UserSettingsRowTwo"] {
+          display: grid !important;
+          grid-template-columns: minmax(0,auto) minmax(120px,1fr) !important;
+          align-items: center !important;
+          gap: 8px !important;
+        }
+
+        /* TT 的 WebView 在全屏抽屉 transform 动画期间会重绘整个长设置页。
+           静态切换比持续卡顿更可用，ST/Via 仍保留原动画。 */
+        html body.${MOBILE_LAYOUT_CLASS}.${TAURITAVERN_HOST_CLASS}
+          #top-settings-holder > .drawer > .drawer-content {
+          transition: none !important;
+          animation: none !important;
+          will-change: auto !important;
+        }
+
         #completion_prompt_manager #completion_prompt_manager_list
           > li.completion_prompt_manager_prompt > span:has(> .prompt_manager_prompt_controls),
         #completion_prompt_manager #completion_prompt_manager_list .prompt_manager_prompt_controls {
           min-width: 104px !important;
+        }
+
+        #completion_prompt_manager #completion_prompt_manager_list
+          .completion_prompt_manager_prompt_name {
+          gap: 7px !important;
+        }
+
+        #completion_prompt_manager #completion_prompt_manager_list
+          .completion_prompt_manager_prompt_name > :is(.fa-fw,.fa-solid,.fa-regular) {
+          position: static !important;
+          inset: auto !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          flex: 0 0 1.25em !important;
+          width: 1.25em !important;
+          min-width: 1.25em !important;
+          max-width: 1.25em !important;
+          margin: 0 !important;
+          transform: none !important;
         }
 
         #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"]) {
@@ -4260,13 +4373,19 @@ if (CLAUDE_ENABLED) {
     return Boolean(mobileEnabled && hostWindow.matchMedia?.('(max-width:700px)').matches);
   }
 
+  function usesNativeAndroidKeyboardLayout() {
+    return isMobileLayout() && /Android/i.test(hostWindow.navigator?.userAgent || '');
+  }
+
   /* Chrome/Android 支持 VirtualKeyboard API 时，直接让软键盘覆盖页面，而不是
      缩放 layout viewport。这样键盘开合只改变 keyboard-inset 环境变量，重角色卡
      和整段聊天历史都不用重新布局。Via 等 WebView 可能不暴露这个 API，所以这里
      只做能力检测；老内核的降级靠冻结根视口变量（applyMobileViewportMetrics）
      和 transform 位移，不再依赖任何形式的屏外 containment。 */
   function installVirtualKeyboardOverlay() {
-    if (!isMobileLayout() || keyboardBaselineMode) return;
+    /* Android 的 TT、Via 和当前 System WebView 都会随 IME 缩小可布局区域。
+       再强制 overlaysContent 或按 visualViewport 补位，会把输入框上移两次。 */
+    if (!isMobileLayout() || keyboardBaselineMode || usesNativeAndroidKeyboardLayout()) return;
     const keyboard = hostWindow.navigator?.virtualKeyboard;
     if (!keyboard || !('overlaysContent' in keyboard)) return;
     try {
@@ -4464,6 +4583,15 @@ if (CLAUDE_ENABLED) {
       shell.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);
       return;
     }
+    if (usesNativeAndroidKeyboardLayout()) {
+      mobileKeyboardRecoveryActive = false;
+      mobileStableLayoutHeight = Math.max(
+        1,
+        Math.round(hostWindow.innerHeight || hostDocument.documentElement.clientHeight || 1),
+      );
+      shell.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);
+      return;
+    }
     /* overlay 模式由 CSS env(keyboard-inset-height) 直接驱动 transform；不要再
        同时根据 visualViewport 算第二份偏移。 */
     if (virtualKeyboardOverlayActive) {
@@ -4510,7 +4638,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function scheduleMobileComposerTranslate() {
-    if (destroyed || keyboardBaselineMode || mobileComposerTranslateRaf) return;
+    if (destroyed || keyboardBaselineMode || usesNativeAndroidKeyboardLayout() || mobileComposerTranslateRaf) return;
     mobileComposerTranslateRaf = hostWindow.requestAnimationFrame(applyMobileComposerTranslate);
   }
 
@@ -7678,8 +7806,20 @@ if (CLAUDE_ENABLED) {
     if (chat) chatAttributeObserver.observe(chat, CHAT_ATTRIBUTE_OBSERVER_INIT);
   }
 
+  let externalSurfaceIsolationRaf = 0;
+
+  function scheduleExternalSurfaceIsolation() {
+    if (destroyed || externalSurfaceIsolationRaf) return;
+    externalSurfaceIsolationRaf = hostWindow.requestAnimationFrame(() => {
+      externalSurfaceIsolationRaf = 0;
+      if (!destroyed) syncExternalSurfaceIsolation();
+    });
+  }
+
   function handleObservedMutations(records) {
-    syncExternalSurfaceIsolation();
+    /* Character Manager 的可见性只需每帧检查一次。TT 一批 DOM 变动里可能送来
+       数百条记录，旧代码会为每批同步 querySelector + getComputedStyle。 */
+    scheduleExternalSurfaceIsolation();
     refreshStats.recordsSeen += records.length;
     trackDirtyMessages(records);
     ensureChatAttributeObserver();
@@ -7893,12 +8033,13 @@ if (CLAUDE_ENABLED) {
   let lastRefreshAt = 0;
   let throttleTimer = 0;
   const REFRESH_MIN_GAP = 50;
-  const MOBILE_GENERATION_REFRESH_MIN_GAP = 140;
+  const MOBILE_REFRESH_MIN_GAP = 110;
+  const MOBILE_GENERATION_REFRESH_MIN_GAP = 180;
 
   function scheduleRefresh() {
     if (destroyed || diagnosticRefreshPaused || frameId || throttleTimer) return;
-    const minGap = isMobileLayout() && previousTypingActive
-      ? MOBILE_GENERATION_REFRESH_MIN_GAP
+    const minGap = isMobileLayout()
+      ? (previousTypingActive ? MOBILE_GENERATION_REFRESH_MIN_GAP : MOBILE_REFRESH_MIN_GAP)
       : REFRESH_MIN_GAP;
     const wait = minGap - (Date.now() - lastRefreshAt);
     if (wait > 0) {
@@ -8310,6 +8451,8 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    if (externalSurfaceIsolationRaf) hostWindow.cancelAnimationFrame(externalSurfaceIsolationRaf);
+    externalSurfaceIsolationRaf = 0;
     restoreExternalThemeStyle();
     hostDocument.querySelectorAll(`.${SURFACE_HOST_CLASS}`).forEach(host => host.classList.remove(SURFACE_HOST_CLASS));
     hostDocument.querySelectorAll(`.${SURFACE_BACKING_CLASS}`).forEach(backing => backing.remove());

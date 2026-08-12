@@ -15,6 +15,8 @@ const dom = new JSDOM(`<!doctype html><html><head></head><body>
       <div class="mes" is_user="true" mesid="0"><div class="mes_block">
         <div class="mes_text"><q>quoted</q></div>
         <div class="mes_buttons">
+          <div class="mes_button extraMesButtonsHint"></div>
+          <div class="extraMesButtons"><div class="mes_button overflow-action"></div></div>
           <div class="mes_button mes_edit"></div>
           <div class="mes_button third-party-action"></div>
           <div class="mes_button displayNone hidden-action"></div>
@@ -84,11 +86,14 @@ Object.assign(globalThis, {
 });
 Object.defineProperty(globalThis, 'navigator', { configurable: true, value: window.navigator });
 
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.117`);
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.118`);
 await new Promise(resolve => window.setTimeout(resolve, 650));
 
 assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
 assert.equal(window.document.querySelector('.third-party-action')?.isConnected, true, 'third-party action must survive refresh');
+const interactionStyle = window.document.getElementById('claude-clawd-interaction-style')?.textContent || '';
+assert.match(interactionStyle, /\.extraMesButtons \{\s*display: none !important;/, 'overflow actions must start folded');
+assert.match(interactionStyle, /\.extraMesButtons\.visible \{\s*display: flex !important;/, 'native ellipsis expansion must remain available');
 assert.equal(window.document.querySelector('.claude-user-message-actions'), null, 'old replacement action bar must be removed');
 assert.ok(window.document.getElementById('claude-web-quote-body-color'), 'quote toggle must mount in extension settings');
 
@@ -118,4 +123,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.117 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.118 runtime DOM regressions passed');
