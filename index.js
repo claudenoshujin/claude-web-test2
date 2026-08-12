@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.119-message-actions-prompt-icons-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.120-plugin-style-isolation-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1100,7 +1100,14 @@ if (CLAUDE_ENABLED) {
   );
   const RESTORE_KEY = 'claude-integrated-theme-restore:v2';
   const WATCHDOG_KEY = '__claudeIntegratedThemeWatchdog';
-  const STYLE_ATTRIBUTE_SELECTOR_MARK = '[style';
+  const HOST_DELETE_MODE_STYLESHEET_SUFFIX = '/css/toggle-dependent.css';
+  const HOST_DELETE_MODE_SELECTOR_MARKS = [
+    'body.documentstyle',
+    '#chat',
+    '.last_mes:has(',
+    '.del_checkbox[style',
+    '.mes_text',
+  ];
   const INSTANCE_TOKEN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   let destroyed = false;
   let hostPageUnloading = false;
@@ -1287,15 +1294,22 @@ if (CLAUDE_ENABLED) {
      write enter expensive :has() invalidation. A reversible same-page A/B on
      a long chat measured roughly 70ms before removal and 2ms after it.
 
-     A same-page scan found three candidate rules and only this host rule
-     contains "[style". Match that CSSOM marker directly: selectorText
-     serialization differs between Chromium/SillyTavern builds, so a regex
-     for the attribute value produced false negatives in 2.0.59. Keep a
-     cssText fallback for rule implementations without selectorText. */
-  function isStyleAttributeRule(rule) {
-    if (typeof rule?.selectorText === 'string'
-      && rule.selectorText.includes(STYLE_ATTRIBUTE_SELECTOR_MARK)) return true;
-    return (rule?.cssText || '').split('{')[0].includes(STYLE_ATTRIBUTE_SELECTOR_MARK);
+     2.0.59-2.0.119 used a global "[style" scan. That also deleted legitimate
+     third-party selectors such as .del_checkbox[style="display: block"] from
+     extension user.css files, breaking plugins that lock or stack messages.
+
+     Keep the performance workaround, but only for SillyTavern's own
+     css/toggle-dependent.css and only for the known delete-mode selector.
+     CSSOM serialization may change quotes/spacing, so match stable structural
+     marks instead of the attribute value while still requiring the core URL. */
+  function isHostDeleteModeRule(rule, source) {
+    let pathname = '';
+    try { pathname = new URL(source, hostDocument.baseURI).pathname; } catch { return false; }
+    if (!pathname.endsWith(HOST_DELETE_MODE_STYLESHEET_SUFFIX)) return false;
+    const selector = typeof rule?.selectorText === 'string'
+      ? rule.selectorText
+      : (rule?.cssText || '').split('{')[0];
+    return HOST_DELETE_MODE_SELECTOR_MARKS.every(mark => selector.includes(mark));
   }
 
   function collectStyleAttributeRules(parent, source, removed) {
@@ -1309,7 +1323,7 @@ if (CLAUDE_ENABLED) {
          property's existence therefore misclassified every normal selector
          as a grouping rule and skipped it in 2.0.59/2.0.60. Test the selector
          before descending, and recurse only when child rules actually exist. */
-      if (isStyleAttributeRule(rule)) {
+      if (isHostDeleteModeRule(rule, source)) {
         const cssText = rule.cssText;
         try {
           parent.deleteRule(index);
@@ -1335,7 +1349,7 @@ if (CLAUDE_ENABLED) {
     if (!removed.length) return 0;
     neutralizedHostRules.push(...removed);
     console.info(
-      '[Claude Web] 已中和 ' + removed.length + ' 条匹配 style 属性的高开销选择器：',
+      '[Claude Web] 已中和 ' + removed.length + ' 条 ST 核心删除模式高开销选择器：',
       removed.map(entry => ({ source: entry.source, rule: entry.cssText })),
     );
     return removed.length;

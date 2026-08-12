@@ -86,7 +86,16 @@ Object.assign(globalThis, {
 });
 Object.defineProperty(globalThis, 'navigator', { configurable: true, value: window.navigator });
 
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.119`);
+const coreDeleteModeStyle = window.document.createElement('style');
+coreDeleteModeStyle.textContent = 'body.documentstyle #chat .last_mes:has(> .del_checkbox[style*="display: block"]) .mes_text { margin-left: 0; }';
+window.document.head.append(coreDeleteModeStyle);
+Object.defineProperty(coreDeleteModeStyle.sheet, 'href', { configurable: true, value: 'https://example.test/css/toggle-dependent.css' });
+const pluginLockStyle = window.document.createElement('style');
+pluginLockStyle.textContent = '.del_checkbox[style="display: block"] ~ .immersive-message { display: block; }';
+window.document.head.append(pluginLockStyle);
+Object.defineProperty(pluginLockStyle.sheet, 'href', { configurable: true, value: 'https://example.test/scripts/extensions/third-party/immersive/user.css' });
+
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.120`);
 await new Promise(resolve => window.setTimeout(resolve, 650));
 
 assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
@@ -101,6 +110,8 @@ const userEditProxy = window.document.querySelector('.claude-user-message-action
 assert.ok(userEditProxy, 'user message needs a visible edit proxy outside the collapsed native header');
 assert.equal(window.document.querySelector('.claude-user-message-actions .claude-user-message-delete'), null, 'user action row must not restore the unsafe quick-delete button');
 assert.ok(window.document.getElementById('claude-web-quote-body-color'), 'quote toggle must mount in extension settings');
+assert.equal(coreDeleteModeStyle.sheet.cssRules.length, 0, 'known ST core delete-mode rule should still be neutralized');
+assert.equal(pluginLockStyle.sheet.cssRules.length, 1, 'third-party [style] selectors must survive cleanup');
 
 const themeStyle = window.document.getElementById('claude-integrated-theme-live-style');
 assert.ok(themeStyle, 'full theme stylesheet must be installed');
@@ -128,4 +139,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.119 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.120 runtime DOM regressions passed');
