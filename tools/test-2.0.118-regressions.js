@@ -7,17 +7,22 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.118');
-assert.equal(manifest.js, 'loader-2.0.118.js');
+assert.equal(manifest.version, '2.0.119');
+assert.equal(manifest.js, 'loader-2.0.119.js');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.118/,
+  /index\.js\?v=2\.0\.119/,
   'loader must defeat Android WebView module cache',
 );
 
 assert.doesNotMatch(index, /function createUserActions\(/, 'the theme must not manufacture a replacement action bar');
 assert.match(index, /#chat > \.mes \.extraMesButtons \{\s*display: none !important;/, 'message overflow actions must be folded by default');
 assert.match(index, /#chat > \.mes \.extraMesButtons\.visible \{\s*display: flex !important;/, 'the native ellipsis must still expand the real actions');
+assert.doesNotMatch(index, /#chat > \.mes\[is_user="true"\] \.mes_buttons \{\s*display: none !important;/, 'native user message actions must not be hidden');
+assert.match(index, /> \.extraMesButtonsHint,[\s\S]*\.mes\[is_user="false"\][\s\S]*> \.mes_edit \{\s*display: inline-flex !important;/, 'ellipsis and assistant native edit actions must be restored explicitly');
+assert.match(index, /function createUserEditAction\(message\)/, 'user edit proxy must be created outside TT\'s collapsed message header');
+assert.doesNotMatch(index, /actions\.append\(edit, remove\)/, 'unsafe user quick-delete must stay removed');
+assert.match(index, /\.mes_buttons:has\(> \.extraMesButtons\.visible\)[\s\S]*> \.extraMesButtonsHint \{\s*display: none !important;/, 'ellipsis must hide after opening overflow actions');
 assert.match(index, /\.mes:has\(\.edit_textarea\) \.mes_buttons \{\s*display: none !important;/, 'normal actions must stay hidden while editing');
 assert.ok(
   index.indexOf('.mes:has(.edit_textarea) .mes_buttons') > index.indexOf('#chat > .mes .extraMesButtons.visible'),
@@ -47,7 +52,7 @@ assert.match(index, /#typing_indicator\.typing_indicator[\s\S]*visibility: visib
 assert.match(index, /function usesNativeAndroidKeyboardLayout\(\)/);
 assert.match(index, /usesNativeAndroidKeyboardLayout\(\)[\s\S]*removeProperty\(MOBILE_COMPOSER_TRANSLATE_PROPERTY\)/, 'Android must not receive a second keyboard translation');
 assert.match(index, /userSettingsRowOne[\s\S]*grid-template-columns: minmax\(0,1fr\) minmax\(132px,1fr\)/, 'mobile settings header must use independent columns');
-assert.match(index, /completion_prompt_manager_prompt_name > :is\(\.fa-fw,\.fa-solid,\.fa-regular\)/, 'Prompt Manager icons must reserve their own width');
+assert.match(index, /grid-template-columns: 26px minmax\(0,1fr\)/, 'Prompt Manager must reserve a dedicated icon column');
 assert.match(index, /MOBILE_REFRESH_MIN_GAP = 110/, 'mobile idle refreshes must be throttled for TT');
 
-console.log('✓ Claude Web 2.0.118 focused regressions passed');
+console.log('✓ Claude Web 2.0.119 focused regressions passed');

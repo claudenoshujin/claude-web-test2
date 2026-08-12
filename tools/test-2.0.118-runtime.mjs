@@ -86,7 +86,7 @@ Object.assign(globalThis, {
 });
 Object.defineProperty(globalThis, 'navigator', { configurable: true, value: window.navigator });
 
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.118`);
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.119`);
 await new Promise(resolve => window.setTimeout(resolve, 650));
 
 assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
@@ -94,7 +94,12 @@ assert.equal(window.document.querySelector('.third-party-action')?.isConnected, 
 const interactionStyle = window.document.getElementById('claude-clawd-interaction-style')?.textContent || '';
 assert.match(interactionStyle, /\.extraMesButtons \{\s*display: none !important;/, 'overflow actions must start folded');
 assert.match(interactionStyle, /\.extraMesButtons\.visible \{\s*display: flex !important;/, 'native ellipsis expansion must remain available');
-assert.equal(window.document.querySelector('.claude-user-message-actions'), null, 'old replacement action bar must be removed');
+assert.match(interactionStyle, /> \.extraMesButtonsHint,[\s\S]*\.mes\[is_user="false"\][\s\S]*> \.mes_edit \{\s*display: inline-flex !important;/, 'ellipsis and assistant native edit action must be visible');
+assert.doesNotMatch(interactionStyle, /#chat > \.mes\[is_user="true"\] \.mes_buttons \{\s*display: none !important;/, 'user action row must remain available');
+assert.match(interactionStyle, /grid-template-columns: 26px minmax\(0,1fr\)/, 'Prompt Manager icon and text need separate columns');
+const userEditProxy = window.document.querySelector('.claude-user-message-actions .claude-user-message-edit');
+assert.ok(userEditProxy, 'user message needs a visible edit proxy outside the collapsed native header');
+assert.equal(window.document.querySelector('.claude-user-message-actions .claude-user-message-delete'), null, 'user action row must not restore the unsafe quick-delete button');
 assert.ok(window.document.getElementById('claude-web-quote-body-color'), 'quote toggle must mount in extension settings');
 
 const themeStyle = window.document.getElementById('claude-integrated-theme-live-style');
@@ -123,4 +128,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.118 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.119 runtime DOM regressions passed');

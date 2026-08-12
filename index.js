@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.118-mobile-drawers-actions-performance-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.119-message-actions-prompt-icons-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2601,15 +2601,6 @@ if (CLAUDE_ENABLED) {
         position: relative !important;
       }
 
-      /* 这条藏的是酒馆自带的用户消息按钮（编辑/删除），前提是完整模式会用
-         .claude-user-message-actions 顶上去。兼容模式按边界不往消息里注入任何
-         Claude 操作按钮，所以这里一藏就等于用户消息没有编辑键了 ——
-         2.0.92 在 MUJI / 天使爱 / 狸猫 / 苹果啵啵 上都是这个症状。
-         兼容模式下必须让酒馆自己的按钮留着。 */
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes[is_user="true"] .mes_buttons {
-        display: none !important;
-      }
-
       #chat > .mes[is_user="true"] .mes_block {
         overflow: visible !important;
       }
@@ -2738,6 +2729,35 @@ if (CLAUDE_ENABLED) {
         overflow-x: auto !important;
         overflow-y: hidden !important;
         flex-wrap: nowrap !important;
+      }
+
+      /* 主题源 CSS 会先把角色消息下的每个 .mes_button 全部隐藏。
+         省略号和编辑键属于原生主操作，必须明确恢复；额外动作仍由
+         .visible / expandMessageActions 控制，不能跟着一起常驻。 */
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}:not(.expandMessageActions)
+        #chat > .mes .mes_buttons:not(:has(> .extraMesButtons.visible))
+        > .extraMesButtonsHint,
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes[is_user="false"] .mes_buttons > .mes_edit {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+
+      /* 用户消息的原生编辑键挂在 .ch_name 里。TT 的气泡布局会把整段标题栏
+         压成零高，按钮即使 display:flex 也在画面外。下方的编辑代理负责转发
+         给同一枚原生 .mes_edit；这里收起原节点，避免 ST 出现双铅笔。 */
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes[is_user="true"] .mes_buttons > .mes_edit {
+        display: none !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}.expandMessageActions
+        #chat > .mes .mes_buttons > .extraMesButtonsHint,
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes .mes_buttons:has(> .extraMesButtons.visible)
+        > .extraMesButtonsHint {
+        display: none !important;
       }
 
       html:not([data-claude-mode="compat"]) body.${READY_CLASS}.expandMessageActions
@@ -2930,22 +2950,36 @@ if (CLAUDE_ENABLED) {
 
         #completion_prompt_manager #completion_prompt_manager_list
           .completion_prompt_manager_prompt_name {
-          gap: 7px !important;
+          display: grid !important;
+          grid-template-columns: 26px minmax(0,1fr) !important;
+          align-items: center !important;
+          column-gap: 8px !important;
+          min-width: 0 !important;
         }
 
         #completion_prompt_manager #completion_prompt_manager_list
-          .completion_prompt_manager_prompt_name > :is(.fa-fw,.fa-solid,.fa-regular) {
+          .completion_prompt_manager_prompt_name > :is(.fa-fw,.fa-solid,.fa-regular):first-child {
           position: static !important;
           inset: auto !important;
+          grid-column: 1 !important;
           display: inline-flex !important;
           align-items: center !important;
           justify-content: center !important;
-          flex: 0 0 1.25em !important;
-          width: 1.25em !important;
-          min-width: 1.25em !important;
-          max-width: 1.25em !important;
+          box-sizing: border-box !important;
+          width: 26px !important;
+          min-width: 26px !important;
+          max-width: 26px !important;
           margin: 0 !important;
           transform: none !important;
+        }
+
+        #completion_prompt_manager #completion_prompt_manager_list
+          .completion_prompt_manager_prompt_name > :is(a,span):not(.fa-fw):not(.fa-solid):not(.fa-regular) {
+          grid-column: 2 !important;
+          min-width: 0 !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
         }
 
         #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"]) {
@@ -3709,10 +3743,49 @@ if (CLAUDE_ENABLED) {
     });
   }
 
+  function createUserEditAction(message) {
+    const actions = hostDocument.createElement('div');
+    actions.className = USER_ACTIONS_CLASS;
+    actions.dataset.claudeUserActionVersion = 'edit-only';
+    actions.setAttribute('aria-label', '用户消息操作');
+
+    const edit = hostDocument.createElement('button');
+    edit.type = 'button';
+    edit.className = USER_EDIT_CLASS;
+    edit.title = '编辑消息';
+    edit.setAttribute('aria-label', '编辑消息');
+    edit.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const nativeEdit = message.querySelector('.mes_edit');
+      if (nativeEdit instanceof hostWindow.HTMLElement) nativeEdit.click();
+      else hostWindow.toastr?.warning('没有找到酒馆原生编辑入口。', '无法编辑');
+    });
+
+    actions.append(edit);
+    return actions;
+  }
+
   function refreshUserActions() {
-    /* 2.0.117 起只使用酒馆与扩展自己的真实操作节点。这里顺手清掉旧版热更新
-       遗留的替代栏，按钮的点击、菜单和权限判断继续由原提供方负责。 */
-    hostDocument.querySelectorAll(`.${USER_ACTIONS_CLASS}`).forEach(actions => actions.remove());
+    /* TT 会把用户消息的 .ch_name 压成零高，里面的原生铅笔因此不可见。
+       这里只做一个可见入口并转发给原生 .mes_edit；不复制编辑实现，也不放
+       快捷删除，删除仍留在酒馆自己的编辑确认流程里。 */
+    const messages = [...hostDocument.querySelectorAll('#chat > .mes[is_user="true"]')];
+    const liveMessages = new Set(messages);
+    hostDocument.querySelectorAll(`.${USER_ACTIONS_CLASS}`).forEach(actions => {
+      const message = actions.closest('#chat > .mes');
+      if (!liveMessages.has(message)) actions.remove();
+    });
+    messages.forEach(message => {
+      const block = message.querySelector(':scope > .mes_block');
+      if (!block) return;
+      let actions = block.querySelector(`:scope > .${USER_ACTIONS_CLASS}`);
+      if (actions?.dataset.claudeUserActionVersion !== 'edit-only') {
+        actions?.remove();
+        actions = null;
+      }
+      if (!actions) block.append(createUserEditAction(message));
+    });
   }
 
   function removeStaleButtons(currentMessage) {
