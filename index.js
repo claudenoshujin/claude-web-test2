@@ -164,6 +164,7 @@ const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'
 const CLAUDE_GEN_TIMER_ENABLED = claudeReadSetting('genTimer', ['on', 'off'], 'off') !== 'off';
 const CLAUDE_BG_TRANSPARENT_ENABLED = claudeReadSetting('bgTransparent', ['on', 'off'], 'off') === 'on';
 const CLAUDE_BG_BLUR_ENABLED = claudeReadSetting('bgBlur', ['on', 'off'], 'off') === 'on';
+const CLAUDE_QUOTE_BODY_COLOR_ENABLED = claudeReadSetting('quoteBodyColor', ['on', 'off'], 'on') !== 'off';
 /* 毛玻璃浓度：8~60 之间的整数，表示 color-mix 里 --cw-surface-page 的占比。
    数字越大越"糊"（底色更浓、越不透）；越小越接近纯透明。允许字符串是
    开区间，这里手动做数值校验和夹取，claudeReadSetting 那套白名单机制
@@ -224,6 +225,7 @@ document.documentElement.dataset.claudeDecorations = CLAUDE_DECORATIONS_ENABLED 
 document.documentElement.dataset.claudeGenTimer = CLAUDE_GEN_TIMER_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeBgTransparent = CLAUDE_BG_TRANSPARENT_ENABLED ? 'on' : 'off';
 document.documentElement.dataset.claudeBgBlur = CLAUDE_BG_BLUR_ENABLED ? 'on' : 'off';
+document.documentElement.dataset.claudeQuoteBodyColor = CLAUDE_QUOTE_BODY_COLOR_ENABLED ? 'on' : 'off';
 document.documentElement.style.setProperty('--claude-bg-blur-opacity', `${CLAUDE_BG_BLUR_OPACITY}%`);
 document.documentElement.style.setProperty('--claude-drawer-tint-opacity', `${CLAUDE_DRAWER_TINT_OPACITY}%`);
 document.documentElement.style.setProperty('--claude-glass-base', CLAUDE_GLASS_BASE);
@@ -362,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.116-test-repo-identity-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.117-actions-plugins-keyboard-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1479,6 +1481,10 @@ if (CLAUDE_ENABLED) {
 
   function valuesWithPreservedQuote(settings, values) {
     const next = { ...values };
+    if (hostDocument.documentElement.dataset.claudeQuoteBodyColor !== 'off') {
+      next.quote_text_color = next.main_text_color ?? values.quote_text_color;
+      return next;
+    }
     const current = settings?.quote_text_color;
     const defaults = typeof CLAUDE_THEMES !== 'undefined'
       ? Object.values(CLAUDE_THEMES).map(theme => theme?.quote_text_color).filter(Boolean)
@@ -1800,6 +1806,7 @@ if (CLAUDE_ENABLED) {
     }
     hostWindow.removeEventListener('beforeunload', markHostPageUnloading, true);
     hostWindow.removeEventListener('pagehide', markHostPageUnloading, true);
+    window.removeEventListener('pageshow', handleRunnerPageShow);
     restoreStyleAttributeRules();
     removeRuntimeArtifacts();
     if (hostWindow[INSTANCE_KEY] === api) delete hostWindow[INSTANCE_KEY];
@@ -1810,14 +1817,23 @@ if (CLAUDE_ENABLED) {
     hostPageUnloading = true;
   }
 
-  function handleRunnerPageHide() {
-    if (hostPageUnloading) {
+  function handleRunnerPageHide(event) {
+    if (extensionMode && (event?.persisted || event?.originalEvent?.persisted)) return;
+    if (hostPageUnloading && !extensionMode) {
       destroy({ restore: false });
       return;
     }
     /* pagehide is TavernHelper's documented script-disable hook. Cleanup must be
        synchronous: delaying it means Via can destroy this realm before it runs. */
     destroy({ restore: true });
+  }
+
+  function handleRunnerPageShow(event) {
+    if (!extensionMode || !event?.persisted || destroyed) return;
+    hostPageUnloading = false;
+    /* once 监听器在进入 bfcache 时也会被消费；页面恢复后重新装一份，保证之后
+       真正刷新或关闭扩展仍会同步恢复进入前主题。 */
+    window.addEventListener('pagehide', handleRunnerPageHide, { once: true });
   }
 
   function watchRunnerPresence() {
@@ -1848,6 +1864,7 @@ if (CLAUDE_ENABLED) {
   installHostWatchdog();
   $(start);
   window.addEventListener('pagehide', handleRunnerPageHide, { once: true });
+  window.addEventListener('pageshow', handleRunnerPageShow);
   window.addEventListener('unload', handleRunnerPageHide, { once: true });
   $(window).on('pagehide', handleRunnerPageHide);
 })();
@@ -1913,7 +1930,10 @@ if (CLAUDE_ENABLED) {
   const MOBILE_COMPOSER_TRANSLATE_PROPERTY = '--cl-mobile-composer-translate-y';
   const MOBILE_VIEWPORT_HEIGHT_PROPERTY = '--cl-mobile-viewport-height';
   const MOBILE_VIEWPORT_TOP_PROPERTY = '--cl-mobile-viewport-top';
+  const MOBILE_POPUP_HEIGHT_PROPERTY = '--cl-mobile-popup-height';
   const STYLE_ID = 'claude-clawd-interaction-style';
+  const THEME_LIVE_STYLE_ID = 'claude-integrated-theme-live-style';
+  const CHARACTER_MANAGER_SELECTOR = '#charManagerModal';
   const EMBED_STYLE_ID = 'claude-embedded-surface-style';
   const EMBED_ATTRIBUTE = 'data-claude-transparent-surface';
   const EMBED_SRCDOC_MARKER = '<!-- claude-transparent-surface -->';
@@ -2008,6 +2028,8 @@ if (CLAUDE_ENABLED) {
   let keyboardDiagnostics = null;
   let diagnosticRefreshPaused = false;
   let diagnosticIsolationMode = 'standard';
+  let suspendedThemeStyle = null;
+  let suspendedThemeMedia = null;
   const DIAGNOSTIC_COMPOSITOR_STYLE_ID = 'clawd-via-compositor-isolation';
   const AUTOCOMPLETE_RESIZE_GUARD_KEY = '__claudeClawdAutoCompleteResizeGuard';
   const AUTOCOMPLETE_GUARDED_METHODS = [
@@ -2689,6 +2711,161 @@ if (CLAUDE_ENABLED) {
           visibility: visible !important;
           pointer-events: auto !important;
           transform: translateY(0) !important;
+        }
+      }
+
+      /* 酒馆和第三方扩展已经把真正的消息操作挂在 .mes_buttons 里。不要再用
+         主题自造的“编辑/删除”替代栏覆盖它，否则分支、检查点、绘图、翻译、
+         Qvink 等动作会一起被白名单吞掉。窄屏允许横向滚动，不删任何真实节点。 */
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .mes_buttons,
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .extraMesButtons {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        flex-wrap: nowrap !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .mes_buttons > :not(script):not(style),
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .extraMesButtons > :not(script):not(style) {
+        display: inline-flex !important;
+        visibility: visible !important;
+        opacity: .72 !important;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        flex: 0 0 auto !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes :is(.mes_create_bookmark,.mes_create_branch) {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes:has(.edit_textarea) .mes_buttons {
+        display: none !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .mes_buttons > :is(.displayNone,[hidden]),
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS} #chat > .mes .extraMesButtons > :is(.displayNone,[hidden]) {
+        display: none !important;
+      }
+
+      html[data-claude-quote-body-color="on"] body.${READY_CLASS} #chat :is(.mes_text,.mes_reasoning) :is(q,.quote) {
+        color: var(--cw-text-body, var(--SmartThemeBodyColor)) !important;
+      }
+
+      body.${READY_CLASS}.${GENERATING_CLASS} #chat #typing_indicator.typing_indicator {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+
+      :is(#completion_prompt_manager,#completion_prompt_manager_popup)
+        .prompt_manager_prompt_controls > :is(
+          .prompt-manager-detach-action,
+          .prompt-manager-edit-action,
+          .prompt-manager-delete-action,
+          .prompt-manager-toggle-action,
+          [data-action*="delete" i]
+        ) {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 28px !important;
+        min-height: 28px !important;
+        color: var(--cw-text-secondary, var(--cw-text-muted)) !important;
+        opacity: .88 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+
+      :is(#completion_prompt_manager,#completion_prompt_manager_popup)
+        .prompt_manager_prompt_controls > :is(.prompt-manager-delete-action,[data-action*="delete" i]) {
+        color: var(--cw-mark, currentColor) !important;
+      }
+
+      #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"]) {
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 4 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        padding: 8px 4px !important;
+        background: var(--cw-surface-page) !important;
+      }
+
+      #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"]) > select {
+        flex: 1 1 140px !important;
+        min-width: 100px !important;
+      }
+
+      #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"]) > .menu_button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 32px !important;
+        width: 32px !important;
+        min-width: 32px !important;
+        height: 32px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        opacity: .9 !important;
+        visibility: visible !important;
+      }
+
+      #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"])
+        > .caution[title*="delete" i] {
+        color: #c15f50 !important;
+        border-color: color-mix(in srgb, #c15f50 55%, transparent) !important;
+        opacity: 1 !important;
+      }
+
+      @media (max-width:700px) {
+        #completion_prompt_manager #completion_prompt_manager_list
+          > li.completion_prompt_manager_prompt > span:has(> .prompt_manager_prompt_controls),
+        #completion_prompt_manager #completion_prompt_manager_list .prompt_manager_prompt_controls {
+          min-width: 104px !important;
+        }
+
+        #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"]) {
+          flex-wrap: wrap !important;
+          justify-content: flex-end !important;
+          padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+
+        #completion_prompt_manager :is(.completion_prompt_manager_footer,[class$="prompt_manager_footer"]) > select {
+          flex: 1 0 100% !important;
+          width: 100% !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #qr--bar #input_helper_toolbar,
+        html body.${MOBILE_LAYOUT_CLASS} #qr--bar .qrq-wrapper-visible #input_helper_toolbar {
+          position: static !important;
+          inset: auto !important;
+          transform: none !important;
+          float: none !important;
+          max-width: 100% !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #completion_prompt_manager_popup.openDrawer {
+          inset: 0 0 auto 0 !important;
+          height: var(${MOBILE_POPUP_HEIGHT_PROPERTY}, var(${MOBILE_VIEWPORT_HEIGHT_PROPERTY}, 100vh)) !important;
+          min-height: var(${MOBILE_POPUP_HEIGHT_PROPERTY}, var(${MOBILE_VIEWPORT_HEIGHT_PROPERTY}, 100vh)) !important;
+          max-height: var(${MOBILE_POPUP_HEIGHT_PROPERTY}, var(${MOBILE_VIEWPORT_HEIGHT_PROPERTY}, 100vh)) !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS} #completion_prompt_manager_popup.openDrawer::after {
+          flex-basis: max(0px, calc(var(${MOBILE_POPUP_HEIGHT_PROPERTY}, var(${MOBILE_VIEWPORT_HEIGHT_PROPERTY}, 100vh)) - 100dvh + 16px)) !important;
+          height: max(0px, calc(var(${MOBILE_POPUP_HEIGHT_PROPERTY}, var(${MOBILE_VIEWPORT_HEIGHT_PROPERTY}, 100vh)) - 100dvh + 16px)) !important;
+          min-height: max(0px, calc(var(${MOBILE_POPUP_HEIGHT_PROPERTY}, var(${MOBILE_VIEWPORT_HEIGHT_PROPERTY}, 100vh)) - 100dvh + 16px)) !important;
         }
       }
 
@@ -3419,53 +3596,10 @@ if (CLAUDE_ENABLED) {
     });
   }
 
-  function createUserActions(message) {
-    const actions = hostDocument.createElement('div');
-    actions.className = USER_ACTIONS_CLASS;
-    actions.setAttribute('aria-label', '用户消息操作');
-
-    const edit = hostDocument.createElement('button');
-    edit.type = 'button';
-    edit.className = USER_EDIT_CLASS;
-    edit.title = '编辑消息';
-    edit.setAttribute('aria-label', '编辑消息');
-    edit.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      const nativeEdit = message.querySelector('.mes_edit');
-      if (nativeEdit instanceof hostWindow.HTMLElement) nativeEdit.click();
-      else hostWindow.toastr?.warning('当前酒馆没有提供可用的原生编辑入口。', '编辑不可用');
-    });
-
-    const remove = hostDocument.createElement('button');
-    remove.type = 'button';
-    remove.className = USER_DELETE_CLASS;
-    remove.title = '删除消息（需要确认）';
-    remove.setAttribute('aria-label', '删除消息（需要确认）');
-    remove.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      safelyDeleteMessage(message).catch(error => {
-        console.error('[Claude Clawd] Failed to delete user message safely.', error);
-        hostWindow.toastr?.error('删除消息时发生错误，原消息已保留。', '删除失败');
-      });
-    });
-
-    actions.append(edit, remove);
-    return actions;
-  }
-
   function refreshUserActions() {
-    const messages = [...hostDocument.querySelectorAll('#chat > .mes[is_user="true"]')];
-    const liveMessages = new Set(messages);
-    hostDocument.querySelectorAll(`.${USER_ACTIONS_CLASS}`).forEach(actions => {
-      if (!liveMessages.has(actions.closest('#chat > .mes'))) actions.remove();
-    });
-    messages.forEach(message => {
-      const block = message.querySelector(':scope > .mes_block');
-      if (!block || block.querySelector(`:scope > .${USER_ACTIONS_CLASS}`)) return;
-      block.append(createUserActions(message));
-    });
+    /* 2.0.117 起只使用酒馆与扩展自己的真实操作节点。这里顺手清掉旧版热更新
+       遗留的替代栏，按钮的点击、菜单和权限判断继续由原提供方负责。 */
+    hostDocument.querySelectorAll(`.${USER_ACTIONS_CLASS}`).forEach(actions => actions.remove());
   }
 
   function removeStaleButtons(currentMessage) {
@@ -4260,6 +4394,7 @@ if (CLAUDE_ENABLED) {
     if (!isMobileLayout()) {
       root.style.removeProperty(MOBILE_VIEWPORT_HEIGHT_PROPERTY);
       root.style.removeProperty(MOBILE_VIEWPORT_TOP_PROPERTY);
+      root.style.removeProperty(MOBILE_POPUP_HEIGHT_PROPERTY);
       return;
     }
     /* baseline 诊断包：根视口变量保持 CSS 兜底值，JS 一个字也不写。 */
@@ -4290,6 +4425,10 @@ if (CLAUDE_ENABLED) {
     if (Date.now() < mobileKeyboardSettlingUntil) return;
     const viewport = hostWindow.visualViewport;
     const height = Math.max(1, Math.round(viewport?.height || hostWindow.innerHeight || 1));
+    const popupHeight = Math.max(
+      height,
+      Math.round(hostWindow.innerHeight || hostDocument.documentElement.clientHeight || height),
+    );
     const top = Math.max(0, Math.round(viewport?.offsetTop || 0));
     const heightValue = `${height}px`;
     const topValue = `${top}px`;
@@ -4298,6 +4437,10 @@ if (CLAUDE_ENABLED) {
     }
     if (root.style.getPropertyValue(MOBILE_VIEWPORT_TOP_PROPERTY) !== topValue) {
       root.style.setProperty(MOBILE_VIEWPORT_TOP_PROPERTY, topValue);
+    }
+    const popupHeightValue = `${popupHeight}px`;
+    if (root.style.getPropertyValue(MOBILE_POPUP_HEIGHT_PROPERTY) !== popupHeightValue) {
+      root.style.setProperty(MOBILE_POPUP_HEIGHT_PROPERTY, popupHeightValue);
     }
   }
 
@@ -6676,6 +6819,20 @@ if (CLAUDE_ENABLED) {
 
   let lastFocusReactionAt = 0;
   const handleFocusIn = event => {
+    if (isMobileLayout() && isSoftKeyboardTarget(event.target)) {
+      /* TT 的部分 WebView 会在 focusin 后立刻缩 layout viewport。先在同一任务里
+         单独锁住编辑弹窗高度；它不再依赖之后可能已经变矮的 visualViewport。 */
+      const root = hostDocument.documentElement;
+      const current = parseFloat(root.style.getPropertyValue(MOBILE_POPUP_HEIGHT_PROPERTY)) || 0;
+      const height = Math.max(
+        1,
+        current,
+        Math.round(hostWindow.innerHeight || hostDocument.documentElement.clientHeight || 1),
+        Math.round(hostWindow.visualViewport?.height || 0),
+      );
+      root.style.setProperty(MOBILE_POPUP_HEIGHT_PROPERTY, `${height}px`);
+      scheduleMobileViewportSettle();
+    }
     if (event.target?.id !== 'send_textarea') return;
     /* 聚焦输入框本身就是「人在」的信号，得跟敲键盘一样刷新打盹计时——
        不然 syncCcComposerState 只是切了一个视觉用的 class，用户光盯着
@@ -6709,6 +6866,7 @@ if (CLAUDE_ENABLED) {
     });
   };
   const handleFocusOut = event => {
+    if (isMobileLayout() && isSoftKeyboardTarget(event.target)) scheduleMobileViewportSettle();
     if (event.target?.id !== 'send_textarea') return;
     /* 不等下一帧：WebView 随后若开始重排长聊天，rAF/定时器都会被主线程堵住。
        在 focusout 的同一任务内先把旧键盘偏移清零，避免输入框沿用抬高位置。 */
@@ -7432,6 +7590,36 @@ if (CLAUDE_ENABLED) {
       && !target.closest('#chat');
   }
 
+  function restoreExternalThemeStyle() {
+    if (!suspendedThemeStyle) return;
+    if (suspendedThemeMedia == null) suspendedThemeStyle.removeAttribute('media');
+    else suspendedThemeStyle.setAttribute('media', suspendedThemeMedia);
+    suspendedThemeStyle = null;
+    suspendedThemeMedia = null;
+    delete hostDocument.documentElement.dataset.claudeExternalSurface;
+  }
+
+  function syncExternalSurfaceIsolation() {
+    const manager = hostDocument.querySelector(CHARACTER_MANAGER_SELECTOR);
+    const visible = manager && !manager.hidden && (() => {
+      const style = hostWindow.getComputedStyle(manager);
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    })();
+    if (!visible) {
+      restoreExternalThemeStyle();
+      return;
+    }
+    const style = hostDocument.getElementById(THEME_LIVE_STYLE_ID);
+    if (!style) return;
+    if (suspendedThemeStyle && suspendedThemeStyle !== style) restoreExternalThemeStyle();
+    if (!suspendedThemeStyle) {
+      suspendedThemeStyle = style;
+      suspendedThemeMedia = style.getAttribute('media');
+    }
+    style.setAttribute('media', 'not all');
+    hostDocument.documentElement.dataset.claudeExternalSurface = 'character-manager';
+  }
+
   function mutationNeedsFullRefresh(record) {
     const target = record.target instanceof hostWindow.Element ? record.target : record.target.parentElement;
     if (!(target instanceof hostWindow.Element)) return true;
@@ -7453,6 +7641,7 @@ if (CLAUDE_ENABLED) {
        真机实测：生成期间它产生 1566 条记录，是全场最多的一类，比第二名还多 57%。
        整个 #completion_prompt_manager 子树直接不参与刷新判断。 */
     if (target.closest('#completion_prompt_manager')) return false;
+    if (target.closest(CHARACTER_MANAGER_SELECTOR)) return false;
 
     /* Third-party floating panels update inline position styles on every pointer
        move. Outside #chat those writes cannot affect message decoration, so do
@@ -7490,6 +7679,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function handleObservedMutations(records) {
+    syncExternalSurfaceIsolation();
     refreshStats.recordsSeen += records.length;
     trackDirtyMessages(records);
     ensureChatAttributeObserver();
@@ -7964,6 +8154,7 @@ if (CLAUDE_ENABLED) {
     hostDocument.body.classList.add(READY_CLASS);
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
     hostDocument.body.classList.toggle(TAURITAVERN_HOST_CLASS, isTauriTavernHost());
+    syncExternalSurfaceIsolation();
     installVirtualKeyboardOverlay();
     watchGenerationEvents();
     observer = new hostWindow.MutationObserver(handleObservedMutations);
@@ -8119,6 +8310,7 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    restoreExternalThemeStyle();
     hostDocument.querySelectorAll(`.${SURFACE_HOST_CLASS}`).forEach(host => host.classList.remove(SURFACE_HOST_CLASS));
     hostDocument.querySelectorAll(`.${SURFACE_BACKING_CLASS}`).forEach(backing => backing.remove());
     restoreAutoCompleteResizeGuard();
@@ -8280,6 +8472,7 @@ if (CLAUDE_ENABLED) {
     hostDocument.documentElement.style.removeProperty(MOBILE_COMPOSER_HEIGHT_PROPERTY);
     hostDocument.documentElement.style.removeProperty(MOBILE_VIEWPORT_HEIGHT_PROPERTY);
     hostDocument.documentElement.style.removeProperty(MOBILE_VIEWPORT_TOP_PROPERTY);
+    hostDocument.documentElement.style.removeProperty(MOBILE_POPUP_HEIGHT_PROPERTY);
     if (hostWindow[INSTANCE_KEY] === api) delete hostWindow[INSTANCE_KEY];
   }
 
@@ -9730,6 +9923,12 @@ if (CLAUDE_ENABLED) {
                          placeholder='自定义 font-family，例如："LXGW WenKai", serif'>
                 </div>
 
+                <label class="checkbox_label claude-web-check claude-web-field">
+                  <input id="claude-web-quote-body-color" type="checkbox">
+                  <span>引号文字跟随正文颜色</span>
+                </label>
+                <div class="claude-web-help">关闭后恢复主题原本的引号强调色。</div>
+
                 <details id="claude-web-colors" class="claude-web-field">
                   <summary style="cursor:pointer;user-select:none;opacity:.85">自定义配色</summary>
                   <div id="claude-web-swatches" class="claude-web-swatches"></div>
@@ -10476,6 +10675,18 @@ if (CLAUDE_ENABLED) {
       try { window.localStorage.setItem('claude-web:fontCustom', v); } catch { /* 无痕 */ }
       if (v) document.documentElement.style.setProperty('--cw-font-custom', v);
       else document.documentElement.style.removeProperty('--cw-font-custom');
+    });
+
+    const quoteBodyColorBox = panel.querySelector('#claude-web-quote-body-color');
+    quoteBodyColorBox.checked = read('quoteBodyColor', ['on', 'off'], 'on') !== 'off';
+    quoteBodyColorBox.addEventListener('change', () => {
+      if (!write('quoteBodyColor', quoteBodyColorBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeQuoteBodyColor = quoteBodyColorBox.checked ? 'on' : 'off';
+      const variant = document.documentElement.dataset.claudeIntegratedTheme;
+      if (variant) window.__claudeIntegratedTheme?.applyVariant?.(variant);
+      hint.textContent = quoteBodyColorBox.checked
+        ? '引号文字已固定为正文颜色。'
+        : '引号文字已恢复主题强调色。';
     });
 
     layoutSelect.addEventListener('change', () => {
