@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.130-tt-native-prompt-handle-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.135-modal-layer-and-crisp-prompt-handle-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1950,6 +1950,17 @@ if (CLAUDE_ENABLED) {
   const STYLE_ID = 'claude-clawd-interaction-style';
   const THEME_LIVE_STYLE_ID = 'claude-integrated-theme-live-style';
   const CHARACTER_MANAGER_SELECTOR = '#charManagerModal';
+  const EXTERNAL_MODAL_OPEN_CLASS = 'clawd-external-modal-open';
+  const EXTERNAL_MODAL_SELECTOR = [
+    '[role="dialog"]',
+    'dialog[open]',
+    '[class*="modal-backdrop" i]',
+    '[class*="modal_backdrop" i]',
+    '[class*="modal-overlay" i]',
+    '[class*="modal_overlay" i]',
+    '[class*="popup-backdrop" i]',
+    '[class*="popup_backdrop" i]',
+  ].join(',');
   const EMBED_STYLE_ID = 'claude-embedded-surface-style';
   const EMBED_ATTRIBUTE = 'data-claude-transparent-surface';
   const EMBED_SRCDOC_MARKER = '<!-- claude-transparent-surface -->';
@@ -1981,6 +1992,8 @@ if (CLAUDE_ENABLED) {
 
   let observer = null;
   let chatAttributeObserver = null;
+  let externalModalObserver = null;
+  let externalModalRailState = [];
   let observedAttributeChat = null;
   let scrollHost = null;
   let lastManualScrollAt = 0;
@@ -2119,6 +2132,13 @@ if (CLAUDE_ENABLED) {
         #chat > .mes[is_user="false"] .mes_text .${REGEX_SURFACE_CLASS} {
         background: transparent !important;
         background-color: transparent !important;
+      }
+
+      /* Claude 的桌面侧栏使用高层级常驻。第三方扩展打开真正的全屏弹窗时，
+         侧栏必须退到遮罩后面，否则会把弹窗左侧工具区盖住。body 状态由下面
+         的通用几何检测维护，不依赖任何插件名称。 */
+      html[data-claude-mode] body.${EXTERNAL_MODAL_OPEN_CLASS} #top-settings-holder {
+        z-index: 1 !important;
       }
 
       body.${READY_CLASS} #chat > .mes[is_user="false"] > .swipe_left,
@@ -3057,16 +3077,10 @@ if (CLAUDE_ENABLED) {
           padding: 0 !important;
           color: var(--cw-text-secondary, var(--cw-text-muted, #777)) !important;
           background-color: transparent !important;
-          background-image:
-            linear-gradient(currentColor, currentColor),
-            linear-gradient(currentColor, currentColor),
-            linear-gradient(currentColor, currentColor) !important;
-          background-position:
-            center calc(50% - 5px),
-            center center,
-            center calc(50% + 5px) !important;
-          background-size: 16px 2px, 16px 2px, 16px 2px !important;
-          background-repeat: no-repeat !important;
+          background-image: none !important;
+          box-shadow: none !important;
+          filter: none !important;
+          text-shadow: none !important;
           font-size: 0 !important;
           line-height: 1 !important;
           visibility: visible !important;
@@ -3098,6 +3112,9 @@ if (CLAUDE_ENABLED) {
           width: 16px !important;
           height: 16px !important;
           color: var(--cw-text-secondary, var(--cw-text-muted, #777)) !important;
+          box-shadow: none !important;
+          filter: none !important;
+          text-shadow: none !important;
           visibility: visible !important;
           opacity: 1 !important;
         }
@@ -3117,6 +3134,9 @@ if (CLAUDE_ENABLED) {
           background: currentColor !important;
           border: 0 !important;
           border-radius: 1px !important;
+          box-shadow: none !important;
+          filter: none !important;
+          text-shadow: none !important;
           visibility: visible !important;
           opacity: 1 !important;
         }
@@ -3997,6 +4017,9 @@ if (CLAUDE_ENABLED) {
           visibility: 'visible',
           opacity: '0.9',
           pointerEvents: 'auto',
+          boxShadow: 'none',
+          filter: 'none',
+          textShadow: 'none',
         }).forEach(([property, value]) => handle.style.setProperty(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value, 'important'));
         if (handle.querySelector(':scope > .' + PROMPT_DRAG_GLYPH_CLASS)) return;
         handle.textContent = '';
@@ -4013,6 +4036,9 @@ if (CLAUDE_ENABLED) {
           height: '16px',
           visibility: 'visible',
           opacity: '1',
+          boxShadow: 'none',
+          filter: 'none',
+          textShadow: 'none',
         }).forEach(([property, value]) => glyph.style.setProperty(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value, 'important'));
         for (let index = 0; index < 3; index += 1) {
           const bar = hostDocument.createElement('span');
@@ -4028,6 +4054,9 @@ if (CLAUDE_ENABLED) {
             background: '#73736f',
             border: '0',
             borderRadius: '1px',
+            boxShadow: 'none',
+            filter: 'none',
+            textShadow: 'none',
             visibility: 'visible',
             opacity: '1',
           }).forEach(([property, value]) => bar.style.setProperty(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value, 'important'));
@@ -8070,6 +8099,69 @@ if (CLAUDE_ENABLED) {
     hostDocument.documentElement.dataset.claudeExternalSurface = 'character-manager';
   }
 
+  function observeExternalModalCandidates() {
+    if (!externalModalObserver) return [];
+    const candidates = [...hostDocument.querySelectorAll(EXTERNAL_MODAL_SELECTOR)];
+    for (const candidate of candidates) {
+      if (candidate === hostDocument.body || candidate === hostDocument.documentElement) continue;
+      externalModalObserver.observe(candidate, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'hidden', 'open'],
+      });
+    }
+    return candidates;
+  }
+
+  function isVisibleFullScreenExternalModal(element) {
+    if (!(element instanceof hostWindow.HTMLElement)) return false;
+    const rail = hostDocument.querySelector('#top-settings-holder');
+    if (rail && (rail === element || rail.contains(element) || element.contains(rail))) return false;
+    const style = hostWindow.getComputedStyle(element);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+    if (style.position !== 'fixed') return false;
+    const rect = element.getBoundingClientRect();
+    const viewportWidth = Math.max(1, hostWindow.innerWidth || hostDocument.documentElement.clientWidth || 1);
+    const viewportHeight = Math.max(1, hostWindow.innerHeight || hostDocument.documentElement.clientHeight || 1);
+    return rect.width >= viewportWidth * 0.7 && rect.height >= viewportHeight * 0.7;
+  }
+
+  function syncExternalModalRailLayer() {
+    const modalOpen = observeExternalModalCandidates().some(isVisibleFullScreenExternalModal);
+    hostDocument.body.classList.toggle(EXTERNAL_MODAL_OPEN_CLASS, modalOpen);
+    /* Claude 桌面左栏由两个同级 fixed 外壳共同组成：#top-settings-holder
+       放设置按钮，#top-bar 负责整条侧栏底板。只降低前者时，视觉上似乎
+       退让了，但命中测试仍会落到 #top-bar，第三方弹窗里的按钮依旧点不到。 */
+    const rails = Array.from(hostDocument.querySelectorAll('#top-settings-holder, #top-bar'));
+    if (modalOpen && rails.length) {
+      const sameRails = externalModalRailState.length === rails.length
+        && externalModalRailState.every((state, index) => state.element === rails[index]);
+      if (!sameRails) {
+        restoreExternalModalRailLayer();
+        externalModalRailState = rails.map(element => ({
+          element,
+          value: element.style.getPropertyValue('z-index'),
+          priority: element.style.getPropertyPriority('z-index'),
+        }));
+      }
+      /* 兼容样式位于 @layer cw-frame。级联层中的 !important 会反向压过
+         普通未分层规则，所以这里只靠选择器无法保证退让；节点级 important
+         同时保留并在关闭时恢复原内联值。 */
+      for (const rail of rails) rail.style.setProperty('z-index', '1', 'important');
+      return;
+    }
+    restoreExternalModalRailLayer();
+  }
+
+  function restoreExternalModalRailLayer() {
+    const states = externalModalRailState;
+    externalModalRailState = [];
+    for (const state of states) {
+      if (!state?.element) continue;
+      if (state.value) state.element.style.setProperty('z-index', state.value, state.priority);
+      else state.element.style.removeProperty('z-index');
+    }
+  }
+
   function mutationNeedsFullRefresh(record) {
     const target = record.target instanceof hostWindow.Element ? record.target : record.target.parentElement;
     if (!(target instanceof hostWindow.Element)) return true;
@@ -8134,7 +8226,10 @@ if (CLAUDE_ENABLED) {
     if (destroyed || externalSurfaceIsolationRaf) return;
     externalSurfaceIsolationRaf = hostWindow.requestAnimationFrame(() => {
       externalSurfaceIsolationRaf = 0;
-      if (!destroyed) syncExternalSurfaceIsolation();
+      if (!destroyed) {
+        syncExternalSurfaceIsolation();
+        syncExternalModalRailLayer();
+      }
     });
   }
 
@@ -8627,7 +8722,9 @@ if (CLAUDE_ENABLED) {
     hostDocument.body.classList.add(READY_CLASS);
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
     hostDocument.body.classList.toggle(TAURITAVERN_HOST_CLASS, isTauriTavernHost());
+    externalModalObserver = new hostWindow.MutationObserver(scheduleExternalSurfaceIsolation);
     syncExternalSurfaceIsolation();
+    syncExternalModalRailLayer();
     installVirtualKeyboardOverlay();
     watchGenerationEvents();
     observer = new hostWindow.MutationObserver(handleObservedMutations);
@@ -8783,6 +8880,10 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    externalModalObserver?.disconnect();
+    externalModalObserver = null;
+    hostDocument.body.classList.remove(EXTERNAL_MODAL_OPEN_CLASS);
+    restoreExternalModalRailLayer();
     if (externalSurfaceIsolationRaf) hostWindow.cancelAnimationFrame(externalSurfaceIsolationRaf);
     externalSurfaceIsolationRaf = 0;
     restoreExternalThemeStyle();

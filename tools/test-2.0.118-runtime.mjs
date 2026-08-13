@@ -99,7 +99,17 @@ pluginLockStyle.textContent = '.del_checkbox[style="display: block"] ~ .immersiv
 window.document.head.append(pluginLockStyle);
 Object.defineProperty(pluginLockStyle.sheet, 'href', { configurable: true, value: 'https://example.test/scripts/extensions/third-party/immersive/user.css' });
 
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.130`);
+const externalModal = window.document.createElement('div');
+externalModal.className = 'sample-extension-modal-backdrop';
+externalModal.style.cssText = 'position: fixed; inset: 0; display: none;';
+externalModal.getBoundingClientRect = () => ({
+  x: 0, y: 0, left: 0, top: 0,
+  width: window.innerWidth, height: window.innerHeight,
+  right: window.innerWidth, bottom: window.innerHeight,
+});
+window.document.body.append(externalModal);
+
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.135`);
 await new Promise(resolve => window.setTimeout(resolve, 650));
 
 assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
@@ -117,7 +127,7 @@ assert.ok(window.document.getElementById('claude-web-quote-body-color'), 'quote 
 assert.equal(coreDeleteModeStyle.sheet.cssRules.length, 0, 'known ST core delete-mode rule should still be neutralized');
 assert.equal(pluginLockStyle.sheet.cssRules.length, 1, 'third-party [style] selectors must survive cleanup');
 assert.match(interactionStyle, /\.extraMesButtons\.visible[\s\S]*flex-wrap: wrap !important;/, 'expanded actions must use a wrapping panel');
-assert.match(interactionStyle, /background-image:[\s\S]*linear-gradient\(currentColor, currentColor\)[\s\S]*background-size: 16px 2px, 16px 2px, 16px 2px !important;/, 'drag handle glyph must be rendered independently of TT text handling');
+assert.match(interactionStyle, /background-image: none !important;/, 'drag handle must not paint a second glyph behind the real bars');
 assert.equal(window.document.querySelectorAll('#tt-prompt-row > .drag-handle').length, 1, 'TT row must receive one real drag handle');
 assert.equal(window.document.querySelectorAll('#st-prompt-row > .drag-handle').length, 1, 'ST native drag handle must not be duplicated');
 assert.ok(window.document.querySelector('#tt-prompt-row > .clawd-prompt-drag-handle'), 'injected handle needs a cleanup marker');
@@ -139,6 +149,18 @@ window.document.querySelector('#completion_prompt_manager_list').append(nativeTt
 await new Promise(resolve => window.setTimeout(resolve, 40));
 assert.ok(window.document.querySelector('#native-tt-prompt-row > .drag-handle.clawd-prompt-drag-handle'), 'TT native empty handle must be reused and marked');
 assert.equal(window.document.querySelectorAll('#native-tt-prompt-row > .clawd-prompt-drag-handle > .clawd-prompt-drag-glyph > span').length, 3, 'TT native empty handle needs three visible bars');
+assert.equal(window.getComputedStyle(window.document.querySelector('#native-tt-prompt-row > .clawd-prompt-drag-handle > .clawd-prompt-drag-glyph > span')).boxShadow, 'none', 'TT drag bars must not inherit a ghost shadow');
+
+externalModal.style.display = 'grid';
+await new Promise(resolve => window.setTimeout(resolve, 40));
+assert.ok(window.document.body.classList.contains('clawd-external-modal-open'), 'visible third-party full-screen modal must lower the Claude rail');
+assert.equal(window.document.querySelector('#top-settings-holder').style.getPropertyValue('z-index'), '1', 'modal must lower the rail at node priority');
+assert.equal(window.document.querySelector('#top-bar').style.getPropertyValue('z-index'), '1', 'modal must also lower the full-height rail shell');
+externalModal.style.display = 'none';
+await new Promise(resolve => window.setTimeout(resolve, 40));
+assert.ok(!window.document.body.classList.contains('clawd-external-modal-open'), 'closing the third-party modal must restore the Claude rail');
+assert.equal(window.document.querySelector('#top-settings-holder').style.getPropertyValue('z-index'), '', 'closing the modal must restore the original inline rail layer');
+assert.equal(window.document.querySelector('#top-bar').style.getPropertyValue('z-index'), '', 'closing the modal must restore the full-height rail shell');
 
 const themeStyle = window.document.getElementById('claude-integrated-theme-live-style');
 assert.ok(themeStyle, 'full theme stylesheet must be installed');
@@ -166,4 +188,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.130 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.135 runtime DOM regressions passed');
