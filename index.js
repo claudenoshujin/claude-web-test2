@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.120-plugin-style-isolation-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.130-tt-native-prompt-handle-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1921,6 +1921,8 @@ if (CLAUDE_ENABLED) {
   const PRESET_REASONING_CLASS = 'claude-has-preset-reasoning';
   const SWIPE_VIEW_CLASS = 'claude-swipe-in-viewport';
   const USER_ACTIONS_CLASS = 'claude-user-message-actions';
+  const PROMPT_DRAG_HANDLE_CLASS = 'clawd-prompt-drag-handle';
+  const PROMPT_DRAG_GLYPH_CLASS = 'clawd-prompt-drag-glyph';
   /* R3「表面自持」在 2.0.86 拆掉了。它存在的理由是属性过滤器把外壳的背景色筛掉了，
      于是要靠注入一个背板子元素把面板重新填成不透明。生成器改成区域制之后，
      真正的 background 直接从 day-pc.css 搬过来，背板没有用了。
@@ -2781,6 +2783,67 @@ if (CLAUDE_ENABLED) {
         display: flex !important;
       }
 
+      /* 主题源曾只白名单显示复制和朗读，所以点省略号后看起来只有两个功能。
+         展开区改成独立浮层：只恢复酒馆没有显式隐藏的真实按钮，并允许换行，
+         不再把十几个动作硬塞进消息底部的一条 26px 横线。 */
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes[is_user="false"]:has(.extraMesButtons.visible),
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes[is_user="false"]:has(.extraMesButtons.visible) .mes_block,
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes[is_user="false"] .mes_buttons:has(> .extraMesButtons.visible) {
+        overflow: visible !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes[is_user="false"] .mes_buttons > .extraMesButtons.visible {
+        position: absolute !important;
+        inset: auto auto 32px 0 !important;
+        z-index: 32 !important;
+        display: flex !important;
+        align-items: center !important;
+        align-content: flex-start !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+        box-sizing: border-box !important;
+        width: min(248px, calc(100vw - 32px)) !important;
+        max-width: calc(100vw - 32px) !important;
+        height: auto !important;
+        min-height: 38px !important;
+        max-height: min(44dvh, 220px) !important;
+        margin: 0 !important;
+        padding: 6px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        color: var(--cw-text-body, #ece9e2) !important;
+        background: var(--cw-surface-raised, #242422) !important;
+        border: 1px solid var(--cw-rule-hairline, rgba(128,128,128,.24)) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,.18) !important;
+        scrollbar-width: thin !important;
+      }
+
+      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+        #chat > .mes[is_user="false"] .extraMesButtons.visible
+        > .mes_button:not(.displayNone):not([hidden]):not([style*="display: none"]):not([style*="display:none"]) {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 30px !important;
+        width: 30px !important;
+        min-width: 30px !important;
+        max-width: 30px !important;
+        height: 30px !important;
+        min-height: 30px !important;
+        max-height: 30px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        visibility: visible !important;
+        opacity: .82 !important;
+        pointer-events: auto !important;
+      }
+
       html:not([data-claude-mode="compat"]) body.${READY_CLASS}
         #chat > .mes .mes_buttons > :not(script):not(style) {
         visibility: visible !important;
@@ -2962,8 +3025,108 @@ if (CLAUDE_ENABLED) {
           min-width: 104px !important;
         }
 
-        #completion_prompt_manager #completion_prompt_manager_list
-          .completion_prompt_manager_prompt_name {
+        /* TT 偶尔保留 drag-handle 节点却不画它的 ☰ 文本。把字形放进伪元素，
+           触摸事件仍由原节点接收，拖拽排序行为与 ST 原生实现一致。 */
+        html body.${MOBILE_LAYOUT_CLASS}
+          :is(#completion_prompt_manager,#completion_prompt_manager_popup) #completion_prompt_manager_list
+          > li.completion_prompt_manager_prompt:has(> .${PROMPT_DRAG_HANDLE_CLASS}) {
+          display: grid !important;
+          grid-template-columns: 28px minmax(0,1fr) auto auto !important;
+          align-items: center !important;
+          column-gap: 4px !important;
+          padding-left: 4px !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS}
+          :is(#completion_prompt_manager,#completion_prompt_manager_popup) #completion_prompt_manager_list
+          > li.completion_prompt_manager_prompt:has(> .${PROMPT_DRAG_HANDLE_CLASS})
+          > .drag-handle {
+          position: static !important;
+          inset: auto !important;
+          grid-column: 1 !important;
+          grid-row: 1 !important;
+          z-index: 3 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          box-sizing: border-box !important;
+          width: 28px !important;
+          min-width: 28px !important;
+          height: 28px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          color: var(--cw-text-secondary, var(--cw-text-muted, #777)) !important;
+          background-color: transparent !important;
+          background-image:
+            linear-gradient(currentColor, currentColor),
+            linear-gradient(currentColor, currentColor),
+            linear-gradient(currentColor, currentColor) !important;
+          background-position:
+            center calc(50% - 5px),
+            center center,
+            center calc(50% + 5px) !important;
+          background-size: 16px 2px, 16px 2px, 16px 2px !important;
+          background-repeat: no-repeat !important;
+          font-size: 0 !important;
+          line-height: 1 !important;
+          visibility: visible !important;
+          opacity: .9 !important;
+          pointer-events: auto !important;
+          cursor: grab !important;
+          touch-action: none !important;
+          user-select: none !important;
+          -webkit-user-select: none !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS}
+          :is(#completion_prompt_manager,#completion_prompt_manager_popup) #completion_prompt_manager_list
+          > li.completion_prompt_manager_prompt:has(> .${PROMPT_DRAG_HANDLE_CLASS})
+          > .drag-handle::before {
+          content: none !important;
+          display: none !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS}
+          :is(#completion_prompt_manager,#completion_prompt_manager_popup) #completion_prompt_manager_list
+          > li.completion_prompt_manager_prompt:has(> .${PROMPT_DRAG_HANDLE_CLASS})
+          > .drag-handle > .${PROMPT_DRAG_GLYPH_CLASS} {
+          display: inline-flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 3px !important;
+          width: 16px !important;
+          height: 16px !important;
+          color: var(--cw-text-secondary, var(--cw-text-muted, #777)) !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS}
+          :is(#completion_prompt_manager,#completion_prompt_manager_popup) #completion_prompt_manager_list
+          > li.completion_prompt_manager_prompt:has(> .${PROMPT_DRAG_HANDLE_CLASS})
+          > .drag-handle > .${PROMPT_DRAG_GLYPH_CLASS} > span {
+          display: block !important;
+          box-sizing: border-box !important;
+          width: 16px !important;
+          min-width: 16px !important;
+          height: 2px !important;
+          min-height: 2px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: currentColor !important;
+          border: 0 !important;
+          border-radius: 1px !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+
+        html body.${MOBILE_LAYOUT_CLASS}
+          :is(#completion_prompt_manager,#completion_prompt_manager_popup) #completion_prompt_manager_list
+          > li.completion_prompt_manager_prompt:has(> .${PROMPT_DRAG_HANDLE_CLASS})
+          > .completion_prompt_manager_prompt_name {
+          grid-column: 2 !important;
+          grid-row: 1 !important;
           display: grid !important;
           grid-template-columns: 26px minmax(0,1fr) !important;
           align-items: center !important;
@@ -2971,7 +3134,7 @@ if (CLAUDE_ENABLED) {
           min-width: 0 !important;
         }
 
-        #completion_prompt_manager #completion_prompt_manager_list
+        #completion_prompt_manager_list
           .completion_prompt_manager_prompt_name > :is(.fa-fw,.fa-solid,.fa-regular):first-child {
           position: static !important;
           inset: auto !important;
@@ -2987,7 +3150,7 @@ if (CLAUDE_ENABLED) {
           transform: none !important;
         }
 
-        #completion_prompt_manager #completion_prompt_manager_list
+        #completion_prompt_manager_list
           .completion_prompt_manager_prompt_name > :is(a,span):not(.fa-fw):not(.fa-solid):not(.fa-regular) {
           grid-column: 2 !important;
           min-width: 0 !important;
@@ -3800,6 +3963,78 @@ if (CLAUDE_ENABLED) {
       }
       if (!actions) block.append(createUserEditAction(message));
     });
+  }
+
+  /* ST 会为每个提示词行生成真实的 .drag-handle，TT 2.2.0 则会把这个
+     节点整个省掉，只留下类型图标和名称。Sortable 的 handle 选择器在
+     pointerdown 时按 class 匹配，所以补回同名真实节点即可恢复拖拽；
+     已有手柄的 ST 行不动，避免重复显示或改变它的原生事件链。 */
+  function refreshPromptManagerDragHandles() {
+    hostDocument
+      .querySelectorAll('#completion_prompt_manager_list > li.completion_prompt_manager_prompt')
+      .forEach(row => {
+        const existingHandle = row.querySelector(':scope > .drag-handle');
+        if (existingHandle && !existingHandle.classList.contains(PROMPT_DRAG_HANDLE_CLASS) && !isTauriTavernHost()) return;
+        let handle = existingHandle;
+        if (!handle) {
+          handle = hostDocument.createElement('span');
+          handle.className = 'drag-handle';
+          handle.setAttribute('aria-hidden', 'true');
+          row.prepend(handle);
+        }
+        handle.classList.add(PROMPT_DRAG_HANDLE_CLASS);
+        Object.entries({
+          position: 'static',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '28px',
+          minWidth: '28px',
+          height: '28px',
+          margin: '0',
+          padding: '0',
+          color: '#73736f',
+          visibility: 'visible',
+          opacity: '0.9',
+          pointerEvents: 'auto',
+        }).forEach(([property, value]) => handle.style.setProperty(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value, 'important'));
+        if (handle.querySelector(':scope > .' + PROMPT_DRAG_GLYPH_CLASS)) return;
+        handle.textContent = '';
+        const glyph = hostDocument.createElement('span');
+        glyph.className = PROMPT_DRAG_GLYPH_CLASS;
+        glyph.setAttribute('aria-hidden', 'true');
+        Object.entries({
+          display: 'inline-flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '3px',
+          width: '16px',
+          height: '16px',
+          visibility: 'visible',
+          opacity: '1',
+        }).forEach(([property, value]) => glyph.style.setProperty(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value, 'important'));
+        for (let index = 0; index < 3; index += 1) {
+          const bar = hostDocument.createElement('span');
+          Object.entries({
+            display: 'block',
+            boxSizing: 'border-box',
+            width: '16px',
+            minWidth: '16px',
+            height: '2px',
+            minHeight: '2px',
+            margin: '0',
+            padding: '0',
+            background: '#73736f',
+            border: '0',
+            borderRadius: '1px',
+            visibility: 'visible',
+            opacity: '1',
+          }).forEach(([property, value]) => bar.style.setProperty(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value, 'important'));
+          glyph.append(bar);
+        }
+        handle.append(glyph);
+      });
   }
 
   function removeStaleButtons(currentMessage) {
@@ -7911,6 +8146,15 @@ if (CLAUDE_ENABLED) {
     trackDirtyMessages(records);
     ensureChatAttributeObserver();
     preserveStreamingReasoning(isTypingActive());
+    /* Prompt Manager 的海量变动仍不进入全量聊天刷新；但 TT 会在打开面板时
+       重新生成列表，而且省略 drag-handle 节点。这里单独跑一次 O(当前行数)
+       的缺口修补，已有手柄立即跳过，不触发布局测量。 */
+    if (records.some(record => {
+      const target = record.target instanceof hostWindow.Element
+        ? record.target
+        : record.target?.parentElement;
+      return target?.closest?.('#completion_prompt_manager_list');
+    })) refreshPromptManagerDragHandles();
     if (!records.some(mutationNeedsFullRefresh)) return;
     refreshStats.recordsPassedFilter += records.length;
     if (refreshing) { dirtyWhileRefreshing = true; return; }
@@ -8095,6 +8339,7 @@ if (CLAUDE_ENABLED) {
     refreshRailUser();
     refreshRailGrip();
     refreshIdleSleep();
+    refreshPromptManagerDragHandles();
     refreshUserActions();
     refreshSwipeProxies(messages, typingActive);
     trackSwipeArrows();
@@ -8677,7 +8922,7 @@ if (CLAUDE_ENABLED) {
     [...welcomeAvatarOriginals.keys()].forEach(restoreWelcomeAvatar);
     hostDocument.querySelectorAll(`.${WELCOME_PROMPT_CLASS}`).forEach(message => message.classList.remove(WELCOME_PROMPT_CLASS));
     hostDocument
-      .querySelectorAll(`.${BUTTON_CLASS}, .${LEFT_SWIPE_PROXY_CLASS}, .${SWIPE_PROXY_CLASS}, .${REROLL_CLASS}, .${USER_ACTIONS_CLASS}, .clawd-click-particle, .clawd-typing-hit, .clawd-typing-exit-ghost`)
+      .querySelectorAll(`.${BUTTON_CLASS}, .${LEFT_SWIPE_PROXY_CLASS}, .${SWIPE_PROXY_CLASS}, .${REROLL_CLASS}, .${USER_ACTIONS_CLASS}, .${PROMPT_DRAG_HANDLE_CLASS}, .clawd-click-particle, .clawd-typing-hit, .clawd-typing-exit-ghost`)
       .forEach(element => element.remove());
     hostDocument.querySelectorAll('#chat .typing_indicator').forEach(indicator => {
       indicator.classList.remove('clawd-typing-enter', 'clawd-typing-ready', 'clawd-typing-native-suppressed', 'clawd-typing-click', 'clawd-typing-press', 'clawd-cheer', 'clawd-wobble-sway', 'clawd-wobble-tilt');

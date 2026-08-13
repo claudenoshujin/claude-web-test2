@@ -7,11 +7,11 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.120');
-assert.equal(manifest.js, 'loader-2.0.120.js');
+assert.equal(manifest.version, '2.0.130');
+assert.equal(manifest.js, 'loader-2.0.130.js');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.120/,
+  /index\.js\?v=2\.0\.130/,
   'loader must defeat Android WebView module cache',
 );
 
@@ -53,9 +53,21 @@ assert.match(index, /function usesNativeAndroidKeyboardLayout\(\)/);
 assert.match(index, /usesNativeAndroidKeyboardLayout\(\)[\s\S]*removeProperty\(MOBILE_COMPOSER_TRANSLATE_PROPERTY\)/, 'Android must not receive a second keyboard translation');
 assert.match(index, /userSettingsRowOne[\s\S]*grid-template-columns: minmax\(0,1fr\) minmax\(132px,1fr\)/, 'mobile settings header must use independent columns');
 assert.match(index, /grid-template-columns: 26px minmax\(0,1fr\)/, 'Prompt Manager must reserve a dedicated icon column');
+assert.match(index, /\.extraMesButtons\.visible[\s\S]*flex-wrap: wrap !important;/, 'expanded message actions need a wrapping panel');
+assert.match(index, /> \.mes_button:not\(\.displayNone\):not\(\[hidden\]\):not\(\[style\*="display: none"\]\)/, 'available overflow actions must be restored instead of whitelisting two buttons');
+assert.match(index, /background-image:[\s\S]*linear-gradient\(currentColor, currentColor\)[\s\S]*background-size: 16px 2px, 16px 2px, 16px 2px !important;/, 'TT Prompt Manager needs a font-independent visible drag glyph');
+assert.match(index, /function refreshPromptManagerDragHandles\(\)/, 'TT Prompt Manager must restore omitted drag-handle nodes');
+assert.match(index, /existingHandle && !existingHandle\.classList\.contains\(PROMPT_DRAG_HANDLE_CLASS\) && !isTauriTavernHost\(\)/, 'ST native drag handles must not be modified');
+assert.match(index, /handle\.classList\.add\(PROMPT_DRAG_HANDLE_CLASS\);/, 'TT native or injected handle must receive the repair marker');
+assert.match(index, /for \(let index = 0; index < 3; index \+= 1\)[\s\S]*const bar = hostDocument\.createElement\('span'\)/, 'TT drag handle must contain three real bar elements');
+assert.match(index, /handle\.style\.setProperty[\s\S]*bar\.style\.setProperty/, 'TT drag handle must carry node-level priority styles');
+assert.match(index, /target\?\.closest\?\.\('#completion_prompt_manager_list'\)[\s\S]*refreshPromptManagerDragHandles\(\);/, 'reparented Prompt Manager list mutations still need the lightweight handle repair');
+assert.match(index, /querySelectorAll\('#completion_prompt_manager_list > li\.completion_prompt_manager_prompt'\)/, 'TT popup reparenting must not break row discovery');
+assert.match(index, /:is\(#completion_prompt_manager,#completion_prompt_manager_popup\) #completion_prompt_manager_list[\s\S]*li\.completion_prompt_manager_prompt:has\(> \.\$\{PROMPT_DRAG_HANDLE_CLASS\}\)[\s\S]*grid-template-columns: 28px minmax\(0,1fr\) auto auto/, 'TT popup grid rule must outrank the native double-id rule');
+assert.match(index, /> \.drag-handle \{[\s\S]*position: static !important;[\s\S]*grid-column: 1 !important;/, 'TT handle must not overlap the prompt type icon');
 assert.match(index, /HOST_DELETE_MODE_STYLESHEET_SUFFIX = '\/css\/toggle-dependent\.css'/, 'style cleanup must be restricted to the ST core stylesheet');
 assert.match(index, /if \(!pathname\.endsWith\(HOST_DELETE_MODE_STYLESHEET_SUFFIX\)\) return false;/, 'third-party stylesheets must be rejected before selector matching');
 assert.doesNotMatch(index, /const STYLE_ATTRIBUTE_SELECTOR_MARK = '\[style'/, 'global [style] rule deletion must not return');
 assert.match(index, /MOBILE_REFRESH_MIN_GAP = 110/, 'mobile idle refreshes must be throttled for TT');
 
-console.log('✓ Claude Web 2.0.120 focused regressions passed');
+console.log('✓ Claude Web 2.0.130 focused regressions passed');

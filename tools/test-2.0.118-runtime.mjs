@@ -9,6 +9,10 @@ const root = path.resolve(here, '..');
 const dom = new JSDOM(`<!doctype html><html><head></head><body>
   <select id="themes"><option value="Original">Original</option></select>
   <div id="extensions_settings"></div>
+  <div id="completion_prompt_manager"><ul id="completion_prompt_manager_list">
+    <li class="completion_prompt_manager_prompt" id="tt-prompt-row"><span class="completion_prompt_manager_prompt_name">TT row</span></li>
+    <li class="completion_prompt_manager_prompt" id="st-prompt-row"><span class="drag-handle">☰</span><span class="completion_prompt_manager_prompt_name">ST row</span></li>
+  </ul></div>
   <div id="top-bar"><div id="top-settings-holder"></div></div>
   <div id="sheld">
     <div id="chat">
@@ -95,7 +99,7 @@ pluginLockStyle.textContent = '.del_checkbox[style="display: block"] ~ .immersiv
 window.document.head.append(pluginLockStyle);
 Object.defineProperty(pluginLockStyle.sheet, 'href', { configurable: true, value: 'https://example.test/scripts/extensions/third-party/immersive/user.css' });
 
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.120`);
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.130`);
 await new Promise(resolve => window.setTimeout(resolve, 650));
 
 assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
@@ -112,6 +116,29 @@ assert.equal(window.document.querySelector('.claude-user-message-actions .claude
 assert.ok(window.document.getElementById('claude-web-quote-body-color'), 'quote toggle must mount in extension settings');
 assert.equal(coreDeleteModeStyle.sheet.cssRules.length, 0, 'known ST core delete-mode rule should still be neutralized');
 assert.equal(pluginLockStyle.sheet.cssRules.length, 1, 'third-party [style] selectors must survive cleanup');
+assert.match(interactionStyle, /\.extraMesButtons\.visible[\s\S]*flex-wrap: wrap !important;/, 'expanded actions must use a wrapping panel');
+assert.match(interactionStyle, /background-image:[\s\S]*linear-gradient\(currentColor, currentColor\)[\s\S]*background-size: 16px 2px, 16px 2px, 16px 2px !important;/, 'drag handle glyph must be rendered independently of TT text handling');
+assert.equal(window.document.querySelectorAll('#tt-prompt-row > .drag-handle').length, 1, 'TT row must receive one real drag handle');
+assert.equal(window.document.querySelectorAll('#st-prompt-row > .drag-handle').length, 1, 'ST native drag handle must not be duplicated');
+assert.ok(window.document.querySelector('#tt-prompt-row > .clawd-prompt-drag-handle'), 'injected handle needs a cleanup marker');
+assert.equal(window.document.querySelectorAll('#tt-prompt-row > .clawd-prompt-drag-handle > .clawd-prompt-drag-glyph > span').length, 3, 'TT handle needs three real visible bar elements');
+const lateTtRow = window.document.createElement('li');
+lateTtRow.id = 'late-tt-prompt-row';
+lateTtRow.className = 'completion_prompt_manager_prompt';
+lateTtRow.innerHTML = '<span class="completion_prompt_manager_prompt_name">Late TT row</span>';
+window.document.querySelector('#completion_prompt_manager_list').append(lateTtRow);
+await new Promise(resolve => window.setTimeout(resolve, 40));
+assert.equal(window.document.querySelectorAll('#late-tt-prompt-row > .drag-handle').length, 1, 'TT rows created after panel rebuild need the lightweight observer repair');
+assert.equal(window.document.querySelectorAll('#late-tt-prompt-row > .clawd-prompt-drag-handle > .clawd-prompt-drag-glyph > span').length, 3, 'late TT rows need the complete drag glyph');
+window.__TAURITAVERN__ = true;
+const nativeTtRow = window.document.createElement('li');
+nativeTtRow.id = 'native-tt-prompt-row';
+nativeTtRow.className = 'completion_prompt_manager_prompt';
+nativeTtRow.innerHTML = '<span class="drag-handle"></span><span class="completion_prompt_manager_prompt_name">Native TT row</span>';
+window.document.querySelector('#completion_prompt_manager_list').append(nativeTtRow);
+await new Promise(resolve => window.setTimeout(resolve, 40));
+assert.ok(window.document.querySelector('#native-tt-prompt-row > .drag-handle.clawd-prompt-drag-handle'), 'TT native empty handle must be reused and marked');
+assert.equal(window.document.querySelectorAll('#native-tt-prompt-row > .clawd-prompt-drag-handle > .clawd-prompt-drag-glyph > span').length, 3, 'TT native empty handle needs three visible bars');
 
 const themeStyle = window.document.getElementById('claude-integrated-theme-live-style');
 assert.ok(themeStyle, 'full theme stylesheet must be installed');
@@ -139,4 +166,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.120 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.130 runtime DOM regressions passed');
