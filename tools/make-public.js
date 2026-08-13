@@ -173,7 +173,7 @@ function publicIndex(source) {
   source = replaceOnce(source, "      playbillOptions.hidden = document.documentElement.dataset.claudeSkin !== 'playbill';\n", '', 'playbill presentation toggle');
 
   source = source.replace(
-    /id: '2\.0\.116-test-repo-identity-' \+ \(CLAUDE_COMPAT_MODE \? 'compat' : 'full'\)/,
+    /id: '2\.0\.\d+-[^']*-' \+ \(CLAUDE_COMPAT_MODE \? 'compat' : 'full'\)/,
     `id: '${version}-public-compat-framework-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')`,
   );
   if (!source.includes(`${version}-public-compat-framework-`)) throw new Error('Failed to rewrite public build id');
