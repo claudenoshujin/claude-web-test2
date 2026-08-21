@@ -139,7 +139,7 @@ externalModal.getBoundingClientRect = () => ({
 window.document.body.append(externalModal);
 
 window.localStorage.setItem('claude-web:decorations', 'off');
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.143`);
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.144`);
 await new Promise(resolve => window.setTimeout(resolve, 850));
 
 const composerShell = window.document.getElementById('form_sheld');
@@ -274,4 +274,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.143 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.144 runtime DOM regressions passed');

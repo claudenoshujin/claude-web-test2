@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.143-clawd-immediate-grab-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.144-clawd-prototype-poses-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2023,6 +2023,7 @@ if (CLAUDE_ENABLED) {
     C: null,
     aStartedAt: 0,
     aUntil: 0,
+    bUntil: 0,
     cUntil: 0,
     round: 0,
     activeRound: 0,
@@ -2047,9 +2048,17 @@ if (CLAUDE_ENABLED) {
      改成 0 就是全程用 A2 的台词，改成 2 就是前两档都留给 A1。 */
   const A2_RICH_TIER = 1;
   const A2_DRAG_THRESHOLD = 5;   // 位移超过这么多像素才算拖，否则算戳
-  const A2_CEILING = 140;        // 能往上飞多高。真实数值要在酒馆里量，见交接说明
-  const A2_EDGE = 4;
-  const A2_DECOR_RESERVE = 60;   // 给 #send_form::after 那只装饰 Clawd 留的右侧宽度
+  const A2_EDGE = 6;             // 离边界留的空隙
+  const A2_DECOR_RESERVE = 12;   // 靠近归位线时，跟右上角装饰 Clawd 之间的空隙
+  /* 兜底上限：量不到容器时才用。正常路径按真实可视区算，不再有硬编码高度。 */
+  const A2_FALLBACK_CEILING = 240;
+  /* 预热过的边界能用多久。
+     预热只在挂载时和输入框「尺寸」变化时跑，但聊天内容加载完之后输入框是
+     「位置」变了、尺寸没变，ResizeObserver 根本不触发——于是页面还没铺开时
+     量到的那份错误边界会一直留着（实测上边界因此跑到窗口外 116px）。
+     超过这个时间就在 pointerdown 里重量一次。一次手势最多读一次布局，
+     这正是原始设计允许的那一次；真正禁止的是 pointermove 和 rAF 里读。 */
+  const A2_BOUNDS_TTL = 800;
 
   const A2 = {
     x: 0, fy: 0, homeX: 0,
@@ -2061,7 +2070,8 @@ if (CLAUDE_ENABLED) {
     bndReady: false, bndRaf: 0,
     sx: 0, sy: 0, ox: 0, oy: 0, vx: 0, vy: 0, lx: 0, ly: 0, lt: 0,
     rot: 0, sqx: 1, sqy: 1,
-    bnd: { minx: -9e9, maxx: 9e9, miny: -A2_CEILING, maxy: 0 },
+    bnd: { minx: -9e9, maxx: 9e9, maxxHome: 9e9, miny: -A2_FALLBACK_CEILING, maxy: 0 },
+    bndAt: 0,
     tookPointer: false,
     squashTimer: 0,
   };
@@ -2621,6 +2631,283 @@ if (CLAUDE_ENABLED) {
       button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}:not(.clawd-sleeping)::before,
       button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before {
         animation: clawd-compose-bob 900ms ease-in-out infinite !important;
+      }
+
+      /* ===== 输入态 =====
+         原来只有「整只抬 3px」加一个幅度 1px 的 bob，两个都在可见阈值以下，
+         看起来就是完全没有输入态。现在分两级：
+
+           聚焦输入框        → 低头看着你（look-d）
+           框里已经有字      → 一边看一边点头
+
+         都限定 data-clawd-owner="B"：生成（A 轨）和被抓被丢（C 轨）都比
+         「我在看你打字」更该占画面，这条也顺带保证它压不过 A2 的姿势。 */
+      button.${BUTTON_CLASS}[data-clawd-owner="B"].${INPUT_ACTIVE_CLASS}:not(.clawd-sleeping)::before {
+        animation: none !important;
+        box-shadow: var(--clawd-f-look-d) !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-owner="B"].${INPUT_TEXT_CLASS}:not(.clawd-sleeping)::before {
+        animation: clawd-compose-nod 820ms cubic-bezier(.3,.7,.4,1) infinite,
+                   clawd-compose-nod-frames 820ms step-end infinite !important;
+      }
+
+      /* 点头拆成两条：位移走缓动，换帧走 step-end。
+         合成一条的话 box-shadow 会在两帧之间插值，像素画会糊成一团。 */
+      @keyframes clawd-compose-nod {
+        0%, 100% { translate: 0 0; }
+        44% { translate: 0 3px; }
+        70% { translate: 0 0; }
+      }
+
+      @keyframes clawd-compose-nod-frames {
+        0% { box-shadow: var(--clawd-f-look-d); }
+        44% { box-shadow: var(--clawd-f-blink-d); }
+        70% { box-shadow: var(--clawd-f-look-d); }
+      }
+
+      /* ===== 原型里不需要新增像素帧的 12 个姿势 =====
+         只让输入框上方的大 Clawd 消费它们；消息末尾的小 Clawd 虽然读取
+         同一份 A/B/C 状态，仍保持落款职责，不套这些大动作。
+
+         sit 属于 A 轨的长生成疲劳；tilt / wow 由输入内容触发；wake 只在
+         真正睡醒时触发；其余八个进入低频 B 轨在场轮换。所有 B 轨选择器
+         都限定 owner=B，所以生成的 A 轨和抓取、抛掷的 C 轨会自然盖过。 */
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="A"][data-clawd-a="sit"]::before {
+        animation: none !important;
+        box-shadow: var(--clawd-f-tucked) !important;
+        transform: scale(.85) translate(0px, 5px) rotate(0deg) scale(1.1, .84);
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tilt"]::before {
+        animation: none !important;
+        box-shadow: var(--clawd-f-look-u) !important;
+        transform: scale(.85) translate(0px, 0px) rotate(-13deg) scale(1, 1);
+        transition: transform 400ms cubic-bezier(.3,1.2,.4,1);
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wow"]::before {
+        box-shadow: var(--clawd-f-low-look) !important;
+        animation: clawd-b-wowP 620ms cubic-bezier(.2,1.3,.4,1) both !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="hide"]::before {
+        box-shadow: var(--clawd-f-look-u) !important;
+        animation: clawd-b-hideP 620ms cubic-bezier(.4,0,.2,1) forwards !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="ledge"]::before {
+        box-shadow: var(--clawd-f-look-d) !important;
+        animation: clawd-b-ledgeP 900ms ease-out forwards !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tramp"]::before {
+        box-shadow: var(--clawd-f-eye-v) !important;
+        animation: clawd-b-trampP 1100ms cubic-bezier(.3,0,.3,1) both !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="shake"]::before {
+        box-shadow: var(--clawd-f-shut) !important;
+        animation: clawd-b-shakeP 720ms cubic-bezier(.3,.7,.4,1) both !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="around"]::before {
+        animation: clawd-b-aroundP 1700ms cubic-bezier(.7,0,.2,1) both,
+                   clawd-b-aroundF 1700ms step-end both !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="spin"]::before {
+        animation: clawd-b-spinP 1050ms cubic-bezier(.35,0,.3,1) both,
+                   clawd-b-spinF 1050ms step-end both !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="dhop"]::before {
+        animation: clawd-b-dhopP 900ms cubic-bezier(.3,.1,.4,1) both,
+                   clawd-b-dhopF 900ms step-end both !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="lean"]::before {
+        animation: clawd-b-leanP 1400ms cubic-bezier(.4,0,.3,1) both,
+                   clawd-b-leanF 1400ms step-end both !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wake"]::before {
+        animation: clawd-b-wakeP 500ms cubic-bezier(.2,1.3,.4,1) both,
+                   clawd-b-wakeF 500ms step-end both !important;
+      }
+
+      @keyframes clawd-b-wowP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        30% { transform: scale(.85) translate(0px, -5px) rotate(0deg) scale(.86, 1.2); }
+        60% { transform: scale(.85) translate(0px, -2.857px) rotate(0deg) scale(1.1, .92); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-hideP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 21px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-ledgeP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        20% { transform: scale(.85) translate(4px, 5px) rotate(-24deg) scale(1, 1); }
+        55% { transform: scale(.85) translate(5px, 9px) rotate(-30deg) scale(1, 1); }
+        70% { transform: scale(.85) translate(3.333px, 7px) rotate(-26deg) scale(1, 1); }
+        85% { transform: scale(.85) translate(1.667px, 9px) rotate(-30deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 8px) rotate(-28deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-trampP {
+        0% { transform: scale(.85) translate(0px, -40px) rotate(0deg) scale(.94, 1.06); }
+        30% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.3, .68); }
+        52% { transform: scale(.85) translate(0px, -22px) rotate(0deg) scale(.94, 1.08); }
+        72% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.16, .82); }
+        86% { transform: scale(.85) translate(0px, -8px) rotate(0deg) scale(1.08, .91); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-shakeP {
+        0%, 100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        8% { transform: scale(.85) translate(0px, 0px) rotate(11deg) scale(1, 1); }
+        20% { transform: scale(.85) translate(0px, 0px) rotate(-10deg) scale(1, 1); }
+        32% { transform: scale(.85) translate(0px, 0px) rotate(8deg) scale(1, 1); }
+        44% { transform: scale(.85) translate(0px, 0px) rotate(-7deg) scale(1, 1); }
+        56% { transform: scale(.85) translate(0px, 0px) rotate(5deg) scale(1, 1); }
+        68% { transform: scale(.85) translate(0px, 0px) rotate(-3deg) scale(1, 1); }
+        82% { transform: scale(.85) translate(0px, 0px) rotate(2deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-aroundP {
+        0%, 18% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        22%, 46% { transform: scale(.85) translate(0px, 0px) rotate(-6deg) scale(1, 1); }
+        52%, 84% { transform: scale(.85) translate(0px, 0px) rotate(6deg) scale(1, 1); }
+        90%, 100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-aroundF {
+        0% { box-shadow: var(--clawd-f-open); }
+        18% { box-shadow: var(--clawd-f-blink); }
+        22%, 46% { box-shadow: var(--clawd-f-look-l); }
+        48% { box-shadow: var(--clawd-f-blink); }
+        52%, 84% { box-shadow: var(--clawd-f-look-r); }
+        90%, 100% { box-shadow: var(--clawd-f-open); }
+      }
+
+      @keyframes clawd-b-spinP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        14% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.1, .9); }
+        30%, 40% { transform: scale(.85) translate(0px, -7px) rotate(0deg) scale(.1, 1.06); }
+        56% { transform: scale(.85) translate(0px, -3px) rotate(0deg) scale(1, 1); }
+        72%, 82% { transform: scale(.85) translate(0px, -5px) rotate(0deg) scale(.1, 1.04); }
+        92% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.12, .88); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-spinF {
+        0% { box-shadow: var(--clawd-f-open); }
+        14% { box-shadow: var(--clawd-f-look-r); }
+        30%, 72% { box-shadow: var(--clawd-f-back); }
+        82% { box-shadow: var(--clawd-f-look-l); }
+        100% { box-shadow: var(--clawd-f-open); }
+      }
+
+      @keyframes clawd-b-dhopP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.1, .9); }
+        14% { transform: scale(.85) translate(0px, -14px) rotate(0deg) scale(.94, 1.06); }
+        30% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.14, .86); }
+        44% { transform: scale(.85) translate(0px, -8px) rotate(0deg) scale(.97, 1.03); }
+        60% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.08, .92); }
+        74% { transform: scale(.85) translate(0px, -3px) rotate(0deg) scale(1.052, .948); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-dhopF {
+        0% { box-shadow: var(--clawd-f-eye-v); }
+        14%, 30% { box-shadow: var(--clawd-f-arm-b-mid); }
+        44%, 60%, 100% { box-shadow: var(--clawd-f-eye-v); }
+      }
+
+      @keyframes clawd-b-leanP {
+        0%, 100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        30%, 70% { transform: scale(.85) translate(7px, 0px) rotate(-4deg) scale(.62, 1.04); }
+      }
+
+      @keyframes clawd-b-leanF {
+        0% { box-shadow: var(--clawd-f-open); }
+        30% { box-shadow: var(--clawd-f-look-r); }
+        100% { box-shadow: var(--clawd-f-open); }
+      }
+
+      @keyframes clawd-b-wakeP {
+        0% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.1, .9); }
+        40% { transform: scale(.85) translate(0px, -6px) rotate(0deg) scale(.94, 1.06); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-b-wakeF {
+        0% { box-shadow: var(--clawd-f-tucked-blink); }
+        30% { box-shadow: var(--clawd-f-shut); }
+        55% { box-shadow: var(--clawd-f-blink); }
+        100% { box-shadow: var(--clawd-f-open); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tilt"]::before {
+          transition: none !important;
+        }
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wow"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="hide"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="ledge"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tramp"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="shake"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="around"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="spin"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="dhop"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="lean"]::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wake"]::before {
+          animation: none !important;
+        }
+      }
+
+      /* ===== 滚动态：扒住输入框 =====
+         原型里叫 p-peek（按钮标签「扒着输入框看」）：整只沉下去，
+         只剩脑袋和两只钳子搭在输入框上沿。
+
+         滚动开始扒住、滚动停止探回来，中间不跟——一次滚动只有两次
+         class 变化，没有逐帧写样式。原型那版是全程跟着倾斜，在长聊天里
+         每一个滚动事件都要写一次样式，这边不用。
+
+         沉下去写在 translate 上：transform 被 A2 的位置占着，
+         rotate 留给以后可能的倾斜，三条通道各管各的。 */
+      @keyframes clawd-peek-in {
+        0% { translate: 0 0; }
+        100% { translate: 0 8px; }
+      }
+
+      @keyframes clawd-peek-in-frames {
+        0% { box-shadow: var(--clawd-f-low-look); }
+        22% { box-shadow: var(--clawd-f-peek-mid); }
+        40%, 100% { box-shadow: var(--clawd-f-peek-grip); }
+      }
+
+      @keyframes clawd-peek-out {
+        0% { translate: 0 8px; }
+        100% { translate: 0 0; }
+      }
+
+      @keyframes clawd-peek-out-frames {
+        0% { box-shadow: var(--clawd-f-peek-mid); }
+        45%, 100% { box-shadow: var(--clawd-f-look-u); }
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-owner="B"].clawd-scroll-hold:not(.clawd-sleeping)::before {
+        animation: clawd-peek-in 520ms cubic-bezier(.3,0,.2,1) forwards,
+                   clawd-peek-in-frames 520ms step-end forwards !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-owner="B"].clawd-scroll-release:not(.clawd-sleeping)::before {
+        animation: clawd-peek-out 420ms cubic-bezier(.2,.8,.35,1) forwards,
+                   clawd-peek-out-frames 420ms step-end forwards !important;
       }
 
       body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before {
@@ -3894,7 +4181,9 @@ if (CLAUDE_ENABLED) {
     const visible = clawdVisibleState();
     const owner = clawdTracks.C ? 'C' : clawdTracks.A ? 'A' : 'B';
     const clawdEnabled = hostDocument.documentElement.dataset.claudeClawd !== 'off';
-    const generationInFlight = clawdTracks.A === 'think' || clawdTracks.A === 'stream';
+    const generationInFlight = clawdTracks.A === 'think'
+      || clawdTracks.A === 'stream'
+      || clawdTracks.A === 'sit';
 
     clawdVisualNodes().forEach(button => {
       const isComposer = button.classList.contains(COMPOSER_CLAWD_CLASS);
@@ -3955,8 +4244,9 @@ if (CLAUDE_ENABLED) {
     renderClawdTracks();
   }
 
-  function setClawdB(value) {
+  function setClawdB(value, duration = 0) {
     clawdTracks.B = value || 'idle';
+    clawdTracks.bUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();
   }
 
@@ -3985,16 +4275,73 @@ if (CLAUDE_ENABLED) {
   function syncClawdBState() {
     const box = hostDocument.querySelector('#send_textarea');
     const focused = Boolean(box && hostDocument.activeElement === box);
+    const text = box?.value?.trim() || '';
     const next = (idleAsleep || ccSleeping)
       ? 'sleep'
       : ccDrowsy
         ? 'drowsy'
         : neglected
           ? 'neglected'
-          : focused && Boolean(box?.value?.trim())
-            ? 'compose'
-            : 'idle';
+          : focused && /[?？]/.test(text)
+            ? 'tilt'
+            : focused && (/[!！]/.test(text) || text.length >= 20)
+              ? 'wow'
+              : focused && text
+                ? 'compose'
+                : 'idle';
+
+    /* hide / ledge 是有限时长的 B 轨在场动作。只有完全空闲时才允许它们
+       继续；一旦用户聚焦输入框、输入内容或进入睡眠/冷落状态，立即回到更
+       有信息量的 B 状态。A/C 轨不清空它，只是在画面优先级上盖过去。 */
+    if (clawdTracks.bUntil > Date.now() && next === 'idle' && !focused) {
+      renderClawdTracks();
+      return;
+    }
     setClawdB(next);
+  }
+
+  /* 原型里不需要新帧的低频在场动作。复用现有 200ms runtime tick，不新增
+     高频监听，也不读布局。每次演完才安排下一次，避免空闲页上一直闹腾。 */
+  const CLAWD_B_AMBIENT_POSES = Object.freeze([
+    { state: 'around', duration: 1720 },
+    { state: 'shake', duration: 740 },
+    { state: 'spin', duration: 1070 },
+    { state: 'dhop', duration: 920 },
+    { state: 'lean', duration: 1420 },
+    { state: 'hide', duration: 2600 },
+    { state: 'ledge', duration: 2400 },
+    { state: 'tramp', duration: 1150 },
+  ]);
+  let clawdBAmbientNextAt = Date.now() + 18000;
+  let clawdBLastAmbient = '';
+
+  function scheduleClawdBAmbient(now = Date.now(), retry = false) {
+    clawdBAmbientNextAt = now + (retry ? 5000 : 22000 + Math.round(Math.random() * 14000));
+  }
+
+  function maybePlayClawdBAmbient(now) {
+    if (now < clawdBAmbientNextAt) return;
+    const box = hostDocument.querySelector('#send_textarea');
+    const blocked = hostDocument.hidden
+      || hostDocument.body?.classList.contains('clawd-welcome')
+      || !composerClawd()
+      || clawdTracks.A
+      || clawdTracks.C
+      || clawdTracks.B !== 'idle'
+      || clawdTracks.bUntil
+      || Boolean(box && hostDocument.activeElement === box)
+      || Boolean(box?.value?.trim())
+      || isTypingActive();
+    if (blocked) {
+      scheduleClawdBAmbient(now, true);
+      return;
+    }
+
+    const choices = CLAWD_B_AMBIENT_POSES.filter(pose => pose.state !== clawdBLastAmbient);
+    const pose = choices[Math.floor(Math.random() * choices.length)] || CLAWD_B_AMBIENT_POSES[0];
+    clawdBLastAmbient = pose.state;
+    setClawdB(pose.state, pose.duration);
+    scheduleClawdBAmbient(now);
   }
 
   function ensureComposerClawd() {
@@ -4012,6 +4359,10 @@ if (CLAUDE_ENABLED) {
     return button;
   }
 
+  /* 先做离散疲劳态：流式生成持续 12 秒后坐下。下一阶段的 applyTired 会把
+     这段改成连续量（跳高、周期、下沉一起渐变），这里先确保 sit 真正有触发。 */
+  const CLAWD_TIRED_SIT_MS = 12000;
+
   function clawdRuntimeTick() {
     if (destroyed) return;
     const now = Date.now();
@@ -4020,12 +4371,23 @@ if (CLAUDE_ENABLED) {
       && generationEventActive
       && now - clawdTracks.aStartedAt >= 900) {
       setClawdA('stream');
+    } else if (clawdTracks.A === 'stream'
+      && generationEventActive
+      && now - clawdTracks.aStartedAt >= CLAWD_TIRED_SIT_MS) {
+      /* 不走 setClawdA：aStartedAt / aUntil 继续代表这一轮生成，不能在坐下时
+         重置，否则超时围栏和结束事件会把它当成一轮新生成。 */
+      clawdTracks.A = 'sit';
+      renderClawdTracks();
     } else if (clawdTracks.aUntil && now >= clawdTracks.aUntil) {
-      if (clawdTracks.A === 'think' || clawdTracks.A === 'stream') {
+      if (clawdTracks.A === 'think' || clawdTracks.A === 'stream' || clawdTracks.A === 'sit') {
         settleClawdGeneration('done');
       } else {
         setClawdA(null);
       }
+    }
+    if (clawdTracks.bUntil && now >= clawdTracks.bUntil) {
+      clawdTracks.bUntil = 0;
+      syncClawdBState();
     }
     if (clawdTracks.cUntil && now >= clawdTracks.cUntil) setClawdC(null);
     /* A2 的三条衰减挂在这个唯一的 200ms tick 上，不另开定时器。
@@ -4041,6 +4403,7 @@ if (CLAUDE_ENABLED) {
       clawdLastIdleTickAt = now;
       refreshIdleSleep();
     }
+    maybePlayClawdBAmbient(now);
   }
 
   /* D2 生成计时器：measures how long the current streaming reply has been
@@ -4676,17 +5039,113 @@ if (CLAUDE_ENABLED) {
      transform 前面都补一段 translate3d(var(--clawd-ax,0px),var(--clawd-ay,0px),0)，
      那会动到 A1 已经验收过的动画，这一轮没做。 */
 
+  /* ===== A2 诊断埋点 =====
+     默认关闭；关闭时每个埋点只是一次布尔判断，不进数组、不读时钟。
+       __claudeClawdInteraction.a2TraceStart()
+       copy(JSON.stringify(__claudeClawdInteraction.a2Trace()))
+       __claudeClawdInteraction.a2TraceStop()
+     全部用 performance.now()，不数帧——数帧就测不出「掉帧导致回落变慢」这件事。 */
+  const A2Trace = { on: false, marks: [], frames: [], longTasks: [], observer: null, startedAt: 0 };
+
+  function a2Now() {
+    return hostWindow.performance && hostWindow.performance.now
+      ? hostWindow.performance.now() : Date.now();
+  }
+
+  function a2TraceMark(label, extra) {
+    if (!A2Trace.on) return;
+    A2Trace.marks.push(Object.assign({ t: Math.round(a2Now() * 100) / 100, label }, extra || {}));
+  }
+
+  function a2TraceFrame(k, stamp) {
+    if (!A2Trace.on) return;
+    A2Trace.frames.push({ t: Math.round(stamp * 100) / 100, k: Math.round(k * 1000) / 1000 });
+  }
+
+  function a2TraceStart() {
+    A2Trace.on = true;
+    A2Trace.marks.length = 0;
+    A2Trace.frames.length = 0;
+    A2Trace.longTasks.length = 0;
+    A2Trace.startedAt = a2Now();
+    try {
+      A2Trace.observer = new hostWindow.PerformanceObserver(list => {
+        for (const entry of list.getEntries()) {
+          A2Trace.longTasks.push({ t: Math.round(entry.startTime * 100) / 100, dur: Math.round(entry.duration) });
+        }
+      });
+      A2Trace.observer.observe({ entryTypes: ['longtask'] });
+    } catch (error) { A2Trace.observer = null; /* Via 不一定支持 longtask */ }
+    a2TraceMark('trace:start', {
+      ua: hostWindow.navigator?.userAgent || '',
+      dpr: hostWindow.devicePixelRatio || 1,
+      vw: hostWindow.innerWidth,
+      vh: hostWindow.innerHeight,
+    });
+    return 'A2 trace on';
+  }
+
+  function a2TraceStop() {
+    A2Trace.on = false;
+    try { A2Trace.observer?.disconnect(); } catch (error) { /* ignore */ }
+    A2Trace.observer = null;
+    return 'A2 trace off';
+  }
+
+  function a2TraceReport() {
+    const gaps = [];
+    for (let i = 1; i < A2Trace.frames.length; i += 1) {
+      gaps.push(A2Trace.frames[i].t - A2Trace.frames[i - 1].t);
+    }
+    const sorted = gaps.slice().sort((a, b) => a - b);
+    const pick = q => (sorted.length ? Math.round(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] * 100) / 100 : 0);
+    return {
+      startedAt: A2Trace.startedAt,
+      marks: A2Trace.marks.slice(),
+      frameCount: A2Trace.frames.length,
+      frameGapMs: { median: pick(.5), p95: pick(.95), max: sorted.length ? Math.round(sorted[sorted.length - 1] * 100) / 100 : 0 },
+      ballisticWallMs: A2Trace.frames.length
+        ? Math.round((A2Trace.frames[A2Trace.frames.length - 1].t - A2Trace.frames[0].t) * 100) / 100 : 0,
+      longTasks: A2Trace.longTasks.slice(),
+      frames: A2Trace.frames.slice(),
+    };
+  }
+
   function a2Locked() { return Date.now() < A2.lockUntil; }
 
   /* 只写，不读。旋转和压扁必须跟位移写进同一条 transform——transform 是单一
      属性，分两次写的话后一次会把前一次整条覆盖掉。
      回到原位时把内联样式整个撤掉，让 A1 的动画恢复原样。 */
+  /* 气泡跟着 Clawd 走。
+     气泡挂在 #send_form 上、用 left/top 定位，所以 Clawd 被拖走之后它会留在
+     原地，看着像话是从输入框里飘出来的。
+
+     试过给它套一个跟随用的容器，但走不通：往 #send_form 里加任何未知子节点，
+     computed display 都是 none（拿一个什么都没有的 <span> 也一样）。
+
+     所以改成直接推气泡本身，而且用的是独立的 `translate` 属性，不是 transform：
+     气泡的 CSS 里 transform 已经被 translateY(-50%) 和入场动画占着，写 transform
+     会把入场动画顶掉。translate / rotate / scale 这三个独立属性在 transform
+     之前生效，两边互不干扰。它跟 transform 一样只走合成，不触发布局。 */
+  let a2ActiveToast = null;
+
+  function a2MoveToast() {
+    const toast = a2ActiveToast;
+    if (!toast) return;
+    if (!toast.isConnected) { a2ActiveToast = null; return; }
+    if (!A2.x && !A2.fy) toast.style.removeProperty('translate');
+    else toast.style.setProperty('translate', `${A2.x.toFixed(1)}px ${A2.fy.toFixed(1)}px`);
+  }
+
   function a2Place(button) {
-    if (!A2.x && !A2.fy && !A2.rot && A2.sqx === 1 && A2.sqy === 1) {
+    const move = `translate3d(${A2.x.toFixed(1)}px, ${A2.fy.toFixed(1)}px, 0)`;
+    const home = !A2.x && !A2.fy;
+    a2MoveToast();
+    if (home && !A2.rot && A2.sqx === 1 && A2.sqy === 1) {
       button.style.removeProperty('transform');
       return;
     }
-    let value = `translate3d(${A2.x.toFixed(1)}px, ${A2.fy.toFixed(1)}px, 0)`;
+    let value = move;
     if (A2.rot) value += ` rotate(${A2.rot.toFixed(1)}deg)`;
     if (A2.sqx !== 1 || A2.sqy !== 1) {
       value += ` scale(${A2.sqx.toFixed(3)}, ${A2.sqy.toFixed(3)})`;
@@ -4750,22 +5209,69 @@ if (CLAUDE_ENABLED) {
     a2PlaySeq([['turn', 400], ['t5', 2600], ['face', 400]], '生气');
   }
 
-  /* 空气墙。原型是拿它自己的手机框当容器，扩展换成 #form_sheld。
-     右侧要给 #send_form::after 那只装饰 Clawd 让开；下边界卡在 0，
-     fy 再往下就沉进输入框里了。
-     A2_CEILING 是暂定值，真实的上边界要在酒馆里量，见交接说明。 */
+  /* 空气墙。
+     2.0.143 之前这里拿 #form_sheld 当容器、上边界写死 140px，两个都是错的：
+
+     - 桌面实测 #sheld / #chat / #form_sheld 三个容器都是 0 → 窗口宽，
+       整个铺在左侧栏底下。拿它们的 left 当左边界，等于允许 Clawd 钻进侧栏。
+       真正的左边界是侧栏（#top-bar，position:fixed，占满高度）的右边。
+     - 140px 让 Clawd 最多只能比归位线高 140，够不到聊天区。
+
+     现在的规则是：可活动范围 = 聊天容器减掉侧栏 / 顶栏之后剩下的那块，
+     下边界仍然卡在归位线（fy 不许为正，否则会沉进输入框）。
+     侧栏是竖的还是横的用它自己的形状判断，不写死布局假设。 */
   function a2Walls(button) {
-    const container = hostDocument.querySelector('#form_sheld')
-      || hostDocument.querySelector('#send_form');
-    if (!container) return { minx: -9e9, maxx: 9e9, miny: -A2_CEILING, maxy: 0 };
+    const container = hostDocument.querySelector('#sheld')
+      || hostDocument.querySelector('#chat')
+      || hostDocument.querySelector('#form_sheld');
+    const fallback = { minx: -9e9, maxx: 9e9, maxxHome: 9e9, miny: -A2_FALLBACK_CEILING, maxy: 0 };
+    if (!container) return fallback;
     const pr = button.getBoundingClientRect();
     const fr = container.getBoundingClientRect();
+    if (!pr.width || !fr.width) return fallback;
+
+    let limitLeft = fr.left;
+    let limitTop = fr.top;
+    const limitRight = Math.min(fr.right, hostWindow.innerWidth || fr.right);
+
+    /* 酒馆的 #top-bar 在这套主题里是左侧栏，在别的形态下可能是顶栏。
+       按它自己的比例判断，别按布局名字猜。 */
+    const rail = hostDocument.querySelector('#top-bar');
+    const rr = rail && rail.offsetParent !== null ? rail.getBoundingClientRect() : null;
+    if (rr && rr.width > 0 && rr.height > 0) {
+      const tall = rr.height >= fr.height * 0.6;
+      const wide = rr.width >= fr.width * 0.6;
+      if (tall && !wide && rr.left <= fr.left + 1) limitLeft = Math.max(limitLeft, rr.right);
+      else if (wide && !tall && rr.top <= fr.top + 1) limitTop = Math.max(limitTop, rr.bottom);
+    }
+
+    /* 归位线附近要给 #send_form::after 那只装饰 Clawd 让开（right:18px，36 宽）。
+       飞高了就不用让——那时候两者根本不在一条线上。 */
+    const form = hostDocument.querySelector('#send_form');
+    let decorLeft = limitRight;
+    if (form) {
+      const sf = form.getBoundingClientRect();
+      if (sf.width) decorLeft = sf.right - 18 - 36 - A2_DECOR_RESERVE;
+    }
+
+    const maxx = A2.x + (limitRight - A2_EDGE - pr.right);
     return {
-      minx: A2.x - (pr.left - fr.left - A2_EDGE),
-      maxx: A2.x + (fr.right - A2_DECOR_RESERVE - pr.right),
-      miny: -A2_CEILING,
+      minx: A2.x + (limitLeft + A2_EDGE - pr.left),
+      maxx,
+      /* maxxHome 只用来判断「停稳之后有没有盖住装饰 Clawd」，不参与拖拽和抛掷的
+         夹取——拿它当墙的话手感上就是拖到一半推不动，读起来像卡了。 */
+      maxxHome: Math.min(maxx, A2.x + (decorLeft - pr.right)),
+      miny: A2.fy + (limitTop + A2_EDGE - pr.top),
       maxy: 0,
     };
+  }
+
+  /* 右边界。
+     原来贴着归位线时会提前挡住，为的是不压到右上角那只装饰 Clawd，
+     但手感上那是一堵看不见的墙——拖到一半推不动，读起来像卡了。
+     现在整条右边都放开，允许它停在装饰上面。 */
+  function a2ClampX(x) {
+    return Math.max(A2.bnd.minx, Math.min(A2.bnd.maxx, x));
   }
 
   function scheduleA2BoundsWarm(button = composerClawd()) {
@@ -4775,12 +5281,25 @@ if (CLAUDE_ENABLED) {
       A2.bndRaf = 0;
       if (destroyed || A2.held || !button.isConnected) return;
       A2.bnd = a2Walls(button);
+      A2.bndAt = Date.now();
       A2.bndReady = true;
     });
   }
 
+  /* 抓、拖、丢、戳都算「人还在」。
+     不记的话，只跟 Clawd 玩、不碰键盘的这段时间里 lastActivityAt 一直不动，
+     IDLE_SLEEP_MS（3 分钟）一到，它就会在你手里睡着——跺完脚立刻打呼就是这么来的。
+     冷落计时（lastPokeAt）同理。 */
+  function a2NoteInteraction() {
+    lastPokeAt = Date.now();
+    if (neglected) setNeglected(false);
+    noteActivity();
+  }
+
   function a2Down(button, event) {
     A2.tookPointer = false;
+    a2NoteInteraction();
+    a2TraceMark('pointerdown', { x: event.clientX, y: event.clientY });
     if (a2Locked()) {
       /* 生气期间抓不起来 */
       event.preventDefault();
@@ -4791,7 +5310,10 @@ if (CLAUDE_ENABLED) {
     event.preventDefault();
     A2.dragFeedbackRun += 1;
     A2.held = true;
-    A2.flying = 0;
+    /* 必须递增，不能清零。清零会让代次令牌被复用：抓一次之后计数归 0，
+       下一次抛掷又拿到 my=1，于是上一轮那个还在排队的 840ms 回调（my 也是 1）
+       会认领这一次飞行——生气和跺脚因此会在半空中触发。 */
+    A2.flying += 1;
     A2.vx = 0;
     A2.vy = 0;
     A2.moved = false;
@@ -4802,10 +5324,11 @@ if (CLAUDE_ENABLED) {
     A2.lx = event.clientX;
     A2.ly = event.clientY;
     A2.lt = Date.now();
-    if (!A2.bndReady) {
-      /* 只给“页面刚挂好就立刻抓”的极端首帧兜底；正常路径已由 rAF/ResizeObserver
-         预热，不在 pointerdown 强制布局。 */
+    if (!A2.bndReady || Date.now() - A2.bndAt > A2_BOUNDS_TTL) {
+      /* 预热是快路径；过期就在这里重量一次。
+         只在 pointerdown 读，一次手势最多一次，pointermove 和 rAF 里仍然零读取。 */
       A2.bnd = a2Walls(button);
+      A2.bndAt = Date.now();
       A2.bndReady = true;
     }
     button.style.setProperty('transition', 'none', 'important');
@@ -4838,8 +5361,8 @@ if (CLAUDE_ENABLED) {
       hostWindow.setTimeout(() => { if (A2.dragging) setClawdC('drag', 0); }, 350);
     }
     if (!A2.moved) return;
-    A2.x = Math.max(A2.bnd.minx, Math.min(A2.bnd.maxx, A2.ox + dx));
     A2.fy = Math.max(A2.bnd.miny, Math.min(A2.bnd.maxy, A2.oy + dy));
+    A2.x = a2ClampX(A2.ox + dx);
     const now = Date.now();
     const dt = Math.max(12, now - A2.lt);
     /* 指数平滑，不用瞬时速度——瞬时速度在慢速拖动时会抖 */
@@ -4860,6 +5383,11 @@ if (CLAUDE_ENABLED) {
     A2.dragFeedbackRun += 1;
     if (A2.moved) {
       a2Ballistic(button);                     // 拖过就是抛
+    } else if (A2.fy < 0) {
+      /* 在半空中把它抓住、又原地松手：让它自己掉下去，别悬在空中。
+         这既不算抛掷（不加烦躁、不计次数），也不算戳。 */
+      A2.rot = 0;
+      a2Ballistic(button, true);
     } else {
       A2.rot = 0;
       button.style.removeProperty('transition');
@@ -4882,40 +5410,49 @@ if (CLAUDE_ENABLED) {
     };
   }
 
-  function a2Ballistic(button) {
+  /* drop = true 表示这不是一次抛掷，只是让它自己掉回去（在空中被松手）。
+     不计次数、不加烦躁、落地也不接跺脚或生气。 */
+  function a2Ballistic(button, drop = false) {
     const P = a2Phys();
     const cap = value => Math.max(-24, Math.min(24, value));
-    let bx = cap(A2.vx) * P.thr;
-    let by = cap(A2.vy) * P.thr;
+    let bx = drop ? 0 : cap(A2.vx) * P.thr;
+    let by = drop ? 0 : cap(A2.vy) * P.thr;
     let bounces = 0;
     const my = (A2.flying += 1);               // 代次令牌：新的抓取直接作废旧的飞行
-    A2.throws += 1;
-    A2.lastThrow = Date.now();
-    A2.lastDec = Date.now();
-    A2.irr = Math.min(5, A2.irr + (A2.throws >= 3 ? 2 : 1));
+    if (!drop) {
+      A2.throws += 1;
+      A2.lastThrow = Date.now();
+      A2.lastDec = Date.now();
+      A2.irr = Math.min(5, A2.irr + (A2.throws >= 3 ? 2 : 1));
+    }
     A2.dragging = false;
+    a2NoteInteraction();
     setClawdC('fly', 0);
 
-    const step = () => {
+    /* 逐帧推进改成按真实经过时间推进。
+       原来每帧固定 vy += g、v *= drag，等于把「一帧」当成时间单位：
+       60fps 下 1 秒走 60 步，30fps 下只走 30 步，同一次抛掷在掉帧的机器上
+       墙钟时间直接翻倍。Android Via 上「回落很慢」的主因就是这个。
+       k = 这一帧相当于几个 16.7ms。夹在 [0.5, 3]，避免切后台再回来时
+       一帧跳出去几百像素、直接穿墙。 */
+    const FRAME = 1000 / 60;
+    let last = 0;
+    const step = now => {
       if (my !== A2.flying) return;
-      if (a2Locked()) {
-        /* 飞到一半开始生气：安静落回去，不抢画面 */
-        A2.fy = 0;
-        A2.rot = 0;
-        A2.sqx = 1;
-        A2.sqy = 1;
-        a2Place(button);
-        A2.homeX = A2.x;
-        button.style.removeProperty('transition');
-        return;
-      }
-      by += P.g;
-      bx *= P.drag;
-      by *= P.drag;
-      A2.x += bx;
-      A2.fy += by;
-      if (A2.x < A2.bnd.minx) { A2.x = A2.bnd.minx; bx = -bx * .45; }
-      if (A2.x > A2.bnd.maxx) { A2.x = A2.bnd.maxx; bx = -bx * .45; }
+      const stamp = typeof now === 'number' ? now : (hostWindow.performance?.now?.() || 0);
+      const k = last ? Math.max(0.5, Math.min(3, (stamp - last) / FRAME)) : 1;
+      last = stamp;
+      a2TraceFrame(k, stamp);
+      by += P.g * k;
+      bx *= Math.pow(P.drag, k);
+      by *= Math.pow(P.drag, k);
+      A2.x += bx * k;
+      A2.fy += by * k;
+      /* 左右墙。右边界随高度变，贴着归位线时要避开右上角的装饰 Clawd。 */
+      const clamped = a2ClampX(A2.x);
+      if (clamped !== A2.x) { A2.x = clamped; bx = -bx * .45; }
+      /* 天花板。原来只夹了左右和地面，用力往上一甩就飞出屏幕了。 */
+      if (A2.fy < A2.bnd.miny) { A2.fy = A2.bnd.miny; by = -by * .45; }
       if (A2.fy >= 0) {
         A2.fy = 0;
         /* 第一次砸到地面就演落地，不等它弹完——等弹完看着像落地之后又落了一次 */
@@ -4944,7 +5481,22 @@ if (CLAUDE_ENABLED) {
           a2Place(button);
           A2.homeX = A2.x;
           button.style.removeProperty('transition');
+          /* 停稳之后如果正好盖住右上角那只装饰 Clawd，就让它轻轻滑开一点。
+             拖和抛全程都不拦，只在这里收一下。上一行刚把 transition 还回去
+             （样式表里那条是 transform 240ms），所以下一帧改 x 会自己走缓动，
+             不用另写动画。 */
+          if (A2.x > A2.bnd.maxxHome) {
+            hostWindow.requestAnimationFrame(() => {
+              if (my !== A2.flying) return;
+              A2.x = A2.bnd.maxxHome;
+              A2.homeX = A2.x;
+              a2Place(button);
+            });
+          }
+          /* 落定之后顺手重量一次，下一次抓取大概率还能走快路径。 */
+          scheduleA2BoundsWarm(button);
           const settled = A2.throws;
+          if (drop) return;                    // 只是掉回去，不演落地台词、不接后续
           /* 粒子和气泡都要读布局，从 rAF 回调里挪出去 */
           hostWindow.setTimeout(() => {
             if (my !== A2.flying) return;
@@ -4973,7 +5525,8 @@ if (CLAUDE_ENABLED) {
       a2Place(button);
       hostWindow.requestAnimationFrame(step);
     };
-    step();
+    a2TraceMark('ballistic:start');
+    hostWindow.requestAnimationFrame(step);
   }
 
   function a2Poke(button) {
@@ -4983,6 +5536,7 @@ if (CLAUDE_ENABLED) {
       return;
     }
     A2.lastDec = Date.now();
+    a2NoteInteraction();
     if (clawdTracks.A) {
       /* 生成中只给最轻那档，不抢 A 轨 */
       setClawdC('t1', 500);
@@ -5241,9 +5795,18 @@ if (CLAUDE_ENABLED) {
     host.appendChild(toast);
     const hostBox = host.getBoundingClientRect();
     const crabBox = button.getBoundingClientRect();
-    toast.style.left = (crabBox.right - hostBox.left + 10) + 'px';
-    toast.style.top = (crabBox.top + crabBox.height / 2 - hostBox.top) + 'px';
-    hostWindow.setTimeout(() => toast.remove(), variant === 'hi' ? 3200 : 2600);
+    /* left/top 按 Clawd 的「归位位置」算，位移交给 translate，
+       所以这里要把 A2 当前的位移减掉，否则会算两次。 */
+    toast.style.left = (crabBox.right - A2.x - hostBox.left + 8) + 'px';
+    /* 贴 Clawd 的右上角，不再是右侧居中：气泡自带 translateY(-50%)，
+       把 top 压在按钮上沿，气泡就整个浮在它头顶偏右。 */
+    toast.style.top = (crabBox.top - A2.fy - hostBox.top) + 'px';
+    a2ActiveToast = toast;
+    a2MoveToast();
+    hostWindow.setTimeout(() => {
+      if (a2ActiveToast === toast) a2ActiveToast = null;
+      toast.remove();
+    }, variant === 'hi' ? 3200 : 2600);
   }
 
   function ccEscapeHtml(text) {
@@ -5414,7 +5977,10 @@ if (CLAUDE_ENABLED) {
     setDrowsy(false);
     if (!idleAsleep) return;
     idleAsleep = false;
-    if (!ccSleeping) setSleeping(false);
+    /* 只有真的从 idleAsleep 醒来才播 wake；普通 focus/input 不要每次都弹一下。
+       wake 留在 B 轨，若用户是通过抓 Clawd 叫醒它，C 轨会先显示抓取动作，
+       这段短 wake 在后台自然结束，不会抢画面。 */
+    if (!ccSleeping) setClawdB('wake', 500);
   }
 
   /* 滑动箭头跟随滚动。
@@ -5510,7 +6076,70 @@ if (CLAUDE_ENABLED) {
      滚动本身不用再重复触发。PC 分支要跟着视口位置走，仍然需要。 */
   function handleChatScroll() {
     noteManualScroll();
+    clawdScrollTilt();
     if (!isMobileLayout()) scheduleSwipeTrack();
+  }
+
+  /* Clawd 被滚动带歪。照搬原型的三条设计，外加一条扩展这边的：
+       1) 死区：平滑后的速度低于 2.2 就直接返回。慢速滚动一分钱不花，
+          绝大多数滚动根本走不到下面。
+       2) 缓动交给 CSS transition，JS 只写一个角度，不做逐帧动画。
+       3) 只在 B 轨占画面时表演——生成、被抓、被丢、生气都比它优先。
+       4) 生成中整个跳过。那时正文每帧都在长、DOM 一直是脏的，
+          读 scrollTop 会摊上一次完整重排；trackSwipeArrows 在生成期间
+          吃掉 3823ms 就是这么来的。
+     用的是已有的那个滚动监听，没有新增第二套订阅。 */
+  let clawdScrollVel = 0;
+  let clawdScrollLastTop = 0;
+  let clawdScrollLastAt = 0;
+  let clawdScrollHolding = false;
+  let clawdScrollRestTimer = 0;
+  let clawdScrollClearTimer = 0;
+
+  function clawdScrollRelease(button) {
+    clawdScrollHolding = false;
+    button.classList.remove('clawd-scroll-hold');
+    button.classList.add('clawd-scroll-release');
+    if (clawdScrollClearTimer) hostWindow.clearTimeout(clawdScrollClearTimer);
+    clawdScrollClearTimer = hostWindow.setTimeout(() => {
+      clawdScrollClearTimer = 0;
+      button.classList.remove('clawd-scroll-release');
+    }, 460);
+  }
+
+  function clawdScrollTilt() {
+    if (destroyed || isTypingActive()) return;
+    const host = scrollHost;
+    if (!host) return;
+    const now = Date.now();
+    const dt = Math.max(16, now - clawdScrollLastAt);
+    const top = host.scrollTop;
+    const raw = (top - clawdScrollLastTop) / dt * 16;
+    clawdScrollLastTop = top;
+    clawdScrollLastAt = now;
+    clawdScrollVel = clawdScrollVel * 0.8 + raw * 0.2;
+    const mag = Math.abs(clawdScrollVel);
+    if (mag < 2.2) return;                       // 死区
+    /* fy 不为 0 就是还在空中或者被举着，那时候不该再叠一层歪。 */
+    if (clawdTracks.A || clawdTracks.C || a2Locked() || A2.held || A2.fy !== 0) return;
+    const button = composerClawd();
+    if (!button) return;
+
+    /* 开始扒住：一次滚动只做这一次 class 变化，中间的滚动事件都走不到这里。 */
+    if (!clawdScrollHolding) {
+      clawdScrollHolding = true;
+      if (clawdScrollClearTimer) hostWindow.clearTimeout(clawdScrollClearTimer);
+      clawdScrollClearTimer = 0;
+      button.classList.remove('clawd-scroll-release');
+      button.classList.add('clawd-scroll-hold');
+    }
+    /* 停止判定：最后一次「有效滚动」之后 220ms 没动静就松手。 */
+    if (clawdScrollRestTimer) hostWindow.clearTimeout(clawdScrollRestTimer);
+    clawdScrollRestTimer = hostWindow.setTimeout(() => {
+      clawdScrollRestTimer = 0;
+      clawdScrollVel = 0;
+      clawdScrollRelease(button);
+    }, 220);
   }
 
   /* 欢迎态：聊天里没有真实消息时，复刻官网那个「问候语 + 输入框居中」的形态。
@@ -9846,6 +10475,11 @@ if (CLAUDE_ENABLED) {
     hostDocument.querySelectorAll('.' + ANDROID_KEYBOARD_PAN_ANCHOR_CLASS).forEach(node => node.remove());
     if (A2.bndRaf) hostWindow.cancelAnimationFrame(A2.bndRaf);
     A2.bndRaf = 0;
+    if (clawdScrollRestTimer) hostWindow.clearTimeout(clawdScrollRestTimer);
+    if (clawdScrollClearTimer) hostWindow.clearTimeout(clawdScrollClearTimer);
+    clawdScrollRestTimer = 0;
+    clawdScrollClearTimer = 0;
+    clawdScrollHolding = false;
     A2.bndReady = false;
     composerResizeObserver?.disconnect();
     composerResizeObserver = null;
@@ -10033,6 +10667,9 @@ if (CLAUDE_ENABLED) {
     }),
     /* 键盘几何采样默认关闭，显式 start 后才开始（自动采样本身会强制同步
        布局、污染复测）。判读方法见 startKeyboardTrace 上方的注释。 */
+    a2TraceStart,
+    a2TraceStop,
+    a2Trace: a2TraceReport,
     keyboardTraceStart: startKeyboardTrace,
     keyboardTraceStop: stopKeyboardTrace,
     keyboardTraceClear: () => { keyboardTraceSamples.length = 0; },
