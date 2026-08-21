@@ -83,6 +83,10 @@ window.fetch = async input => ({
 window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });
 window.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
 window.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+Object.defineProperty(window.navigator, 'userAgent', {
+  configurable: true,
+  value: 'Mozilla/5.0 (Linux; Android 14; CW_Android_14_Via) AppleWebKit/537.36',
+});
 Object.defineProperty(window, 'visualViewport', {
   configurable: true,
   value: { width: 390, height: 780, offsetTop: 0, addEventListener() {}, removeEventListener() {} },
@@ -135,8 +139,26 @@ externalModal.getBoundingClientRect = () => ({
 window.document.body.append(externalModal);
 
 window.localStorage.setItem('claude-web:decorations', 'off');
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.141`);
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.142`);
 await new Promise(resolve => window.setTimeout(resolve, 850));
+
+const composerShell = window.document.getElementById('form_sheld');
+const androidPanAnchor = window.document.querySelector('.clawd-android-keyboard-pan-anchor');
+assert.ok(androidPanAnchor, 'mobile Android must install the Via keyboard pan anchor');
+assert.equal(androidPanAnchor.style.height, '64px');
+assert.equal(androidPanAnchor.style.pointerEvents, 'none');
+composerShell.style.setProperty('--cl-mobile-composer-translate-y', '-272px');
+window.document.getElementById('send_textarea').focus();
+window.dispatchEvent(new window.Event('resize'));
+await new Promise(resolve => window.setTimeout(resolve, 50));
+const refreshedAndroidPanAnchor = window.document.querySelector('.clawd-android-keyboard-pan-anchor');
+assert.notEqual(refreshedAndroidPanAnchor, androidPanAnchor, 'focusin must remount the anchor for Via cold-start adjustPan');
+assert.equal(androidPanAnchor.isConnected, false);
+assert.equal(
+  composerShell.style.getPropertyValue('--cl-mobile-composer-translate-y'),
+  '',
+  'native Android keyboard layout must clear a stale composer translation',
+);
 
 assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
 assert.equal(window.document.querySelector('.third-party-action')?.isConnected, true, 'third-party action must survive refresh');
@@ -156,7 +178,8 @@ assert.match(interactionStyle, /#chat \.typing_indicator::before,[\s\S]*display:
 assert.match(interactionStyle, /safe-area-inset-left/, 'the left anchor must include the phone safe area');
 
 emitRuntimeEvent('generation_started');
-await new Promise(resolve => window.setTimeout(resolve, 1050));
+/* think 至少 900ms，再由 200ms runtime tick 结算；1250ms 覆盖最坏 tick 相位。 */
+await new Promise(resolve => window.setTimeout(resolve, 1250));
 assert.equal(window.__claudeClawdInteraction.clawdState().A, 'stream', 'generation must advance from think to stream');
 assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'A', 'A owns the frame while generating');
 assert.equal(window.document.querySelector('#chat .clawd-message-signoff-clawd'), null, 'no Clawd may appear in the message while generating either');
@@ -251,4 +274,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.141 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.142 runtime DOM regressions passed');

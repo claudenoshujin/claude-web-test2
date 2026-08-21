@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.141-clawd-a2-drag-throw-poke-lock-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.142-android-via-keyboard-pan-anchor-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1658,6 +1658,7 @@ if (CLAUDE_ENABLED) {
       '.clawd-mobile-chrome',
       '.clawd-mobile-scrim',
       '.clawd-mobile-new-chat',
+      '.clawd-android-keyboard-pan-anchor',
       '.clawd-character-menu',
       '.clawd-character-switcher',
       '.clawd-rail-brand',
@@ -1730,7 +1731,7 @@ if (CLAUDE_ENABLED) {
               try { delete customStyle.__claudeCompatRawCss; delete customStyle.__claudeCompatWrappedCss; } catch (_) {}
             }
             doc.querySelectorAll('option.' + optionClass).forEach(function (node) { node.remove(); });
-            doc.querySelectorAll('.clawd-mobile-chrome,.clawd-mobile-scrim,.clawd-mobile-new-chat,.clawd-character-menu,.clawd-character-switcher,.clawd-rail-brand,.clawd-rail-grip,.claude-user-message-actions,.claude-swipe-left-proxy,.claude-swipe-right-proxy,.claude-reroll-button,.clawd-signoff-button').forEach(function (node) { node.remove(); });
+            doc.querySelectorAll('.clawd-mobile-chrome,.clawd-mobile-scrim,.clawd-mobile-new-chat,.clawd-android-keyboard-pan-anchor,.clawd-character-menu,.clawd-character-switcher,.clawd-rail-brand,.clawd-rail-grip,.claude-user-message-actions,.claude-swipe-left-proxy,.claude-swipe-right-proxy,.claude-reroll-button,.clawd-signoff-button').forEach(function (node) { node.remove(); });
             if (body) body.classList.remove('clawd-interactive-ready','claude-generation-active','clawd-mobile-layout','clawd-mobile-menu-open','clawd-tauritavern-host','clawd-welcome','clawd-has-recents');
             if (root) {
               delete root.dataset.claudeIntegratedTheme;
@@ -1951,6 +1952,7 @@ if (CLAUDE_ENABLED) {
   const MOBILE_MENU_OPEN_CLASS = 'clawd-mobile-menu-open';
   const MOBILE_LAYOUT_CLASS = 'clawd-mobile-layout';
   const VIRTUAL_KEYBOARD_OVERLAY_CLASS = 'clawd-virtual-keyboard-overlay';
+  const ANDROID_KEYBOARD_PAN_ANCHOR_CLASS = 'clawd-android-keyboard-pan-anchor';
   const TAURITAVERN_HOST_CLASS = 'clawd-tauritavern-host';
   const MOBILE_COMPOSER_HEIGHT_PROPERTY = '--cl-mobile-composer-height';
   const MOBILE_COMPOSER_TRANSLATE_PROPERTY = '--cl-mobile-composer-translate-y';
@@ -5577,15 +5579,40 @@ if (CLAUDE_ENABLED) {
     return isMobileLayout() && /Android/i.test(hostWindow.navigator?.userAgent || '');
   }
 
-  /* Chrome/Android 支持 VirtualKeyboard API 时，直接让软键盘覆盖页面，而不是
-     缩放 layout viewport。这样键盘开合只改变 keyboard-inset 环境变量，重角色卡
-     和整段聊天历史都不用重新布局。Via 等 WebView 可能不暴露这个 API，所以这里
-     只做能力检测；老内核的降级靠冻结根视口变量（applyMobileViewportMetrics）
-     和 transform 位移，不再依赖任何形式的屏外 containment。 */
+  /* Via/WebView 在普通页面上会保持 innerHeight / visualViewport 完全不变，
+     然后由 Android adjustPan 整张 WebView；fixed 输入框因此被抬高两次。
+     顶部存在一个约诊断栏高度的 fixed box 时，Via 会改用正确的可见区域，
+     输入框自然落在键盘上沿。这个空节点不绘制、不收事件，只影响 IME 的 pan
+     判定；1px 高度不足以触发，真机隔离结果是 64px 稳定。 */
+  function ensureAndroidKeyboardPanAnchor(refresh = false) {
+    let anchor = hostDocument.querySelector('.' + ANDROID_KEYBOARD_PAN_ANCHOR_CLASS);
+    if (!usesNativeAndroidKeyboardLayout() || keyboardBaselineMode) {
+      anchor?.remove();
+      return;
+    }
+    if (anchor && !refresh) return;
+    /* Via 会在 WebView 首次排版时缓存 adjustPan 的参照集合；启动阶段已经存在的
+       fixed 节点可能不会参与本次 IME 决策。focusin 同一任务里重挂一次，让节点
+       进入即将开始的键盘 pan 计算。热更新之所以正常、冷启动失败，差异就在这里。 */
+    anchor?.remove();
+    anchor = hostDocument.createElement('i');
+    anchor.className = ANDROID_KEYBOARD_PAN_ANCHOR_CLASS;
+    anchor.setAttribute('aria-hidden', 'true');
+    anchor.style.cssText = [
+      'position:fixed', 'left:0', 'top:0', 'width:100vw', 'height:64px',
+      'opacity:.001', 'pointer-events:none', 'z-index:2147483646',
+    ].join(';');
+    hostDocument.body?.append(anchor);
+  }
+
+  /* 非 Android 浏览器支持 VirtualKeyboard API 时，继续使用 overlay 模式；
+     Android 走上面的原生布局 + pan anchor，不再叠加第二份键盘位移。 */
   function installVirtualKeyboardOverlay() {
-    /* Android 的 TT、Via 和当前 System WebView 都会随 IME 缩小可布局区域。
-       再强制 overlaysContent 或按 visualViewport 补位，会把输入框上移两次。 */
-    if (!isMobileLayout() || keyboardBaselineMode || usesNativeAndroidKeyboardLayout()) return;
+    if (!isMobileLayout() || keyboardBaselineMode) return;
+    if (usesNativeAndroidKeyboardLayout()) {
+      ensureAndroidKeyboardPanAnchor();
+      return;
+    }
     const keyboard = hostWindow.navigator?.virtualKeyboard;
     if (!keyboard || !('overlaysContent' in keyboard)) return;
     try {
@@ -5838,7 +5865,11 @@ if (CLAUDE_ENABLED) {
   }
 
   function scheduleMobileComposerTranslate() {
-    if (destroyed || keyboardBaselineMode || usesNativeAndroidKeyboardLayout() || mobileComposerTranslateRaf) return;
+    /* Android 仍要进入 applyMobileComposerTranslate：它虽然不计算第二份键盘位移，
+       但必须主动清掉旧版本或热更新留下的负 translate。以前这里提前 return，
+       下方 native 分支的 removeProperty 永远跑不到，输入框就会在键盘上方
+       留出一整段旧偏移。 */
+    if (destroyed || keyboardBaselineMode || mobileComposerTranslateRaf) return;
     mobileComposerTranslateRaf = hostWindow.requestAnimationFrame(applyMobileComposerTranslate);
   }
 
@@ -8119,6 +8150,7 @@ if (CLAUDE_ENABLED) {
   let lastFocusReactionAt = 0;
   const handleFocusIn = event => {
     if (isMobileLayout() && isSoftKeyboardTarget(event.target)) {
+      ensureAndroidKeyboardPanAnchor(true);
       /* TT 的部分 WebView 会在 focusin 后立刻缩 layout viewport。先在同一任务里
          单独锁住编辑弹窗高度；它不再依赖之后可能已经变矮的 visualViewport。 */
       const root = hostDocument.documentElement;
@@ -8800,6 +8832,7 @@ if (CLAUDE_ENABLED) {
     '.clawd-mobile-chrome',
     '.clawd-mobile-scrim',
     '.clawd-mobile-new-chat',
+    '.clawd-android-keyboard-pan-anchor',
     '.clawd-character-menu',
     '.clawd-character-switcher',
     '.clawd-keyboard-diagnostics',
@@ -9772,6 +9805,7 @@ if (CLAUDE_ENABLED) {
     mobileNavCloseHandler = null;
     mobileChrome?.root?.remove();
     mobileChrome = null;
+    hostDocument.querySelectorAll('.' + ANDROID_KEYBOARD_PAN_ANCHOR_CLASS).forEach(node => node.remove());
     composerResizeObserver?.disconnect();
     composerResizeObserver = null;
     observedComposerShell?.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);

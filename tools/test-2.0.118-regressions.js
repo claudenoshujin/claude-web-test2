@@ -7,11 +7,11 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.141');
-assert.equal(manifest.js, 'loader-2.0.141.js');
+assert.equal(manifest.version, '2.0.142');
+assert.equal(manifest.js, 'loader-2.0.142.js');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.141/,
+  /index\.js\?v=2\.0\.142/,
   'loader must defeat Android WebView module cache',
 );
 
@@ -51,6 +51,10 @@ assert.match(index, /#completion_prompt_manager_popup\.openDrawer[\s\S]*MOBILE_P
 assert.match(index, /#typing_indicator\.typing_indicator[\s\S]*visibility: visible !important/, 'official Typing Indicator must stay visible while generating');
 assert.match(index, /function usesNativeAndroidKeyboardLayout\(\)/);
 assert.match(index, /usesNativeAndroidKeyboardLayout\(\)[\s\S]*removeProperty\(MOBILE_COMPOSER_TRANSLATE_PROPERTY\)/, 'Android must not receive a second keyboard translation');
+assert.doesNotMatch(index, /function scheduleMobileComposerTranslate\(\) \{[\s\S]{0,300}?usesNativeAndroidKeyboardLayout\(\)[\s\S]{0,120}?return;/, 'Android scheduling must reach the stale-translation cleanup branch');
+assert.match(index, /function ensureAndroidKeyboardPanAnchor\([^)]*\)[\s\S]*height:64px[\s\S]*pointer-events:none/, 'Via needs the inert 64px fixed pan anchor');
+assert.match(index, /handleFocusIn[\s\S]*ensureAndroidKeyboardPanAnchor\(true\)/, 'Via cold start must remount the pan anchor before IME adjustPan');
+assert.match(index, /ANDROID_KEYBOARD_PAN_ANCHOR_CLASS[\s\S]*forEach\(node => node\.remove\(\)\)/, 'the Android pan anchor must be removed on teardown');
 assert.match(index, /userSettingsRowOne[\s\S]*grid-template-columns: minmax\(0,1fr\) minmax\(132px,1fr\)/, 'mobile settings header must use independent columns');
 assert.match(index, /grid-template-columns: 26px minmax\(0,1fr\)/, 'Prompt Manager must reserve a dedicated icon column');
 assert.match(index, /\.extraMesButtons\.visible[\s\S]*flex-wrap: wrap !important;/, 'expanded message actions need a wrapping panel');
@@ -93,4 +97,4 @@ assert.match(index, /if \(button\.classList\.contains\(COMPOSER_CLAWD_CLASS\)\) 
 assert.doesNotMatch(index, /data-claude-decorations="off"[^\n]*COMPOSER_CLAWD_CLASS/, 'the decorations toggle must not hide Clawd itself');
 assert.match(index, /const clawdEnabled = hostDocument\.documentElement\.dataset\.claudeClawd !== 'off'/, 'the Clawd switch must own final node visibility');
 
-console.log('✓ Claude Web 2.0.141 focused regressions passed');
+console.log('✓ Claude Web 2.0.142 focused regressions passed');
