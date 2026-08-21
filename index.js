@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.135-modal-layer-and-crisp-prompt-handle-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.139-dual-role-clawd-a0-a1-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -1909,6 +1909,16 @@ if (CLAUDE_ENABLED) {
   const EMPTY_CLASS = 'claude-empty-assistant';
   const GENERATING_CLASS = 'claude-generation-active';
   const BUTTON_CLASS = 'clawd-signoff-button';
+  const COMPOSER_CLAWD_CLASS = 'clawd-composer-clawd';
+  const SIGNOFF_CLAWD_CLASS = 'clawd-message-signoff-clawd';
+  const CLAWD_STATE_CLASSES = [
+    'clawd-state-think',
+    'clawd-state-stream',
+    'clawd-state-done',
+    'clawd-state-stopped',
+    'clawd-state-error',
+    'clawd-state-touch',
+  ];
   const INPUT_ACTIVE_CLASS = 'clawd-input-active';
   const INPUT_TEXT_CLASS = 'clawd-input-has-text';
   /* D2：害羞（环境触发）与被冷落。两个都是常驻状态的 class，不是
@@ -2003,6 +2013,21 @@ if (CLAUDE_ENABLED) {
   let generationEventActive = false;
   const generationSubscriptions = [];
   let lastGenerationDoneAt = 0;
+  /* A0：Clawd 只保留一份三轨状态。三轨互不清空，画面归属固定为 C > A > B。
+     A2 的原子序列和锁会接在 setClawdC 这个单一入口上；这里先把入口和轮次围栏立住。 */
+  const clawdTracks = {
+    A: null,
+    B: 'idle',
+    C: null,
+    aStartedAt: 0,
+    aUntil: 0,
+    cUntil: 0,
+    round: 0,
+    activeRound: 0,
+    settledRound: 0,
+  };
+  let clawdRuntimeTimer = 0;
+  let clawdLastIdleTickAt = 0;
   let settlePending = false;
   let typingRunId = 0;
   const typingMotionTimers = new Map();
@@ -2196,6 +2221,79 @@ if (CLAUDE_ENABLED) {
         transform: translateY(0) scale(1) rotate(0);
         transform-origin: center bottom;
         transition: transform 150ms cubic-bezier(.2,.8,.25,1.25), filter 150ms ease !important;
+      }
+
+      /* A1：大 Clawd 是 #send_form 的真实子元素。位置完全由 CSS 锚定，
+         跟随 #form_sheld 的键盘补偿；原本的消息落款小 Clawd 独立保留，
+         手机顶栏与 typing indicator 不再创建第三个替身。 */
+      html body #form_sheld,
+      html body #form_sheld :is(#send_form, form) {
+        position: relative !important;
+        overflow: visible !important;
+      }
+
+      html body #send_form::after {
+        content: none !important;
+        display: none !important;
+      }
+
+      html body #send_form > button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS} {
+        position: absolute !important;
+        inset: auto max(18px, calc(env(safe-area-inset-right, 0px) + 12px)) calc(100% - 5px) auto !important;
+        z-index: 4 !important;
+        display: block !important;
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        margin: 0 !important;
+        touch-action: manipulation;
+      }
+
+      html body button.clawd-mobile-clawd-button {
+        display: none !important;
+      }
+
+      html body #chat .typing_indicator::before,
+      html body #chat .typing_indicator::after {
+        content: none !important;
+        display: none !important;
+        animation: none !important;
+      }
+
+      html[data-claude-clawd="off"] body button.${BUTTON_CLASS} {
+        display: none !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-think::before {
+        animation: clawd-drowsy-sway 2.4s ease-in-out infinite, clawd-idle-frames 3s step-end infinite !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-stream::before {
+        animation: clawd-compose-bob 780ms ease-in-out infinite !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-stopped::before {
+        animation: none !important;
+        box-shadow: var(--clawd-f-blink) !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-error::before {
+        animation: none !important;
+        box-shadow: var(--clawd-f-tucked) !important;
+      }
+
+      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-touch {
+        animation: clawd-react-hop 560ms cubic-bezier(.2,.82,.22,1) both !important;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}::before,
+        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-touch {
+          animation: none !important;
+        }
       }
 
       button.${BUTTON_CLASS}:hover {
@@ -3523,13 +3621,165 @@ if (CLAUDE_ENABLED) {
     return bridge ?? null;
   }
 
+  function composerClawd() {
+    return hostDocument.querySelector(
+      `#send_form > button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}`,
+    );
+  }
+
+  function clawdVisualNodes() {
+    return hostDocument.querySelectorAll(`button.${BUTTON_CLASS}`);
+  }
+
+  function clawdVisibleState() {
+    return clawdTracks.C || clawdTracks.A || clawdTracks.B || 'idle';
+  }
+
+  function renderClawdTracks() {
+    const visible = clawdVisibleState();
+    const owner = clawdTracks.C ? 'C' : clawdTracks.A ? 'A' : 'B';
+    const clawdEnabled = hostDocument.documentElement.dataset.claudeClawd !== 'off';
+    const generationInFlight = clawdTracks.A === 'think' || clawdTracks.A === 'stream';
+
+    clawdVisualNodes().forEach(button => {
+      const isComposer = button.classList.contains(COMPOSER_CLAWD_CLASS);
+      /* 两个节点消费同一份三轨数据，但视觉职责不同：输入框大 Clawd 表演
+         C > A > B 的当前状态；消息末尾的小 Clawd 只做落款、B 轨在场反馈
+         和它原有的直接点击反应。生成中小 Clawd 依照 2.0.135 让位。 */
+      button.dataset.clawdA = clawdTracks.A || '';
+      button.dataset.clawdB = clawdTracks.B || '';
+      button.dataset.clawdC = clawdTracks.C || '';
+      button.dataset.clawdState = visible;
+      button.dataset.clawdOwner = owner;
+      button.dataset.clawdRole = isComposer ? 'composer' : 'signoff';
+      CLAWD_STATE_CLASSES.forEach(name => button.classList.remove(name));
+
+      /* 旧主题的 Clawd 开关和 welcome 规则都带 !important。最终显隐由真实
+         开关和节点职责写在节点上，避免样式加载顺序误杀大 Clawd；粒子/气泡
+         开关不参与本体显隐。 */
+      button.style.setProperty(
+        'display',
+        clawdEnabled && (isComposer || !generationInFlight) ? 'block' : 'none',
+        'important',
+      );
+
+      if (isComposer) {
+        const stateClass = {
+          think: 'clawd-state-think',
+          stream: 'clawd-state-stream',
+          done: 'clawd-state-done',
+          stopped: 'clawd-state-stopped',
+          error: 'clawd-state-error',
+          touch: 'clawd-state-touch',
+        }[visible];
+        if (stateClass) button.classList.add(stateClass);
+        button.classList.toggle('clawd-cheer', visible === 'done');
+      } else {
+        /* 小 Clawd 保留 2.0.135 的落地/点击动画，不套大 Clawd 的 A/C 姿势。 */
+        button.classList.remove('clawd-cheer');
+      }
+
+      /* 大 Clawd 按 C > A > B 切画面；小 Clawd 始终保留 B 轨的旧在场行为，
+         这样睡着时戳它仍会按 2.0.135 回梦话，而不是先被 C 轨清掉睡姿。 */
+      const useBState = isComposer ? owner === 'B' : !generationInFlight;
+      button.classList.toggle('clawd-sleeping', useBState && clawdTracks.B === 'sleep');
+      button.classList.toggle('clawd-idle-drowsy', useBState && clawdTracks.B === 'drowsy');
+      button.classList.toggle(NEGLECTED_CLASS, useBState && clawdTracks.B === 'neglected');
+    });
+  }
+
+  function setClawdA(value, duration = 0) {
+    const now = Date.now();
+    clawdTracks.A = value || null;
+    clawdTracks.aStartedAt = value ? now : 0;
+    if (value === 'think' && !duration) duration = 16000;
+    if (value === 'stream' && !duration) duration = 20000;
+    clawdTracks.aUntil = value && duration ? now + duration : 0;
+    renderClawdTracks();
+  }
+
+  function setClawdB(value) {
+    clawdTracks.B = value || 'idle';
+    renderClawdTracks();
+  }
+
+  /* A2 的序列锁只允许放进这个入口，避免 pointer/落地回调各写一份守卫。 */
+  function setClawdC(value, duration = 0) {
+    clawdTracks.C = value || null;
+    clawdTracks.cUntil = value && duration ? Date.now() + duration : 0;
+    renderClawdTracks();
+  }
+
+  function beginClawdGeneration() {
+    clawdTracks.round += 1;
+    clawdTracks.activeRound = clawdTracks.round;
+    setClawdA('think');
+  }
+
+  function settleClawdGeneration(outcome = 'done') {
+    const round = clawdTracks.activeRound;
+    if (!round || clawdTracks.settledRound === round) return;
+    clawdTracks.settledRound = round;
+    setClawdA(outcome, 1400);
+  }
+
+  function syncClawdBState() {
+    const box = hostDocument.querySelector('#send_textarea');
+    const focused = Boolean(box && hostDocument.activeElement === box);
+    const next = (idleAsleep || ccSleeping)
+      ? 'sleep'
+      : ccDrowsy
+        ? 'drowsy'
+        : neglected
+          ? 'neglected'
+          : focused && Boolean(box?.value?.trim())
+            ? 'compose'
+            : 'idle';
+    setClawdB(next);
+  }
+
+  function ensureComposerClawd() {
+    const form = hostDocument.querySelector('#send_form');
+    if (!form) return null;
+    let button = composerClawd();
+    if (!button) {
+      button = createButton(false, 'composer');
+      form.append(button);
+    }
+    applyCcComposerState(button);
+    syncClawdBState();
+    renderClawdTracks();
+    return button;
+  }
+
+  function clawdRuntimeTick() {
+    if (destroyed) return;
+    const now = Date.now();
+    if (genTimerStartedAt) tickGenTimer();
+    if (clawdTracks.A === 'think'
+      && generationEventActive
+      && now - clawdTracks.aStartedAt >= 900) {
+      setClawdA('stream');
+    } else if (clawdTracks.aUntil && now >= clawdTracks.aUntil) {
+      if (clawdTracks.A === 'think' || clawdTracks.A === 'stream') {
+        settleClawdGeneration('done');
+      } else {
+        setClawdA(null);
+      }
+    }
+    if (clawdTracks.cUntil && now >= clawdTracks.cUntil) setClawdC(null);
+    if (now - clawdLastIdleTickAt >= 5000) {
+      clawdLastIdleTickAt = now;
+      refreshIdleSleep();
+    }
+  }
+
   /* D2 生成计时器：measures how long the current streaming reply has been
      running. 用同一套 GENERATION_STARTED/ENDED/STOPPED 事件驱动，跟原生
      的 typing indicator 进出场是同一个事实来源，不用自己猜生成有没有
      结束。可开关（html[data-claude-gen-timer]），关掉时直接不建元素，
      不占任何一帧。 */
   let genTimerEl = null;
-  let genTimerRaf = 0; /* 现在存的是 setInterval 的 id，不再是 rAF 句柄 */
   let genTimerStartedAt = 0;
   let genTimerLingerTimer = 0;
   const GEN_TIMER_LINGER_MS = 4000;
@@ -3561,27 +3811,14 @@ if (CLAUDE_ENABLED) {
       hostWindow.clearTimeout(genTimerLingerTimer);
       genTimerLingerTimer = 0;
     }
-    if (genTimerRaf) hostWindow.clearInterval(genTimerRaf);
     genTimerStartedAt = hostWindow.performance.now();
     el.classList.remove('clawd-gen-timer-done');
     el.classList.add('clawd-gen-timer-visible');
     tickGenTimer();
-    /* 计时器原来靠 requestAnimationFrame 递归自己跑，也就是每一帧醒一次：
-       高刷屏上是每秒 ~175 次。但显示只到 0.1 秒，一秒里只有 10 次是真要改字。
-       更麻烦的是 rAF 回调坐在渲染管线的关键路径上 —— 每帧都被唤醒一次，正好跟
-       流式正文抢同一个绘制通道；这个徽标还是 position:fixed + z-index:10015 +
-       18px 扩散的 box-shadow，每次重绘都要重新合成它底下那片输入区。
-       表现出来就是"关掉计时器不但不卡了，连出字的节奏都不一样"。
-       改成 100ms 定时器：显示精度一点不损失（本来就只有 0.1 秒），
-       唤醒次数从 ~175 次/秒降到 10 次/秒，而且离开了每帧渲染路径。 */
-    genTimerRaf = hostWindow.setInterval(tickGenTimer, 100);
+    /* A0：显示更新并入唯一的 clawdRuntimeTick，不再自己持有轮询器。 */
   }
 
   function stopGenTimer() {
-    if (genTimerRaf) {
-      hostWindow.clearInterval(genTimerRaf);
-      genTimerRaf = 0;
-    }
     if (!genTimerStartedAt || !genTimerEl) return; // 没真的开始过（比如开关关闭时收到结束事件）
     const elapsed = (hostWindow.performance.now() - genTimerStartedAt) / 1000;
     genTimerEl.textContent = (ccPrefersChinese() ? '用时 ' : 'took ') + elapsed.toFixed(1) + 's';
@@ -3602,34 +3839,30 @@ if (CLAUDE_ENABLED) {
     if (!source?.on) return;
 
     const seen = new Set();
-    const subscribe = (key, fallback, active) => {
+    const subscribe = (key, fallback, outcome) => {
       const type = types[key] || fallback;
       if (!type || seen.has(type)) return;
       seen.add(type);
       const handler = (...args) => {
         /* SillyTavern may emit a dry-run generation while only assembling a
            prompt. It must not turn the visible send control into Stop. */
+        const active = outcome === 'start';
         if (active && args[2] === true) return;
-        if (!active) {
-          /* 退场是竞态重灾区：GENERATION_ENDED/STOPPED 不保证早于酒馆自己的
-             DOM/class 更新，等 scheduleRefresh 就可能已经被向右挪了一帧。
-             在事件回调的同一任务里同步压掉原生精灵并创建 ghost。 */
-          hostDocument
-            .querySelectorAll('#chat .typing_indicator')
-            .forEach(createTypingExitGhost);
-        }
+        const wasActive = generationEventActive;
         generationEventActive = active;
         if (active) startGenTimer(); else stopGenTimer();
-        primeTypingTransition(active);
+        if (active && !wasActive) beginClawdGeneration();
+        else if (!active) settleClawdGeneration(outcome);
         scheduleRefresh();
       };
       source.on(type, handler);
       generationSubscriptions.push({ source, type, handler });
     };
 
-    subscribe('GENERATION_STARTED', 'generation_started', true);
-    subscribe('GENERATION_ENDED', 'generation_ended', false);
-    subscribe('GENERATION_STOPPED', 'generation_stopped', false);
+    subscribe('GENERATION_STARTED', 'generation_started', 'start');
+    subscribe('GENERATION_ENDED', 'generation_ended', 'done');
+    subscribe('GENERATION_STOPPED', 'generation_stopped', 'stopped');
+    subscribe('GENERATION_FAILED', 'generation_failed', 'error');
   }
 
   function getMessageData(message) {
@@ -4068,8 +4301,10 @@ if (CLAUDE_ENABLED) {
 
   function removeStaleButtons(currentMessage) {
     hostDocument.querySelectorAll(`.${BUTTON_CLASS}`).forEach(button => {
+      if (button.classList.contains(COMPOSER_CLAWD_CLASS)) return;
       if (!currentMessage || !currentMessage.contains(button)) button.remove();
     });
+    hostDocument.querySelectorAll('button.clawd-mobile-clawd-button').forEach(button => button.remove());
   }
 
   function createParticle(button, preferredClass = '') {
@@ -4135,10 +4370,11 @@ if (CLAUDE_ENABLED) {
     button.addEventListener('pointerleave', release);
   }
 
-  function createButton(settle = false) {
+  function createButton(settle = false, role = 'signoff') {
     const button = hostDocument.createElement('button');
     button.type = 'button';
     button.className = BUTTON_CLASS;
+    button.classList.add(role === 'composer' ? COMPOSER_CLAWD_CLASS : SIGNOFF_CLAWD_CLASS);
     button.setAttribute('aria-label', 'Clawd');
     button.title = 'Clawd';
     applyCcComposerState(button);
@@ -4150,6 +4386,15 @@ if (CLAUDE_ENABLED) {
     button.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
+      if (button.classList.contains(COMPOSER_CLAWD_CLASS)) {
+        setClawdC('touch', 560);
+        lastPokeAt = Date.now();
+        if (neglected) setNeglected(false);
+        return;
+      }
+      /* 小 Clawd 仍走 2.0.135 的点击、气泡和粒子；同时只更新同一份 C 轨，
+         让输入框大 Clawd 知道用户正在直接触碰角色。 */
+      setClawdC('touch', 720);
       if (handleCcCombo(button)) return;
       const reaction = animateButton(button);
       createParticle(button, reaction === 'clawd-react-shy' ? 'clawd-particle-heart' : '');
@@ -4355,9 +4600,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function ccInteractiveTargets() {
-    return hostDocument.querySelectorAll(
-      `button.${BUTTON_CLASS}, button.clawd-mobile-clawd-button`,
-    );
+    return hostDocument.querySelectorAll(`button.${BUTTON_CLASS}`);
   }
 
   function clearCcTransientFeedback(button) {
@@ -4444,28 +4687,22 @@ if (CLAUDE_ENABLED) {
   const NEGLECT_POKE_MS = 60000;
   let lastPokeAt = Date.now();
   let neglected = false;
+  let ccDrowsy = false;
 
-  /* 这三个 set* 原来只查 BUTTON_CLASS（PC 那只），手机端的
-     .clawd-mobile-clawd-button 从来拿不到这些 class —— 于是它永远不睡、
-     不打盹、也不会被冷落，而 CSS 里给它写好的规则一直是死的。
-     改用 ccInteractiveTargets() 把两只都覆盖到。两种布局同时只存在一只，
-     所以不会互相干扰。 */
   function setSleeping(on) {
-    ccInteractiveTargets().forEach(button => button.classList.toggle('clawd-sleeping', on));
+    if (!on && idleAsleep) idleAsleep = false;
+    syncClawdBState();
   }
 
   function setDrowsy(on) {
-    ccInteractiveTargets().forEach(button => button.classList.toggle('clawd-idle-drowsy', on));
+    ccDrowsy = on;
+    syncClawdBState();
   }
 
   function setNeglected(on) {
     if (neglected === on) return;
     neglected = on;
-    const buttons = ccInteractiveTargets();
-    buttons.forEach(button => button.classList.toggle(NEGLECTED_CLASS, on));
-    if (on && buttons.length) {
-      showCcToast(buttons[0], ccEscapeHtml(ccPrefersChinese() ? '有点被冷落了…' : 'feeling a bit ignored…'), 'hi');
-    }
+    syncClawdBState();
   }
 
   /* 入睡前哈欠一下，呼吸动画晚 900ms 才接上——不然哈欠和呼吸两段 transform
@@ -4528,8 +4765,6 @@ if (CLAUDE_ENABLED) {
     idleAsleep = false;
     if (!ccSleeping) setSleeping(false);
   }
-
-  const idleTimer = hostWindow.setInterval(refreshIdleSleep, 5000);
 
   /* 滑动箭头跟随滚动。
      注意要用 setProperty(...,'important')：installStyle 里那条 top:50% 带 !important，
@@ -6891,28 +7126,15 @@ if (CLAUDE_ENABLED) {
       menu.setAttribute('aria-expanded', String(open));
     });
 
-    const clawd = hostDocument.createElement('button');
-    clawd.type = 'button';
-    clawd.className = 'clawd-mobile-clawd-button';
-    clawd.setAttribute('aria-label', 'Clawd');
-    applyCcComposerState(clawd);
-    clawd.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (handleCcCombo(clawd)) return;
-      animateButton(clawd);
-      createParticle(clawd);
-    });
-
     const scrim = hostDocument.createElement('button');
     scrim.type = 'button';
     scrim.className = 'clawd-mobile-scrim';
     scrim.setAttribute('aria-label', ccPrefersChinese() ? '关闭导航' : 'Close navigation');
     scrim.addEventListener('click', closeMobileMenu);
 
-    root.append(menu, clawd, scrim);
+    root.append(menu, scrim);
     hostDocument.body.append(root);
-    mobileChrome = { root, menu, clawd, scrim };
+    mobileChrome = { root, menu, scrim };
 
     /* 手机抽屉里的入口打开全屏设置页后，普通 SillyTavern 的导航应立即滑走。
        TauriTavern 会把多数设置页停放在 #top-settings-holder 内：如果捕获阶段
@@ -7191,16 +7413,9 @@ if (CLAUDE_ENABLED) {
       // 这样左右观察那边的收尾定时器就不会在鼠标已经改了朝向之后
       // 把眼神错误地扳回中间。
       delete button.dataset.clawdAmbientLook;
-      // 像素画没有半格，眼珠只能整格跳，加不出中间帧。
-      // 改用动画里的老办法：跳之前先眨一下，用眨眼盖住这一跳 ——
-      // 人眼扫视时本来就会眨，所以这个遮掩读起来是自然的。
-      button.classList.add('clawd-saccade');
-      hostWindow.setTimeout(() => {
-        button.classList.remove('clawd-saccade');
-        for (const dir of ['l', 'r', 'u', 'd']) {
-          button.classList.toggle('clawd-look-' + dir, next === dir);
-        }
-      }, 70);
+      for (const dir of ['l', 'r', 'u', 'd']) {
+        button.classList.toggle('clawd-look-' + dir, next === dir);
+      }
     });
   }
   let lastMouseMoveAt = Date.now();
@@ -7217,7 +7432,7 @@ if (CLAUDE_ENABLED) {
   }
 
   /* D2 左右观察：没有真实 mousemove 一段时间后，偶尔自主看一眼再收回。
-     复用鼠标跟随那套 clawd-look-l/r 帧和 clawd-saccade 眨眼遮挡，
+     复用鼠标跟随那套 clawd-look-l/r 帧，
      不用新画像素帧。用 dataset.clawdAmbientLook 标记「这份朝向是环境
      张望设的」，收尾定时器到点时只在朝向没被真实鼠标顶替过才收回去，
      避免收尾定时器把真实鼠标刚设好的朝向错误地扳回中间。 */
@@ -7237,21 +7452,13 @@ if (CLAUDE_ENABLED) {
       lastScanToastAt = now;
       showCcToast(button, ccEscapeHtml(ccPrefersChinese() ? '张望一下～' : 'just looking around~'), 'hi');
     }
-    button.classList.add('clawd-saccade');
-    hostWindow.setTimeout(() => {
-      button.classList.remove('clawd-saccade');
-      button.classList.add('clawd-look-' + dir);
-    }, 70);
+    button.classList.add('clawd-look-' + dir);
     hostWindow.setTimeout(() => {
       // 期间没被真实鼠标顶替，才收回去；顶替过的话真实鼠标系统自己会管。
       if (button.dataset.clawdAmbientLook !== dir) return;
       delete button.dataset.clawdAmbientLook;
       button.dataset.look = '';
-      button.classList.add('clawd-saccade');
-      hostWindow.setTimeout(() => {
-        button.classList.remove('clawd-saccade');
-        button.classList.remove('clawd-look-l', 'clawd-look-r');
-      }, 70);
+      button.classList.remove('clawd-look-l', 'clawd-look-r');
     }, SCAN_HOLD_MS);
   }
 
@@ -7267,8 +7474,6 @@ if (CLAUDE_ENABLED) {
       playAmbientGlance(button);
     });
   }
-  const ccScanTimer = hostWindow.setInterval(ccMaybeScan, 6000);
-
   /* 3. 输入框聚焦时抬头 */
   function setPerk(on) {
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS)
@@ -7288,6 +7493,7 @@ if (CLAUDE_ENABLED) {
 
   function syncCcComposerState(focusedOverride) {
     ccInteractiveTargets().forEach(button => applyCcComposerState(button, focusedOverride));
+    syncClawdBState();
   }
 
   const handleComposerInput = event => {
@@ -7650,8 +7856,6 @@ if (CLAUDE_ENABLED) {
       playTypingMotion(el, 'clawd-cheer', 900);
     });
   }
-  const ccCheerTimer = hostWindow.setInterval(ccMaybeCheer, 5000);
-
   /* 生成过程里持续小跳之外的两种偶发变化：摇头晃脑（sway）、歪头暂停一下
      （tilt，短暂盖掉小跳，回味一下再接上）。跟举钳走同一个「只在生成中触发」
      的互斥原则，且不跟举钳撞在一起——已经在举钳就跳过这一轮，别一堆动作叠着播。
@@ -7665,8 +7869,6 @@ if (CLAUDE_ENABLED) {
       playTypingMotion(el, variant, duration);
     });
   }
-  const ccWobbleTimer = hostWindow.setInterval(ccMaybeWobble, 4200);
-
   function ccPickPhrase() {
     const hour = new Date().getHours();
     const bucket = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
@@ -8340,15 +8542,22 @@ if (CLAUDE_ENABLED) {
     const typingActive = isTypingActive();
     const continuingGeneration = previousTypingActive && typingActive;
     const generationJustEnded = previousTypingActive && !typingActive;
-    if (!previousTypingActive && typingActive) typingRunId += 1;
+    if (!generationSubscriptions.length) generationEventActive = typingActive;
+    if (!previousTypingActive && typingActive) {
+      typingRunId += 1;
+      if (!clawdTracks.A) beginClawdGeneration();
+    }
     if (generationJustEnded) {
+      /* 小 Clawd 依照 2.0.135 在回复落地时回到最新消息末尾并播一次 settle。 */
       settlePending = true;
       lastGenerationDoneAt = Date.now();
+      settleClawdGeneration('done');
     }
     previousTypingActive = typingActive;
     hostDocument.body.classList.toggle(GENERATING_CLASS, typingActive);
+    ensureComposerClawd();
     refreshCompatibilitySurfaceBackings();
-    refreshTypingInteractions(typingActive, generationJustEnded);
+    /* A1：typing indicator 只保留酒馆自己的生成提示，不再承载第二只 Clawd。 */
     applyMobileViewportMetrics();
     refreshMobileComposerInset();
     if (!frameworkCompatibilityMode) preserveStreamingReasoning(typingActive);
@@ -8362,6 +8571,8 @@ if (CLAUDE_ENABLED) {
        坐标系拆开。欢迎态本身仍归 Claude Web，所以只读取现有消息来判断
        welcome/chat，不调用会给消息加 class 的 refreshMessageStates()。 */
     if (frameworkCompatibilityMode) {
+      /* 兼容模式不装饰消息 DOM；只保留输入框大 Clawd。 */
+      removeStaleButtons(null);
       const welcomeMessages = [...hostDocument.querySelectorAll('#chat > .mes[is_user="false"]')];
       refreshWelcomeMode(welcomeMessages);
       refreshCompatibilitySurfaceBackings();
@@ -8442,19 +8653,21 @@ if (CLAUDE_ENABLED) {
     refreshReroll(message, typingActive);
     removeStaleButtons(message);
     if (!message || typingActive) {
-      message?.querySelector(`.${BUTTON_CLASS}`)?.remove();
+      message?.querySelector(`.${BUTTON_CLASS}:not(.${COMPOSER_CLAWD_CLASS})`)?.remove();
+      renderClawdTracks();
       return;
     }
     const host = message.querySelector('.mes_text');
-    const existing = host?.querySelector(`:scope > .${BUTTON_CLASS}`);
+    const existing = host?.querySelector(`:scope > .${BUTTON_CLASS}:not(.${COMPOSER_CLAWD_CLASS})`);
     if (existing) {
-      // 姿势要跟着内容走，不能只在创建时套一次
+      renderClawdTracks();
       return;
     }
     if (!host) return;
-    const created = createButton(settlePending);
+    const created = createButton(settlePending, 'signoff');
     host.append(created);
     settlePending = false;
+    renderClawdTracks();
   }
 
   let lastRefreshAt = 0;
@@ -8727,6 +8940,10 @@ if (CLAUDE_ENABLED) {
     syncExternalModalRailLayer();
     installVirtualKeyboardOverlay();
     watchGenerationEvents();
+    if (!clawdRuntimeTimer) {
+      clawdLastIdleTickAt = Date.now();
+      clawdRuntimeTimer = hostWindow.setInterval(clawdRuntimeTick, 200);
+    }
     observer = new hostWindow.MutationObserver(handleObservedMutations);
     chatAttributeObserver = new hostWindow.MutationObserver(handleObservedMutations);
     // characterData 会让流式输出的每个 token 都触发一次全量刷新，去掉；
@@ -8868,11 +9085,8 @@ if (CLAUDE_ENABLED) {
   }
 
   function destroy() {
-    hostWindow.clearInterval(ccCheerTimer);
-    hostWindow.clearInterval(ccWobbleTimer);
-    hostWindow.clearInterval(idleTimer);
-    hostWindow.clearInterval(ccScanTimer);
-    if (genTimerRaf) hostWindow.clearInterval(genTimerRaf);
+    if (clawdRuntimeTimer) hostWindow.clearInterval(clawdRuntimeTimer);
+    clawdRuntimeTimer = 0;
     if (genTimerLingerTimer) hostWindow.clearTimeout(genTimerLingerTimer);
     genTimerEl?.remove();
     genTimerEl = null;
@@ -9058,6 +9272,15 @@ if (CLAUDE_ENABLED) {
   const api = {
     destroy,
     refresh: scheduleRefresh,
+    clawdState: () => ({
+      A: clawdTracks.A,
+      B: clawdTracks.B,
+      C: clawdTracks.C,
+      owner: clawdTracks.C ? 'C' : clawdTracks.A ? 'A' : 'B',
+      visible: clawdVisibleState(),
+      round: clawdTracks.activeRound,
+      settledRound: clawdTracks.settledRound,
+    }),
     drawerStats: () => ({ ...drawerStats }),
     buildId: KEYBOARD_BUILD.id,
     /* 刷新开销记账。用法：__claudeClawdInteraction.perfStats()
@@ -11161,6 +11384,7 @@ if (CLAUDE_ENABLED) {
     clawdBox.addEventListener('change', () => {
       if (!write('clawd', clawdBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeClawd = clawdBox.checked ? 'on' : 'off';
+      window.__claudeClawdInteraction?.refresh?.();
       syncPanelPresentationRef();
     });
 

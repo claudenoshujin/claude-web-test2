@@ -27,6 +27,10 @@ const dom = new JSDOM(`<!doctype html><html><head></head><body>
         </div>
         <div class="claude-user-message-actions"></div>
       </div></div>
+      <div class="mes last_mes" is_user="false" mesid="1"><div class="mes_block">
+        <div class="mes_text"><p>assistant answer</p></div>
+        <div class="mes_buttons"></div>
+      </div></div>
     </div>
     <div id="form_sheld"><form id="send_form"><textarea id="send_textarea"></textarea></form></div>
   </div>
@@ -36,8 +40,16 @@ const dom = new JSDOM(`<!doctype html><html><head></head><body>
 });
 
 const { window } = dom;
+const runtimeEvents = new Map();
+const emitRuntimeEvent = (type, ...args) => {
+  for (const handler of runtimeEvents.get(type) || []) handler(...args);
+};
 const context = {
-  chat: [], characters: [], groups: [],
+  chat: [
+    { is_user: true, mes: 'quoted' },
+    { is_user: false, mes: 'assistant answer', swipes: ['assistant answer'], swipe_id: 0 },
+  ],
+  characters: [], groups: [],
   powerUserSettings: {
     theme: 'Original',
     main_text_color: 'rgba(1,2,3,1)',
@@ -45,8 +57,21 @@ const context = {
     animation_duration: 0,
   },
   saveSettingsDebounced() {},
-  eventSource: { on() {}, off() {}, removeListener() {} },
-  eventTypes: {},
+  eventSource: {
+    on(type, handler) {
+      const handlers = runtimeEvents.get(type) || new Set();
+      handlers.add(handler);
+      runtimeEvents.set(type, handlers);
+    },
+    off(type, handler) { runtimeEvents.get(type)?.delete(handler); },
+    removeListener(type, handler) { runtimeEvents.get(type)?.delete(handler); },
+  },
+  eventTypes: {
+    GENERATION_STARTED: 'generation_started',
+    GENERATION_ENDED: 'generation_ended',
+    GENERATION_STOPPED: 'generation_stopped',
+    GENERATION_FAILED: 'generation_failed',
+  },
 };
 
 window.SillyTavern = { ...context, getContext: () => context };
@@ -109,12 +134,54 @@ externalModal.getBoundingClientRect = () => ({
 });
 window.document.body.append(externalModal);
 
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.135`);
-await new Promise(resolve => window.setTimeout(resolve, 650));
+window.localStorage.setItem('claude-web:decorations', 'off');
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.139`);
+await new Promise(resolve => window.setTimeout(resolve, 850));
 
 assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
 assert.equal(window.document.querySelector('.third-party-action')?.isConnected, true, 'third-party action must survive refresh');
 const interactionStyle = window.document.getElementById('claude-clawd-interaction-style')?.textContent || '';
+const composerClawd = window.document.querySelector('#send_form > .clawd-composer-clawd');
+const signoffClawd = window.document.querySelector('#chat .clawd-message-signoff-clawd');
+assert.ok(composerClawd, 'the large Clawd must mount directly inside #send_form');
+assert.equal(window.document.querySelectorAll('.clawd-composer-clawd').length, 1, 'composer Clawd must be a singleton');
+assert.ok(signoffClawd, 'the original small Clawd must return to the latest assistant message');
+assert.equal(signoffClawd.parentElement?.classList.contains('mes_text'), true, 'small Clawd must keep the 2.0.135 message-end anchor');
+assert.equal(window.document.querySelectorAll('button.clawd-signoff-button').length, 2, 'normal chat must contain exactly the large and small Clawd nodes');
+assert.equal(window.document.querySelector('.clawd-mobile-clawd-button'), null, 'mobile chrome must not own a third Clawd');
+assert.equal(window.document.documentElement.dataset.claudeDecorations, 'off', 'runtime fixture must cover decorations-off behavior');
+assert.notEqual(window.getComputedStyle(composerClawd).display, 'none', 'turning off particles and bubbles must not hide Clawd');
+assert.notEqual(window.getComputedStyle(signoffClawd).display, 'none', 'turning off particles and bubbles must not hide the small Clawd');
+assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'B', 'B owns the idle frame');
+assert.equal(composerClawd.dataset.clawdB, signoffClawd.dataset.clawdB, 'both Clawds must consume the same B track');
+assert.equal(composerClawd.dataset.clawdOwner, signoffClawd.dataset.clawdOwner, 'both Clawds must expose the same track owner');
+assert.match(interactionStyle, /#send_form::after \{[\s\S]*content: none !important;/, 'the old image pseudo-element must be disabled');
+assert.match(interactionStyle, /#chat \.typing_indicator::before,[\s\S]*display: none !important;/, 'typing indicator must not draw another Clawd');
+assert.match(interactionStyle, /safe-area-inset-right/, 'the right anchor must include the phone safe area');
+
+emitRuntimeEvent('generation_started');
+await new Promise(resolve => window.setTimeout(resolve, 1050));
+assert.equal(window.__claudeClawdInteraction.clawdState().A, 'stream', 'generation must advance from think to stream');
+assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'A', 'A owns the frame while generating');
+assert.equal(window.document.querySelector('#chat .clawd-message-signoff-clawd'), null, 'small Clawd must yield while a reply is generating');
+composerClawd.click();
+assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'C', 'touch must temporarily outrank generation');
+await new Promise(resolve => window.setTimeout(resolve, 850));
+assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'A', 'A must resume after the touch track clears');
+emitRuntimeEvent('generation_ended');
+assert.equal(window.__claudeClawdInteraction.clawdState().A, 'done', 'generation must settle once into done');
+emitRuntimeEvent('generation_stopped');
+assert.equal(window.__claudeClawdInteraction.clawdState().A, 'done', 'duplicate terminal events must not settle the same round twice');
+await new Promise(resolve => window.setTimeout(resolve, 1800));
+assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'B', 'B must resume after done clears');
+const restoredSignoffClawd = window.document.querySelector('#chat .clawd-message-signoff-clawd');
+assert.ok(restoredSignoffClawd, 'small Clawd must return after generation settles');
+assert.equal(composerClawd.dataset.clawdA, restoredSignoffClawd.dataset.clawdA, 'both Clawds must consume the same A track');
+restoredSignoffClawd.click();
+assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'C', 'touching the small Clawd must update the shared C track');
+assert.equal(composerClawd.dataset.clawdC, restoredSignoffClawd.dataset.clawdC, 'both Clawds must consume the same C track');
+await new Promise(resolve => window.setTimeout(resolve, 850));
+assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'B', 'B must resume after the shared touch track clears');
 assert.match(interactionStyle, /\.extraMesButtons \{\s*display: none !important;/, 'overflow actions must start folded');
 assert.match(interactionStyle, /\.extraMesButtons\.visible \{\s*display: flex !important;/, 'native ellipsis expansion must remain available');
 assert.match(interactionStyle, /> \.extraMesButtonsHint,[\s\S]*\.mes\[is_user="false"\][\s\S]*> \.mes_edit \{\s*display: inline-flex !important;/, 'ellipsis and assistant native edit action must be visible');
@@ -188,4 +255,4 @@ await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
 dom.window.close();
-console.log('✓ Claude Web 2.0.135 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.139 runtime DOM regressions passed');
