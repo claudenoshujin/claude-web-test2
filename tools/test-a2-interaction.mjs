@@ -294,6 +294,8 @@ const wallsBody = src.slice(src.indexOf('function a2Walls'), src.indexOf('functi
 assert.match(wallsBody, /#sheld/, '边界要以聊天容器为基准');
 assert.match(wallsBody, /#top-bar/,
   '左边界必须减掉侧栏：#sheld/#chat/#form_sheld 都是 0 → 窗口宽，整个铺在侧栏底下');
+assert.match(wallsBody, /const viewportTop = Math\.max\(0, viewport\?\.offsetTop \|\| 0\)/,
+  '竖向天花板必须来自可视视口；欢迎页 #sheld 的顶边会塌到输入框附近，把 miny 锁成 0');
 assert.match(src, /Math\.pow\(P\.drag, k\)/,
   '回落必须按真实经过时间推进；逐帧推进会让掉帧的设备落得成倍地慢');
 assert.ok((src.match(/a2NoteInteraction\(\)/g) || []).length >= 4,
@@ -377,6 +379,9 @@ for (const pose of ['around', 'shake', 'spin', 'dhop', 'lean', 'hide', 'ledge', 
 }
 assert.match(src, /maybePlayClawdBAmbient\(now\)/,
   '低频姿势要复用现有 runtime tick，不能另挂高频监听');
+const ambientBody = src.slice(src.indexOf('function maybePlayClawdBAmbient'), src.indexOf('function ensureComposerClawd'));
+assert.doesNotMatch(ambientBody, /clawd-welcome/,
+  '欢迎页就是用户最常等待空闲姿势的地方，不能把它从 B 轨随机调度里排除');
 assert.match(src, /CLAWD_TIRED_SIT_MS = 12000/,
   '长生成要在明确阈值后进入 sit，下一阶段再由 applyTired 改成连续疲劳');
 assert.match(src, /clawdTracks\.A = 'sit'/,

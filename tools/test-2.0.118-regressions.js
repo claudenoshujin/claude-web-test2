@@ -7,11 +7,12 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.144');
-assert.equal(manifest.js, 'loader-2.0.144.js');
+assert.equal(manifest.version, '2.0.146');
+assert.equal(manifest.js, 'loader-2.0.146.js');
+assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.144/,
+  /index\.js\?v=2\.0\.146/,
   'loader must defeat Android WebView module cache',
 );
 
@@ -50,10 +51,12 @@ assert.match(index, /isSoftKeyboardTarget\(event\.target\)[\s\S]*MOBILE_POPUP_HE
 assert.match(index, /#completion_prompt_manager_popup\.openDrawer[\s\S]*MOBILE_POPUP_HEIGHT_PROPERTY/);
 assert.match(index, /#typing_indicator\.typing_indicator[\s\S]*visibility: visible !important/, 'official Typing Indicator must stay visible while generating');
 assert.match(index, /function usesNativeAndroidKeyboardLayout\(\)/);
+assert.match(index, /keyboard\.overlaysContent = true[\s\S]*virtualKeyboardOverlayActive = Boolean\(keyboard\.overlaysContent\)/, 'modern Android must use the real VirtualKeyboard inset instead of adjustPan centering');
+assert.match(index, /if \(virtualKeyboardOverlayActive\)[\s\S]*ANDROID_KEYBOARD_PAN_ANCHOR_CLASS[\s\S]*remove\(\)/, 'the fallback pan anchor must be removed when VirtualKeyboard overlay succeeds');
 assert.match(index, /usesNativeAndroidKeyboardLayout\(\)[\s\S]*removeProperty\(MOBILE_COMPOSER_TRANSLATE_PROPERTY\)/, 'Android must not receive a second keyboard translation');
 assert.doesNotMatch(index, /function scheduleMobileComposerTranslate\(\) \{[\s\S]{0,300}?usesNativeAndroidKeyboardLayout\(\)[\s\S]{0,120}?return;/, 'Android scheduling must reach the stale-translation cleanup branch');
 assert.match(index, /function ensureAndroidKeyboardPanAnchor\([^)]*\)[\s\S]*height:64px[\s\S]*pointer-events:none/, 'Via needs the inert 64px fixed pan anchor');
-assert.match(index, /handleFocusIn[\s\S]*ensureAndroidKeyboardPanAnchor\(true\)/, 'Via cold start must remount the pan anchor before IME adjustPan');
+assert.match(index, /handleFocusIn[\s\S]*!virtualKeyboardOverlayActive\) ensureAndroidKeyboardPanAnchor\(true\)/, 'old Via builds may remount the fallback pan anchor only when overlay is unavailable');
 assert.match(index, /ANDROID_KEYBOARD_PAN_ANCHOR_CLASS[\s\S]*forEach\(node => node\.remove\(\)\)/, 'the Android pan anchor must be removed on teardown');
 assert.match(index, /userSettingsRowOne[\s\S]*grid-template-columns: minmax\(0,1fr\) minmax\(132px,1fr\)/, 'mobile settings header must use independent columns');
 assert.match(index, /grid-template-columns: 26px minmax\(0,1fr\)/, 'Prompt Manager must reserve a dedicated icon column');
@@ -100,4 +103,4 @@ assert.match(index, /COMPOSER_CLAWD_CLASS[\s\S]{0,900}?touch-action: none !impor
 assert.match(index, /function a2Down[\s\S]*setClawdC\('grab', 0\)/, 'pointerdown must show the grab pose immediately');
 assert.match(index, /a2Place\(button\);\s*if \(dragStarted\) a2DeferGrabFeedback\(button\);/, 'the first drag position must be written before layout-reading feedback');
 
-console.log('✓ Claude Web 2.0.144 focused regressions passed');
+console.log('✓ Claude Web 2.0.146 focused regressions passed');

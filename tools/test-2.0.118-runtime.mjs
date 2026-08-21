@@ -87,6 +87,11 @@ Object.defineProperty(window.navigator, 'userAgent', {
   configurable: true,
   value: 'Mozilla/5.0 (Linux; Android 14; CW_Android_14_Via) AppleWebKit/537.36',
 });
+const virtualKeyboard = { overlaysContent: false };
+Object.defineProperty(window.navigator, 'virtualKeyboard', {
+  configurable: true,
+  value: virtualKeyboard,
+});
 Object.defineProperty(window, 'visualViewport', {
   configurable: true,
   value: { width: 390, height: 780, offsetTop: 0, addEventListener() {}, removeEventListener() {} },
@@ -139,21 +144,20 @@ externalModal.getBoundingClientRect = () => ({
 window.document.body.append(externalModal);
 
 window.localStorage.setItem('claude-web:decorations', 'off');
-await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.144`);
+await import(`${pathToFileURL(path.join(root, 'index.js')).href}?runtime-test=2.0.146`);
 await new Promise(resolve => window.setTimeout(resolve, 850));
 
 const composerShell = window.document.getElementById('form_sheld');
 const androidPanAnchor = window.document.querySelector('.clawd-android-keyboard-pan-anchor');
-assert.ok(androidPanAnchor, 'mobile Android must install the Via keyboard pan anchor');
-assert.equal(androidPanAnchor.style.height, '64px');
-assert.equal(androidPanAnchor.style.pointerEvents, 'none');
+assert.equal(virtualKeyboard.overlaysContent, true, 'modern Android must enable VirtualKeyboard overlay mode');
+assert.ok(window.document.body.classList.contains('clawd-virtual-keyboard-overlay'));
+assert.equal(androidPanAnchor, null, 'overlay mode must not leave the adjustPan fallback anchor mounted');
 composerShell.style.setProperty('--cl-mobile-composer-translate-y', '-272px');
 window.document.getElementById('send_textarea').focus();
 window.dispatchEvent(new window.Event('resize'));
 await new Promise(resolve => window.setTimeout(resolve, 50));
 const refreshedAndroidPanAnchor = window.document.querySelector('.clawd-android-keyboard-pan-anchor');
-assert.notEqual(refreshedAndroidPanAnchor, androidPanAnchor, 'focusin must remount the anchor for Via cold-start adjustPan');
-assert.equal(androidPanAnchor.isConnected, false);
+assert.equal(refreshedAndroidPanAnchor, null, 'focusin must not re-enable adjustPan while overlay mode owns keyboard geometry');
 assert.equal(
   composerShell.style.getPropertyValue('--cl-mobile-composer-translate-y'),
   '',
@@ -273,5 +277,6 @@ window.dispatchEvent(new window.Event('pagehide'));
 await new Promise(resolve => window.setTimeout(resolve, 20));
 assert.equal(context.powerUserSettings.theme, 'Original', 'extension pagehide must restore the previous ST theme');
 assert.equal(window.document.getElementById('claude-integrated-theme-live-style'), null, 'pagehide must remove the live theme stylesheet');
+assert.equal(virtualKeyboard.overlaysContent, false, 'pagehide must restore the browser VirtualKeyboard setting');
 dom.window.close();
-console.log('✓ Claude Web 2.0.144 runtime DOM regressions passed');
+console.log('✓ Claude Web 2.0.146 runtime DOM regressions passed');

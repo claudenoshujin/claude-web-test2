@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.144-clawd-prototype-poses-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.146-clawd-mobile-fixes-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4323,7 +4323,6 @@ if (CLAUDE_ENABLED) {
     if (now < clawdBAmbientNextAt) return;
     const box = hostDocument.querySelector('#send_textarea');
     const blocked = hostDocument.hidden
-      || hostDocument.body?.classList.contains('clawd-welcome')
       || !composerClawd()
       || clawdTracks.A
       || clawdTracks.C
@@ -5230,9 +5229,19 @@ if (CLAUDE_ENABLED) {
     const fr = container.getBoundingClientRect();
     if (!pr.width || !fr.width) return fallback;
 
-    let limitLeft = fr.left;
-    let limitTop = fr.top;
-    const limitRight = Math.min(fr.right, hostWindow.innerWidth || fr.right);
+    const viewport = hostWindow.visualViewport;
+    const viewportLeft = Math.max(0, viewport?.offsetLeft || 0);
+    const viewportTop = Math.max(0, viewport?.offsetTop || 0);
+    const viewportRight = viewportLeft + Math.max(
+      1,
+      viewport?.width || hostWindow.innerWidth || fr.right,
+    );
+    let limitLeft = Math.max(fr.left, viewportLeft);
+    /* 欢迎页里 #sheld 的布局顶边会跟着居中的内容塌到输入框附近；拿它当天花板，
+       miny 就会变成 0，Android 上只能横着拖。竖向活动区属于当前可见页面，
+       顶栏若横跨页面，下面的几何判断还会把天花板推进到顶栏底边。 */
+    let limitTop = viewportTop;
+    const limitRight = Math.min(fr.right, viewportRight);
 
     /* 酒馆的 #top-bar 在这套主题里是左侧栏，在别的形态下可能是顶栏。
        按它自己的比例判断，别按布局名字猜。 */
@@ -6269,25 +6278,30 @@ if (CLAUDE_ENABLED) {
     hostDocument.body?.append(anchor);
   }
 
-  /* 非 Android 浏览器支持 VirtualKeyboard API 时，继续使用 overlay 模式；
-     Android 走上面的原生布局 + pan anchor，不再叠加第二份键盘位移。 */
+  /* VirtualKeyboard overlay gives us the real keyboard inset and prevents WebView's
+     adjustPan from centering the fixed composer far above the IME. Modern Android
+     WebViews support it; older Android builds fall back to the pan anchor. */
   function installVirtualKeyboardOverlay() {
     if (!isMobileLayout() || keyboardBaselineMode) return;
-    if (usesNativeAndroidKeyboardLayout()) {
-      ensureAndroidKeyboardPanAnchor();
-      return;
-    }
     const keyboard = hostWindow.navigator?.virtualKeyboard;
-    if (!keyboard || !('overlaysContent' in keyboard)) return;
-    try {
-      virtualKeyboardOverlayOriginal = Boolean(keyboard.overlaysContent);
-      virtualKeyboardOverlayCaptured = true;
-      keyboard.overlaysContent = true;
-      virtualKeyboardOverlayActive = Boolean(keyboard.overlaysContent);
-    } catch {
-      virtualKeyboardOverlayActive = false;
+    if (keyboard && 'overlaysContent' in keyboard) {
+      try {
+        virtualKeyboardOverlayOriginal = Boolean(keyboard.overlaysContent);
+        virtualKeyboardOverlayCaptured = true;
+        keyboard.overlaysContent = true;
+        virtualKeyboardOverlayActive = Boolean(keyboard.overlaysContent);
+      } catch {
+        virtualKeyboardOverlayActive = false;
+      }
     }
     hostDocument.body?.classList.toggle(VIRTUAL_KEYBOARD_OVERLAY_CLASS, virtualKeyboardOverlayActive);
+    if (usesNativeAndroidKeyboardLayout()) {
+      if (virtualKeyboardOverlayActive) {
+        hostDocument.querySelector('.' + ANDROID_KEYBOARD_PAN_ANCHOR_CLASS)?.remove();
+      } else {
+        ensureAndroidKeyboardPanAnchor();
+      }
+    }
   }
 
   function restoreVirtualKeyboardOverlay() {
@@ -8817,7 +8831,7 @@ if (CLAUDE_ENABLED) {
   let lastFocusReactionAt = 0;
   const handleFocusIn = event => {
     if (isMobileLayout() && isSoftKeyboardTarget(event.target)) {
-      ensureAndroidKeyboardPanAnchor(true);
+      if (!virtualKeyboardOverlayActive) ensureAndroidKeyboardPanAnchor(true);
       /* TT 的部分 WebView 会在 focusin 后立刻缩 layout viewport。先在同一任务里
          单独锁住编辑弹窗高度；它不再依赖之后可能已经变矮的 visualViewport。 */
       const root = hostDocument.documentElement;
