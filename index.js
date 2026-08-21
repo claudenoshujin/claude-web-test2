@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.139-dual-role-clawd-a0-a1-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.140-clawd-a1-migrate-not-duplicate-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2232,22 +2232,24 @@ if (CLAUDE_ENABLED) {
         overflow: visible !important;
       }
 
-      html body #send_form::after {
-        content: none !important;
-        display: none !important;
-      }
+      /* 输入框右上角原有的装饰 Clawd（#send_form::after，36x24 的
+         icons/clawd.png，见 styles/*.css）保留不动。2.0.139 在这里注入
+         content:none/display:none 把它杀掉了，那是把两只 Clawd 的身份认反
+         的结果 —— 要搬家的是对话尾部那只，不是它。 */
 
+      /* 迁入的可交互 Clawd 站输入框**左**上角。右上角 18px 是装饰 Clawd 的
+         位置（36x24），两只并排会完全重叠，所以这只走左边。
+         尺寸不在这里写死：交给上面 button.${BUTTON_CLASS} 的 2.0.135 原始规则
+         （桌面 42x34、手机 38x31）。2.0.139 在这里强制 44x36，等于把角色搬过来
+         的同时把它的身材改了。 */
       html body #send_form > button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS} {
         position: absolute !important;
-        inset: auto max(18px, calc(env(safe-area-inset-right, 0px) + 12px)) calc(100% - 5px) auto !important;
+        /* 底边用 calc(100% - 1px)，和装饰 Clawd 的 bottom:100%+margin-bottom:-1px
+           完全等价 —— 两只并排必须站同一条线。2.0.139 用的是 -5px，跟装饰那只差 4px，
+           两只并排时会一高一低。 */
+        inset: auto auto calc(100% - 1px) max(18px, calc(env(safe-area-inset-left, 0px) + 12px)) !important;
         z-index: 4 !important;
         display: block !important;
-        width: 44px !important;
-        min-width: 44px !important;
-        max-width: 44px !important;
-        height: 36px !important;
-        min-height: 36px !important;
-        max-height: 36px !important;
         margin: 0 !important;
         touch-action: manipulation;
       }
@@ -4299,10 +4301,13 @@ if (CLAUDE_ENABLED) {
       });
   }
 
-  function removeStaleButtons(currentMessage) {
+  function removeStaleButtons() {
+    /* A1 之后消息里不再保留任何一只 Clawd —— 角色整体搬到了输入框上方。
+       这里无条件清掉所有非 composer 实例：历史消息里的、上一轮遗留的、
+       以及任何路径重新创建出来的，都在这一处收口。 */
     hostDocument.querySelectorAll(`.${BUTTON_CLASS}`).forEach(button => {
       if (button.classList.contains(COMPOSER_CLAWD_CLASS)) return;
-      if (!currentMessage || !currentMessage.contains(button)) button.remove();
+      button.remove();
     });
     hostDocument.querySelectorAll('button.clawd-mobile-clawd-button').forEach(button => button.remove());
   }
@@ -4370,7 +4375,9 @@ if (CLAUDE_ENABLED) {
     button.addEventListener('pointerleave', release);
   }
 
-  function createButton(settle = false, role = 'signoff') {
+  /* role 默认给 composer：A1 之后只剩输入框上方这一只会被创建。
+     留着参数是为了让 SIGNOFF_CLAWD_CLASS 这条路径显式可查，不是还在用。 */
+  function createButton(settle = false, role = 'composer') {
     const button = hostDocument.createElement('button');
     button.type = 'button';
     button.className = BUTTON_CLASS;
@@ -4386,15 +4393,13 @@ if (CLAUDE_ENABLED) {
     button.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
-      if (button.classList.contains(COMPOSER_CLAWD_CLASS)) {
-        setClawdC('touch', 560);
-        lastPokeAt = Date.now();
-        if (neglected) setNeglected(false);
-        return;
-      }
-      /* 小 Clawd 仍走 2.0.135 的点击、气泡和粒子；同时只更新同一份 C 轨，
-         让输入框大 Clawd 知道用户正在直接触碰角色。 */
+      /* 迁入输入框的这只就是原来的角色本体，所以 2.0.135 的整套点击反馈
+         （连点彩蛋、随机反应、气泡、粒子、视线、姿势）原样跑在它身上。
+         2.0.139 在这里给 composer 分支加了 early return，只写一条 C 轨就返回，
+         等于节点搬了、行为没搬，行为反而留在了不该存在的消息节点上。 */
       setClawdC('touch', 720);
+      lastPokeAt = Date.now();
+      if (neglected) setNeglected(false);
       if (handleCcCombo(button)) return;
       const reaction = animateButton(button);
       createParticle(button, reaction === 'clawd-react-shy' ? 'clawd-particle-heart' : '');
@@ -8548,7 +8553,8 @@ if (CLAUDE_ENABLED) {
       if (!clawdTracks.A) beginClawdGeneration();
     }
     if (generationJustEnded) {
-      /* 小 Clawd 依照 2.0.135 在回复落地时回到最新消息末尾并播一次 settle。 */
+      /* 回复落地时播一次 settle。A1 之后播在迁到输入框上方的那只身上 ——
+         消息末尾已经没有 Clawd 了。 */
       settlePending = true;
       lastGenerationDoneAt = Date.now();
       settleClawdGeneration('done');
@@ -8572,7 +8578,7 @@ if (CLAUDE_ENABLED) {
        welcome/chat，不调用会给消息加 class 的 refreshMessageStates()。 */
     if (frameworkCompatibilityMode) {
       /* 兼容模式不装饰消息 DOM；只保留输入框大 Clawd。 */
-      removeStaleButtons(null);
+      removeStaleButtons();
       const welcomeMessages = [...hostDocument.querySelectorAll('#chat > .mes[is_user="false"]')];
       refreshWelcomeMode(welcomeMessages);
       refreshCompatibilitySurfaceBackings();
@@ -8651,22 +8657,28 @@ if (CLAUDE_ENABLED) {
     trackSwipeArrows();
     const message = messages.slice().reverse().find(candidate => !isWelcomeSurfaceMessage(candidate)) ?? null;
     refreshReroll(message, typingActive);
-    removeStaleButtons(message);
-    if (!message || typingActive) {
-      message?.querySelector(`.${BUTTON_CLASS}:not(.${COMPOSER_CLAWD_CLASS})`)?.remove();
-      renderClawdTracks();
-      return;
+    /* A1：消息末尾不再创建 Clawd。整个角色（尺寸、点击、连点、气泡、粒子、
+       视线、打盹、落地）都在 #send_form 上方那只 composer 实例上，这里只清场。 */
+    removeStaleButtons();
+    /* 落地反馈跟着角色一起迁：原来是「新建消息末尾按钮时播一次」，
+       现在改成给常驻的 composer 实例补一次 settle class。
+       用 rAF 重挂而不是读 offsetWidth 重启动画 —— 那是一次同步布局读取，
+       这一层明令不许做（Via 键盘卡顿就是那么来的）。 */
+    if (settlePending) {
+      const settleTarget = composerClawd();
+      if (settleTarget) {
+        settleTarget.classList.remove('clawd-button-settle');
+        hostWindow.requestAnimationFrame(() => {
+          settleTarget.classList.add('clawd-button-settle');
+          settleTarget.addEventListener(
+            'animationend',
+            () => settleTarget.classList.remove('clawd-button-settle'),
+            { once: true },
+          );
+        });
+      }
+      settlePending = false;
     }
-    const host = message.querySelector('.mes_text');
-    const existing = host?.querySelector(`:scope > .${BUTTON_CLASS}:not(.${COMPOSER_CLAWD_CLASS})`);
-    if (existing) {
-      renderClawdTracks();
-      return;
-    }
-    if (!host) return;
-    const created = createButton(settlePending, 'signoff');
-    host.append(created);
-    settlePending = false;
     renderClawdTracks();
   }
 

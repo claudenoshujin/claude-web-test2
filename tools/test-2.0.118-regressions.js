@@ -7,11 +7,11 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.139');
-assert.equal(manifest.js, 'loader-2.0.139.js');
+assert.equal(manifest.version, '2.0.140');
+assert.equal(manifest.js, 'loader-2.0.140.js');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.139/,
+  /index\.js\?v=2\.0\.140/,
   'loader must defeat Android WebView module cache',
 );
 
@@ -82,11 +82,15 @@ assert.match(index, /clawdRuntimeTimer = hostWindow\.setInterval\(clawdRuntimeTi
 assert.doesNotMatch(index, /const (?:idleTimer|ccScanTimer|ccCheerTimer|ccWobbleTimer) = hostWindow\.setInterval/, 'legacy Clawd polling timers must stay removed');
 assert.doesNotMatch(index, /clawd\.className = 'clawd-mobile-clawd-button'/, 'mobile chrome must not create a third Clawd');
 assert.match(index, /html body #form_sheld,\s*html body #form_sheld :is\(#send_form, form\)/, 'composer shell must not clip Clawd above its upper edge');
-assert.match(index, /inset: auto max\(18px, calc\(env\(safe-area-inset-right, 0px\) \+ 12px\)\) calc\(100% - 5px\) auto !important;/, 'large Clawd must stay right-anchored and clear the phone safe area');
+assert.match(index, /inset: auto auto calc\(100% - 1px\) max\(18px, calc\(env\(safe-area-inset-left, 0px\) \+ 12px\)\) !important;/, 'migrated Clawd must be left-anchored, share the decorative Clawd baseline, and clear the phone safe area');
+assert.doesNotMatch(index, /#send_form::after \{\s*content: none !important;/, 'the composer decorative Clawd must stay alive');
+assert.doesNotMatch(index, /\$\{COMPOSER_CLAWD_CLASS\} \{[\s\S]{0,400}?width: 44px !important;/, 'migrated Clawd must not override the 2.0.135 hit box');
 assert.match(index, /button\.\$\{BUTTON_CLASS\} \{[\s\S]*width: 42px !important;[\s\S]*height: 34px !important;/, 'desktop signoff hit box must keep the 2.0.135 size');
 assert.match(index, /@media \(max-width: 700px\) \{[\s\S]*button\.\$\{BUTTON_CLASS\} \{[\s\S]*width: 38px !important;[\s\S]*height: 31px !important;/, 'mobile signoff hit box must keep the 2.0.135 size');
-assert.match(index, /createButton\(settlePending, 'signoff'\)/, 'latest assistant message must regain the original signoff Clawd');
+assert.doesNotMatch(index, /createButton\(settlePending, 'signoff'\)/, 'the latest assistant message must NOT get its own Clawd any more');
+assert.doesNotMatch(index, /host\.append\(created\)/, 'no Clawd may be appended into .mes_text');
+assert.match(index, /if \(button\.classList\.contains\(COMPOSER_CLAWD_CLASS\)\) return;\s*button\.remove\(\);/, 'every non-composer Clawd must be removed unconditionally');
 assert.doesNotMatch(index, /data-claude-decorations="off"[^\n]*COMPOSER_CLAWD_CLASS/, 'the decorations toggle must not hide Clawd itself');
 assert.match(index, /const clawdEnabled = hostDocument\.documentElement\.dataset\.claudeClawd !== 'off'/, 'the Clawd switch must own final node visibility');
 
-console.log('✓ Claude Web 2.0.139 focused regressions passed');
+console.log('✓ Claude Web 2.0.140 focused regressions passed');
