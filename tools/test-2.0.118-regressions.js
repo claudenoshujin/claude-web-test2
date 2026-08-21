@@ -7,11 +7,11 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.140');
-assert.equal(manifest.js, 'loader-2.0.140.js');
+assert.equal(manifest.version, '2.0.141');
+assert.equal(manifest.js, 'loader-2.0.141.js');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.140/,
+  /index\.js\?v=2\.0\.141/,
   'loader must defeat Android WebView module cache',
 );
 
@@ -93,4 +93,4 @@ assert.match(index, /if \(button\.classList\.contains\(COMPOSER_CLAWD_CLASS\)\) 
 assert.doesNotMatch(index, /data-claude-decorations="off"[^\n]*COMPOSER_CLAWD_CLASS/, 'the decorations toggle must not hide Clawd itself');
 assert.match(index, /const clawdEnabled = hostDocument\.documentElement\.dataset\.claudeClawd !== 'off'/, 'the Clawd switch must own final node visibility');
 
-console.log('✓ Claude Web 2.0.140 focused regressions passed');
+console.log('✓ Claude Web 2.0.141 focused regressions passed');

@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.140-clawd-a1-migrate-not-duplicate-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.141-clawd-a2-drag-throw-poke-lock-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2026,6 +2026,42 @@ if (CLAUDE_ENABLED) {
     activeRound: 0,
     settledRound: 0,
   };
+
+  /* ===== A2 的状态量 =====
+     放在这里而不是跟 A2 的函数放一起：setClawdC / setClawdA / clawdRuntimeTick
+     这三个定义更早的函数都要读它，而 const 有暂时性死区，声明必须先于任何一次
+     调用执行。 */
+  const A2_TIER = ['t1', 't2', 't3', 't4', 't5'];
+  const A2_TMS = [500, 520, 620, 1000, 0];        // t5 的 0 表示时长交给序列管
+  const A2_LINES = [
+    ['嗯？', '在呢'],
+    ['别', '躲了'],
+    ['痒！', '哎呀'],
+    ['喂——', '够了啊'],
+    ['……', '哼'],
+  ];
+  /* 第 1 档仍然走 A1 那套丰富反应（连点彩蛋、上下文台词、随机反应动画）。
+     只有被连着戳、烦躁爬上去之后才换成 A2 的短台词。
+     改成 0 就是全程用 A2 的台词，改成 2 就是前两档都留给 A1。 */
+  const A2_RICH_TIER = 1;
+  const A2_DRAG_THRESHOLD = 5;   // 位移超过这么多像素才算拖，否则算戳
+  const A2_CEILING = 140;        // 能往上飞多高。真实数值要在酒馆里量，见交接说明
+  const A2_EDGE = 4;
+  const A2_DECOR_RESERVE = 60;   // 给 #send_form::after 那只装饰 Clawd 留的右侧宽度
+
+  const A2 = {
+    x: 0, fy: 0, homeX: 0,
+    feel: 0.64,                  // 手感总调，0~1，喂给 a2Phys()
+    irr: 0, throws: 0, lastThrow: 0, lastDec: 0,
+    lockUntil: 0, lockName: '', seqRun: 0, seqOwned: false,
+    flying: 0, dragging: false, moved: false, held: false,
+    sx: 0, sy: 0, ox: 0, oy: 0, vx: 0, vy: 0, lx: 0, ly: 0, lt: 0,
+    rot: 0, sqx: 1, sqy: 1,
+    bnd: { minx: -9e9, maxx: 9e9, miny: -A2_CEILING, maxy: 0 },
+    tookPointer: false,
+    squashTimer: 0,
+  };
+
   let clawdRuntimeTimer = 0;
   let clawdLastIdleTickAt = 0;
   let settlePending = false;
@@ -2315,6 +2351,218 @@ if (CLAUDE_ENABLED) {
 
       button.${BUTTON_CLASS}.clawd-button-pop {
         animation: clawd-button-pop 480ms cubic-bezier(.2,.82,.22,1) both !important;
+      }
+
+
+      /* ===== A2 的 12 个姿势 =====
+         位置、旋转、落地压扁由 JS 写在 button 本体上；这里只管 ::before 上的
+         姿势本身。两者在不同节点，transform 各写各的，不会互相覆盖。
+
+         选择器挂在 data-clawd-c 上——那是 renderClawdTracks 本来就在写的属性，
+         所以不用给它加一张新的映射表。
+
+         原型里这些姿势靠 7 个 @property 注册过的自定义属性合成 transform。
+         扩展一个 @property 都没用，所以每个关键帧都写成完整的 transform。
+         原型里「某个属性在这一帧没写」意味着它在前后两帧之间插值，这里已经
+         把插值算出来写死了；缓动曲线仍是原来的，所以观感接近但不逐帧相同。
+         最外层那个 scale(.85) 是 ::before 的基准缩放，必须留着，否则姿势一
+         开始整只会突然变大。
+
+         原型的落地还有一层地面影子（landSh 驱动 .shadow 节点）。扩展没有那个
+         节点，这一轮没做，落地的冲击感会比原型弱一点。 */
+
+      button.${BUTTON_CLASS}[data-clawd-c="grab"]::before {
+        animation: clawd-a2-grabP 340ms cubic-bezier(.3,1.2,.4,1) forwards,
+                   clawd-a2-grabF 340ms step-end forwards !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="drag"]::before {
+        animation: clawd-a2-dangleP 1100ms ease-in-out infinite,
+                   clawd-a2-flailX 190ms step-end infinite !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="fly"]::before {
+        animation: none !important;
+        box-shadow: var(--clawd-f-look-u) !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="land"]::before {
+        animation: clawd-a2-landP 820ms cubic-bezier(.25,1.05,.35,1) forwards,
+                   clawd-a2-landF 820ms step-end forwards !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="stomp"]::before {
+        animation: clawd-a2-stompP 520ms cubic-bezier(.3,0,.2,1),
+                   clawd-a2-stompF 520ms step-end !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="turn"]::before {
+        animation: clawd-a2-turnA 380ms ease-in-out forwards,
+                   clawd-a2-turnAF 380ms step-end forwards !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="face"]::before {
+        animation: clawd-a2-faceB 380ms ease-in-out forwards,
+                   clawd-a2-faceBF 380ms step-end forwards !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="t1"]::before {
+        box-shadow: var(--clawd-f-eye-v) !important;
+        animation: clawd-a2-t1 500ms cubic-bezier(.2,1.2,.4,1) !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="t2"]::before {
+        box-shadow: var(--clawd-f-look-l) !important;
+        animation: clawd-a2-t2 520ms ease-in-out !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="t3"]::before {
+        box-shadow: var(--clawd-f-blink) !important;
+        animation: clawd-a2-t3 620ms ease-in-out !important;
+      }
+
+      button.${BUTTON_CLASS}[data-clawd-c="t4"]::before {
+        animation: clawd-a2-t4 1000ms ease-in-out,
+                   clawd-a2-t4F 1000ms step-end !important;
+      }
+
+      /* 生气：背对着你轻轻晃。锁期间这个姿势会一直挂着，直到序列播完。 */
+      button.${BUTTON_CLASS}[data-clawd-c="t5"]::before {
+        box-shadow: var(--clawd-f-back) !important;
+        animation: clawd-a2-sulkP 2.8s ease-in-out infinite !important;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        button.${BUTTON_CLASS}[data-clawd-c]::before { animation: none !important; }
+      }
+
+      @keyframes clawd-a2-grabP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        22% { transform: scale(.85) translate(0px, 3px) rotate(-1.2deg) scale(1.14, 0.84); }
+        55% { transform: scale(.85) translate(0px, -5px) rotate(-3deg) scale(0.8, 1.26); }
+        78% { transform: scale(.85) translate(0px, 1px) rotate(2deg) scale(1.06, 0.95); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-dangleP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(-5deg) scale(1, 1); }
+        50% { transform: scale(.85) translate(0px, 0px) rotate(5deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(-5deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-landP {
+        0% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.08, 1); }
+        26% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.01, 1.037); }
+        40% { transform: scale(.85) translate(0px, 1px) rotate(0deg) scale(0.973, 1.057); }
+        56% { transform: scale(.85) translate(0px, -7px) rotate(0deg) scale(0.93, 1.08); }
+        76% { transform: scale(.85) translate(0px, 1px) rotate(0deg) scale(1.04, 0.96); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-stompP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        22% { transform: scale(.85) translate(0px, -7px) rotate(0deg) scale(0.94, 1.08); }
+        34% { transform: scale(.85) translate(0px, 3px) rotate(0deg) scale(1.24, 0.74); }
+        46% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.196, 0.787); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-turnA {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        18% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1.02); }
+        46% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
+        56% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-faceB {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        44% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
+        56% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-sulkP {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(-1.5deg) scale(1, 1); }
+        50% { transform: scale(.85) translate(0px, 0px) rotate(1.5deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(-1.5deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-t1 {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        35% { transform: scale(.85) translate(0px, -10px) rotate(0deg) scale(1, 1); }
+        70% { transform: scale(.85) translate(0px, 1px) rotate(0deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-t2 {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        45% { transform: scale(.85) translate(-7px, 0px) rotate(-8deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-t3 {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        12% { transform: scale(.85) translate(4px, 0px) rotate(9deg) scale(1, 1); }
+        28% { transform: scale(.85) translate(-4px, 0px) rotate(-9deg) scale(1, 1); }
+        44% { transform: scale(.85) translate(3px, 0px) rotate(7deg) scale(1, 1); }
+        60% { transform: scale(.85) translate(-3px, 0px) rotate(-6deg) scale(1, 1); }
+        80% { transform: scale(.85) translate(1px, 0px) rotate(2deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+      @keyframes clawd-a2-t4 {
+        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+        8% { transform: scale(.85) translate(5px, -2px) rotate(12deg) scale(1, 1); }
+        18% { transform: scale(.85) translate(-5px, -1.783px) rotate(-12deg) scale(1, 1); }
+        28% { transform: scale(.85) translate(5px, -1.565px) rotate(11deg) scale(1, 1); }
+        38% { transform: scale(.85) translate(-5px, -1.348px) rotate(-10deg) scale(1, 1); }
+        50% { transform: scale(.85) translate(3px, -1.087px) rotate(7deg) scale(1, 1); }
+        64% { transform: scale(.85) translate(-3px, -0.783px) rotate(-5deg) scale(1, 1); }
+        82% { transform: scale(.85) translate(1px, -0.391px) rotate(2deg) scale(1, 1); }
+        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
+      }
+
+      @keyframes clawd-a2-grabF {
+        0% { box-shadow: var(--clawd-f-open); }
+        18% { box-shadow: var(--clawd-f-blink); }
+        30% { box-shadow: var(--clawd-f-squint); }
+        100% { box-shadow: var(--clawd-f-squint); }
+      }
+      @keyframes clawd-a2-flailX {
+        0% { box-shadow: var(--clawd-f-flail-a); }
+        33% { box-shadow: var(--clawd-f-flail-b); }
+        66% { box-shadow: var(--clawd-f-flail-c); }
+        100% { box-shadow: var(--clawd-f-flail-a); }
+      }
+      @keyframes clawd-a2-landF {
+        0% { box-shadow: var(--clawd-f-squash); }
+        26% { box-shadow: var(--clawd-f-squash); }
+        40% { box-shadow: var(--clawd-f-squash2); }
+        52% { box-shadow: var(--clawd-f-arm-b-3); }
+        62% { box-shadow: var(--clawd-f-arm-b-mid); }
+        78% { box-shadow: var(--clawd-f-arm-b-1); }
+        100% { box-shadow: var(--clawd-f-open); }
+      }
+      @keyframes clawd-a2-stompF {
+        0% { box-shadow: var(--clawd-f-arm-b-mid); }
+        22% { box-shadow: var(--clawd-f-arm-b-mid); }
+        34% { box-shadow: var(--clawd-f-stomp-arm); }
+        60% { box-shadow: var(--clawd-f-blink-d); }
+        100% { box-shadow: var(--clawd-f-open); }
+      }
+      @keyframes clawd-a2-turnAF {
+        0% { box-shadow: var(--clawd-f-blink); }
+        18%, 46% { box-shadow: var(--clawd-f-look-r); }
+        56% { box-shadow: var(--clawd-f-back); }
+        100% { box-shadow: var(--clawd-f-back); }
+      }
+      @keyframes clawd-a2-faceBF {
+        0%, 44% { box-shadow: var(--clawd-f-back); }
+        56% { box-shadow: var(--clawd-f-look-l); }
+        100% { box-shadow: var(--clawd-f-open); }
+      }
+      @keyframes clawd-a2-t4F {
+        0% { box-shadow: var(--clawd-f-flail-l); }
+        9% { box-shadow: var(--clawd-f-flail-r); }
+        18% { box-shadow: var(--clawd-f-flail-l); }
+        27% { box-shadow: var(--clawd-f-flail-r); }
+        37% { box-shadow: var(--clawd-f-flail-l); }
+        47% { box-shadow: var(--clawd-f-flail-r); }
+        57% { box-shadow: var(--clawd-f-flail-l); }
+        67% { box-shadow: var(--clawd-f-flail-r); }
+        80% { box-shadow: var(--clawd-f-squint); }
+        100% { box-shadow: var(--clawd-f-squint); }
       }
 
       button.${BUTTON_CLASS}.clawd-button-settle {
@@ -3691,6 +3939,8 @@ if (CLAUDE_ENABLED) {
   }
 
   function setClawdA(value, duration = 0) {
+    /* 生成永远优先：它能取消 A2 的生气序列。反过来不行——序列锁只挡 C 轨。 */
+    a2CancelSeq();
     const now = Date.now();
     clawdTracks.A = value || null;
     clawdTracks.aStartedAt = value ? now : 0;
@@ -3705,8 +3955,10 @@ if (CLAUDE_ENABLED) {
     renderClawdTracks();
   }
 
-  /* A2 的序列锁只允许放进这个入口，避免 pointer/落地回调各写一份守卫。 */
+  /* A2 的序列锁只允许放进这个入口，避免 pointer/落地回调各写一份守卫。
+     散到各处的后果是真踩过的：抛掷的落地回调曾经绕过全部守卫，把生气序列砸穿。 */
   function setClawdC(value, duration = 0) {
+    if (a2Locked() && !A2.seqOwned) return;
     clawdTracks.C = value || null;
     clawdTracks.cUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();
@@ -3770,6 +4022,15 @@ if (CLAUDE_ENABLED) {
       }
     }
     if (clawdTracks.cUntil && now >= clawdTracks.cUntil) setClawdC(null);
+    /* A2 的三条衰减挂在这个唯一的 200ms tick 上，不另开定时器。
+       烦躁的衰减从「最后一次互动」算起，不是按挂钟固定掉档——按挂钟的话
+       连戳间隔 760ms 时净增长只有 0.3 档/秒，永远爬不到第 4 档。 */
+    if (A2.irr > 0 && now - A2.lastDec > 1000 && !a2Locked()) {
+      A2.lastDec = now;
+      A2.irr = Math.max(0, A2.irr - 1);
+    }
+    if (A2.lockUntil && !a2Locked()) { A2.lockUntil = 0; A2.lockName = ''; }
+    if (A2.throws > 0 && now - A2.lastThrow > 15000) A2.throws = 0;
     if (now - clawdLastIdleTickAt >= 5000) {
       clawdLastIdleTickAt = now;
       refreshIdleSleep();
@@ -4367,12 +4628,366 @@ if (CLAUDE_ENABLED) {
      改成 pointerdown/pointerup/pointercancel/pointerleave 手动控制一个 class，
      不依赖浏览器自己何时清 :active；桌面鼠标走同一套事件，效果不变。 */
   function bindPressState(button) {
-    const press = () => button.classList.add('clawd-button-press');
+    /* A2 接管期间不加这个 class：它写的是 !important 的 transform，
+       会跟 A2 写在同一个节点上的位置抢同一个属性。松手回到原位之后照常。 */
+    const press = () => { if (!A2.held) button.classList.add('clawd-button-press'); };
     const release = () => button.classList.remove('clawd-button-press');
     button.addEventListener('pointerdown', press);
     button.addEventListener('pointerup', release);
     button.addEventListener('pointercancel', release);
     button.addEventListener('pointerleave', release);
+  }
+
+  /* ===== A2：抓起 / 拖动 / 抛掷 / 戳的 5 档 / 生气序列 =====
+     参考实现是 diagnostics/clawd-合并原型.html 里的 walls / mv / up / ballistic /
+     phys / poke / playSeq / cancelSeq / locked / sulkSeq / place。原型是独立页面，
+     扩展不是，移植时改了这几处：
+
+     1) 节点分工。原型的 Clawd 是 .body/.shadow/.sym 三个节点，靠 7 个 @property
+        注册过的自定义属性合成 transform。扩展只有 button 本体加一个 3x3 的
+        ::before。这里改成：位置/旋转/压扁由 JS 写在 button 上（一条完整的
+        transform 字符串），姿势换帧由 CSS 写在 ::before 上。两者在不同节点，
+        transform 天然叠加，用不着 @property。
+
+     2) 布局读取。只有 pointerdown 时的 a2Walls() 读一次，一次拖拽就这一次。
+        pointermove 和 rAF 循环里一次都没有——a2Place() 只写不读。粒子和气泡
+        要读 getBoundingClientRect，所以从 rAF 回调里挪出去，等落定了再放。
+
+     3) touch-action。静止时保持 manipulation（点击不延迟），pointerdown 之后
+        用内联样式切成 none，松手撤掉。安卓上不切，拖 Clawd 会连带把聊天滚起来。
+        button 上原有的 transition:transform 240ms !important 会把拖拽拉成橡皮筋，
+        同样在 A2 接管期间用内联 important 盖掉。
+
+     4) 判定归 pointerup：拖过就是抛，没拖过才是戳。click 监听保留，但会跳过
+        指针路径已经处理过的那一次——留着它是为了键盘 Enter 激活，那条路径
+        不产生 pointer 事件。
+
+     一个有意的取舍：A1 的随机反应动画（clawd-react-*）在 button 上写的是
+     !important 的 transform。A2 把位置也写成 button 上的 !important transform，
+     所以 Clawd 被挪开之后那几个反应动画不会再改变它的位置——气泡、粒子、
+     ::before 上的姿势照常。要让两者完全共存，得给那几条 @keyframes 的每个
+     transform 前面都补一段 translate3d(var(--clawd-ax,0px),var(--clawd-ay,0px),0)，
+     那会动到 A1 已经验收过的动画，这一轮没做。 */
+
+  function a2Locked() { return Date.now() < A2.lockUntil; }
+
+  /* 只写，不读。旋转和压扁必须跟位移写进同一条 transform——transform 是单一
+     属性，分两次写的话后一次会把前一次整条覆盖掉。
+     回到原位时把内联样式整个撤掉，让 A1 的动画恢复原样。 */
+  function a2Place(button) {
+    if (!A2.x && !A2.fy && !A2.rot && A2.sqx === 1 && A2.sqy === 1) {
+      button.style.removeProperty('transform');
+      return;
+    }
+    let value = `translate3d(${A2.x.toFixed(1)}px, ${A2.fy.toFixed(1)}px, 0)`;
+    if (A2.rot) value += ` rotate(${A2.rot.toFixed(1)}deg)`;
+    if (A2.sqx !== 1 || A2.sqy !== 1) {
+      value += ` scale(${A2.sqx.toFixed(3)}, ${A2.sqy.toFixed(3)})`;
+    }
+    button.style.setProperty('transform', value, 'important');
+  }
+
+  function a2Say(button, text) {
+    if (!text) return;
+    showCcToast(button, ccEscapeHtml(text), 'hi');
+  }
+
+  function a2Parts(button, count) {
+    for (let i = 0; i < count; i += 1) {
+      if (i === 0) createParticle(button);
+      else hostWindow.setTimeout(() => createParticle(button), i * 70);
+    }
+  }
+
+  /* ===== 原子序列与锁 =====
+     多步动作（转身生气）必须整段播完，中途不能被同级事件掐断。
+     用嵌套 setTimeout 串多步是踩过的坑：被打断之后旧链继续烧，动画被吞、
+     还会重复触发。所以要序列运行器 + 代次令牌 + 上锁，锁只放 setClawdC 一个入口。 */
+  function a2CancelSeq() {
+    if (!A2.lockUntil) { A2.seqRun += 1; return; }
+    A2.seqRun += 1;
+    A2.lockUntil = 0;
+    A2.lockName = '';
+    /* 取消时把 C 轨一起清掉，别留半截姿势 */
+    A2.seqOwned = true;
+    setClawdC(null);
+    A2.seqOwned = false;
+  }
+
+  function a2PlaySeq(steps, name) {
+    const my = (A2.seqRun += 1);
+    const total = steps.reduce((sum, item) => sum + item[1], 0);
+    A2.lockUntil = Date.now() + total;
+    A2.lockName = name || '序列';
+    const run = index => {
+      if (my !== A2.seqRun) return;            // 代次令牌
+      if (index >= steps.length) {
+        A2.lockUntil = 0;
+        A2.lockName = '';
+        A2.irr = 0;                            // 气撒完了，否则手一直按着会立刻二次触发
+        A2.seqOwned = true;
+        setClawdC(null);
+        A2.seqOwned = false;
+        return;
+      }
+      A2.seqOwned = true;
+      setClawdC(steps[index][0], 0);
+      A2.seqOwned = false;
+      hostWindow.setTimeout(() => run(index + 1), steps[index][1]);
+    };
+    run(0);
+  }
+
+  function a2SulkSeq() {
+    A2.throws = 0;
+    a2PlaySeq([['turn', 400], ['t5', 2600], ['face', 400]], '生气');
+  }
+
+  /* 空气墙。原型是拿它自己的手机框当容器，扩展换成 #form_sheld。
+     右侧要给 #send_form::after 那只装饰 Clawd 让开；下边界卡在 0，
+     fy 再往下就沉进输入框里了。
+     A2_CEILING 是暂定值，真实的上边界要在酒馆里量，见交接说明。 */
+  function a2Walls(button) {
+    const container = hostDocument.querySelector('#form_sheld')
+      || hostDocument.querySelector('#send_form');
+    if (!container) return { minx: -9e9, maxx: 9e9, miny: -A2_CEILING, maxy: 0 };
+    const pr = button.getBoundingClientRect();
+    const fr = container.getBoundingClientRect();
+    return {
+      minx: A2.x - (pr.left - fr.left - A2_EDGE),
+      maxx: A2.x + (fr.right - A2_DECOR_RESERVE - pr.right),
+      miny: -A2_CEILING,
+      maxy: 0,
+    };
+  }
+
+  function a2Down(button, event) {
+    A2.tookPointer = false;
+    if (a2Locked()) {
+      /* 生气期间抓不起来 */
+      event.preventDefault();
+      A2.tookPointer = true;
+      if (Math.random() < .4) a2Say(button, '别碰我');
+      return;
+    }
+    event.preventDefault();
+    A2.held = true;
+    A2.flying = 0;
+    A2.vx = 0;
+    A2.vy = 0;
+    A2.moved = false;
+    A2.sx = event.clientX;
+    A2.sy = event.clientY;
+    A2.ox = A2.x;
+    A2.oy = A2.fy;
+    A2.lx = event.clientX;
+    A2.ly = event.clientY;
+    A2.lt = Date.now();
+    A2.bnd = a2Walls(button);                  // 一次拖拽只在这里读一次布局
+    button.style.setProperty('transition', 'none', 'important');
+    button.style.setProperty('touch-action', 'none', 'important');
+    try { button.setPointerCapture(event.pointerId); } catch (error) { /* 老 WebView 没有就算了 */ }
+  }
+
+  function a2Move(button, event) {
+    if (!A2.held) return;
+    const dx = event.clientX - A2.sx;
+    const dy = event.clientY - A2.sy;
+    if (!A2.moved && Math.abs(dx) + Math.abs(dy) > A2_DRAG_THRESHOLD) {
+      A2.moved = true;
+      A2.dragging = true;
+      setClawdC('grab', 0);
+      a2Say(button, '放我下来');
+      a2Parts(button, 2);
+      hostWindow.setTimeout(() => { if (A2.dragging) setClawdC('drag', 0); }, 350);
+    }
+    if (!A2.moved) return;
+    A2.x = Math.max(A2.bnd.minx, Math.min(A2.bnd.maxx, A2.ox + dx));
+    A2.fy = Math.max(A2.bnd.miny, Math.min(A2.bnd.maxy, A2.oy + dy));
+    const now = Date.now();
+    const dt = Math.max(12, now - A2.lt);
+    /* 指数平滑，不用瞬时速度——瞬时速度在慢速拖动时会抖 */
+    A2.vx = A2.vx * .45 + ((event.clientX - A2.lx) / dt * 16) * .55;
+    A2.vy = A2.vy * .45 + ((event.clientY - A2.ly) / dt * 16) * .55;
+    A2.lx = event.clientX;
+    A2.ly = event.clientY;
+    A2.lt = now;
+    A2.rot = Math.max(-14, Math.min(14, -A2.vx * 0.7 / A2.feel));
+    a2Place(button);
+  }
+
+  function a2Up(button) {
+    if (!A2.held) return;
+    A2.held = false;
+    A2.tookPointer = true;
+    button.style.removeProperty('touch-action');
+    if (A2.moved) {
+      a2Ballistic(button);                     // 拖过就是抛
+    } else {
+      A2.rot = 0;
+      button.style.removeProperty('transition');
+      a2Place(button);
+      a2Poke(button);                          // 没拖过才是戳
+    }
+  }
+
+  function a2Phys() {
+    const t = (A2.feel - .55) / .95;
+    return {
+      g: .26 + t * .40,          // 重力
+      rest: .50 - t * .42,       // 弹性
+      drag: .985 + t * .010,     // 空气阻力
+      thr: .78 - t * .12,        // 初速度系数
+      fric: .86 - t * .20,       // 地面摩擦
+      spin: .55 - t * .38,       // 旋转量
+      maxRot: 16 - t * 8,        // 最大旋转角
+      sq: .10 - t * .03,         // 落地压扁量
+    };
+  }
+
+  function a2Ballistic(button) {
+    const P = a2Phys();
+    const cap = value => Math.max(-24, Math.min(24, value));
+    let bx = cap(A2.vx) * P.thr;
+    let by = cap(A2.vy) * P.thr;
+    let bounces = 0;
+    const my = (A2.flying += 1);               // 代次令牌：新的抓取直接作废旧的飞行
+    A2.throws += 1;
+    A2.lastThrow = Date.now();
+    A2.lastDec = Date.now();
+    A2.irr = Math.min(5, A2.irr + (A2.throws >= 3 ? 2 : 1));
+    A2.dragging = false;
+    setClawdC('fly', 0);
+
+    const step = () => {
+      if (my !== A2.flying) return;
+      if (a2Locked()) {
+        /* 飞到一半开始生气：安静落回去，不抢画面 */
+        A2.fy = 0;
+        A2.rot = 0;
+        A2.sqx = 1;
+        A2.sqy = 1;
+        a2Place(button);
+        A2.homeX = A2.x;
+        button.style.removeProperty('transition');
+        return;
+      }
+      by += P.g;
+      bx *= P.drag;
+      by *= P.drag;
+      A2.x += bx;
+      A2.fy += by;
+      if (A2.x < A2.bnd.minx) { A2.x = A2.bnd.minx; bx = -bx * .45; }
+      if (A2.x > A2.bnd.maxx) { A2.x = A2.bnd.maxx; bx = -bx * .45; }
+      if (A2.fy >= 0) {
+        A2.fy = 0;
+        /* 第一次砸到地面就演落地，不等它弹完——等弹完看着像落地之后又落了一次 */
+        if (bounces === 0) setClawdC('land', 0);
+        if (Math.abs(by) > .7 && bounces < 6) {
+          by = -by * P.rest;
+          bx *= P.fric;
+          bounces += 1;
+          const q = P.sq * Math.min(1, Math.abs(by) / 7);
+          A2.sqx = 1 + q;
+          A2.sqy = 1 - q;
+          if (A2.squashTimer) hostWindow.clearTimeout(A2.squashTimer);
+          A2.squashTimer = hostWindow.setTimeout(() => {
+            A2.squashTimer = 0;
+            if (my !== A2.flying) return;
+            A2.sqx = 1;
+            A2.sqy = 1;
+            a2Place(button);
+          }, 110);
+        } else {
+          bx = 0;
+          by = 0;
+          A2.rot = 0;
+          A2.sqx = 1;
+          A2.sqy = 1;
+          a2Place(button);
+          A2.homeX = A2.x;
+          button.style.removeProperty('transition');
+          const settled = A2.throws;
+          /* 粒子和气泡都要读布局，从 rAF 回调里挪出去 */
+          hostWindow.setTimeout(() => {
+            if (my !== A2.flying) return;
+            a2Parts(button, 1);
+            if (settled < 3) a2Say(button, ['呼', '稳了', '站住了'][settled % 3]);
+          }, 0);
+          hostWindow.setTimeout(() => {
+            /* 原型这里没有代次令牌：840ms 内又被抓起来的话，旧的这条回调照样
+               会烧到底，把跺脚或生气序列砸到新的一次互动上。 */
+            if (my !== A2.flying) return;
+            if (A2.throws >= 5) {
+              a2Say(button, '不理你了');
+              a2SulkSeq();
+            } else if (A2.throws >= 3) {
+              setClawdC('stomp', 560);
+              a2Say(button, '你够了');
+              a2Parts(button, 3);
+            } else {
+              setClawdC(null);
+            }
+          }, 840);
+          return;
+        }
+      }
+      A2.rot = Math.max(-P.maxRot, Math.min(P.maxRot, -bx * P.spin));
+      a2Place(button);
+      hostWindow.requestAnimationFrame(step);
+    };
+    step();
+  }
+
+  function a2Poke(button) {
+    if (a2Locked()) {
+      /* 生气期间戳它没用 */
+      if (Math.random() < .3) a2Say(button, '哼');
+      return;
+    }
+    A2.lastDec = Date.now();
+    if (clawdTracks.A) {
+      /* 生成中只给最轻那档，不抢 A 轨 */
+      setClawdC('t1', 500);
+      clawdPokeReaction(button);
+      return;
+    }
+    A2.irr = Math.min(5, A2.irr + 1);
+    const tier = A2.irr;
+    if (tier <= A2_RICH_TIER) {
+      setClawdC(A2_TIER[tier - 1], A2_TMS[tier - 1]);
+      clawdPokeReaction(button);
+      return;
+    }
+    a2Say(button, A2_LINES[tier - 1][Math.random() * 2 | 0]);
+    a2Parts(button, tier >= 4 ? 3 : 1);
+    if (tier >= 5) a2SulkSeq();
+    else setClawdC(A2_TIER[tier - 1], A2_TMS[tier - 1]);
+  }
+
+  function a2Bind(button) {
+    /* setPointerCapture 之后 move/up 都会打到这个按钮上，不用往 document 上挂。 */
+    button.addEventListener('pointerdown', event => a2Down(button, event));
+    button.addEventListener('pointermove', event => a2Move(button, event));
+    button.addEventListener('pointerup', () => a2Up(button));
+    button.addEventListener('pointercancel', () => a2Up(button));
+  }
+
+  /* A1 的点击反应：连点彩蛋、随机反应动画、粒子、视线/姿势脉冲。
+     A2 之后它变成戳的第一档——轻轻戳一下还是原来那只 Clawd，
+     只有被连着戳、烦躁爬上去之后才换成 A2 的短台词。 */
+  function clawdPokeReaction(button) {
+    lastPokeAt = Date.now();
+    if (neglected) setNeglected(false);
+    if (handleCcCombo(button)) return;
+    const reaction = animateButton(button);
+    createParticle(button, reaction === 'clawd-react-shy' ? 'clawd-particle-heart' : '');
+    if (reaction === 'clawd-react-hop' && Math.random() < .42) {
+      hostWindow.setTimeout(() => createParticle(button, 'clawd-particle-star'), 90);
+    }
+    if (reaction === 'clawd-react-peek') pulseCcPose(button, 'clawd-poke-look', 680);
+    else if (reaction === 'clawd-react-shy') pulseCcPose(button, 'clawd-poke-tucked', 720);
+    else if (reaction === 'clawd-react-nod') pulseCcPose(button, 'clawd-poke-blink', 360);
   }
 
   /* role 默认给 composer：A1 之后只剩输入框上方这一只会被创建。
@@ -4389,26 +5004,20 @@ if (CLAUDE_ENABLED) {
       button.classList.add('clawd-button-settle');
       button.addEventListener('animationend', () => button.classList.remove('clawd-button-settle'), { once: true });
     }
+    /* 顺序有意义：a2Bind 必须在 bindPressState 之前注册，pointerdown 的监听
+       按注册顺序跑，A2 要先把 held 立起来，bindPressState 才知道该让开。 */
+    a2Bind(button);
     bindPressState(button);
     button.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
       /* 迁入输入框的这只就是原来的角色本体，所以 2.0.135 的整套点击反馈
          （连点彩蛋、随机反应、气泡、粒子、视线、姿势）原样跑在它身上。
-         2.0.139 在这里给 composer 分支加了 early return，只写一条 C 轨就返回，
-         等于节点搬了、行为没搬，行为反而留在了不该存在的消息节点上。 */
-      setClawdC('touch', 720);
-      lastPokeAt = Date.now();
-      if (neglected) setNeglected(false);
-      if (handleCcCombo(button)) return;
-      const reaction = animateButton(button);
-      createParticle(button, reaction === 'clawd-react-shy' ? 'clawd-particle-heart' : '');
-      if (reaction === 'clawd-react-hop' && Math.random() < .42) {
-        hostWindow.setTimeout(() => createParticle(button, 'clawd-particle-star'), 90);
-      }
-      if (reaction === 'clawd-react-peek') pulseCcPose(button, 'clawd-poke-look', 680);
-      else if (reaction === 'clawd-react-shy') pulseCcPose(button, 'clawd-poke-tucked', 720);
-      else if (reaction === 'clawd-react-nod') pulseCcPose(button, 'clawd-poke-blink', 360);
+         A2 之后判定归 pointerup（拖过就是抛，没拖过才是戳），所以指针路径
+         已经处理过的那一次点击在这里跳过，否则拖完松手会再触发一次点击反应。
+         监听留着是为了键盘 Enter 激活——那条路径不产生 pointer 事件。 */
+      if (A2.tookPointer) { A2.tookPointer = false; return; }
+      a2Poke(button);
     });
     return button;
   }
