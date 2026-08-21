@@ -151,6 +151,12 @@ await new Promise(resolve => window.setTimeout(resolve, 850));
 
 const clawd = window.document.querySelector('#send_form > .clawd-composer-clawd');
 assert.ok(clawd, 'A2 测试需要输入框上方那只 Clawd 先挂上');
+const sendForm = window.document.getElementById('send_form');
+const originalClawdRect = clawd.getBoundingClientRect.bind(clawd);
+const originalFormRect = sendForm.getBoundingClientRect.bind(sendForm);
+let dragGeometryReads = 0;
+clawd.getBoundingClientRect = () => { dragGeometryReads += 1; return originalClawdRect(); };
+sendForm.getBoundingClientRect = () => { dragGeometryReads += 1; return originalFormRect(); };
 
 function wait(ms) { return new Promise(resolve => window.setTimeout(resolve, ms)); }
 
@@ -165,15 +171,23 @@ function move(x, y) { clawd.dispatchEvent(pointer('pointermove', x, y)); }
 function lift(x, y) { clawd.dispatchEvent(pointer('pointerup', x, y)); }
 const cTrack = () => clawd.dataset.clawdC || '';
 
-/* ---------- 1. touch-action 与 transition 在拖拽期间被切开 ---------- */
+/* ---------- 1. touch-action 必须预先声明；按下立即进入抓取姿势 ---------- */
+const interactionStyle = window.document.getElementById('claude-clawd-interaction-style')?.textContent || '';
+assert.match(interactionStyle, /clawd-composer-clawd[\s\S]{0,900}?touch-action:\s*none\s*!important/,
+  'Android 在 pointerdown 前就决定滚动归属，可拖 Clawd 必须静态 touch-action:none');
+assert.equal(clawd.style.getPropertyValue('touch-action'), '',
+  'touch-action 不该等 pointerdown 才以内联样式补上');
+dragGeometryReads = 0;
 press(100, 100);
-assert.equal(clawd.style.getPropertyValue('touch-action'), 'none',
-  '按下之后 touch-action 必须是 none，否则安卓上拖 Clawd 会把聊天一起滚起来');
+assert.equal(cTrack(), 'grab', '手指落下必须立即显示抓取姿势，不等位移阈值');
+assert.equal(dragGeometryReads, 0, '正常 pointerdown 必须使用预热边界，不能临时强制布局');
+assert.equal(clawd.style.getPropertyValue('touch-action'), '',
+  '当前手势开始后再改 touch-action 已经无效，不得恢复旧的晚切逻辑');
 assert.equal(clawd.style.getPropertyValue('transition'), 'none',
   '按下之后要盖掉 transition:transform 240ms，否则拖拽会被拉成橡皮筋');
 lift(100, 100);
 assert.equal(clawd.style.getPropertyValue('touch-action'), '',
-  '松手之后要把 touch-action 还回去，静止时得保持 manipulation');
+  '松手后不应写入或清理 touch-action，静态规则始终接管');
 /* 上面那一下没拖动，算一次戳，烦躁 +1。等它衰减回 0 再往下测，
    否则下一条测到的是第 2 档而不是第 1 档。衰减阈值 1000ms + tick 200ms。 */
 await wait(1500);
@@ -181,14 +195,23 @@ await wait(1500);
 /* ---------- 2. 拖动阈值：5px 以内算戳，超过才算拖 ---------- */
 press(100, 100);
 move(102, 101);                       // 位移 3px，还在阈值内
-assert.notEqual(cTrack(), 'grab', '3px 位移不该被判成拖');
+assert.equal(cTrack(), 'grab', '3px 内仍保持按下即出现的抓取反馈');
+assert.doesNotMatch(clawd.style.getPropertyValue('transform'), /translate3d/,
+  '3px 位移仍应判成戳，不能真正搬动位置');
 lift(102, 101);
 assert.equal(cTrack(), 't1', '没拖过就该走戳，第一档是 t1');
 await wait(1500);
 
 press(100, 100);
+dragGeometryReads = 0;                // pointerdown 的边界读取不算进首次 move
 move(120, 100);                       // 位移 20px，超过阈值
 assert.equal(cTrack(), 'grab', '超过阈值就该进 grab');
+assert.match(clawd.style.getPropertyValue('transform'), /translate3d\((?!0\.0px)/,
+  '首次有效 move 必须同步写入位置');
+assert.equal(dragGeometryReads, 0,
+  '首次有效 move 不能先为气泡或粒子同步读取布局');
+await wait(80);                       // 首帧之后才允许反馈读取布局
+assert.ok(dragGeometryReads >= 3, '延后的气泡和粒子仍应正常创建');
 lift(120, 100);
 await wait(1400);                     // 让这次抛掷落定
 

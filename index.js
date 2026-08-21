@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.142-android-via-keyboard-pan-anchor-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.143-clawd-immediate-grab-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2057,6 +2057,8 @@ if (CLAUDE_ENABLED) {
     irr: 0, throws: 0, lastThrow: 0, lastDec: 0,
     lockUntil: 0, lockName: '', seqRun: 0, seqOwned: false,
     flying: 0, dragging: false, moved: false, held: false,
+    dragFeedbackRun: 0,
+    bndReady: false, bndRaf: 0,
     sx: 0, sy: 0, ox: 0, oy: 0, vx: 0, vy: 0, lx: 0, ly: 0, lt: 0,
     rot: 0, sqx: 1, sqy: 1,
     bnd: { minx: -9e9, maxx: 9e9, miny: -A2_CEILING, maxy: 0 },
@@ -2289,7 +2291,8 @@ if (CLAUDE_ENABLED) {
         z-index: 4 !important;
         display: block !important;
         margin: 0 !important;
-        touch-action: manipulation;
+        /* 可拖物体必须在手指落下前拒绝页面平移；pointerdown 里再切已经太晚。 */
+        touch-action: none !important;
       }
 
       html body button.clawd-mobile-clawd-button {
@@ -4001,6 +4004,7 @@ if (CLAUDE_ENABLED) {
     if (!button) {
       button = createButton(false, 'composer');
       form.append(button);
+      scheduleA2BoundsWarm(button);
     }
     applyCcComposerState(button);
     syncClawdBState();
@@ -4651,14 +4655,15 @@ if (CLAUDE_ENABLED) {
         transform 字符串），姿势换帧由 CSS 写在 ::before 上。两者在不同节点，
         transform 天然叠加，用不着 @property。
 
-     2) 布局读取。只有 pointerdown 时的 a2Walls() 读一次，一次拖拽就这一次。
-        pointermove 和 rAF 循环里一次都没有——a2Place() 只写不读。粒子和气泡
-        要读 getBoundingClientRect，所以从 rAF 回调里挪出去，等落定了再放。
+     2) 布局读取。空气墙在按钮挂载或输入框尺寸变化后的空闲帧预热；正常的
+        pointerdown / pointermove 都只写不读。只有页面刚启动、预热尚未完成时，
+        pointerdown 才回退读一次。第一次拖动先写位置并交出当前任务；粒子和
+        气泡等首帧提交后再读布局、再创建。
 
-     3) touch-action。静止时保持 manipulation（点击不延迟），pointerdown 之后
-        用内联样式切成 none，松手撤掉。安卓上不切，拖 Clawd 会连带把聊天滚起来。
+     3) touch-action。可拖 Clawd 静止时就固定为 none，因为 Android 在 pointerdown
+        监听执行前已经决定当前手势能否滚动；等按下后再切对这次手势无效。
         button 上原有的 transition:transform 240ms !important 会把拖拽拉成橡皮筋，
-        同样在 A2 接管期间用内联 important 盖掉。
+        仍在 A2 接管期间用内联 important 盖掉。
 
      4) 判定归 pointerup：拖过就是抛，没拖过才是戳。click 监听保留，但会跳过
         指针路径已经处理过的那一次——留着它是为了键盘 Enter 激活，那条路径
@@ -4763,6 +4768,17 @@ if (CLAUDE_ENABLED) {
     };
   }
 
+  function scheduleA2BoundsWarm(button = composerClawd()) {
+    A2.bndReady = false;
+    if (A2.bndRaf || !button) return;
+    A2.bndRaf = hostWindow.requestAnimationFrame(() => {
+      A2.bndRaf = 0;
+      if (destroyed || A2.held || !button.isConnected) return;
+      A2.bnd = a2Walls(button);
+      A2.bndReady = true;
+    });
+  }
+
   function a2Down(button, event) {
     A2.tookPointer = false;
     if (a2Locked()) {
@@ -4773,6 +4789,7 @@ if (CLAUDE_ENABLED) {
       return;
     }
     event.preventDefault();
+    A2.dragFeedbackRun += 1;
     A2.held = true;
     A2.flying = 0;
     A2.vx = 0;
@@ -4785,22 +4802,39 @@ if (CLAUDE_ENABLED) {
     A2.lx = event.clientX;
     A2.ly = event.clientY;
     A2.lt = Date.now();
-    A2.bnd = a2Walls(button);                  // 一次拖拽只在这里读一次布局
+    if (!A2.bndReady) {
+      /* 只给“页面刚挂好就立刻抓”的极端首帧兜底；正常路径已由 rAF/ResizeObserver
+         预热，不在 pointerdown 强制布局。 */
+      A2.bnd = a2Walls(button);
+      A2.bndReady = true;
+    }
     button.style.setProperty('transition', 'none', 'important');
-    button.style.setProperty('touch-action', 'none', 'important');
     try { button.setPointerCapture(event.pointerId); } catch (error) { /* 老 WebView 没有就算了 */ }
+    /* 视觉上的“抓住”从手指落下就开始；5px 阈值只判断松手后算戳还是抛，
+       不再让用户等到第一次大位移才看到反馈。 */
+    setClawdC('grab', 0);
+  }
+
+  function a2DeferGrabFeedback(button) {
+    const run = (A2.dragFeedbackRun += 1);
+    /* rAF 内再排任务：当前位置先提交一帧，之后才创建会读取布局的气泡和粒子。
+       直接放在首次 pointermove 里，长聊天会先同步回流、最后才移动 Clawd。 */
+    hostWindow.requestAnimationFrame(() => hostWindow.setTimeout(() => {
+      if (run !== A2.dragFeedbackRun || !A2.dragging) return;
+      a2Say(button, '放我下来');
+      a2Parts(button, 2);
+    }, 0));
   }
 
   function a2Move(button, event) {
     if (!A2.held) return;
     const dx = event.clientX - A2.sx;
     const dy = event.clientY - A2.sy;
+    let dragStarted = false;
     if (!A2.moved && Math.abs(dx) + Math.abs(dy) > A2_DRAG_THRESHOLD) {
       A2.moved = true;
       A2.dragging = true;
-      setClawdC('grab', 0);
-      a2Say(button, '放我下来');
-      a2Parts(button, 2);
+      dragStarted = true;
       hostWindow.setTimeout(() => { if (A2.dragging) setClawdC('drag', 0); }, 350);
     }
     if (!A2.moved) return;
@@ -4816,13 +4850,14 @@ if (CLAUDE_ENABLED) {
     A2.lt = now;
     A2.rot = Math.max(-14, Math.min(14, -A2.vx * 0.7 / A2.feel));
     a2Place(button);
+    if (dragStarted) a2DeferGrabFeedback(button);
   }
 
   function a2Up(button) {
     if (!A2.held) return;
     A2.held = false;
     A2.tookPointer = true;
-    button.style.removeProperty('touch-action');
+    A2.dragFeedbackRun += 1;
     if (A2.moved) {
       a2Ballistic(button);                     // 拖过就是抛
     } else {
@@ -7862,7 +7897,10 @@ if (CLAUDE_ENABLED) {
       observedComposerShell = shell;
       lastComposerHeight = 0;
       if (hostWindow.ResizeObserver) {
-        composerResizeObserver = new hostWindow.ResizeObserver(scheduleMobileComposerInset);
+        composerResizeObserver = new hostWindow.ResizeObserver(() => {
+          scheduleMobileComposerInset();
+          scheduleA2BoundsWarm();
+        });
         composerResizeObserver.observe(shell);
       }
       scheduleMobileComposerInset();
@@ -9806,6 +9844,9 @@ if (CLAUDE_ENABLED) {
     mobileChrome?.root?.remove();
     mobileChrome = null;
     hostDocument.querySelectorAll('.' + ANDROID_KEYBOARD_PAN_ANCHOR_CLASS).forEach(node => node.remove());
+    if (A2.bndRaf) hostWindow.cancelAnimationFrame(A2.bndRaf);
+    A2.bndRaf = 0;
+    A2.bndReady = false;
     composerResizeObserver?.disconnect();
     composerResizeObserver = null;
     observedComposerShell?.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);
