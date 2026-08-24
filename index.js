@@ -364,7 +364,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.146-clawd-mobile-fixes-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.147-playbill-boot-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -10805,6 +10805,28 @@ if (CLAUDE_ENABLED) {
   /* 需要三轨排版的皮。孤零零一个字符串散在函数里，加第三种皮时必然漏一处 —— 所以集中在这里。 */
   const STAMPED_SKINS = new Set(['arena', 'playbill']);
 
+  /* 2026-08-24 恢复：这个函数在 b32f3a1（2.0.54）被删掉了，但 refreshTheatre 和
+     风格下拉里的两处调用留着。JS 只在执行到那一行才报 ReferenceError，
+     node --check 查不出来，控制台也只有等 refreshTheatre 真的跑起来才会响 ——
+     而 watchSession 当时又没有启动调用，所以这个错一直没人看见。
+     函数体照 7c0fce9 恢复，没改逻辑。 */
+  function stampMessages() {
+    if (!STAMPED_SKINS.has(document.documentElement.dataset.claudeSkin)) return;
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return;
+    const chat = ctx.chat || [];
+    document.querySelectorAll('#chat .mes').forEach(el => {
+      const m = chat[Number(el.getAttribute('mesid'))];
+      if (!m) return;
+      const t = String(m.send_date || '').match(/(\d{1,2}:\d{2})/);
+      el.dataset.time = t ? t[1] : '';
+      el.dataset.swipe = (m.swipes && m.swipes.length > 1)
+        ? ((m.swipe_id ?? 0) + 1) + '/' + m.swipes.length : '';
+      const body = el.querySelector('.mes_text');
+      if (body) body.dataset.speaker = m.name || '';
+    });
+  }
+
   /* playbill = 整套主题，选中它时结构轴被它接管，不再可选。
      不锁的话会出现"剧场皮 + 侧边栏结构"这种组合 —— 那正是这次要终结的缝合体：
      四栏是这套设计的一部分，不是可以拆下来的配件。 */
@@ -10909,6 +10931,15 @@ if (CLAUDE_ENABLED) {
     document.querySelector('#' + id + ' .drawer-toggle')?.click();
   }
 
+  /* 抽屉 id 可以写成候选列表，返回第一个页面上真实存在的，都不在返回空串。
+     酒馆改过这些 id（「背景」旧版本叫 logo_block，现在是 backgrounds-button），
+     而 buildNav 只在 getElementById 命中时才建那一项 —— 写死一个的后果是
+     这一项静默消失：不报错、不留痕，导航就少一行。 */
+  function pbDrawerId(spec) {
+    const list = Array.isArray(spec) ? spec : [spec];
+    return list.find(id => document.getElementById(id)) || '';
+  }
+
   /* ---------------------------------------------------------------- 导航 */
   /* 剧场组直接列酒馆原生功能，不再把它们埋进一个「设置」子组里。
      埋一层的代价是常用的东西（预设、API、角色卡）都要多点一次，
@@ -10927,7 +10958,7 @@ if (CLAUDE_ENABLED) {
     ['advanced-formatting-button', '格式化', ''],
 
     ['WI-SP-button', '世界书', ''],
-    ['logo_block', '背景', ''],
+    [['backgrounds-button', 'logo_block'], '背景', ''],
     ['extensions-settings-button', '扩展', ''],
   ];
 
@@ -10963,17 +10994,21 @@ if (CLAUDE_ENABLED) {
        之前那三组（剧目 / 角色 / 剧场）是照参考稿搭的，但参考稿里那几项在
        酒馆没有真正对应的东西：剧目的三个筛选是编的，角色一栏和会话列表
        重复，幕次索引正文里已经有分隔条了。留着只是多一层要点开的壳。 */
-    const sig = 'pb|' + PB_DRAWERS.map(d => d[0]).join(',');
+    /* 先把 id 解析掉再算 sig：sig 要反映「这一轮真的建了哪几项」，
+       用未解析的候选列表算的话，抽屉晚一步出现时 sig 不变，导航不会补建。 */
+    const items = PB_DRAWERS
+      .map(([spec, label, icon]) => [pbDrawerId(spec), label, icon])
+      .filter(([id]) => id);
+
+    const sig = 'pb|' + items.map(d => d[0]).join(',');
     if (old && sig === pbNavSig) return;
     pbNavSig = sig;
     if (old) old.remove();
 
     const nav = document.createElement('nav');
     nav.className = 'cw-nav';
-    PB_DRAWERS.forEach(([id, label, icon]) => {
-      if (document.getElementById(id)) {
-        nav.appendChild(pbNavItem(label, () => pbOpenDrawer(id), false, icon));
-      }
+    items.forEach(([id, label, icon]) => {
+      nav.appendChild(pbNavItem(label, () => pbOpenDrawer(id), false, icon));
     });
     rail.insertBefore(nav, rail.querySelector('.clawd-rail-recents') || null);
   }
@@ -11711,7 +11746,14 @@ if (CLAUDE_ENABLED) {
      只渲染出冒号"就是这一类）。所以再加一个 MutationObserver 盯 #chat：
      只要 DOM 动过就补写一次，不依赖事件名是否齐全。 */
   let chatObserver = null;
+  /* 只准绑一次。eventSource.on 和 setInterval 都不是幂等的 ——
+     这个函数原来只有设置面板「结构」下拉的 change 会调，来回切两次就多绑
+     一组监听、多开一个 2 秒定时器；现在启动流程也会调它，没有这道守卫
+     必然重复绑。已经绑过的情况下只补一次刷新。 */
+  let theatreWatched = false;
   function watchSession() {
+    if (theatreWatched) { refreshTheatre(); return; }
+    theatreWatched = true;
     const ctx = window.SillyTavern?.getContext?.();
     const et = ctx?.eventSource, types = ctx?.eventTypes || ctx?.event_types;
     if (et && types) {
@@ -12479,6 +12521,9 @@ if (CLAUDE_ENABLED) {
       buildCards();
       buildCoverArt();
       ensureAside();
+      /* 从 classic 切过来时监听可能还没绑（启动那次被 theatreNeeded 挡掉了），
+         这里补一次。watchSession 自带只绑一次的守卫，重复调只会多刷新一遍。 */
+      watchSession();
       /* 换风格会换掉自定义的取值起点，取色器要跟着显示新起点的颜色。 */
       syncSwatches();
       hint.textContent = preset ? `已切到「${preset.name}」。` : '切换失败。';
@@ -13030,6 +13075,39 @@ if (CLAUDE_ENABLED) {
       void runReinstall(reinstallButton, updateHint);
     });
   }
+
+  /* ---- 剧场结构的启动入口 ----
+     2026-08-05 真机诊断记录过：playbill 的自建 DOM（导航 / 右栏 / 封面 / 消息头）
+     只有 watchSession() 会建，而它唯一的调用点在设置面板「结构」下拉的 change
+     处理器里 —— 等于只有手动动一次下拉才启动。正常刷新时 refreshTheatre() 一次
+     都不跑，屏幕上就是酒馆原生 DOM 穿着 playbill 的 CSS，看起来像「排版全错」，
+     其实是根本没运行。这里补上启动调用。
+
+     不并进下面那个面板轮询：面板要等 #extensions_settings2 出现，最长等 60 秒，
+     主题不该跟着等。这里只等 #chat 和 #top-settings-holder，它们出现得早得多。
+
+     兼容模式不进这里：那时 skin / structure 在首帧已经被打回 classic / rail，
+     整套自建 DOM 本来就该让位给外部主题，多挂一个 #chat 的 MutationObserver
+     是白付的开销。 */
+  const theatreNeeded = !CLAUDE_COMPAT_MODE
+    && (STAMPED_SKINS.has(document.documentElement.dataset.claudeSkin)
+        || document.documentElement.dataset.claudeStructure === 'linear');
+  const theatreDeadline = Date.now() + 60000;
+  const theatreTimer = theatreNeeded ? window.setInterval(() => {
+    if (Date.now() > theatreDeadline) {
+      window.clearInterval(theatreTimer);
+      console.warn('[Claude Web] 一分钟内没等到 #chat 或 #top-settings-holder，剧场结构没启动。');
+      return;
+    }
+    if (!document.getElementById('chat') || !document.getElementById('top-settings-holder')) return;
+    window.clearInterval(theatreTimer);
+    try {
+      ensureAside();
+      watchSession();
+    } catch (error) {
+      console.warn('[Claude Web] 剧场结构启动失败：', error);
+    }
+  }, 300) : 0;
 
   /* 酒馆的设置容器不是一开始就有的，轮询等它出现。
      两个容器都可能存在，优先第二列（第三方扩展习惯放那边）。 */

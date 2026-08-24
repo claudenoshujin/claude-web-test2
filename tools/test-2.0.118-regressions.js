@@ -7,12 +7,12 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.146');
-assert.equal(manifest.js, 'loader-2.0.146.js');
+assert.equal(manifest.version, '2.0.147');
+assert.equal(manifest.js, 'loader-2.0.147.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.146/,
+  /index\.js\?v=2\.0\.147/,
   'loader must defeat Android WebView module cache',
 );
 
@@ -103,4 +103,4 @@ assert.match(index, /COMPOSER_CLAWD_CLASS[\s\S]{0,900}?touch-action: none !impor
 assert.match(index, /function a2Down[\s\S]*setClawdC\('grab', 0\)/, 'pointerdown must show the grab pose immediately');
 assert.match(index, /a2Place\(button\);\s*if \(dragStarted\) a2DeferGrabFeedback\(button\);/, 'the first drag position must be written before layout-reading feedback');
 
-console.log('✓ Claude Web 2.0.146 focused regressions passed');
+console.log('✓ Claude Web 2.0.147 focused regressions passed');
