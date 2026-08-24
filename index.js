@@ -241,11 +241,13 @@ document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['
    踩过：用户用「我的配色」时 preset 是 null，刷新后 skin 掉回 classic，
    于是「明明选了 Are.na 却说没变化」。 */
 document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic','arena','playbill'], 'classic');
-/* playbill 是整套主题，不参与"皮 x 结构"的自由组合：选它就等于同时选了四栏。
-   这里在首帧就把结构钉死，避免"选了剧场但结构还停在侧边栏"闪一下。 */
-if (document.documentElement.dataset.claudeSkin === 'playbill') {
-  document.documentElement.dataset.claudeStructure = 'linear';
-}
+/* 2026-08-24：这里原来在首帧把 skin=playbill 的结构钉成 linear。删掉。
+   两条轴现在完全解锁，四种组合都是合法的：结构管几何（谁占哪一格），
+   皮肤管长相（配色、字号、行的排版）。
+   顺带一提这条不只是"忽略用户的选择"——它下游的 syncPlaybillLock() 还会
+   write('structure','linear') 把 localStorage 里存的值也覆盖掉。所以在这一版
+   之前存过 playbill 的用户，structure 早就被改写成 linear 了，解锁后不会
+   自己变回 rail，要手动再选一次。 */
 /* 兼容模式不能让上次保存的 Playbill/Linear 状态继续创建专属结构。设置值保留，
    切回完整模式时仍能恢复，但本次运行只暴露外部主题的原生结构。 */
 try {
@@ -364,7 +366,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.147-playbill-boot-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.148-axis-split-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -10827,23 +10829,16 @@ if (CLAUDE_ENABLED) {
     });
   }
 
-  /* playbill = 整套主题，选中它时结构轴被它接管，不再可选。
-     不锁的话会出现"剧场皮 + 侧边栏结构"这种组合 —— 那正是这次要终结的缝合体：
-     四栏是这套设计的一部分，不是可以拆下来的配件。 */
-  function syncPlaybillLock() {
-    const on = document.documentElement.dataset.claudeSkin === 'playbill';
-    if (on) {
-      document.documentElement.dataset.claudeStructure = 'linear';
-      write('structure', 'linear');
-    }
-    const sel = document.querySelector('#claude-web-structure');
-    if (sel) {
-      if (on) sel.value = 'linear';
-      sel.disabled = on;
-      sel.title = on ? 'THE PLAYBILL 自带四栏结构，不单独选。' : '';
-    }
-    syncPanelPresentationRef();
-  }
+  /* 2026-08-24：syncPlaybillLock() 删掉了。
+     它做两件事：选 playbill 时把结构写死成 linear（连 localStorage 一起改），
+     以及把结构下拉禁用。这两件事就是"两轴焊死"的本体。
+     现在结构下拉在任何皮下都可选，四种组合都成立：
+       linear + playbill  四栏剧场（参考稿的样子）
+       linear + classic   四栏官网风格
+       rail   + playbill  侧边栏 + 剧场的长相（导航九项、封面、幕次条照常；
+                          没有第四列，所以不建演职员栏，顶图和输入框置底也不生效）
+       rail   + classic   基线
+     原来这个函数结尾会调 syncPanelPresentationRef()，调用点各自补上了。 */
 
   /* ==========================================================================
      THE PLAYBILL 的 DOM 构造
@@ -11205,19 +11200,27 @@ if (CLAUDE_ENABLED) {
   function pbRailsWrite(w) {
     try { window.localStorage.setItem(PB_RAIL_KEY, JSON.stringify(w)); } catch { /* 满了就不存 */ }
   }
+  /* 写的是 **-base**，不是最终宽度。
+     2026-08-24 起 CSS 会在基准宽上再叠一个宽屏增量（见 day-pc.css 结构层那段
+     `--cw-c-grow`），最终宽度 `--cw-c-nav` 由 CSS 算。这里写死最终值的话，
+     窗口一宽侧栏就不长了。
+     拖拽手感不受影响：同一个窗口宽度下增量是常数，基准加多少列就宽多少。 */
   function pbRailsApply(w) {
     const st = document.documentElement.style;
-    st.setProperty('--cw-c-nav', w.nav + 'px');
-    st.setProperty('--cw-c-list', w.list + 'px');
-    st.setProperty('--cw-c-cast', w.cast + 'px');
+    st.setProperty('--cw-c-nav-base', w.nav + 'px');
+    st.setProperty('--cw-c-list-base', w.list + 'px');
+    st.setProperty('--cw-c-cast-base', w.cast + 'px');
   }
 
   let pbRailsBound = false;
   function pbWatchRails() {
     const html = document.documentElement;
-    if (!pbOn()) {
+    /* 2026-08-24：闸门从 pbOn() 换成 structure === 'linear'。
+       栏宽是几何 —— 官网风格的四栏一样有这三条缝，一样该能拖。
+       CSS 那边的 .cw-rail-grip 也一起换成了 structure 键。 */
+    if (html.dataset.claudeStructure !== 'linear') {
       if (pbRailsBound) {
-        ['--cw-c-nav', '--cw-c-list', '--cw-c-cast'].forEach(k => html.style.removeProperty(k));
+        ['--cw-c-nav-base', '--cw-c-list-base', '--cw-c-cast-base'].forEach(k => html.style.removeProperty(k));
         document.querySelectorAll('.cw-rail-grip').forEach(el => el.remove());
         pbRailsBound = false;
       }
@@ -11683,8 +11686,16 @@ if (CLAUDE_ENABLED) {
   }
 
   function ensureAside() {
-    if (document.documentElement.dataset.claudeStructure !== 'linear'
-        && document.documentElement.dataset.claudeSkin !== 'playbill') return;
+    /* 2026-08-24：只看 structure。
+       原来的条件是「structure 不是 linear **且** skin 不是 playbill」才返回 ——
+       用「且」等于「两者之一成立就建」，playbill 在侧边栏形态下也会建出第四列，
+       而侧边栏形态根本没有第四格给它站。这个「或」就是两轴焊死的一部分。
+       演职员栏是结构的东西：有第四格就建，没有就不建。 */
+    if (document.documentElement.dataset.claudeStructure !== 'linear') {
+      /* 从 linear 切回 rail 时要把已经建出来的那个收掉，不能只是不建新的。 */
+      document.getElementById('clawd-aside')?.remove();
+      return;
+    }
     let el = document.getElementById('clawd-aside');
     if (!el) {
       el = document.createElement('aside');
@@ -12516,7 +12527,7 @@ if (CLAUDE_ENABLED) {
                  : 'classic';
       document.documentElement.dataset.claudeSkin = skin;
       write('skin', skin);
-      syncPlaybillLock();
+      syncPanelPresentationRef();
       stampMessages();
       buildCards();
       buildCoverArt();
@@ -12839,14 +12850,17 @@ if (CLAUDE_ENABLED) {
       document.documentElement.dataset.claudeStructure = structureSelect.value;
       ensureAside();
       watchSession();
+      /* 三个栏宽把手归结构管，切回 rail 时要立刻收掉、切到 linear 时要立刻建出来。
+         watchSession 只在第一次调用时真的绑东西，不能指望它顺带刷这一步。 */
+      pbWatchRails();
       hint.textContent = structureSelect.value === 'linear'
         ? '已切到 Linear 四栏。窄于 1100px 会自动退回侧边栏。'
         : '已切回侧边栏。';
       syncPanelPresentationRef();
     });
-    /* 面板刚挂上来时也要锁一次 —— 用户上次存的就是 playbill 的话，
-       下拉必须一开始就是禁用状态，不能等他去点一下风格才生效。 */
-    syncPlaybillLock();
+    /* 面板刚挂上来时同步一次预览行。以前这里调的是 syncPlaybillLock()，
+       用来把结构下拉置灰；两轴解锁后不再需要置灰，只留下预览同步。 */
+    syncPanelPresentationRef();
 
     const fontSelect = panel.querySelector('#claude-web-font');
     const fontCustom = panel.querySelector('#claude-web-font-custom');

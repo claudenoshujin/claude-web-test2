@@ -5505,9 +5505,54 @@ html[data-claude-font="custom"] {
  *  · `#top-settings-holder > *` 带 id，特异性压过 `.clawd-rail-recents`，
  *    会把列表列拉成整屏宽。必须 :not() 排除掉。
  */
+/* 分栏线和列底色的两个中转变量。结构层只说「这里有一条分栏线」，
+   线是什么颜色、列是什么底，由皮肤层填（playbill 的覆盖在皮肤段里）。
+   只写在 html 上，**不要**同时写到 body 上 —— 自定义属性靠继承，
+   body 上的声明会盖住 html 上皮肤层的那份，皮就换不动了。 */
+html[data-claude-structure="linear"]{
+  --cw-col-rule:var(--cl-line);
+  --cw-col-surface:var(--cl-canvas);
+
+  /* ---- 宽屏：三条侧栏按比例长（2026-08-24，lulu 定的）----
+
+     问题：四栏的**框架**本来就跟着窗口走（演职员栏是 right:0），跟不上的是**正文列** ——
+     它封顶在 min(74ch, 100%) ≈ 920px。所以窗口每宽 100px，就多 100px 空白堆在正文两侧。
+     2400px 下实测：中间列 1698px 宽，正文 920px 居中，左右各空 389px。
+
+     做法：算出「版面刚好排满」需要多宽，超出的部分按固定比例分给三条侧栏，
+     正文列的 74ch 不动（那是可读性上限，不是排版余量）。
+     三份加起来 44%，剩下 56% 仍然进中间列 —— 全给侧栏的话正文会被挤到贴边。
+
+     · --cw-c-*-base 是用户拖出来的基准宽，增量加在它上面，所以拖拽手感不变：
+       在同一个窗口宽度下增量是常数，拖多少列就宽多少。
+     · 上限和 index.js 的 PB_RAIL_MAX 对齐（360 / 560 / 460），拖和长不能各有一套上限。
+     · 976px = 正文列上限 920 + 两条 28px 呼吸。写成字面值不写 74ch：
+       ch 是按 :root 字号算的，和 #chat 里的 ch 不是一个值，写 74ch 会算错。 */
+  --cw-c-fill:calc(var(--cw-c-nav-base) + var(--cw-c-list-base) + var(--cw-c-cast-base) + 976px);
+  --cw-c-grow:max(0px, calc(100vw - var(--cw-c-fill)));
+  --cw-c-nav :min(calc(var(--cw-c-nav-base)  + var(--cw-c-grow) * .10), 360px);
+  --cw-c-list:min(calc(var(--cw-c-list-base) + var(--cw-c-grow) * .19), 560px);
+  --cw-c-cast:min(calc(var(--cw-c-cast-base) + var(--cw-c-grow) * .15), 460px);
+}
+
 @media (min-width:1100px){
+  /* 第一列的宽度**必须**走 --cl-rail，不能在这里单写 width。
+     官网 rail 那套（本文件 3643 / 3660 附近）给 #top-bar 和 #top-settings-holder
+     写的是 width + **min-width** 都等于 var(--cl-rail)，而 min-width 在规范里
+     压过 width 和 max-width。所以 2026-08-24 之前这里写的 210px 从来没生效过 ——
+     第一列一直是 280px 的侧边栏宽度，lulu 说的「最左边那栏还是侧边栏的样子」
+     就是这么来的。
+     改 --cl-rail 一处，四件事一起对齐：rail 本体、#top-bar、抽屉的 left、
+     以及 .clawd-rail-grip 那个把手（它是 left:calc(var(--cl-rail) - 2px)，
+     之前落在第二列中间，就是那条莫名其妙的竖线）。
+     要 !important：--cl-rail 被 index.js 的 applyRailWidth() 写成行内样式，
+     不加 !important 压不住行内。 */
+  html[data-claude-structure="linear"],
+  html[data-claude-structure="linear"] body{
+    --cl-rail:var(--cw-c-nav) !important;
+  }
+
   html[data-claude-structure="linear"] #top-settings-holder{
-    width:210px !important; max-width:210px !important;
     padding-left:14px !important; padding-right:8px !important;
   }
   html[data-claude-structure="linear"] #top-settings-holder > *:not(.clawd-rail-recents){
@@ -5517,42 +5562,51 @@ html[data-claude-font="custom"] {
   html[data-claude-structure="linear"] #top-settings-holder > .clawd-rail-brand{
     overflow:hidden !important; min-width:0 !important;
   }
+  /* 侧边栏那个宽度把手在四栏下是多余的：第一列的缝已经由
+     .cw-rail-grip[data-col="nav"] 管，留着就是同一条缝上叠两个热区。 */
+  html[data-claude-structure="linear"] .clawd-rail-grip{ display:none !important; }
 
   /* ---- 第二列：会话列表。position:fixed 而不是 absolute ——
          rail 自己有 overflow:auto，absolute 会跟着滚。 ---- */
   html[data-claude-structure="linear"] .clawd-rail-recents{
-    position:fixed !important; left:210px !important; top:0 !important; bottom:0 !important;
-    width:300px !important; max-width:300px !important;
+    position:fixed !important; left:var(--cw-c-nav) !important; top:0 !important; bottom:0 !important;
+    width:var(--cw-c-list) !important; max-width:var(--cw-c-list) !important;
     margin:0 !important; padding:0 !important;
-    border-left:1px solid var(--cl-line) !important;
-    border-right:1px solid var(--cl-line) !important;
+    border-left:0 !important;
+    border-right:1px solid var(--cw-col-rule) !important;
     overflow-y:auto !important; z-index:3996 !important;
-    background:var(--cl-canvas) !important;
+    background:var(--cw-col-surface) !important;
   }
   html[data-claude-structure="linear"] .clawd-rail-recents-label{
     position:sticky !important; top:0 !important; z-index:2 !important;
-    background:var(--cl-canvas) !important;
+    background:var(--cw-col-surface) !important;
     padding:18px 18px 8px !important; margin:0 !important;
-    border-bottom:1px solid var(--cl-line) !important;
+    border-bottom:1px solid var(--cw-col-rule) !important;
   }
   /* 列表行的长相已移到皮肤层（Are.na 那份），结构层只留几何。 */
 
-  /* ---- 对话流让位 ---- */
+  /* ---- 对话流让位。28px 是列和正文之间的呼吸，不算分栏宽度。 ---- */
   html[data-claude-structure="linear"] #chat{
-    padding-left:538px !important; padding-right:276px !important;
+    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list) + 28px) !important;
+    padding-right:calc(var(--cw-c-cast) + 28px) !important;
   }
   html[data-claude-structure="linear"] #form_sheld{
-    padding-left:510px !important; padding-right:248px !important;
+    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
+    padding-right:var(--cw-c-cast) !important;
   }
 
   /* ---- 第四列：演职员。由 index.js 建节点，CSS 只负责排 ---- */
   html[data-claude-structure="linear"] #clawd-aside{
-    position:fixed; right:0; top:0; bottom:0; width:248px; box-sizing:border-box;
-    border-left:1px solid var(--cl-line); background:var(--cl-canvas);
+    display:block !important;
+    position:fixed; right:0; top:0; bottom:0;
+    width:var(--cw-c-cast); box-sizing:border-box;
+    border-left:1px solid var(--cw-col-rule); background:var(--cw-col-surface);
     z-index:3996; padding:18px 20px; overflow-y:auto;
     font-family:var(--cl-sans); font-size:12.5px; line-height:1.35; color:var(--cl-muted);
   }
-  html:not([data-claude-structure="linear"]) #clawd-aside{ display:none; }
+  /* rail 形态下没有第四列，没地方放演职员。这条要 !important：
+     以前皮肤层有一条 skin=playbill 的 display:block !important 会把它顶回来。 */
+  html:not([data-claude-structure="linear"]) #clawd-aside{ display:none !important; }
   #clawd-aside .cw-h{ padding-bottom:7px; border-bottom:1px solid var(--cl-line); }
   #clawd-aside .cw-r{
     display:flex; justify-content:space-between; gap:14px;
@@ -5754,10 +5808,22 @@ html[data-claude-skin="arena"] .recentChat.is-current{
 }
 html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !important; }
 
-/* Linear 下抽屉不该盖住会话列表 —— 它是常驻列，不是可被覆盖的临时面板 */
+/* Linear 下抽屉不该盖住会话列表 —— 它是常驻列，不是可被覆盖的临时面板。
+
+   ⚠ 选择器必须**照抄官网 rail 那条的形状**（本文件 3893 附近）：
+       html body #top-settings-holder > .drawer > .drawer-content   → (1,2,2)
+   原来这里写的是
+       html[data-claude-structure="linear"] #top-settings-holder .drawer-content  → (1,2,1)
+   b 位一样、c 位少一个，**输**。所以从 2.0.49 到 2.0.147，四栏下的抽屉一直是
+   从第一列右边缘一路铺到屏幕右边，把会话列表整列盖掉的 —— 这条规则从来没赢过。
+   （2026-08-24 实测：computed left 是 var(--cl-rail) 而不是这里写的值。）
+   加一层 body 把特异性抬到 (1,3,2) 才压得住。 */
 @media (min-width:1100px){
-  html[data-claude-structure="linear"] #top-settings-holder .drawer-content{
-    left:510px !important; width:auto !important; right:248px !important;
+  html[data-claude-structure="linear"] body #top-settings-holder > .drawer > .drawer-content{
+    left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
+    right:var(--cw-c-cast) !important;
+    width:auto !important;
+    max-width:none !important;
   }
 }
 
@@ -5807,15 +5873,24 @@ html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !imp
   --cw-fs-m:16px;    --cw-lh-m:1.5;
   --cw-fs-l:28px;    --cw-lh-l:1.25;
 
-  /* 四栏与三轨的几何。参考稿的取值，不是现在 linear 的取值 ——
-     linear 是 210/300/248，那是把侧边栏收窄凑出来的，不是排出来的。 */
-  /* 三条侧栏往中间压。正文有 62ch 限宽（为了可读性，不动），所以中间那列
-     再宽也填不满 —— 加宽中间只是在正文两侧堆更多空白。要让版面不空，
-     只能加宽侧栏。这三个值是默认值，用户可以拖（见 index.js 的 pbWatchRails），
-     拖过的值存在 localStorage，由 JS 写成同名的行内变量覆盖这里。 */
-  --cw-c-nav:216px;
-  --cw-c-list:330px;
-  --cw-c-cast:280px;
+  /* 四栏几何。三条侧栏往中间压：正文有 74ch 限宽（为了可读性，不动），
+     所以中间那列再宽也填不满 —— 加宽中间只是在正文两侧堆更多空白。
+     要让版面不空，只能加宽侧栏。
+
+     ---- 两组变量，别混 ----
+     `--cw-c-*-base` 是**基准宽**：用户拖出来的值，存在 localStorage，
+       由 index.js 的 pbRailsApply() 写成同名行内变量覆盖这里。
+     `--cw-c-*`      是**实际宽**：基准宽 + 宽屏增量，结构层那段算。所有几何规则用这个。
+
+     2026-08-24 顺手对齐了一处：这里原来写 216/330/280，而 index.js 的
+     PB_RAIL_DEF 是 176/250/220，且 pbRailsApply() **每次都会**把行内变量写上去
+     （没拖过也写默认值）—— 所以这三行从来没生效过。改成和 JS 一致。 */
+  --cw-c-nav-base:176px;
+  --cw-c-list-base:250px;
+  --cw-c-cast-base:220px;
+  --cw-c-nav:var(--cw-c-nav-base);
+  --cw-c-list:var(--cw-c-list-base);
+  --cw-c-cast:var(--cw-c-cast-base);
   --cw-gut:24px;
   --cw-track-l:80px;      /* 左边注：头像 / 时间 / swipe 序号 */
   --cw-track-r:100px;     /* 右边注：token 数 */
@@ -5823,14 +5898,24 @@ html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !imp
 }
 
 /* ---------------------------------------------------------------------------
-   桌面四栏。窄于 1100px 一律退回侧边栏形态 —— 手机端没有对得上的参考稿，
-   硬塞四栏只会得到第三种半成品。
-   --------------------------------------------------------------------------- */
-@media (min-width:1100px){
+   2026-08-24：四栏的**几何**整段搬到结构层（本文件「结构层 · Linear 四栏」那段）。
+   在这之前同一套四栏在两个键上各写了一份，特异性都是 (1,1,1)，靠先后顺序
+   逐条属性分胜负 —— 谁赢是碰运气，不是设计。而且这一份挂在皮肤键上，
+   等于「选了剧场皮就自动变四栏」，结构轴在 playbill 下完全空转
+   （实测：手改 data-claude-structure 到 rail，画面逐像素不变）。
 
-  /* ---- 第一列：导航 ---- */
+   现在这一段只留**长相**：列的内边距、分栏线和列底色的取值、第四列的字号。
+   分栏线走 --cw-col-rule / --cw-col-surface 两个中转变量，结构层负责「哪里有线」，
+   这里负责「线是什么颜色」。
+   --------------------------------------------------------------------------- */
+html[data-claude-skin="playbill"]{
+  --cw-col-rule:var(--cw-rule-hairline);
+  --cw-col-surface:var(--cw-surface-page);
+}
+
+@media (min-width:1100px){
+  /* ---- 第一列：导航的长相（宽度在结构层） ---- */
   html[data-claude-skin="playbill"] #top-settings-holder{
-    width:var(--cw-c-nav) !important; max-width:var(--cw-c-nav) !important;
     padding:20px 0 32px !important;
     border-right:1px solid var(--cw-rule-hairline) !important;
     background:var(--cw-surface-page) !important;
@@ -5842,51 +5927,13 @@ html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !imp
     max-width:100% !important; box-sizing:border-box !important;
   }
 
-  /* ---- 第二列：会话列表。fixed 不是 absolute —— rail 自己有 overflow:auto，
-         absolute 会跟着 rail 一起滚。 ---- */
-  html[data-claude-skin="playbill"] .clawd-rail-recents{
-    position:fixed !important; left:var(--cw-c-nav) !important;
-    top:0 !important; bottom:0 !important;
-    width:var(--cw-c-list) !important; max-width:var(--cw-c-list) !important;
-    margin:0 !important; padding:0 !important;
-    border-right:1px solid var(--cw-rule-hairline) !important;
-    border-left:0 !important;
-    overflow-y:auto !important; z-index:3996 !important;
-    background:var(--cw-surface-page) !important;
-  }
-
-  /* ---- 第三列：对话流让位 ---- */
-  html[data-claude-skin="playbill"] #chat{
-    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list) + 28px) !important;
-    padding-right:calc(var(--cw-c-cast) + 28px) !important;
-  }
-  html[data-claude-skin="playbill"] #form_sheld{
-    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
-    padding-right:var(--cw-c-cast) !important;
-  }
-
-  /* ---- 第四列：演职员。DOM 由 index.js 的 ensureAside() 建 ---- */
+  /* ---- 第四列：演职员的字号和内边距（几何在结构层） ---- */
   html[data-claude-skin="playbill"] #clawd-aside{
-    display:block !important;
-    position:fixed; right:0; top:0; bottom:0;
-    width:var(--cw-c-cast); box-sizing:border-box;
-    border-left:1px solid var(--cw-rule-hairline);
-    background:var(--cw-surface-page);
-    z-index:3996; padding:20px var(--cw-gut) 32px; overflow-y:auto;
-    font-family:var(--cl-sans);
-    font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
-    color:var(--cw-text-muted);
+    padding:20px var(--cw-gut) 32px !important;
+    font-family:var(--cl-sans) !important;
+    font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+    color:var(--cw-text-muted) !important;
   }
-
-  /* 抽屉是临时面板，会话列表是常驻列 —— 面板不该盖住列。 */
-  html[data-claude-skin="playbill"] #top-settings-holder .drawer-content{
-    left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
-    right:var(--cw-c-cast) !important;
-    width:auto !important;
-  }
-}
-@media (max-width:1099px){
-  html[data-claude-skin="playbill"] #clawd-aside{ display:none !important; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -7063,8 +7110,11 @@ html[data-claude-skin="playbill"] #chat .mes_buttons{
    左到会话列表的右边线，右到演职员栏的左边线 —— 从边线到边线铺满。
    z-index 要压过正文但低于抽屉面板（3996），否则打开设置会被图盖住。 */
 #clawd-pb-banner{ display:none; }
+/* 2026-08-24：加上 structure 键。顶图的左右边界是按**四栏的缝**算的，
+   侧边栏形态下没有这两条缝，硬摆会横穿会话列表。所以剧场 + 侧边栏时
+   不显示顶图 —— 落回上面那条 display:none。 */
 @media (min-width:1100px){
-  html[data-claude-skin="playbill"] #clawd-pb-banner{
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #clawd-pb-banner{
     display:block;
     position:fixed;
     top:0;
@@ -7078,12 +7128,12 @@ html[data-claude-skin="playbill"] #chat .mes_buttons{
     pointer-events:none;
   }
   /* 底端渐变：正文滚进这一带时被淡出去，不是被一条硬边切断。 */
-  html[data-claude-skin="playbill"] #clawd-pb-banner::after{
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #clawd-pb-banner::after{
     content:''; position:absolute; inset:auto 0 0 0; height:45%;
     background:linear-gradient(to bottom, transparent, var(--cw-surface-page));
   }
   /* 正文从图下面开始，不然第一条消息一上来就是被挡住的。 */
-  html[data-claude-skin="playbill"] #chat{ padding-top:300px !important; }
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #chat{ padding-top:300px !important; }
 }
 /* 上一版那两个内嵌配图节点不再使用 */
 html[data-claude-skin="playbill"] .cw-cover .cw-art,
@@ -7397,9 +7447,15 @@ html[data-claude-skin="playbill"] #chat .mes_text > p{ margin:0 0 14px !importan
 html[data-claude-skin="playbill"] #chat .mes_text > p:last-child{ margin-bottom:0 !important; }
 
 /* ---- 3. 输入框置底 ----
-   之前它跟着内容流浮在半空。钉到对话列底部，左右边界和四栏几何对齐。 */
+   之前它跟着内容流浮在半空。钉到对话列底部，左右边界和四栏几何对齐。
+
+   2026-08-24：加上 structure 键。left/right 是按四栏的缝算的，侧边栏形态下
+   这两条缝不存在。剧场 + 侧边栏时输入框落回官网 rail 那套（相对流 + padding），
+   位置正常，只是不置底。
+   ⚠ 这一条才是真正生效的输入框几何 —— 拆分前皮肤段里另有一条只改 padding 的
+   #form_sheld（在本文件更靠前的位置），被这一条整个盖掉了。 */
 @media (min-width:1100px){
-  html[data-claude-skin="playbill"] #form_sheld{
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #form_sheld{
     position:fixed !important;
     left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
     right:var(--cw-c-cast) !important;
@@ -7411,7 +7467,7 @@ html[data-claude-skin="playbill"] #chat .mes_text > p:last-child{ margin-bottom:
     z-index:3200 !important;
   }
   /* 输入框是 fixed 的，最后一条消息会被它盖住，末尾补出等高的余量。 */
-  html[data-claude-skin="playbill"] #chat{ padding-bottom:150px !important; }
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #chat{ padding-bottom:150px !important; }
 }
 
 /* ---- 4. 发送键用文字 Send ----
@@ -7634,31 +7690,37 @@ html[data-claude-skin="playbill"] #top-settings-holder{
 
 /* ---- 12. 栏宽拖拽把手 ----
    三条竖缝上各一个。平时完全看不见，鼠标压上去才出一条细线 ——
-   常显的话版面上就多了三条和内容无关的竖线，这套设计里线是有含义的。 */
-html[data-claude-skin="playbill"] .cw-rail-grip{
+   常显的话版面上就多了三条和内容无关的竖线，这套设计里线是有含义的。
+
+   2026-08-24：键从 skin 换成 structure。栏宽是几何，不是长相 ——
+   官网风格的四栏一样有这三条缝，一样该能拖。 */
+html[data-claude-structure="linear"] .cw-rail-grip{
   position:fixed; top:0; bottom:0;
   width:11px; margin-left:-5px;
   z-index:4100;
   cursor:col-resize;
   background:none;
 }
-html[data-claude-skin="playbill"] .cw-rail-grip[data-col="nav"]{ left:var(--cw-c-nav); }
-html[data-claude-skin="playbill"] .cw-rail-grip[data-col="list"]{ left:calc(var(--cw-c-nav) + var(--cw-c-list)); }
-html[data-claude-skin="playbill"] .cw-rail-grip[data-col="cast"]{ left:auto; right:var(--cw-c-cast); margin-left:0; margin-right:-5px; }
-html[data-claude-skin="playbill"] .cw-rail-grip::before{
+html[data-claude-structure="linear"] .cw-rail-grip[data-col="nav"]{ left:var(--cw-c-nav); }
+html[data-claude-structure="linear"] .cw-rail-grip[data-col="list"]{ left:calc(var(--cw-c-nav) + var(--cw-c-list)); }
+html[data-claude-structure="linear"] .cw-rail-grip[data-col="cast"]{ left:auto; right:var(--cw-c-cast); margin-left:0; margin-right:-5px; }
+html[data-claude-structure="linear"] .cw-rail-grip::before{
   content:""; position:absolute; top:0; bottom:0; left:5px;
   width:1px; background:var(--cw-mark);
   opacity:0; transition:opacity .12s linear;
 }
-html[data-claude-skin="playbill"] .cw-rail-grip:hover::before,
-html[data-claude-skin="playbill"] .cw-rail-grip.is-drag::before{ opacity:1; }
+html[data-claude-structure="linear"] .cw-rail-grip:hover::before,
+html[data-claude-structure="linear"] .cw-rail-grip.is-drag::before{ opacity:1; }
 /* 拖动时别让指针在文字上刷出一片选中蓝。 */
 html.cw-rail-dragging, html.cw-rail-dragging *{
   user-select:none !important; cursor:col-resize !important;
 }
-/* 窄屏退回侧边栏形态时，把手不能留在屏幕上。 */
-@media (max-width:1100px){
-  html[data-claude-skin="playbill"] .cw-rail-grip{ display:none !important; }
+/* 窄屏退回侧边栏形态时，把手不能留在屏幕上。
+   断点写 1099 不是 1100：四栏本体是 (min-width:1100px)，
+   原来这里写 (max-width:1100px)，正好 1100px 时两边都命中 ——
+   四栏还在，把手已经没了。 */
+@media (max-width:1099px){
+  html .cw-rail-grip{ display:none !important; }
 }
 
 
@@ -8134,13 +8196,18 @@ html[data-claude-skin="playbill"] .cw-top-btn.is-primary{
   background:var(--cw-mark); color:var(--cw-surface-page);
 }
 
-/* 四栏整体下移，给顶栏让位。这五处必须一起改 —— 漏一处那一栏就会被顶栏盖住。 */
+/* 四栏整体下移，给顶栏让位。这几处必须一起改 —— 漏一处那一栏就会被顶栏盖住。
+   2026-08-24：
+   · 加 structure 键 —— 只有四栏形态才需要整体下移。
+   · 补上 #top-bar：它是第一列的背景板，和 #top-settings-holder 同宽同位，
+     原来不在名单里，等于背景比内容高出 52px。两者底色相同所以一直没人看见。 */
 @media (min-width:1100px){
-  html[data-claude-skin="playbill"] #top-settings-holder,
-  html[data-claude-skin="playbill"] .clawd-rail-recents,
-  html[data-claude-skin="playbill"] #clawd-aside,
-  html[data-claude-skin="playbill"] body #sheld,
-  html[data-claude-skin="playbill"] .cw-rail-grip{
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #top-bar,
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #top-settings-holder,
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] .clawd-rail-recents,
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] #clawd-aside,
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] body #sheld,
+  html[data-claude-structure="linear"][data-claude-skin="playbill"] .cw-rail-grip{
     top:var(--cw-pb-top) !important;
   }
 }
