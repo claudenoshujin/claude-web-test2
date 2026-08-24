@@ -375,6 +375,13 @@ const CLAUDE_KEYBOARD_BUILD = {
    写两处就有一天会对不上。这里从构建脚本的 REPO_URL 注入。 */
 const CLAUDE_EXTENSION_REPO = 'https://github.com/claudenoshujin/claude-web-test2';
 
+/* 四栏容器的 id。放在模块顶层是因为它有**两个**互相看不见的使用者：
+   ensureShell() / dismantleShell()（建和拆），以及 ensureRecentsSlot()
+   （判断「这一格现在的爹合不合法」）。这两处在两个平级的 IIFE 里 ——
+   看着缩进一样、花括号深度一样，但不是同一个作用域，写在其中一边另一边
+   运行时就是 ReferenceError。2026-08-24 按深度判断同作用域，踩了一次。 */
+const CW_SHELL_ID = 'cw-shell';
+
 const CLAUDE_THEME = CLAUDE_THEMES[CLAUDE_THEME_VARIANT];
 
 /* 兼容模式从 2.0.86 起也分明暗：外壳整块用 Claude 自己的皮肤，
@@ -7162,7 +7169,12 @@ if (CLAUDE_ENABLED) {
     const slots = [...hostDocument.querySelectorAll('.' + RAIL_RECENTS_CLASS)];
     for (const extra of slots.slice(1)) extra.remove();
     let slot = slots[0] || null;
-    if (slot && slot.parentElement !== holder) { slot.remove(); slot = null; }
+    /* 2.0.148：四栏形态下这一格被 ensureShell() 搬进 #cw-shell 了，
+       那也是合法的爹。只认 holder 的话，每次刷新都会把它删掉重建回 rail 里，
+       第二列会在「搬出去 / 被搬回来」之间来回跳。 */
+    if (slot && slot.parentElement !== holder && slot.parentElement?.id !== CW_SHELL_ID) {
+      slot.remove(); slot = null;
+    }
     if (slot) return slot;
 
     slot = hostDocument.createElement('div');
@@ -11005,7 +11017,18 @@ if (CLAUDE_ENABLED) {
     items.forEach(([id, label, icon]) => {
       nav.appendChild(pbNavItem(label, () => pbOpenDrawer(id), false, icon));
     });
-    rail.insertBefore(nav, rail.querySelector('.clawd-rail-recents') || null);
+    rail.insertBefore(nav, railInsertAnchor(rail));
+  }
+
+  /* 导航和角色名单要插在 rail 里靠上的位置。原来拿 .clawd-rail-recents 当锚点，
+     2.0.148 起四栏形态下那一格被搬进 #cw-shell 了，rail 里找不到 ——
+     querySelector 返回 null，insertBefore(x, null) 等于 append，两块会掉到
+     所有抽屉后面去。退回用「玩家角色」那个抽屉当锚点：ensureRecentsSlot()
+     当初也是插在它前面的，所以两种形态下的顺序一致。 */
+  function railInsertAnchor(rail) {
+    return rail.querySelector('.clawd-rail-recents')
+      || rail.querySelector(':scope > .drawer#persona-management-button')
+      || null;
   }
 
   /* ---- 角色卡名单 ----
@@ -11068,7 +11091,7 @@ if (CLAUDE_ENABLED) {
     /* 放在导航正下面，用一条细线和功能模块隔开 —— 不钉在栏底。
        钉底会在名单和导航之间留出一大片和内容无关的空白；
        名单是「功能模块的下一组」，不是页脚。 */
-    rail.insertBefore(box, rail.querySelector('.clawd-rail-recents') || null);
+    rail.insertBefore(box, railInsertAnchor(rail));
   }
 
   /* 换角色。酒馆自己的入口是角色卡抽屉里那张卡的 .character_select，
@@ -11685,6 +11708,123 @@ if (CLAUDE_ENABLED) {
     });
   }
 
+  /* ==========================================================================
+     #cw-shell —— 四栏的容器（2.0.148 阶段 C）
+
+     在这之前四栏是「四个各自 position:fixed 的浮层 + 给 #chat 写死 padding-left」。
+     那套能出画面，但每一栏的位置都是独立算出来的，四份 calc 里漏改一处就错位，
+     而且错位只在某个宽度下才看得见。改成一个 grid：列宽只声明一次，
+     谁占哪一格由 grid-column 说了算。
+
+     —— 四条必须守住的 ——
+
+     1. **不许给 #cw-shell 或它的祖先加 transform / filter / contain / will-change。**
+        这四个里任意一个都会把 position:fixed 的包含块从视口换成这个容器，
+        而酒馆的抽屉、弹窗、Clawd 的抓取定位全是 fixed。一加就是全线错位，
+        而且错得很像「CSS 写错了」，会白白花一整轮去查 CSS。
+        （position:relative / z-index 不在此列 —— 它们只造层叠上下文，
+          不改 fixed 的包含块。但 #cw-shell 自己也不设 z-index：
+          设了就把四栏关进一个层叠上下文，抽屉和 Clawd 的前后关系会跟着变。
+          层级仍由每一格自己的 z-index 决定，值和搬家前一样。）
+
+     2. **appendChild 保留事件监听器**，所以抽屉的开关不会坏。会坏的是**选择器**：
+        凡是 `body > #sheld` 这种直接子代写法，搬完就不匹配了。
+        2026-08-24 搬之前全量搜过：酒馆自己的 CSS/JS、扩展的 CSS/JS 里
+        一条都没有，所以这次是安全的。以后再搬别的节点要重新搜一遍。
+
+     3. **记下每个节点原来的爹和后一个兄弟**，别靠猜顺序。body 有 90 多个子节点，
+        其中二十几个是 <script>，放错位置不报错，但下一次有人按兄弟关系找东西就错。
+
+     4. **窄屏不拆容器，走 display:contents。** 节点仍在容器里，但布局上等于回到
+        body 的流，rail 那套 position:fixed 照常生效。比「把节点搬回去」安全得多 ——
+        搬来搬去会在窗口宽度反复跨过 1100px 时抖。
+     ========================================================================== */
+  /* 三格在侧边栏形态下本来就是 body 的直接子节点，所以窄屏时容器变
+     display:contents 就够了 —— 它们回到 body 的流，位置和没搬过一样。 */
+  const SHELL_CELL_SELECTORS = [
+    '#top-settings-holder',      /* 第一格：导航 */
+    '#sheld',                    /* 第三格：对话流 + 输入框 */
+    '#clawd-aside',              /* 第四格：演职员 */
+  ];
+  /* 第二格是例外，要单独处理。会话列表在侧边栏形态下是 **rail 的子节点**，
+     不是 body 的。容器一 display:contents，它就掉进 body 的流里，
+     变成一条铺满整屏宽的块 —— 2026-08-24 实测 1000px 下 x=0 w=1000。
+     所以它跟着断点走：宽屏进容器当第二列，窄屏搬回 rail 里。
+     一次跨断点只搬一次（matchMedia 的 change 事件不是按像素触发的），
+     不会出现「拖窗口时反复搬 DOM」那种抖动。 */
+  const SHELL_LIST_SELECTOR = '.clawd-rail-recents';
+  const CW_SHELL_MQ = '(min-width:1100px)';
+  let shellMqBound = false;
+  /* 用 WeakMap 不用属性：节点是酒馆的，不往它身上写自定义字段。
+     节点被别人删掉时这里也跟着自动回收。 */
+  const shellHomes = new WeakMap();
+
+  /* 把一个节点搬回它进容器之前待的地方。搬不回去（原来的爹已经不在文档里了）
+     就退到 body 末尾 —— 总比留在一个马上要被删掉的容器里强。 */
+  function shellGoHome(el) {
+    const home = shellHomes.get(el);
+    shellHomes.delete(el);
+    if (!home?.parent?.isConnected) { document.body.appendChild(el); return; }
+    /* next 可能已经被别人删掉、或者自己也被搬走了，那就退回 append 到原来的爹 */
+    if (home.next && home.next.parentElement === home.parent) home.parent.insertBefore(el, home.next);
+    else home.parent.appendChild(el);
+  }
+
+  function shellTakeIn(shell, el) {
+    if (!el || el.parentElement === shell) return;   /* 幂等：已经在里面就不再搬 */
+    if (!shellHomes.has(el)) {
+      shellHomes.set(el, { parent: el.parentElement, next: el.nextElementSibling });
+    }
+    shell.appendChild(el);
+  }
+
+  function ensureShell() {
+    const linear = document.documentElement.dataset.claudeStructure === 'linear';
+    let shell = document.getElementById(CW_SHELL_ID);
+    if (!linear) { if (shell) dismantleShell(shell); return null; }
+
+    if (!shell) {
+      shell = document.createElement('div');
+      shell.id = CW_SHELL_ID;
+      /* 插在 #sheld 原来的位置上，不是 append 到 body 末尾 ——
+         body 里的相对次序不变，别的扩展按兄弟关系找东西时看到的还是原来那一片。 */
+      const sheld = document.getElementById('sheld');
+      if (sheld?.parentElement) sheld.parentElement.insertBefore(shell, sheld);
+      else document.body.appendChild(shell);
+    }
+
+    /* 只绑一次。窗口跨过 1100px 时要重算第二格该待在哪。 */
+    if (!shellMqBound) {
+      shellMqBound = true;
+      try {
+        window.matchMedia(CW_SHELL_MQ)
+          .addEventListener('change', () => { try { ensureShell(); } catch { /* 拆到一半也别炸主流程 */ } });
+      } catch { /* 老 WebView 没有 addEventListener，那就只在切结构时重算 */ }
+    }
+
+    for (const sel of SHELL_CELL_SELECTORS) shellTakeIn(shell, document.querySelector(sel));
+
+    /* 第二格跟着断点走，理由见 SHELL_LIST_SELECTOR 上面那段注释。 */
+    const list = document.querySelector(SHELL_LIST_SELECTOR);
+    if (list) {
+      let wide = true;
+      try { wide = window.matchMedia(CW_SHELL_MQ).matches; } catch { /* 取不到就当宽屏 */ }
+      if (wide) shellTakeIn(shell, list);
+      else if (list.parentElement === shell) shellGoHome(list);
+    }
+    return shell;
+  }
+
+  function dismantleShell(shell) {
+    shell = shell || document.getElementById(CW_SHELL_ID);
+    if (!shell) return;
+    /* 按 DOM 顺序还原。顺序有讲究：#top-settings-holder 排在 .clawd-rail-recents
+       前面，所以先把 rail 放回 body，rail 再接住列表 —— 反过来的话
+       列表要认的那个爹这会儿还在容器里。 */
+    for (const el of [...shell.children]) shellGoHome(el);
+    shell.remove();
+  }
+
   function ensureAside() {
     /* 2026-08-24：只看 structure。
        原来的条件是「structure 不是 linear **且** skin 不是 playbill」才返回 ——
@@ -11746,6 +11886,10 @@ if (CLAUDE_ENABLED) {
       buildCast();
       buildTopbar();
       pbWatchRails();
+      /* 放在最后：上面几个 build 会新建节点（演职员栏、导航、名单），
+         ensureShell 只搬已经存在的那四格，所以要等它们建完再搬。
+         它是幂等的，每帧调一次不会重复搬。 */
+      ensureShell();
     });
   }
 
@@ -12853,6 +12997,8 @@ if (CLAUDE_ENABLED) {
       /* 三个栏宽把手归结构管，切回 rail 时要立刻收掉、切到 linear 时要立刻建出来。
          watchSession 只在第一次调用时真的绑东西，不能指望它顺带刷这一步。 */
       pbWatchRails();
+      /* 容器同理：切到 linear 建、切回 rail 拆。也不能等 watchSession。 */
+      ensureShell();
       hint.textContent = structureSelect.value === 'linear'
         ? '已切到 Linear 四栏。窄于 1100px 会自动退回侧边栏。'
         : '已切回侧边栏。';
@@ -13118,6 +13264,9 @@ if (CLAUDE_ENABLED) {
     try {
       ensureAside();
       watchSession();
+      /* watchSession 里的 refreshTheatre 是排在 rAF 里的，第一帧之前先搬一次，
+         省掉「四栏浮在旧位置上闪一下再归位」。搬是幂等的，重复调没代价。 */
+      ensureShell();
     } catch (error) {
       console.warn('[Claude Web] 剧场结构启动失败：', error);
     }

@@ -5557,9 +5557,135 @@ html[data-claude-structure="linear"]{
     --cl-rail:var(--cw-c-nav) !important;
   }
 
+  /* ======================================================================
+     四栏容器（2.0.148 阶段 C）
+
+     在这之前四栏是四个各自 position:fixed 的浮层，加上给 #chat 写死的
+     padding-left。那套能出画面，但每一栏的位置都是独立算的：
+     一个列宽要在四处 calc 里同时改对，漏一处就错位，而且只在某个宽度下才看得见。
+     现在列宽只声明一次（grid-template-columns），谁占哪一格由 grid-column 说了算。
+
+     用 grid-column 显式指派，不靠 DOM 顺序：ensureShell() 是按选择器逐个搬的，
+     哪一格先建出来就先进容器，顺序不保证。
+     grid-row:1 也要显式写 —— 只写 grid-column 的话，自动布局的游标会按
+     放置顺序单向前进：第二格最后一个搬进来时游标已经越过第 2 列，它就掉进
+     一个隐式的第二行去了（2026-08-24 实测 y=1000）。
+
+     **不给 #cw-shell 设 z-index**，也不设 transform / filter / contain / will-change：
+     前者会把四栏关进一个层叠上下文，抽屉、弹窗、Clawd 和它们的前后关系会跟着变；
+     后四个更狠 —— 任意一个都会把 position:fixed 的包含块从视口换成这个容器，
+     而那几样东西全是 fixed，一加就是全线错位。
+     层级仍由每一格自己的 z-index 决定，值和搬家前一样。
+     ====================================================================== */
+  html[data-claude-structure="linear"] #cw-shell{
+    display:grid;
+    grid-template-columns:var(--cw-c-nav) var(--cw-c-list) minmax(0,1fr) var(--cw-c-cast);
+    grid-template-rows:100%;
+    height:100dvh;
+    box-sizing:border-box;
+    /* 剧场皮有一条固定顶栏，整块往下让。以前是给五个节点各写一条 top，
+       名单里漏了谁谁就被顶栏盖住 —— 现在只有这一处。 */
+    padding-top:var(--cw-shell-top, 0px);
+  }
+  /* 把四格从 fixed / absolute 收回网格流。
+     position:relative 而不是 static：static 的元素 z-index 不生效，
+     少了这一条，导航会被别的 fixed 浮层盖住。
+
+     ⚠ 这里**逐个点名**，不写 `#cw-shell > *`。写通配的话，任何以后落进容器的
+     节点都会被强制成 relative 并掉进一个隐式网格行 —— 包括 position:fixed 的
+     浮层。2026-08-24 用一个 fixed 探针验「包含块有没有被偷换」时，探针自己
+     先被这条通配规则改成了 relative，测出来的 (0,1000) 是假警报。 */
+  html[data-claude-structure="linear"] #cw-shell > #top-settings-holder,
+  html[data-claude-structure="linear"] #cw-shell > .clawd-rail-recents,
+  html[data-claude-structure="linear"] #cw-shell > #sheld,
+  html[data-claude-structure="linear"] #cw-shell > #clawd-aside{
+    position:relative !important;
+    top:auto !important; right:auto !important; bottom:auto !important; left:auto !important;
+    width:auto !important; max-width:none !important; min-width:0 !important;
+    height:auto !important; max-height:none !important; min-height:0 !important;
+    margin:0 !important;
+    box-sizing:border-box !important;
+  }
+  html[data-claude-structure="linear"] #cw-shell > #top-settings-holder{
+    grid-column:1; grid-row:1; z-index:3995;
+    overflow-y:auto !important; overflow-x:hidden !important;
+    background:var(--cw-col-surface) !important;
+    border-right:1px solid var(--cw-col-rule) !important;
+  }
+  /* 内边距**不写在上面那条里**。上面那条特异性是 (2,1,1)，会压过皮肤层
+     playbill 的 `padding:20px 0 32px`(1,1,1)，把上下内边距一起清成 0 ——
+     而 .clawd-rail-brand 带着 transform:translateY(-6px)，上内边距一没
+     它就顶到列外面去，被 overflow-y:auto 裁掉半行。2026-08-24 踩过。
+     内边距是长相，留在这条低特异性的规则里，让皮肤层能盖。 */
   html[data-claude-structure="linear"] #top-settings-holder{
     padding-left:14px !important; padding-right:8px !important;
   }
+  html[data-claude-structure="linear"] #cw-shell > .clawd-rail-recents{
+    grid-column:2; grid-row:1; z-index:3996;
+    overflow-y:auto !important;
+    padding:0 !important;
+    border-left:0 !important;
+    border-right:1px solid var(--cw-col-rule) !important;
+    background:var(--cw-col-surface) !important;
+  }
+  html[data-claude-structure="linear"] #cw-shell > #sheld{
+    grid-column:3; grid-row:1; z-index:30;
+    display:flex !important; flex-direction:column !important;
+    /* justify-content 必须显式钉成 flex-start。欢迎页给 #sheld 设了
+       justify-content:center，而这一列的内容比列高 —— 居中的 flex 容器
+       溢出时是**两头都溢**，#chat 会被顶到列顶上面去（实测 y=-100），
+       欢迎语整个被裁掉。2026-08-24 踩过。 */
+    justify-content:flex-start !important;
+    align-items:stretch !important;
+    overflow:hidden !important;
+  }
+  html[data-claude-structure="linear"] #cw-shell > #clawd-aside{
+    grid-column:4; grid-row:1; z-index:3996;
+    display:block !important;
+    overflow-y:auto !important;
+    padding:18px 20px !important;
+    border-left:1px solid var(--cw-col-rule) !important;
+    background:var(--cw-col-surface) !important;
+    font-family:var(--cl-sans); font-size:12.5px; line-height:1.35; color:var(--cl-muted);
+  }
+  /* #top-bar 是个**空节点**（0 个子元素），在 rail 形态下只当侧栏的背景板用。
+     四栏下第一列自己有底色和分栏线，再留一块和它同宽同位的 fixed 浮层
+     只会多一层要对齐的东西 —— 之前那条横穿第二列的竖线就是它这类东西留下的。 */
+  html[data-claude-structure="linear"] #top-bar{ display:none !important; }
+
+  /* 第三列内部：对话流吃掉剩余高度，输入框回到流里贴底。
+     输入框原来是 fixed + left/right 按四栏的缝算的，现在它就是这一列的最后一行。 */
+  html[data-claude-structure="linear"] #cw-shell > #sheld > #chat{
+    flex:1 1 auto !important; min-height:0 !important;
+    max-height:none !important; height:auto !important;
+    overflow-y:auto !important;
+    padding-left:28px !important; padding-right:28px !important;
+  }
+  /* 欢迎页给 #chat 和 #form_sheld 加了 transform:translateY(clamp(-128px,-10vh,-72px))，
+     把输入框整体往上提。旧布局下 #sheld 是个可滚的浮层，提上去没关系；
+     四栏下这一列是 overflow:hidden 的网格格子，一提就把欢迎语顶到格子外面
+     被裁掉（2026-08-24 实测 #chat 在 y=-100，欢迎语整行看不见）。
+     这一列自己会排 chat + 输入框，不需要那个位移。
+     顺带：transform 会把 position:fixed 后代的包含块换成 #chat 本身，
+     四栏下去掉它对别的 fixed 浮层也更安全。 */
+  html[data-claude-structure="linear"] #cw-shell > #sheld > #chat,
+  html[data-claude-structure="linear"] #cw-shell > #sheld > #form_sheld{
+    transform:none !important;
+  }
+  /* 欢迎页内容很短，让它在这一列里居中，保住原来那个「居中一屏」的观感。
+     用 safe center：万一以后内容变长，溢出时退回顶对齐，不会两头都溢。 */
+  html[data-claude-structure="linear"] body.clawd-welcome #cw-shell > #sheld > #chat{
+    justify-content:safe center !important;
+  }
+  html[data-claude-structure="linear"] #cw-shell > #sheld > #form_sheld{
+    flex:0 0 auto !important;
+    position:static !important;
+    width:auto !important; max-width:none !important;
+    left:auto !important; right:auto !important; bottom:auto !important;
+    padding:0 28px 8px !important;
+    background:var(--cw-col-surface) !important;
+  }
+
   html[data-claude-structure="linear"] #top-settings-holder > *:not(.clawd-rail-recents){
     max-width:100% !important; box-sizing:border-box !important;
   }
@@ -5571,17 +5697,6 @@ html[data-claude-structure="linear"]{
      .cw-rail-grip[data-col="nav"] 管，留着就是同一条缝上叠两个热区。 */
   html[data-claude-structure="linear"] .clawd-rail-grip{ display:none !important; }
 
-  /* ---- 第二列：会话列表。position:fixed 而不是 absolute ——
-         rail 自己有 overflow:auto，absolute 会跟着滚。 ---- */
-  html[data-claude-structure="linear"] .clawd-rail-recents{
-    position:fixed !important; left:var(--cw-c-nav) !important; top:0 !important; bottom:0 !important;
-    width:var(--cw-c-list) !important; max-width:var(--cw-c-list) !important;
-    margin:0 !important; padding:0 !important;
-    border-left:0 !important;
-    border-right:1px solid var(--cw-col-rule) !important;
-    overflow-y:auto !important; z-index:3996 !important;
-    background:var(--cw-col-surface) !important;
-  }
   html[data-claude-structure="linear"] .clawd-rail-recents-label{
     position:sticky !important; top:0 !important; z-index:2 !important;
     background:var(--cw-col-surface) !important;
@@ -5589,26 +5704,6 @@ html[data-claude-structure="linear"]{
     border-bottom:1px solid var(--cw-col-rule) !important;
   }
   /* 列表行的长相已移到皮肤层（Are.na 那份），结构层只留几何。 */
-
-  /* ---- 对话流让位。28px 是列和正文之间的呼吸，不算分栏宽度。 ---- */
-  html[data-claude-structure="linear"] #chat{
-    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list) + 28px) !important;
-    padding-right:calc(var(--cw-c-cast) + 28px) !important;
-  }
-  html[data-claude-structure="linear"] #form_sheld{
-    padding-left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
-    padding-right:var(--cw-c-cast) !important;
-  }
-
-  /* ---- 第四列：演职员。由 index.js 建节点，CSS 只负责排 ---- */
-  html[data-claude-structure="linear"] #clawd-aside{
-    display:block !important;
-    position:fixed; right:0; top:0; bottom:0;
-    width:var(--cw-c-cast); box-sizing:border-box;
-    border-left:1px solid var(--cw-col-rule); background:var(--cw-col-surface);
-    z-index:3996; padding:18px 20px; overflow-y:auto;
-    font-family:var(--cl-sans); font-size:12.5px; line-height:1.35; color:var(--cl-muted);
-  }
   /* rail 形态下没有第四列，没地方放演职员。这条要 !important：
      以前皮肤层有一条 skin=playbill 的 display:block !important 会把它顶回来。 */
   html:not([data-claude-structure="linear"]) #clawd-aside{ display:none !important; }
@@ -5623,8 +5718,17 @@ html[data-claude-structure="linear"]{
   }
   #clawd-aside .cw-g{ margin-bottom:26px; }
 }
-/* 窄屏一律退回侧边栏形态 —— 手机端还没有对得上的参考 */
+/* 窄屏一律退回侧边栏形态 —— 手机端还没有对得上的参考。
+
+   容器**不拆**，只把它变成 display:contents：节点仍在 #cw-shell 里，
+   但布局上等于回到 body 的流，rail 那套 position:fixed 照常生效。
+   比「窄了就把节点搬回去、宽了再搬进来」安全得多 —— 那样在窗口宽度
+   反复跨过 1100px 时会一直搬 DOM，画面抖，还会踩到「搬到一半又被搬回去」。
+
+   ⚠ display:contents 只让容器自己不生成盒子，**子元素的 grid-column 不会失效**，
+   只是没有网格可落，被忽略。所以这里不用逐条清 grid-column。 */
 @media (max-width:1099px){
+  #cw-shell{ display:contents !important; }
   html[data-claude-structure="linear"] #clawd-aside{ display:none !important; }
 }
 
@@ -7122,7 +7226,9 @@ html[data-claude-skin="playbill"] #chat .mes_buttons{
   html[data-claude-structure="linear"][data-claude-skin="playbill"] #clawd-pb-banner{
     display:block;
     position:fixed;
-    top:0;
+    /* 顶图不在 #cw-shell 里（它是 body 的直接子节点），所以容器的 padding-top
+       带不动它，得自己跟着顶栏往下让。 */
+    top:var(--cw-shell-top, 0px);
     left:calc(var(--cw-c-nav) + var(--cw-c-list));
     right:var(--cw-c-cast);
     height:300px;
@@ -7137,8 +7243,17 @@ html[data-claude-skin="playbill"] #chat .mes_buttons{
     content:''; position:absolute; inset:auto 0 0 0; height:45%;
     background:linear-gradient(to bottom, transparent, var(--cw-surface-page));
   }
-  /* 正文从图下面开始，不然第一条消息一上来就是被挡住的。 */
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] #chat{ padding-top:300px !important; }
+  /* 正文让出图的高度这一条**删了**（2026-08-24 阶段 C）。
+
+     #clawd-pb-banner 这个节点早就废弃：本文件下面有一条
+     `#clawd-pb-banner{ display:none !important; }`，index.js 里也没有任何地方建它。
+     真正在用的是 `body:has(#clawd-pb-banner) #chat{padding-top:300px}` —— 有图才留位。
+
+     这里原来那条是 `html[data-claude-skin="playbill"] #chat`(1,1,1)，输给后面两条
+     同样是 (1,1,1) 的归零规则（后写的赢），所以一直没生效、也没人发现。
+     阶段 B 我给它加了 `[data-claude-structure="linear"]` 前缀，特异性变成 (1,2,1)，
+     它就**反超**了那两条归零规则 —— 于是没有配图也留 300px 空白，
+     欢迎语被顶到屏幕中间。给死规则提特异性会把它救活，这是这次的教训。 */
 }
 /* 上一版那两个内嵌配图节点不再使用 */
 html[data-claude-skin="playbill"] .cw-cover .cw-art,
@@ -7452,28 +7567,16 @@ html[data-claude-skin="playbill"] #chat .mes_text > p{ margin:0 0 14px !importan
 html[data-claude-skin="playbill"] #chat .mes_text > p:last-child{ margin-bottom:0 !important; }
 
 /* ---- 3. 输入框置底 ----
-   之前它跟着内容流浮在半空。钉到对话列底部，左右边界和四栏几何对齐。
+   2026-08-24 阶段 C：这一段整个删了，几何交给结构层的 #cw-shell。
 
-   2026-08-24：加上 structure 键。left/right 是按四栏的缝算的，侧边栏形态下
-   这两条缝不存在。剧场 + 侧边栏时输入框落回官网 rail 那套（相对流 + padding），
-   位置正常，只是不置底。
-   ⚠ 这一条才是真正生效的输入框几何 —— 拆分前皮肤段里另有一条只改 padding 的
-   #form_sheld（在本文件更靠前的位置），被这一条整个盖掉了。 */
-@media (min-width:1100px){
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] #form_sheld{
-    position:fixed !important;
-    left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
-    right:var(--cw-c-cast) !important;
-    bottom:0 !important;
-    top:auto !important;
-    width:auto !important;
-    padding:0 28px 8px !important;
-    background:var(--cw-surface-page) !important;
-    z-index:3200 !important;
-  }
-  /* 输入框是 fixed 的，最后一条消息会被它盖住，末尾补出等高的余量。 */
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] #chat{ padding-bottom:150px !important; }
-}
+   原来是 `position:fixed` + `left:calc(nav+list)` + `right:cast` 把输入框
+   钉在对话列底部，再给 #chat 补 150px 的 padding-bottom 让最后一条消息
+   不被它盖住。现在第三列自己是一个纵向 flex：#chat 吃掉剩余高度并滚动，
+   #form_sheld 就是这一列的最后一行 —— 它天然贴底、天然不盖住内容，
+   left/right/padding-bottom 三处对齐的活一起没了。
+
+   剧场 + 侧边栏（rail + playbill）下输入框落回官网 rail 那套（相对流 + padding），
+   位置正常，只是不置底 —— 侧边栏形态本来就没有「对话列」这条边界。 */
 
 /* ---- 4. 发送键用文字 Send ----
    原生 #send_but 是 Font Awesome 字形 + 一个遮罩箭头。两个都关掉，写字。 */
@@ -8201,17 +8304,19 @@ html[data-claude-skin="playbill"] .cw-top-btn.is-primary{
   background:var(--cw-mark); color:var(--cw-surface-page);
 }
 
-/* 四栏整体下移，给顶栏让位。这几处必须一起改 —— 漏一处那一栏就会被顶栏盖住。
-   2026-08-24：
-   · 加 structure 键 —— 只有四栏形态才需要整体下移。
-   · 补上 #top-bar：它是第一列的背景板，和 #top-settings-holder 同宽同位，
-     原来不在名单里，等于背景比内容高出 52px。两者底色相同所以一直没人看见。 */
+/* 四栏整体下移，给顶栏让位。
+
+   2026-08-24 阶段 C 起只剩**一处**。原来是给五个 fixed 浮层各写一条 top，
+   注释还特地写着「这五处必须一起改，漏一处那一栏就会被顶栏盖住」——
+   而名单里本来就漏了 #top-bar 和顶图。这类「必须一起改的 N 处」在
+   四栏收进一个容器之后自然消失了：容器往下让，四格跟着让。
+
+   `.cw-rail-grip`（三个拖拽把手）不在容器里，是 body 的直接子节点，
+   所以它还得单独跟一条。 */
 @media (min-width:1100px){
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] #top-bar,
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] #top-settings-holder,
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] .clawd-rail-recents,
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] #clawd-aside,
-  html[data-claude-structure="linear"][data-claude-skin="playbill"] body #sheld,
+  html[data-claude-structure="linear"][data-claude-skin="playbill"]{
+    --cw-shell-top:var(--cw-pb-top);
+  }
   html[data-claude-structure="linear"][data-claude-skin="playbill"] .cw-rail-grip{
     top:var(--cw-pb-top) !important;
   }
