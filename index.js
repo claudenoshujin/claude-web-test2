@@ -7201,6 +7201,27 @@ if (CLAUDE_ENABLED) {
     return result || 'I';
   }
 
+  /* 会话行右上角那个时间的短标签。
+     解析用的正规化和 collectRecentEntries 里的 timeOf 是同一套：服务端可能给
+     ISO，也可能给 "August 2, 2026 11:36am" 这种人类可读串，后者中间没空格，
+     Date.parse 认不出来，先补一个。
+     解析不出来就原样返回 —— 宁可显示得难看，也不编一个看起来很像的时间出来。 */
+  function recentDateLabel(value) {
+    const raw = String(value ?? '');
+    if (!raw) return '';
+    const parsed = Date.parse(raw.replace(/(\d)\s*(am|pm)\b/i, '$1 $2'));
+    if (!Number.isFinite(parsed)) return raw;
+    const d = new Date(parsed);
+    const now = new Date();
+    const sameDay = d.getFullYear() === now.getFullYear()
+      && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    if (sameDay) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (d.getFullYear() === now.getFullYear()) {
+      return d.toLocaleDateString([], { month: 'numeric', day: 'numeric' });
+    }
+    return d.toLocaleDateString([], { year: 'numeric', month: 'numeric', day: 'numeric' });
+  }
+
   function buildRecentRow(entry) {
     const row = hostDocument.createElement('div');
     row.className = 'recentChat' + (entry.isGroup ? ' group' : '');
@@ -7248,7 +7269,16 @@ if (CLAUDE_ENABLED) {
 
     const date = hostDocument.createElement('small');
     date.className = 'chatDate';
-    date.textContent = entry.dateText;
+    /* 显示短标签，完整值进 title。
+       原来直接放 entry.dateText —— 那是服务端 last_mes 原样带过来的串，
+       这台机器上是 ISO（"2026-08-24T01:55:53.465Z"，24 个字符）。
+       官网皮把 .chatDate 设成 display:none，所以一直没人看见；playbill 要在
+       第一行右端显示时间，一放出来这条 ISO 就把整行吃光，存档名被挤成一个字。
+       只改文本不加节点：这一行的 DOM 结构是 module-mobile.css 的地基。
+       全文里读 .chatDate 文本的只有一处（右栏幕次表的显示兜底），从不解析，
+       换成短标签只会更好看。 */
+    date.title = entry.dateText;
+    date.textContent = recentDateLabel(entry.dateText);
 
     /* 预览行。没有内容就不建节点 —— 建一个空的会在行里占出一条空白，
        列表看起来忽高忽低。 */

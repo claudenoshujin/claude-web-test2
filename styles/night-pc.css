@@ -6124,6 +6124,165 @@ html[data-claude-skin="playbill"] .clawd-rail-recents-label{
   font-weight:700 !important; text-transform:uppercase !important;
   letter-spacing:normal !important; color:var(--cw-text-body) !important;
 }
+
+/* ============================================================================
+   会话列表的行 —— 唯一一份（2.0.148 阶段 D）
+   ----------------------------------------------------------------------------
+   参考稿 docs/THE_PLAYBILL/剧场主题_THE_PLAYBILL.html 的两行式：
+
+       存档名（粗）..............................  8/23
+        C laude · 第 VI 幕 · 3 句
+
+   没有头像，也没有正文预览。
+
+   —— 为什么这里是一整块，而不是分散在五处 ——
+   2026-08-24 之前这套行样式在文件里有**五代**（第三/四/…/九轮各写一遍），
+   每一轮都往文件末尾追加覆盖，没回头删旧的。而且五代的选择器全写成
+   `.clawd-rail-recents > .recentChat` —— 真实 DOM 中间还隔着一层
+   `.recentChatList`（index.js 的 ensureRecentsSlot 建的），
+   所以**五代一条都没生效过**，不是互相打架。
+
+   屏幕上看到的行是官网 rail 那一代画的，外加几条写成
+   `> :not(.clawd-rail-recents-label) > *` 的 playbill 规则 ——
+   那种写法恰好绕过了 .recentChatList，是活的。而它们是**照着「行已经被改成
+   单列」这个前提写的**：前提（那五代）没成立，它们却把 .recentChatInfo
+   按进了 30px 的头像列里。标题被压成一列一个字、右边空出一大块、
+   看着像头像被撑大 —— 全部来自这一处前提落空。
+
+   —— 选择器为什么写这么长 ——
+   官网 rail 那批规则是 (0,5,1) 起步，`html[data-claude-skin] .chatName` 这种
+   短写法只有 (1,1,0)，压不住。下面每条都把整条路径写全，别改短。
+   ============================================================================ */
+
+/* 行盒子：细线分隔，无圆角无底色，单列。
+   官网 rail 给行设的是 `30px minmax(0,1fr)` 两列（左列放头像）。这套设计没有头像，
+   必须显式收成一列 —— 只把头像 display:none、列还占着位，左边会留一条 30px 空槽。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  column-gap:0 !important;
+  row-gap:0 !important;
+  align-items:start !important;
+  margin:0 !important;
+  padding:8px var(--cw-gut) !important;
+  border:0 !important;
+  border-bottom:1px solid var(--cw-rule-hairline) !important;
+  border-radius:0 !important;
+  background:none !important;
+  box-shadow:none !important;
+  transform:none !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > *{
+  grid-column:1 !important;
+  width:100% !important; max-width:100% !important; min-width:0 !important;
+  margin:0 !important; padding:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+}
+/* 头像：这一版不出现。数据还在（行上的 data-avatar 照旧写），要加回来删这条即可。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .avatar{
+  display:none !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo{
+  display:block !important;
+  grid-column:1 !important;
+  text-align:left !important;
+}
+/* 两行两列都排在这一层：第一行「存档名 | 时间」，第二行元信息横跨两列。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  column-gap:12px !important;
+  row-gap:3px !important;
+  align-items:baseline !important;
+  width:100% !important; max-width:100% !important; min-width:0 !important;
+  height:auto !important; max-height:none !important;
+  padding:0 !important; margin:0 !important;
+}
+/* 第一行左：存档名。.chatName 里是「角色名 – 存档名」三个节点；
+   角色名第二行已经有了，这里只留存档名那一个 span。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer > .chatName{
+  grid-column:1 !important; grid-row:1 !important;
+  display:block !important;
+  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  padding-right:0 !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important;
+  color:var(--cw-text-body) !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer > .chatName > .characterName,
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer > .chatName > span:first-of-type{
+  display:none !important;
+}
+/* 第一行右：时间。官网 rail 把 .chatDate 整个藏了（`:is(small,.timestamp,…)` 那条），
+   这里放出来。文本是 index.js 的 recentDateLabel() 算的短标签（今天给时:分、
+   今年给月/日、更早给年/月/日），完整值在 title 里 —— 原样放服务端那串
+   24 字符的 ISO 会把存档名挤没。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer > .chatDate{
+  grid-column:2 !important; grid-row:1 !important;
+  display:block !important;
+  white-space:nowrap !important;
+  text-align:right !important;
+  padding-right:0 !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:400 !important;
+  color:var(--cw-text-muted) !important;
+}
+/* 第二行：角色 · 第 X 幕 · N 句，横跨两列。
+   .chatMeta 默认全局 display:none（buildRecentRow 加的节点，只有 playbill 放出来）。
+   font-weight 必须显式写 400：官网 rail 那条 :first-of-type 规则按**元素类型**算，
+   .chatNameContainer 是第一个 div、.chatDate 是第一个 small，两个都命中并拿到 700，
+   不写就会两行一样粗，分不出主次。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer > .chatMeta{
+  display:block !important;
+  grid-column:1 / -1 !important; grid-row:2 !important;
+  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  margin:0 !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:400 !important;
+  color:var(--cw-text-muted) !important;
+}
+/* 正文预览这一版不出现。数据还在（entry.preview 照旧算，右栏幕次表用的是
+   /api/characters/chats 的真数据），要加回来删这条即可。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer > .chatPreview{
+  display:none !important;
+}
+/* 删除键压在时间那一格上，hover 才出现 —— 常显的话它和时间抢同一块地方。
+   用 opacity 不用 display：display:none 的元素撑不出格子宽度，
+   出现的那一瞬间会把标题挤一下。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat > .recentChatInfo > .chatNameContainer > .chatActions{
+  display:flex !important;
+  grid-column:2 !important; grid-row:1 !important;
+  justify-self:end !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+  transition:opacity .12s linear !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat:hover > .recentChatInfo > .chatNameContainer > .chatActions{
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat:hover > .recentChatInfo > .chatNameContainer > .chatDate{
+  opacity:0 !important;
+}
+/* 行的状态：hover 一层浅底，当前对话一条 accent 竖标 ——
+   这套设计不靠色块面积区分层级。官网 rail 的 hover 会给行加 translateX(2px)，
+   在细线分隔的列表里会让分隔线跟着抖，上面行盒子那条 transform:none 关掉了它。 */
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat:hover{
+  background:var(--cw-surface-hover) !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat:hover > *{
+  background-color:transparent !important;
+  transform:none !important;
+}
+html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChatList > .recentChat.is-current{
+  background:none !important;
+  box-shadow:inset 2px 0 0 var(--cw-mark) !important;
+}
+
 /* 会话行。
    官网皮把行的长相写在一组结构选择器上（day-pc.css:3979 起）：
      .clawd-rail-recents > :not(.clawd-rail-recents-label) > *          ← 行内的两列网格
@@ -6139,83 +6298,25 @@ html[data-claude-skin="playbill"] .clawd-rail-recents-label{
    行本身不生成盒子、由它的子元素充当行 —— 那套排法下没有地方画分隔线，
    也没有地方挂"当前对话"的标记。playbill 需要一条细线分隔的行，所以
    把 .recentChat 恢复成真正的行盒子，子元素回到它下面排。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat{
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) !important;
-  row-gap:3px !important;
-  margin:0 !important;
-  padding:11px var(--cw-gut) !important;
-  border:0 !important;
-  border-bottom:1px solid var(--cw-rule-hairline) !important;
-  border-radius:0 !important;
-  background:none !important;
-  box-shadow:none !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > *{
-  display:block !important;
-  grid-column:1 !important;
-  width:100% !important; max-width:100% !important; min-width:0 !important;
-  margin:0 !important;
-  padding:0 !important;
-  border-radius:0 !important;
-  background:transparent !important;
-}
+
+
 /* 标题行 = 名字 + 时间并排（参考稿 .lrow-top）。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo{
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) auto !important;
-  column-gap:12px !important;
-  align-items:baseline !important;
-}
+
 /* 时间在官网皮里是被藏起来的（L4075 那条 :is(small,.timestamp,...)），
    参考稿要显示，这里放出来。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents :is(small,.timestamp,.chat_file_size,.chat_messages_count){
-  display:block !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover > *{
-  background-color:transparent !important;
-  transform:none !important;
-}
+
+
 /* 头像方形、小一档；关掉时**必须把那一列一起收掉** ——
    只写 display:none 的话 30px 列 + 9px 间距还占着位，列表左边会留一条空槽。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents :is(img,.avatar,.mesAvatarWrapper,[class*="avatar" i]){
-  width:22px !important; height:22px !important; min-width:22px !important;
-  border-radius:0 !important;
-}
-html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents :is(img,.avatar,.mesAvatarWrapper,[class*="avatar" i]){
-  display:none !important;
-}
-html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > *{
-  grid-template-columns:minmax(0,1fr) !important;
-  column-gap:0 !important;
-}
-html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * > *{
-  grid-column:1 !important;
-}
+
+
 /* 标题：加粗、单行截断。padding-right:34px 是官网皮给行内操作按钮留的位，留着。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
-  :not(img):not([class*="avatar" i]):first-of-type{
-  font-family:var(--cl-sans) !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  font-weight:700 !important;
-  color:var(--cw-text-body) !important;
-}
+
 /* 副行（时间）：降到 muted，字号收回三级里的最小一级。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents :is(.chat_preview,.preview,blockquote,q),
-html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
-  :not(img):not([class*="avatar" i]):nth-of-type(2){
-  font-family:var(--cl-sans) !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  color:var(--cw-text-muted) !important;
-}
+
 /* 当前对话用一条 accent 细标，不用底色 —— 这套设计不靠色块面积区分层级。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat.is-current{
-  background:none !important;
-  box-shadow:inset 2px 0 0 var(--cw-mark) !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover{
-  background:var(--cw-surface-hover) !important;
-}
+
+
 /* Recents 标题行右边那个装饰图标（::after 贴的遮罩 SVG）在这套主题下不出现。 */
 html[data-claude-skin="playbill"] .clawd-rail-recents-label::after{
   content:none !important; display:none !important;
@@ -6431,16 +6532,6 @@ html[data-claude-skin="playbill"] body #form_sheld #send_form{
    算的：.chatNameContainer 是第一个 div，.chatDate 是第一个 small，两个都命中，
    于是时间也拿到了加粗和 ink 色。官网皮里时间是 display:none，撞不出来；
    playbill 把时间放出来了，这个重叠就现形了。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
-  :not(img):not([class*="avatar" i]):is(small,.chatDate){
-  font-family:var(--cl-sans) !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  font-weight:400 !important;
-  color:var(--cw-text-muted) !important;
-  white-space:nowrap !important;
-  padding-right:0 !important;
-  text-align:right !important;
-}
 
 
 /* ===================== 2.0.55 · 照真机截图修的六处 =====================
@@ -6492,20 +6583,9 @@ html[data-claude-skin="playbill"] body #top-settings-holder > .drawer > .drawer-
      :not(img):not(.avatar):not(.mesAvatarWrapper):not([class*="avatar" i])
    四个 :not() 各算一个类，特异性 (0,5,2)。少抄两个就是 (0,4,3)，
    b 位 4 < 5，前缀里那个属性选择器补不回来 —— 名字还是会被推到第二列。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
-  :not(img):not(.avatar):not(.mesAvatarWrapper):not([class*="avatar" i]){
-  grid-column:1 !important;
-  text-align:left !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > :not(.clawd-rail-recents-label) > * >
-  :not(img):not([class*="avatar" i]):is(small,.chatDate){
-  grid-column:2 !important;
-  grid-row:1 !important;
-}
+
+
 /* 行内那排操作按钮（重命名/删除）在这套设计里不常显。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents .chatActions{
-  display:none !important;
-}
 
 
 /* ============================================================================
@@ -6763,48 +6843,15 @@ html[data-claude-skin="playbill"] body #form_sheld #rightSendForm{
 /* ---- 1. 会话列表：一行 = 头像 + 名字 + 时间，第二行才是预览 ----
    之前是头像、时间、名字三样各占一行，行高一下子到 70 多像素，
    六条就把第二列撑满了。参考稿那一列是密的，密才看得出这是一份"目录"。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat{
-  display:grid !important;
-  grid-template-columns:auto minmax(0,1fr) auto !important;
-  column-gap:9px !important;
-  row-gap:2px !important;
-  align-items:baseline !important;
-  padding:9px var(--cw-gut) !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .avatar{
-  grid-column:1 !important; grid-row:1 !important;
-  align-self:center !important;
-  width:18px !important; height:18px !important; min-width:18px !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .avatar img{
-  width:18px !important; height:18px !important; border-radius:0 !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo{
-  grid-column:2 / -1 !important; grid-row:1 !important;
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) auto !important;
-  column-gap:12px !important; row-gap:2px !important;
-  align-items:baseline !important;
-}
+
+
 /* 关掉头像时把那一列一起收掉，否则左边留一条空槽。 */
-html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents > .recentChat{
-  grid-template-columns:minmax(0,1fr) auto !important;
-  column-gap:0 !important;
-}
-html[data-claude-avatars="off"][data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo{
-  grid-column:1 / -1 !important;
-}
+
+
 /* 正文预览：酒馆的 recentChat 里不一定有这个节点，有就排，没有就当没有 ——
    不为了排版好看去伪造一段摘要。全量的预览在右栏「历史对话」里，
    那份数据来自 /api/characters/chats，是真的。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents :is(.chat_preview,.preview,blockquote,q){
-  grid-column:1 / -1 !important; grid-row:2 !important;
-  margin:0 !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  color:var(--cw-text-faint) !important;
-  display:-webkit-box !important; -webkit-line-clamp:1 !important;
-  -webkit-box-orient:vertical !important; overflow:hidden !important;
-}
+
 
 /* ---- 2. 导航：图标只给常用四个，其余项不画记号 ----
    记号每项都有就不再是记号，只是一列噪点。圆点只留一个用途：标当前项。 */
@@ -6969,18 +7016,6 @@ html[data-claude-skin="playbill"] #chat .cw-act-face.is-blank{
 /* ---- 4. 会话列表的正文预览 ----
    节点由 buildRecentRow 建（.chatPreview）。它在 .chatNameContainer 里，
    而 .chatNameContainer 被官网皮推到 grid-column:2 —— 预览要单独拉回整行。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents .chatPreview{
-  grid-column:1 / -1 !important;
-  margin-top:2px !important;
-  font-family:var(--cl-sans) !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  color:var(--cw-text-faint) !important;
-  display:-webkit-box !important; -webkit-line-clamp:1 !important;
-  -webkit-box-orient:vertical !important; overflow:hidden !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo{
-  row-gap:0 !important;
-}
 
 
 /* ============================================================================
@@ -7659,70 +7694,20 @@ html[data-claude-skin="playbill"]{
    下面每条都是 (0,6,1) 起步。 */
 .chatMeta{ display:none; }
 
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer{
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) auto !important;
-  column-gap:12px !important;
-  row-gap:3px !important;
-  align-items:baseline !important;
-  padding-right:0 !important;
-}
+
 /* 第一行左：存档名。.chatName 里原来是「角色名 – 存档名」三个节点，
    角色名挪到第二行去了，这里只留存档名那一个 span。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatName{
-  grid-column:1 !important; grid-row:1 !important;
-  display:block !important;
-  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
-  font-family:var(--cl-sans) !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  font-weight:700 !important;
-  color:var(--cw-text-body) !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatName > .characterName,
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatName > span:first-of-type{
-  display:none !important;
-}
+
+
 /* 第一行右：时间。参考稿是和标题同一行的最右端，不是标题下面一行。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatDate{
-  grid-column:2 !important; grid-row:1 !important;
-  display:block !important;
-  white-space:nowrap !important;
-  font-family:var(--cl-sans) !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  font-weight:400 !important;
-  color:var(--cw-text-muted) !important;
-}
+
 /* 第二行：角色 · 第 X 幕 · N 句，横跨两列。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatMeta{
-  display:block !important;
-  grid-column:1 / -1 !important; grid-row:2 !important;
-  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
-  font-family:var(--cl-sans) !important;
-  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
-  /* 必须显式写 400：.chatNameContainer 被官网皮那条 :first-of-type 规则设成了
-     700，不写就会继承过来，两行一样粗，分不出主次。 */
-  font-weight:400 !important;
-  color:var(--cw-text-muted) !important;
-}
+
 /* 正文预览和头像在这一版不出现。数据还在（entry.preview 照旧算），
    哪天想加回来把这两条删掉即可。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatPreview,
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .avatar{
-  display:none !important;
-}
+
 /* 删除键压到行右上，hover 才出现 —— 常显的话它和时间抢同一块地方。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat > .recentChatInfo > .chatNameContainer > .chatActions{
-  grid-column:2 !important; grid-row:1 !important;
-  justify-self:end !important;
-  opacity:0 !important;
-  transition:opacity .12s linear !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover > .recentChatInfo > .chatNameContainer > .chatActions{
-  opacity:1 !important;
-}
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat:hover > .recentChatInfo > .chatNameContainer > .chatDate{
-  opacity:0 !important;
-}
+
 
 /* ---- 10. 导航：行距拉开 ----
    Are.na 的左栏（P3 的 Info / Members / View / Order）行与行之间是很松的，
@@ -7928,9 +7913,7 @@ html[data-claude-skin="playbill"] .cw-nav .cw-nav-item:nth-child(7){
 }
 html[data-claude-skin="playbill"] .cw-cast-item{ padding-top:5px; padding-bottom:5px; }
 /* 会话列表行：两行内容，11px 的上下留白偏多。 */
-html[data-claude-skin="playbill"] .clawd-rail-recents > .recentChat{
-  padding-top:8px !important; padding-bottom:8px !important;
-}
+
 /* 右栏幕次表的预览行是三行里最占地方的一段，收到两行。 */
 html[data-claude-skin="playbill"] #clawd-aside .cw-chat-preview{
   -webkit-line-clamp:2 !important;
