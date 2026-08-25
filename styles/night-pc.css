@@ -6996,12 +6996,19 @@ html[data-claude-skin="playbill"] #chat .cw-act-face.is-blank{
 }
 
 /* ---- 右栏「历史对话」照原生 Manage chat files 的信息量来 ---- */
+/* 幕次表的行要和上面「演职员 / 本场」那两组的 .cw-r 对齐 ——
+   参考稿 剧场主题_THE_PLAYBILL.html 里这三组用的是同一个 .row，
+   右栏读下来是一张连续的表，不是两种行混排。
+
+   原来这里是 `minmax(0,1fr) auto` 两列，第二列放 .cw-chat-acts（重命名/删除）。
+   那两个按钮平时 visibility:hidden —— **hidden 只是不画，格子还占着宽**，
+   于是这一行的内容比上面的 .cw-r 短 35px（2026-08-25 实测：.cw-r 右边缘 1980，
+   幕次行 1945）。看起来就是「幕次表没跟演职员对齐」。
+   改成单列 + 操作键绝对定位浮在右上，行宽和 .cw-r 完全一致。 */
 html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row{
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) auto !important;
-  align-items:start !important;
-  gap:0 8px !important;
-  padding:8px 0 !important;
+  position:relative !important;
+  display:block !important;
+  padding:6px 0 !important;              /* 和 .cw-r 同一档，行距才连得上 */
   border-bottom:1px solid var(--cw-rule-hairline) !important;
 }
 html[data-claude-skin="playbill"] #clawd-aside .cw-chat-open{
@@ -7026,11 +7033,20 @@ html[data-claude-skin="playbill"] #clawd-aside .cw-chat-preview{
   font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
   color:var(--cw-text-muted);
 }
+/* 浮在行的右上角，不占宽度。用 opacity 不用 visibility：
+   visibility:hidden 的元素在网格/流里仍然占位，那正是上面说的 35px。 */
 html[data-claude-skin="playbill"] #clawd-aside .cw-chat-acts{
-  grid-column:2 !important;
-  display:flex; gap:6px; visibility:hidden;
+  position:absolute !important;
+  right:0 !important; top:6px !important;
+  display:flex; gap:6px;
+  opacity:0; pointer-events:none;
+  background:var(--cw-col-surface, var(--cw-surface-page));
+  padding-left:6px;
+  transition:opacity .12s linear;
 }
-html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row:hover .cw-chat-acts{ visibility:visible; }
+html[data-claude-skin="playbill"] #clawd-aside .cw-chat-row:hover .cw-chat-acts{
+  opacity:1; pointer-events:auto;
+}
 html[data-claude-skin="playbill"] #clawd-aside .cw-chat-acts button{
   padding:0; border:0; background:none; cursor:pointer;
   font-size:var(--cw-fs-s); line-height:var(--cw-lh-s); color:var(--cw-text-faint);

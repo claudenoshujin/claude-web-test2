@@ -5263,6 +5263,19 @@ if (CLAUDE_ENABLED) {
       else if (wide && !tall && rr.top <= fr.top + 1) limitTop = Math.max(limitTop, rr.bottom);
     }
 
+    /* 剧场皮自己那条固定顶栏（.cw-topbar）也是一堵墙。
+       上面那段只认 #top-bar —— 而四栏形态下 #top-bar 是隐藏的（它是空节点，
+       底色和分栏线交给第一列自己画），所以那一支根本不会命中，
+       Clawd 能一路飞到 y=0，盖在顶栏上面。
+       和上面同一套判断方式：按它自己的形状认「横跨上方的一条」，不按名字猜。 */
+    const topbar = hostDocument.querySelector('.cw-topbar');
+    const tr = topbar && topbar.offsetParent !== null ? topbar.getBoundingClientRect() : null;
+    if (tr && tr.width > 0 && tr.height > 0
+        && tr.width >= fr.width * 0.6 && tr.height < fr.height * 0.6
+        && tr.top <= fr.top + 1) {
+      limitTop = Math.max(limitTop, tr.bottom);
+    }
+
     /* 归位线附近要给 #send_form::after 那只装饰 Clawd 让开（right:18px，36 宽）。
        飞高了就不用让——那时候两者根本不在一条线上。 */
     const form = hostDocument.querySelector('#send_form');
