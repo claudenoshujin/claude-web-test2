@@ -5917,23 +5917,108 @@ html[data-claude-skin="arena"] .recentChat.is-current{
 }
 html[data-claude-skin="arena"] .recentChat:hover{ background:var(--cl-soft) !important; }
 
-/* Linear 下抽屉不该盖住会话列表 —— 它是常驻列，不是可被覆盖的临时面板。
+/* Linear 下抽屉 = 设置视图：铺满除第一列导航外的全部（2.0.148 阶段 F）。
+
+   为什么不只占对话列：酒馆的抽屉是**页级别的内容穿着浮层的衣服** ——
+   扩展面板靠分两列铺开（本文件 3954 那段注释写明双列是它的设计前提，不是 bug），
+   预设面板是一整套长表单。它们的体量是页，不是气泡。
+   参照 Linear / VS Code / Discord 的设置：整块替换，左边留一栏自己的导航。
 
    ⚠ 选择器必须**照抄官网 rail 那条的形状**（本文件 3898 附近）：
        html body #top-settings-holder > .drawer > .drawer-content   → (1,2,2)
-   原来这里写的是
+   2.0.49 到 2.0.147 这里写的是
        html[data-claude-structure="linear"] #top-settings-holder .drawer-content  → (1,2,1)
-   b 位一样、c 位少一个，**输**。所以从 2.0.49 到 2.0.147，四栏下的抽屉一直是
-   从第一列右边缘一路铺到屏幕右边，把会话列表整列盖掉的 —— 这条规则从来没赢过。
-   （2026-08-24 实测：computed left 是 var(--cl-rail) 而不是这里写的值。）
-   加一层 body 把特异性抬到 (1,3,2) 才压得住。 */
+   b 位一样、c 位少一个，**输**，所以四栏下的抽屉一直是从第一列右边缘铺到屏幕右边、
+   把会话列表整列盖掉的 —— 那条规则从来没赢过。加一层 body 抬到 (1,3,2) 才压得住。
+
+   top 也必须写。抽屉是 position:fixed，拿不到 #cw-shell 的 padding-top，
+   不写就从视口顶端开始，第一行被剧场顶栏盖掉 52px（2026-08-24 实测）。 */
 @media (min-width:1100px){
+  html[data-claude-structure="linear"]{
+    /* 设置视图标题条的高度。抽屉的 top 和 max-height 都按它算，
+       改一处就够 —— 分开写死两个数，早晚会对不上。 */
+    --cw-drawer-head-h:44px;
+  }
+  /* 设置视图开着时，把第一列整个抬到会话列表和演职员列之上。
+
+     #top-settings-holder 自己有 z-index:3995 且是定位元素 —— 它是一个**层叠上下文**，
+     抽屉写的 z-index:4000 只在这个上下文**内部**有效，对外仍然按 3995 排。
+     而会话列表和演职员列是 3996。所以面板一铺满整宽，左右两头就被那两列盖住：
+     左边压掉扩展面板第一列的标题，右边压掉「Manage extensions」那一排。
+     （2026-08-24 实测，截图 W-F1。抽屉只占对话列时碰不到这两列，所以以前没现形。）
+
+     抬的是**容器**不是抽屉 —— 抬抽屉没用，它出不去自己那个上下文。
+     data-cw-drawer 由 index.js 的 syncShellDrawer() 写，关掉就撤回。 */
+  html[data-claude-structure="linear"][data-cw-drawer="open"] #cw-shell > #top-settings-holder{
+    /* 要 !important：官网 rail 那条 `html body #top-settings-holder` 写的是
+       z-index:3995 **!important**，特异性再高也压不过带 !important 的声明。 */
+    z-index:4000 !important;
+  }
   html[data-claude-structure="linear"] body #top-settings-holder > .drawer > .drawer-content{
-    left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
-    right:var(--cw-c-cast) !important;
+    left:var(--cw-c-nav) !important;
+    right:0 !important;
+    top:calc(var(--cw-shell-top, 0px) + var(--cw-drawer-head-h)) !important;
+    bottom:0 !important;
     width:auto !important;
     max-width:none !important;
+    height:auto !important;
+    max-height:none !important;
+    border-left:1px solid var(--cw-col-rule) !important;
+    border-right:0 !important;
   }
+
+  /* ---- 标题条 ----
+     扩展自己的节点（index.js 的 syncShellDrawer 建，挂在 body 上），
+     **不往酒馆的 .drawer-content 里塞东西**。面板全屏之后必须有个出口，
+     否则只能靠再点一次导航项关掉 —— 那不是出口，那是记忆力测试。
+     不加遮罩：面板已经盖住了，再来一层是白费。 */
+  #cw-drawer-head{
+    position:fixed;
+    left:var(--cw-c-nav);
+    right:0;
+    top:var(--cw-shell-top, 0px);
+    height:var(--cw-drawer-head-h);
+    z-index:4001;              /* 抽屉是 4000；把手 4100、剧场顶栏 4200 都在上面 */
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    box-sizing:border-box;
+    padding:0 20px;
+    background:var(--cw-col-surface);
+    border-left:1px solid var(--cw-col-rule);
+    border-bottom:1px solid var(--cw-col-rule);
+  }
+  #cw-drawer-head .cw-drawer-title{
+    min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-family:var(--cl-sans);
+    font-size:var(--cw-fs-s, 12.5px); line-height:1.35;
+    font-weight:700;
+    text-transform:uppercase; letter-spacing:normal;
+    color:var(--cw-text-body, var(--cl-ink));
+  }
+  #cw-drawer-head .cw-drawer-close{
+    flex:0 0 auto;
+    width:28px; height:28px;
+    display:flex; align-items:center; justify-content:center;
+    padding:0; margin:0;
+    border:0; border-radius:var(--cw-radius-8, 8px);
+    background:transparent;
+    cursor:pointer;
+    font-family:var(--cl-sans);
+    font-size:20px; line-height:1;
+    color:var(--cw-text-muted, var(--cl-muted));
+    transition:background-color .12s linear, color .12s linear;
+  }
+  #cw-drawer-head .cw-drawer-close:hover{
+    background:var(--cw-surface-hover, var(--cl-soft));
+    color:var(--cw-text-body, var(--cl-ink));
+  }
+}
+/* 窄屏（rail 形态）这一整套都不出现：那边抽屉还是原来的浮层。 */
+@media (max-width:1099px){
+  #cw-drawer-head{ display:none !important; }
 }
 
 

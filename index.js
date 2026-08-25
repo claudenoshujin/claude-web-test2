@@ -11045,7 +11045,12 @@ if (CLAUDE_ENABLED) {
     const nav = document.createElement('nav');
     nav.className = 'cw-nav';
     items.forEach(([id, label, icon]) => {
-      nav.appendChild(pbNavItem(label, () => pbOpenDrawer(id), false, icon));
+        /* 记下这一项对应哪个抽屉，syncShellDrawer 靠它决定谁高亮 ——
+         导航不能每次都重建（它挂在 #chat 的 MutationObserver 上），
+         所以高亮只能改属性，不能靠重建时传 current。 */
+      const b = pbNavItem(label, () => pbOpenDrawer(id), false, icon);
+      b.dataset.drawer = id;
+      nav.appendChild(b);
     });
     rail.insertBefore(nav, railInsertAnchor(rail));
   }
@@ -11828,7 +11833,11 @@ if (CLAUDE_ENABLED) {
       shellMqBound = true;
       try {
         window.matchMedia(CW_SHELL_MQ)
-          .addEventListener('change', () => { try { ensureShell(); } catch { /* 拆到一半也别炸主流程 */ } });
+          .addEventListener('change', () => {
+            /* 设置视图也跟着断点走：窄屏退回侧边栏形态时，
+               标题条和导航高亮都不该留在屏幕上。 */
+            try { ensureShell(); syncShellDrawer(); } catch { /* 拆到一半也别炸主流程 */ }
+          });
       } catch { /* 老 WebView 没有 addEventListener，那就只在切结构时重算 */ }
     }
 
@@ -11853,6 +11862,105 @@ if (CLAUDE_ENABLED) {
        列表要认的那个爹这会儿还在容器里。 */
     for (const el of [...shell.children]) shellGoHome(el);
     shell.remove();
+  }
+
+  /* ==========================================================================
+     四栏下的设置视图（2.0.148 阶段 F）
+
+     四栏下打开抽屉时，面板铺满除第一列导航外的全部，不再只占对话列。
+     理由（lulu 拍板）：酒馆的抽屉是**页级别的内容穿着浮层的衣服** ——
+     扩展面板靠分两列铺开，预设面板是一整套长表单。它们的体量是页，不是气泡。
+     四栏里唯一能腾出足够宽度的做法，就是让设置盖掉除导航外的部分。
+     参照 Linear / VS Code / Discord 的设置：都是整块替换，左边留一栏自己的导航。
+
+     附带把四栏的意义说清楚了：四栏是**浏览和对话时**的常驻布局，
+     设置是另一个模式，不再假装能和对话并排站着。
+
+     —— 三条纪律 ——
+     1. **不动抽屉的 DOM。** 标题条是扩展自己的一个节点（挂在 body 上），
+        不往酒馆的 .drawer-content 里塞东西。开关一律走原生 .drawer-toggle。
+     2. **不加遮罩。** 面板已经盖住了，再来一层是白费。
+     3. 只在 structure=linear 且宽屏时生效；rail 形态下这一整套不出现。
+     ========================================================================== */
+  const CW_DRAWER_HEAD_ID = 'cw-drawer-head';
+  let shellDrawerBound = false;
+
+  /* 当前打开的那个 rail 抽屉。只认 #top-settings-holder 的直接子抽屉 ——
+     页面上别的浮层（弹窗、右键菜单）不算设置视图。 */
+  function shellOpenDrawer() {
+    const open = document.querySelector(
+      '#top-settings-holder > .drawer > .drawer-content:not(.closedDrawer)');
+    return open ? open.closest('.drawer') : null;
+  }
+
+  function shellDrawerLabel(id) {
+    for (const [spec, label] of PB_DRAWERS) if (pbDrawerId(spec) === id) return label;
+    /* 不在剧场导航里的抽屉也可能被打开，退回用它自己 toggle 上的文字。 */
+    const t = document.getElementById(id)?.querySelector('.drawer-toggle');
+    return (t?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 24) || '设置';
+  }
+
+  function syncShellDrawer() {
+    const html = document.documentElement;
+    let wide = true;
+    try { wide = window.matchMedia(CW_SHELL_MQ).matches; } catch { /* 取不到就当宽屏 */ }
+    const on = html.dataset.claudeStructure === 'linear' && wide;
+    const drawer = on ? shellOpenDrawer() : null;
+
+    /* 给 CSS 一个钩子：面板开着的时候三条侧栏之外的东西该怎么让位，写在样式里。 */
+    if (drawer) html.dataset.cwDrawer = 'open'; else delete html.dataset.cwDrawer;
+
+    /* 导航项高亮当前打开的那个。aria-current 的样式皮肤层已经有了，直接复用。 */
+    document.querySelectorAll('#top-settings-holder .cw-nav-item').forEach(b => {
+      if (drawer && b.dataset.drawer === drawer.id) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    });
+
+    let head = document.getElementById(CW_DRAWER_HEAD_ID);
+    if (!drawer) { head?.remove(); return; }
+    if (!head) {
+      head = document.createElement('div');
+      head.id = CW_DRAWER_HEAD_ID;
+      head.innerHTML = '<span class="cw-drawer-title"></span>'
+        + '<button type="button" class="cw-drawer-close" aria-label="关闭">×</button>';
+      /* 关闭走原生 toggle，不自己改 class —— 抽屉的开合状态酒馆自己也在读。 */
+      head.querySelector('.cw-drawer-close').addEventListener('click', () => {
+        shellOpenDrawer()?.querySelector('.drawer-toggle')?.click();
+      });
+      document.body.appendChild(head);
+    }
+    const title = head.querySelector('.cw-drawer-title');
+    const next = shellDrawerLabel(drawer.id);
+    if (title.textContent !== next) title.textContent = next;
+  }
+
+  function watchShellDrawer() {
+    if (shellDrawerBound) return;
+    const rail = document.getElementById('top-settings-holder');
+    if (!rail) return;                 /* 还没出现，下一轮 refreshTheatre 再试 */
+    shellDrawerBound = true;
+
+    /* 抽屉的开合是往 .drawer-content 上加/去 closedDrawer 这个 class，
+       所以只看 class 变动就够，不用轮询。
+       只订阅 #top-settings-holder 的子树 —— 整个 body 的 class 变动量太大，
+       流式输出时每帧都在动。 */
+    let raf = 0;
+    const mo = new MutationObserver(() => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; try { syncShellDrawer(); } catch { /* 别炸主流程 */ } });
+    });
+    mo.observe(rail, { subtree: true, attributes: true, attributeFilter: ['class'] });
+
+    /* Esc 关闭。只在设置视图真的开着时接管，其余情况一概不拦 ——
+       酒馆自己也用 Esc（关弹窗、退出编辑消息）。 */
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.documentElement.dataset.cwDrawer !== 'open') return;
+      const d = shellOpenDrawer();
+      if (!d) return;
+      d.querySelector('.drawer-toggle')?.click();
+      e.preventDefault();
+    });
   }
 
   function ensureAside() {
@@ -11920,6 +12028,10 @@ if (CLAUDE_ENABLED) {
          ensureShell 只搬已经存在的那四格，所以要等它们建完再搬。
          它是幂等的，每帧调一次不会重复搬。 */
       ensureShell();
+      /* 设置视图：绑一次观察器，再同步一次当前状态。
+         放在 buildNav 之后 —— 高亮要往导航项上写属性，导航得先在。 */
+      watchShellDrawer();
+      syncShellDrawer();
     });
   }
 
@@ -13029,6 +13141,9 @@ if (CLAUDE_ENABLED) {
       pbWatchRails();
       /* 容器同理：切到 linear 建、切回 rail 拆。也不能等 watchSession。 */
       ensureShell();
+      /* 切回 rail 时要把设置视图的标题条和导航高亮一起收掉。 */
+      watchShellDrawer();
+      syncShellDrawer();
       hint.textContent = structureSelect.value === 'linear'
         ? '已切到 Linear 四栏。窄于 1100px 会自动退回侧边栏。'
         : '已切回侧边栏。';
