@@ -240,7 +240,7 @@ document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['
 /* skin 单独存一个键，**不要**从 claude-web:preset 的字符串去猜 ——
    踩过：用户用「我的配色」时 preset 是 null，刷新后 skin 掉回 classic，
    于是「明明选了 Are.na 却说没变化」。 */
-document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic','arena','playbill'], 'classic');
+document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic','playbill'], 'classic');
 /* 2026-08-24：这里原来在首帧把 skin=playbill 的结构钉成 linear。删掉。
    两条轴现在完全解锁，四种组合都是合法的：结构管几何（谁占哪一格），
    皮肤管长相（配色、字号、行的排版）。
@@ -366,7 +366,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.148-axis-split-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.155-welcome-cover-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -670,8 +670,8 @@ if (CLAUDE_ENABLED) {
      注意 Clawd 那只在这个皮下会不见 —— 它是几十个 box-shadow 点画出来的，
      阴影归零它就没了。这是有意的：Are.na 的前提就是界面上没有吉祥物。
      想留着 Clawd 的人用「官网」或「暖纸」。 */
-  const ARENA_LIGHT = {
-    id: 'arena-light',
+  const PB_BASE_LIGHT = {
+    id: 'pb-base-light',
     name: 'Are.na · 日间',
     scheme: 'light',
     core: {
@@ -716,8 +716,8 @@ if (CLAUDE_ENABLED) {
        #121314 占 40.6% 面积、选中行 #1b1c1d、分栏线 #252626、副文 #62666d。
      深底上细线必须走 alpha —— 实色细线在深色背景上会显脏。
      藏青 #00075f 在深底上不可读，同色相提亮到 #7c88d8。 */
-  const ARENA_DARK = {
-    id: 'arena-dark',
+  const PB_BASE_DARK = {
+    id: 'pb-base-dark',
     name: 'Are.na · 夜间',
     scheme: 'dark',
     core: {
@@ -767,7 +767,7 @@ if (CLAUDE_ENABLED) {
      Arimo 是 Arial 的度量兼容开源版（字宽逐字相同），在 Google Fonts 上，
      所以没装 Helvetica 的机器排出来的行长也和参考稿一致。
 
-     `{ ...ARENA_LIGHT }` 是浅拷贝，extra 会是**同一个对象**，直接往里写会把
+     `{ ...PB_BASE_LIGHT }` 是浅拷贝，extra 会是**同一个对象**，直接往里写会把
      Are.na 的字体一起改掉。所以这里把 extra 也展开一层再覆盖。
      day-pc.css / night-pc.css 末尾那段 playbill 字体规则和这里是同一串，两处一起改。 */
   const PB_SANS = "'Arimo', 'Helvetica Neue', Helvetica, Arial, var(--cl-cjk)";
@@ -775,17 +775,27 @@ if (CLAUDE_ENABLED) {
     ...base, id, name,
     extra: { ...base.extra, '--cw-skin-sans': PB_SANS, '--cw-skin-serif': PB_SANS },
   });
-  const PLAYBILL_LIGHT = pbFonts(ARENA_LIGHT, 'playbill-light', 'THE PLAYBILL · 日间');
-  const PLAYBILL_DARK  = pbFonts(ARENA_DARK,  'playbill-dark',  'THE PLAYBILL · 夜间');
+  const PLAYBILL_LIGHT = pbFonts(PB_BASE_LIGHT, 'playbill-light', 'THE PLAYBILL · 日间');
+  const PLAYBILL_DARK  = pbFonts(PB_BASE_DARK,  'playbill-dark',  'THE PLAYBILL · 夜间');
 
   const FAMILIES = [
     { id: 'anthropic', name: '官网', light: ANTHROPIC_LIGHT, dark: ANTHROPIC_DARK },
     { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },
-    { id: 'arena', name: 'Are.na', light: ARENA_LIGHT, dark: ARENA_DARK },
-    { id: 'playbill', name: 'THE PLAYBILL（剧场 · 整套）', light: PLAYBILL_LIGHT, dark: PLAYBILL_DARK },
+    { id: 'playbill', name: 'THE PLAYBILL（剧场）', light: PLAYBILL_LIGHT, dark: PLAYBILL_DARK },
   ];
 
-  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK, ARENA_LIGHT, ARENA_DARK,
+  /* 2.0.151：`arena` 这一档删了。它和剧场共用同一套灰阶（剧场就是从它派生的，
+     见上面的 pbFonts），区别只有字体，等于给用户两个几乎一样的选项。
+     两轴拆干净之后皮肤只剩配色一个职责，留两套高度重合的色板没有意义。
+
+     常量本身留着并改名成 PB_BASE_* —— 剧场的色板是从它派生的，删不掉。
+     它不再单独出现在 FAMILIES / BUILT_IN 里，所以那个 `arena-light` 的 id
+     不会再出现在任何界面上。
+
+     迁移是自动的：存过 `skin=arena` 的用户，claudeReadSetting 的允许值列表里
+     找不到就回退 classic；存过 `preset=arena-light` 的，familyOf 找不到，
+     activateFamily 的 `?? FAMILIES[0]` 兜到官网。都不会卡住。 */
+  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK,
                     PLAYBILL_LIGHT, PLAYBILL_DARK];
 
   function familyOf(presetId) {
@@ -8663,9 +8673,17 @@ if (CLAUDE_ENABLED) {
     } catch (error) { /* 忽略 */ }
   }
 
-  /* 欢迎页那三个快捷按钮，官网的版式是在输入框下面。
-     酒馆把它们放在聊天区里，所以得搬。按钮文字认不出来就不动，
-     宁可位置不对也别把用户的入口弄丢。 */
+  /* 欢迎页那三个快捷按钮（API 连接 / 角色管理 / 扩展）。
+     酒馆把它们放在「SillyTavern System」那条系统消息里当消息正文。
+
+     2.0.149 起锚点改成「就跟在那条系统消息下面」，不再钉到输入框底下。
+     原来钉在 #form_sheld 后面，实测落在 y=964、视口高 1000 —— 三个入口
+     贴着屏幕最下沿，和输入框挤在一起，读起来像页脚而不是入口。
+     现在它们回到正文流里，紧跟在那条系统消息之后。
+     这也是 D（playbill 专属欢迎页）要的顺序：封面 → 标语 → 首条系统消息 →
+     这三个按钮，锚在消息上就不用等 D 再搬一次。
+
+     按钮文字认不出来就不动，宁可位置不对也别把用户的入口弄丢。 */
   function refreshWelcomeShortcuts() {
     if (!welcomeEnabled) return;
     const form = hostDocument.querySelector('#form_sheld');
@@ -8679,26 +8697,39 @@ if (CLAUDE_ENABLED) {
       return;
     }
 
-    // 已经搬好而且还在正确位置，就什么都不做
+    /* 锚点：那条系统消息。它不在就退回老位置（输入框下面）——
+       消息没渲染出来的时候，入口宁可位置不对也不能消失。 */
+    const anchor = hostDocument.querySelector('#chat > .mes.' + WELCOME_PROMPT_CLASS)
+      || hostDocument.querySelector('#chat > .mes[type="welcome_prompt"]')
+      || form;
+
+    // 已经搬好而且还挨着正确的锚点，就什么都不做
     if (wraps.length === 1
-      && wraps[0].parentElement === form.parentElement
+      && wraps[0].previousElementSibling === anchor
       && wraps[0].querySelector('button, .menu_button')) return;
 
-    // 否则：先把以前造的全清掉，再重来一次。
-    // 幂等靠「先清后建」，不靠猜之前建过没有 —— 酒馆随时会重建聊天区，
-    // 一旦重建，之前那些「有没有建过」的判断全都会失准。
-    for (const w of wraps) w.remove();
+    /* 先找按钮，再清旧壳。反过来的话，清掉的壳会把三个按钮一起带出文档，
+       下一行就再也找不到它们了 —— 入口静默消失，而且刷新前回不来。
 
-    const buttons = [...hostDocument.querySelectorAll('#chat button, #chat .menu_button, #chat a.menu_button')]
+       两个地方都找：酒馆刚渲染完时按钮在 #chat 的系统消息里，
+       上一轮已经搬过的话在我们自己的壳里。只找 #chat 的话，
+       升级后第一次运行会因为「壳还在旧位置」而误判成按钮不存在。 */
+    const buttons = [...hostDocument.querySelectorAll('#chat, .clawd-welcome-shortcuts')]
+      .flatMap(pool => [...pool.querySelectorAll('button, .menu_button, a.menu_button')])
       .filter(b => /API|Character|Extension|角色|扩展|连接/i.test(b.textContent || ''));
     if (buttons.length < 2) return;
 
     const holder = buttons[0].parentElement;
     if (!holder || holder.children.length > 6) return;
 
+    // 幂等靠「先清后建」，不靠猜之前建过没有 —— 酒馆随时会重建聊天区，
+    // 一旦重建，之前那些「有没有建过」的判断全都会失准。
+    // holder 已经拿在手里，壳被移除也不会把它弄丢。
+    for (const w of wraps) w.remove();
+
     const wrap = hostDocument.createElement('div');
     wrap.className = 'clawd-welcome-shortcuts';
-    form.parentElement.insertBefore(wrap, form.nextSibling);
+    anchor.parentElement.insertBefore(wrap, anchor.nextSibling);
     wrap.append(holder);
   }
 
@@ -10138,9 +10169,34 @@ if (CLAUDE_ENABLED) {
      「关掉当前开着的抽屉」，功能是重复的。
      在 document 的捕获阶段掐断，事件到不了 html 上的冒泡处理器，
      一次点击就只剩一条改状态的路径。点侧栏以外的地方不拦，自动关闭照常。 */
+  /* 2.0.150：除了原生的 rail toggle，扩展自己还造了几个「点了会转发给抽屉
+     toggle」的入口 —— 剧场导航项、设置视图标题条的 ×、顶栏的 Log in。
+     它们都不在 `#top-settings-holder > .drawer` 里（后两个干脆挂在 body 上），
+     所以 railToggleOf 认不出来，而酒馆那条 mousedown 自动关闭对它们照常生效。
+
+     后果正是交接文档里那条「只能打开不能关」：
+       mousedown → 酒馆把开着的抽屉关掉
+       click     → 转发的那次 toggle 看到的是「关着的」，于是又开一次
+     一次点击两条路径各改一次状态、方向相反，用户看到的是抽屉纹丝不动。
+     之前一直复现不出来，是因为测的是原生 toggle —— 那条走了这道守卫，是好的。
+
+     2026-08-25 实测（linear/playbill @1600）：
+       只发 mousedown 不发 click，打在导航项上抽屉会关，打在原生 toggle 上不会；
+       完整事件序列打在导航项上 开→开→开，打在原生 toggle 上 开→关→开。
+     差别就在这道守卫认不认得这个元素。 */
+  const DRAWER_FORWARDERS = [
+    '.cw-nav-item[data-drawer]',            // 剧场第一列的导航项
+    '#cw-drawer-head .cw-drawer-close',     // 设置视图标题条的 ×
+    '.cw-topbar .cw-top-btn[data-act="user"]', // 顶栏 Log in（开 persona 抽屉）
+  ].join(', ');
+
+  function forwardsToDrawer(target) {
+    return Boolean(target?.closest?.(DRAWER_FORWARDERS));
+  }
+
   function blockDrawerAutoClose(event) {
     if (!railEnabled || isMobileLayout() || destroyed) return;
-    if (!railToggleOf(event.target)) return;
+    if (!railToggleOf(event.target) && !forwardsToDrawer(event.target)) return;
     event.stopPropagation();
     drawerStats.blocked += 1;
   }
@@ -10859,8 +10915,12 @@ if (CLAUDE_ENABLED) {
        .timestamp 是 "August 4, 2026 10:33 AM" 全串，CSS 没法截成 10:33；
        .mes_timer 装的是生成耗时（88.9s），不是时刻；
        .ch_name 是 flex 容器且内嵌按钮，摊平会毁掉正文。 */
-  /* 需要三轨排版的皮。孤零零一个字符串散在函数里，加第三种皮时必然漏一处 —— 所以集中在这里。 */
-  const STAMPED_SKINS = new Set(['arena', 'playbill']);
+  /* 2.0.151 阶段 4：`STAMPED_SKINS` 这个集合删了。
+
+     三轨排版（左边注时间 / 台词 / 右边注 token）是**排列**，不是配色 ——
+     它由 structure === 'linear' 决定。原来按皮肤判断，导致
+     `linear + 官网` 拿到了三轨的 CSS 却没人往 DOM 上写 data-time /
+     data-speaker / data-swipe，等于三轨排版少了两轨的内容。 */
 
   /* 2026-08-24 恢复：这个函数在 b32f3a1（2.0.54）被删掉了，但 refreshTheatre 和
      风格下拉里的两处调用留着。JS 只在执行到那一行才报 ReferenceError，
@@ -10868,7 +10928,7 @@ if (CLAUDE_ENABLED) {
      而 watchSession 当时又没有启动调用，所以这个错一直没人看见。
      函数体照 7c0fce9 恢复，没改逻辑。 */
   function stampMessages() {
-    if (!STAMPED_SKINS.has(document.documentElement.dataset.claudeSkin)) return;
+    if (!stageOn()) return;
     const ctx = window.SillyTavern?.getContext?.();
     if (!ctx) return;
     const chat = ctx.chat || [];
@@ -10947,9 +11007,37 @@ if (CLAUDE_ENABLED) {
     return pool[Math.abs(seed) % pool.length];
   }
 
-  function pbOn() {
-    return document.documentElement.dataset.claudeSkin === 'playbill';
+  /* ================= 两轴的边界（2.0.151 阶段 2/4）=================
+
+     `stageOn()` = 排列。剧场那套版式（顶栏、九项导航、封面、顶图、幕次条、
+     三轨消息、角色名单、幕次表）**全部归 structure 管**，和配色无关。
+
+     配色那一半在 JS 里已经**不需要闸门了** —— 剧场和官网的区别全部由
+     CSS 的 `html[data-claude-skin="playbill"]{ … }` 令牌块承担（字体族、
+     两个分栏线别名）。所以原来的 `pbOn()` 删了：拆完之后它零调用者，
+     留着就是下一个人误以为"这里还要按皮肤分支"的钩子。
+
+     为什么要拆：剧场这个"皮肤"里八成以上是排版规则不是色板
+     （实测 day-pc.css 436 条 playbill 选择器中 428 条在设排列属性），
+     结果 `linear + 官网` 拿到了四栏几何却没有任何东西去填，成了空骨架；
+     而 `rail + 剧场` 反过来把四栏才有的东西塞进侧边栏，右边一大片空白。
+     两个坏组合是同一个根因：排列写在了错误的轴上。
+
+     完整背景和分阶段见 方案-两轴彻底拆分-20260825.md。 */
+  function stageOn() {
+    return document.documentElement.dataset.claudeStructure === 'linear';
   }
+
+  /* 欢迎态标记。**故意在这里重写一遍字面量**，不引用交互模块那个
+     `WELCOME_CLASS` —— 那个常量在另一个平级 IIFE 里（1907–10812），
+     这里是 10830 开始的那个，看着缩进一样，跨过去就是 ReferenceError。
+     `node --check` 查不出来，只有真的跑到那一行才炸；2026-08-25 这次
+     就是 tools/test-playbill-boot.mjs 在 rAF 回调里把它抓出来的。 */
+  const STAGE_WELCOME_CLASS = 'clawd-welcome';
+  function inWelcome() {
+    return document.body?.classList.contains(STAGE_WELCOME_CLASS) === true;
+  }
+
   /* 用户自定义的剧场配图。空字符串 = 没设，调用方走各自的兜底。 */
   function pbImage() {
     try { return window.localStorage.getItem('claude-web:pbImage') || ''; } catch { return ''; }
@@ -11038,7 +11126,7 @@ if (CLAUDE_ENABLED) {
     const rail = document.getElementById('top-settings-holder');
     if (!rail) return;
     const old = rail.querySelector('.cw-nav');
-    if (!pbOn()) { old?.remove(); pbNavSig = ''; return; }
+    if (!stageOn()) { old?.remove(); pbNavSig = ''; return; }
 
     /* 只列酒馆原生的八个入口，不再分组（lulu 定的）。
        之前那三组（剧目 / 角色 / 剧场）是照参考稿搭的，但参考稿里那几项在
@@ -11095,7 +11183,7 @@ if (CLAUDE_ENABLED) {
     const rail = document.getElementById('top-settings-holder');
     if (!rail) return;
     const old = rail.querySelector('.cw-cast-list');
-    if (!pbOn()) { old?.remove(); pbCastSig = ''; return; }
+    if (!stageOn()) { old?.remove(); pbCastSig = ''; return; }
 
     const ctx = window.SillyTavern?.getContext?.();
     const chars = Array.isArray(ctx?.characters) ? ctx.characters : [];
@@ -11184,7 +11272,7 @@ if (CLAUDE_ENABLED) {
 
   function buildTopbar() {
     const old = document.querySelector('.cw-topbar');
-    if (!pbOn()) { old?.remove(); return; }
+    if (!stageOn()) { old?.remove(); return; }
     if (old) return;
 
     const bar = document.createElement('header');
@@ -11349,7 +11437,7 @@ if (CLAUDE_ENABLED) {
     const chat = document.getElementById('chat');
     if (!chat) return;
     const old = chat.querySelector(':scope > .cw-cover');
-    if (!pbOn()) { old?.remove(); return; }
+    if (!stageOn()) { old?.remove(); return; }
 
     const ctx = window.SillyTavern?.getContext?.();
     if (!ctx) return;
@@ -11359,13 +11447,26 @@ if (CLAUDE_ENABLED) {
     const ccs = ctx.chatCompletionSettings || {};
     const src = ccs.chat_completion_source;
     const model = (src && ccs[src + '_model']) || src || ctx.mainApi || '';
-    const title = ctx.getCurrentChatId?.() || '未命名的一场';
+    /* 欢迎页：还没有剧目，所以不能拿"当前存档"当标题。
+       2.0.154 之前这里会显示「未命名的一场」，而"角色"那一格拿到的是
+       ctx.name2 —— 欢迎页上那是"SillyTavern System"（欢迎助手），
+       把系统消息的发件人当成了角色。两处都是欢迎态特有的错，
+       不是兜底不够好，是这两个值在欢迎态下压根没有意义。
+       照参考稿 剧场主题_THE_PLAYBILL.html 的封面用 Tonight's Programme。 */
+    const isWelcome = inWelcome();
+    const title = isWelcome
+      ? '今晚的节目单'
+      : (ctx.getCurrentChatId?.() || '未命名的一场');
     const started = String(chatArr[0]?.send_date || '').match(/(\d{1,2}:\d{2})/);
 
     /* 标题行照 Are.na 的频道头：`组织 / 频道名 [标记]` 一行网格。
        映射到这里：`角色 / 存档名 [头像]` —— 层级关系是一样的
        （一个角色底下有多个存档，就像一个组织底下有多个频道）。 */
-    const who = ctx.characters?.[ctx.characterId]?.name || ctx.name2 || '';
+    /* 欢迎态下 ctx.name2 是欢迎助手（"SillyTavern System"），不是角色 ——
+       不能拿它填"角色"那一格。宁可空着也不写错的名字。 */
+    const who = isWelcome
+      ? ''
+      : (ctx.characters?.[ctx.characterId]?.name || ctx.name2 || '');
     const face = (typeof ctx.getThumbnailUrl === 'function' && ctx.characters?.[ctx.characterId]?.avatar)
       ? ctx.getThumbnailUrl('avatar', ctx.characters[ctx.characterId].avatar) : '';
     const recent = String(chatArr[chatArr.length - 1]?.send_date || '').match(/(\d{1,2}:\d{2})/);
@@ -11384,7 +11485,9 @@ if (CLAUDE_ENABLED) {
       + '<span>' + pbEsc(label) + '</span><b></b></button>';
 
     const html =
-      '<div class="cw-kicker">' + pbEsc(who || '未命名') + '</div>'
+      /* 眉标：对话页是角色名（`角色 / 存档名` 的层级，照 Are.na 的 `组织 / 频道`）；
+         欢迎页没有角色，用参考稿封面那句 Tonight's Programme。 */
+      '<div class="cw-kicker">' + pbEsc(isWelcome ? "Tonight's Programme" : (who || '未命名')) + '</div>'
       + '<div class="cw-mark">/</div>'
       + '<h1 class="cw-cover-title">' + pbEsc(title) + '</h1>'
       + (face ? '<img class="cw-cover-badge" src="' + pbEsc(face) + '" alt="">'
@@ -11528,7 +11631,7 @@ if (CLAUDE_ENABLED) {
   function buildCards() {
     const chat = document.getElementById('chat');
     if (!chat) return;
-    if (!pbOn()) {
+    if (!stageOn()) {
       chat.querySelectorAll(':scope > .cw-act, .cw-card-head, .cw-msg-acts').forEach(el => el.remove());
       pbActs = [];
       return;
@@ -11664,7 +11767,7 @@ if (CLAUDE_ENABLED) {
   function buildCoverArt() {
     const chat = document.getElementById('chat');
     if (!chat) return;
-    const src = pbOn() ? pbImage() : '';
+    const src = stageOn() ? pbImage() : '';
     /* 旧结构的三个节点（anchor / pad / slot）一并清掉 —— 用户从旧版本升上来时
        DOM 里可能还留着，不清就会多出两块空白。 */
     const drop = () => {
@@ -11713,27 +11816,37 @@ if (CLAUDE_ENABLED) {
       host2.innerHTML = '<div class="cw-h">幕次表</div><div class="cw-empty">（没有别的存档）</div>';
       return;
     }
-    /* 照酒馆原生的 Manage chat files 来：名字 + 时间一行，下面一行是正文预览，
-       右边两个键是编辑（重命名）和删除。预览来自接口返回的最后一条消息，
-       接口没给就不显示 —— 不去编一段假的摘要。 */
+    /* 2.0.150：一行一幕，和参考稿 剧场主题_THE_PLAYBILL.html 的幕次表一致
+       （那边是 `Act I | 雨。旧剧场后台…`）。
+
+       原来是两行：上面 Act 号 + 存档名 + 句数，下面再夹两行正文预览。
+       预览是整个右栏里最占地方的一段，而这一栏的职责是「一眼扫完有哪几幕、
+       现在在第几幕」—— 每行三行高的话，六个存档就把整栏吃光了。
+       预览没有删掉，收进 title：要看的时候悬停就有，不看的时候不占版面。
+
+       顶行本来就是 auto / 1fr / auto 三列网格（见 day-pc.css 第 25 段），
+       形状已经是参考稿要的那个，所以这里只是把第二行摘掉，不用重排。 */
     host2.innerHTML = '<div class="cw-h">幕次表</div>'
-      + rows.map((r, i) =>
-          '<div class="cw-chat-row' + (r.name === cur ? ' is-current' : '')
+      + rows.map((r, i) => {
+          /* 悬停提示：存档名（行内会截断）+ 正文预览。
+             接口没给预览就只放名字，不编一段假的摘要。 */
+          const tip = r.preview ? r.name + '\n' + r.preview : r.name;
+          return ''
+          + '<div class="cw-chat-row' + (r.name === cur ? ' is-current' : '')
           + '" data-file="' + pbEsc(r.name) + '">'
-          + '<button type="button" class="cw-chat-open">'
+          + '<button type="button" class="cw-chat-open" title="' + pbEsc(tip) + '">'
           +   '<span class="cw-chat-top">'
           +     '<i class="cw-chat-act">Act ' + pbRoman(r.actNo || (rows.length - i)) + '</i>'
           +     '<b>' + pbEsc(r.name) + '</b>'
           +     '<em>' + pbEsc(r.count !== '' ? r.count + ' 句' : r.date) + '</em>'
           +   '</span>'
-          +   (r.preview ? '<span class="cw-chat-preview">' + pbEsc(r.preview) + '</span>' : '')
           + '</button>'
           + '<span class="cw-chat-acts">'
           +   '<button type="button" class="cw-chat-edit" title="重命名">✎</button>'
           +   '<button type="button" class="cw-chat-del" title="删除">🗑</button>'
           + '</span>'
-          + '</div>'
-        ).join('');
+          + '</div>';
+        }).join('');
     host2.querySelectorAll('.cw-chat-row').forEach(row => {
       const file = row.dataset.file;
       row.querySelector('.cw-chat-open')?.addEventListener('click', () => {
@@ -12009,8 +12122,8 @@ if (CLAUDE_ENABLED) {
       /* 幕次表 = 这个角色的历史存档。之前拆成了两块（一块列本场的幕、
          一块列存档），其实是同一件事的两种说法 —— 一个存档就是一幕。
          合成一块，块名用「幕次表」。数据异步取，先占位再填。 */
-      + (pbOn() ? '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">幕次表</div></div>' : '');
-    if (pbOn()) fillAsideChats();
+      + (stageOn() ? '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">幕次表</div></div>' : '');
+    if (stageOn()) fillAsideChats();
     /* Recents 每行的 data-file 和 getCurrentChatId() 是同一个字符串，
        高亮当前行、以及接 Manage chat files 都靠它。 */
     document.querySelectorAll('.recentChat').forEach(r => {
@@ -12820,10 +12933,8 @@ if (CLAUDE_ENABLED) {
       const preset = api.activateFamily(select.value);
       /* 排版规则传不进预设（预设只能写变量），所以风格同时切一个属性，
          让 styles 里的 Are.na 排版模块生效。见 CSS 的「皮肤层」那段。 */
-      /* 三个值，不是两个：playbill 是整套主题，arena 只是排版皮。 */
-      const skin = select.value === 'playbill' ? 'playbill'
-                 : select.value === 'arena' ? 'arena'
-                 : 'classic';
+      /* 2.0.151：arena 那一档删了之后只剩两个值。 */
+      const skin = select.value === 'playbill' ? 'playbill' : 'classic';
       document.documentElement.dataset.claudeSkin = skin;
       write('skin', skin);
       syncPanelPresentationRef();
@@ -13407,9 +13518,11 @@ if (CLAUDE_ENABLED) {
      兼容模式不进这里：那时 skin / structure 在首帧已经被打回 classic / rail，
      整套自建 DOM 本来就该让位给外部主题，多挂一个 #chat 的 MutationObserver
      是白付的开销。 */
+  /* 2.0.151 阶段 4：只看 structure。
+     原来还或上一条「皮肤在 STAMPED_SKINS 里」—— 那是为了让 rail + 剧场
+     也去建三轨排版的东西。两轴拆开之后这些全归 linear，皮肤不再参与判断。 */
   const theatreNeeded = !CLAUDE_COMPAT_MODE
-    && (STAMPED_SKINS.has(document.documentElement.dataset.claudeSkin)
-        || document.documentElement.dataset.claudeStructure === 'linear');
+    && document.documentElement.dataset.claudeStructure === 'linear';
   const theatreDeadline = Date.now() + 60000;
   const theatreTimer = theatreNeeded ? window.setInterval(() => {
     if (Date.now() > theatreDeadline) {
