@@ -63,9 +63,10 @@ export function buildClawdRig() {
       walkA:  F(['.#.s....#.s.', '.#......#...']),
       walkB:  F(['.s.#....s.#.', '...#......#.']),
       // 被拎起来：腿岔开往下垂，两帧交替就是在空中蹬腿
-      // 被拎着蹬腿：左边两条和右边两条轮流伸长 / 缩短，四条腿都在动（以前中间两条的脚一直在同一格，看着不动）
-      dangle: F(['.#.#....#.#.', '.#.#........']),
-      dangle2:F(['.#.#....#.#.', '........#.#.']),
+      // 被拎着蹬腿：左边两条和右边两条轮流伸长到 3 格 / 缩到 1 格，四条腿都在动，幅度 2 格
+      //（第二轮：幅度只有 1 格、150ms 一换，看着卡；Lulu 2026-09-24）
+      dangle: F(['.#.#....#.#.', '.#.#........', '.#.#........']),
+      dangle2:F(['.#.#....#.#.', '........#.#.', '........#.#.']),
     },
     eyes: {
       open:   F(['o......o', 'o......o']),
@@ -1225,17 +1226,21 @@ export function buildClawdRig() {
     c.at(0, 'eyes', { f: 'squint' }).at(0, 'shadow', { f: null });
     c.flex(0, { sx: 1.1, sy: .9 }).flex(100, { sx: .84, sy: 1.2 }).flex(200, { sx: 1.04, sy: .97 }).flex(300, {});
     c.at(100, 'legs', { f: 'dangle' }).at(100, 'clawL', { y: -2 }).at(100, 'clawR', { y: -2 });
-    c.at(400, 'legs', { f: 'dangle' }).at(400, 'clawL', { y: -3 }).at(400, 'clawR', { y: -1 }).at(400, 'eyes', { f: 'squint' });
+    c.at(200, 'legs', { f: 'dangle2' }).at(300, 'legs', { f: 'dangle' });
+    c.at(400, 'legs', { f: 'dangle' }).at(400, 'clawL', { y: -4 }).at(400, 'clawR', { y: 0 }).at(400, 'upper', { x: -1 }).at(400, 'eyes', { f: 'squint' });
   }
   {
     const c = def(new Clip('drag', '吊着（拖动中）', 600, { loop: true, track: 'C', noShadow: true, group: 'touch' }));
-    c.beat(0, '被拎着：蹬腿、钳子乱挥（循环）');
+    c.beat(0, '被拎着：两只钳子一上一下乱挥（和戳 4 的挣扎同一个节奏），身子左右扭，腿轮流蹬（循环）').beat(400, '中间闭一下眼');
+    // 每 100ms 换一次：钳子上下差 4 格、腿伸缩差 2 格、上半身左右各 1 格（第二轮：原来幅度小、150ms 一换，看着卡）
     c.at(0, 'shadow', { f: null }).at(0, 'eyes', { f: 'squint' });
-    [0, 150, 300, 450].forEach((t, i) => {
-      c.at(t, 'legs', { f: i % 2 ? 'dangle2' : 'dangle' });
-      c.at(t, 'clawL', { y: i % 2 ? -1 : -3 }).at(t, 'clawR', { y: i % 2 ? -3 : -1 });
-    });
-    c.at(600, 'legs', { f: 'dangle' }).at(600, 'clawL', { y: -3 }).at(600, 'clawR', { y: -1 });
+    for (let i = 0; i < 8; i++) {
+      const t = i * 100, a = i % 2 === 0;
+      c.at(t, 'legs', { f: a ? 'dangle' : 'dangle2' });
+      c.at(t, 'clawL', { y: a ? -4 : 0 }).at(t, 'clawR', { y: a ? 0 : -4 }).at(t, 'upper', { x: a ? -1 : 1 });
+    }
+    c.at(400, 'eyes', { f: 'shut' }).at(600, 'eyes', { f: 'squint' });
+    c.at(800, 'legs', { f: 'dangle' }).at(800, 'clawL', { y: -4 }).at(800, 'clawR', { y: 0 }).at(800, 'upper', { x: -1 });
   }
   {
     const c = def(new Clip('fly', '被丢出去（空中）', 400, { loop: true, track: 'C', noShadow: true, group: 'touch' }));

@@ -562,6 +562,30 @@ await wait(150);
 assert.equal(api.clawdState().A, null, '停了以后 A 轨收回，不结算成完成');
 menu.querySelector('[data-cdm="close"]').click();
 
+/* ⑨ 轻抚：按住不动 0.6 秒（手机只能这样），或者鼠标在它身上来回划 */
+await wait(2500);
+press(50, 50);
+await wait(800);
+assert.equal(cTrack(), 'pet', '按住不动 0.6 秒 → 轻抚');
+assert.equal(clawd.dataset.clawdClip, 'pet', '轻抚要播骨架的轻抚动作');
+lift(50, 50);
+await wait(100);
+assert.equal(cTrack(), 'pet', '轻抚之后松手不算戳，轻抚那段接着播');
+await wait(2400);
+assert.equal(cTrack(), '', '轻抚播完回到空闲');
+press(50, 50);
+await wait(300);
+move(90, 50);
+await wait(500);
+assert.notEqual(cTrack(), 'pet', '按下以后拖动了就是抓，不能再算轻抚');
+lift(90, 50);
+await wait(2500);
+const hover = x => { const e = pointer('pointermove', x, 50); e.pointerType = 'mouse'; e.buttons = 0; clawd.dispatchEvent(e); };
+[40, 50, 40, 50, 40].forEach(hover);
+await wait(80);
+assert.equal(cTrack(), 'pet', '鼠标在它身上来回划、换向 3 次 → 轻抚');
+await wait(2400);
+
 /* ⑥ 减少动态：闲置小动作的调度必须查系统设置 */
 assert.match(src, /clawdPrefersReducedMotion\(\)/, '闲置小动作要尊重系统的「减少动态」');
 

@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig4";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig5";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -2075,7 +2075,7 @@ if (CLAUDE_ENABLED) {
   });
   /* 戳第 5 档是 turn → t5 → face 三步序列，三步都对着同一段「转身生气」，中间不重播 */
   const CLAWD_RIG_C = Object.freeze({
-    grab: 'grab', drag: 'drag', fly: 'fly', land: 'land', stomp: 'stomp',
+    grab: 'grab', drag: 'drag', fly: 'fly', land: 'land', stomp: 'stomp', pet: 'pet',
     t2: 'poke2', t3: 'poke3', t4: 'poke4', turn: 'sulk', t5: 'sulk', face: 'sulk',
   });
   let clawdRigPokeT1 = 'poke1';        // 第 1 档：蹦一下 / 害羞捂眼，每次戳随机一个
@@ -2114,6 +2114,8 @@ if (CLAUDE_ENABLED) {
   const A2_BOUNDS_TTL = 800;
 
   const A2 = {
+    petTimer: 0,        // 按住不动计时：到点算轻抚
+    petting: false,     // 这一次按住已经变成轻抚了，松手不算戳
     x: 0, fy: 0, homeX: 0,
     feel: 0.64,                  // 手感总调，0~1，喂给 a2Phys()
     irr: 0, throws: 0, lastThrow: 0, lastDec: 0,
@@ -5774,6 +5776,15 @@ if (CLAUDE_ENABLED) {
     /* 视觉上的“抓住”从手指落下就开始；5px 阈值只判断松手后算戳还是抛，
        不再让用户等到第一次大位移才看到反馈。 */
     setClawdC('grab', 0);
+    /* 轻抚（Lulu 2026-09-24）：按住不动 0.6 秒。手机没有悬停，只能靠这个；电脑上按住也一样算。
+       挪动超过 5px 就是拖，0.6 秒内松手还是戳，三者分得开。 */
+    hostWindow.clearTimeout(A2.petTimer);
+    A2.petting = false;
+    A2.petTimer = hostWindow.setTimeout(() => {
+      A2.petTimer = 0;
+      if (!A2.held || A2.moved || A2.fy < 0) return;
+      A2.petting = clawdPet(button);
+    }, CLAWD_PET_HOLD_MS);
   }
 
   function a2DeferGrabFeedback(button) {
@@ -5796,6 +5807,8 @@ if (CLAUDE_ENABLED) {
       A2.moved = true;
       A2.dragging = true;
       dragStarted = true;
+      hostWindow.clearTimeout(A2.petTimer);
+      if (A2.petting) { A2.petting = false; setClawdC('grab', 0); }   // 摸着摸着拎起来了：照常进入拖
       hostWindow.setTimeout(() => { if (A2.dragging) setClawdC('drag', 0); }, 350);
     }
     if (!A2.moved) return;
@@ -5819,6 +5832,16 @@ if (CLAUDE_ENABLED) {
     A2.held = false;
     A2.tookPointer = true;
     A2.dragFeedbackRun += 1;
+    hostWindow.clearTimeout(A2.petTimer);
+    if (A2.petting && !A2.moved) {
+      /* 轻抚之后松手：不算戳，轻抚那段自己播完 */
+      A2.petting = false;
+      A2.rot = 0;
+      button.style.removeProperty('transition');
+      a2Place(button);
+      return;
+    }
+    A2.petting = false;
     if (A2.moved) {
       a2Ballistic(button);                     // 拖过就是抛
     } else if (A2.fy < 0) {
@@ -5967,6 +5990,22 @@ if (CLAUDE_ENABLED) {
     hostWindow.requestAnimationFrame(step);
   }
 
+  /* 轻抚：C 轨播「轻抚」（眯眼往手上蹭、冒心）。摸也算搭理它（不再被冷落），摸一摸就不烦了（烦躁清零）。
+     生气序列期间摸不了；一次没播完之前不重复触发。返回这次有没有真的触发。 */
+  const CLAWD_PET_HOLD_MS = 600;
+  let clawdPetUntil = 0;
+  function clawdPet(button) {
+    if (a2Locked()) return false;
+    const now = Date.now();
+    if (now < clawdPetUntil) return false;
+    clawdPetUntil = now + CLAWD_RIG.clips.pet.dur;
+    lastPokeAt = now;
+    if (neglected) setNeglected(false);
+    A2.irr = 0;
+    setClawdC('pet', CLAWD_RIG.clips.pet.dur);
+    return true;
+  }
+
   function a2Poke(button) {
     if (a2Locked()) {
       /* 生气期间戳它没用 */
@@ -6004,10 +6043,31 @@ if (CLAUDE_ENABLED) {
        现在单独收尾：不抛、不戳、不加烦躁，在空中就原地掉下来。 */
     button.addEventListener('pointercancel', event => a2Cancel(button, event));
     button.addEventListener('lostpointercapture', event => a2Cancel(button, event));
+    /* 轻抚（电脑）：光标在它身上左右来回划，1 秒内换向 3 次。只认没按键的鼠标悬停。 */
+    let petX = null, petDir = 0, petFlips = [];
+    button.addEventListener('pointermove', event => {
+      if (event.pointerType !== 'mouse' || event.buttons || A2.held) return;
+      if (petX !== null) {
+        const dx = event.clientX - petX;
+        if (Math.abs(dx) >= 2) {
+          const dir = Math.sign(dx);
+          if (petDir && dir !== petDir) {
+            const now = Date.now();
+            petFlips = petFlips.filter(t => now - t < 1000).concat(now);
+            if (petFlips.length >= 3) { petFlips = []; clawdPet(button); }
+          }
+          petDir = dir;
+        }
+      }
+      petX = event.clientX;
+    });
+    button.addEventListener('pointerleave', () => { petX = null; petDir = 0; petFlips = []; });
   }
 
   function a2Cancel(button, event) {
     if (!A2.held || (event && event.pointerId !== A2.pointerId)) return;
+    hostWindow.clearTimeout(A2.petTimer);
+    A2.petting = false;
     A2.held = false;
     A2.tookPointer = true;
     A2.dragFeedbackRun += 1;
