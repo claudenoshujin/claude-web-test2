@@ -104,7 +104,7 @@ assert.match(index, /if \(button\.classList\.contains\(COMPOSER_CLAWD_CLASS\)\) 
 assert.doesNotMatch(index, /data-claude-decorations="off"[^\n]*COMPOSER_CLAWD_CLASS/, 'the decorations toggle must not hide Clawd itself');
 assert.match(index, /const clawdEnabled = hostDocument\.documentElement\.dataset\.claudeClawd !== 'off'/, 'the Clawd switch must own final node visibility');
 assert.match(index, /COMPOSER_CLAWD_CLASS[\s\S]{0,900}?touch-action: none !important/, 'draggable Clawd must reject Android panning before pointerdown');
-assert.match(index, /function a2Down[\s\S]*setClawdC\('grab', 0\)/, 'pointerdown must show the grab pose immediately');
+assert.match(index, /function a2Down[\s\S]*setClawdC\(A2\.fy < 0 \? 'grab' : 'press', 0\)/, 'pointerdown must give feedback immediately (pressed on the ground, grabbed in mid-air)');
 assert.match(index, /a2Place\(button\);\s*if \(dragStarted\) a2DeferGrabFeedback\(button\);/, 'the first drag position must be written before layout-reading feedback');
 
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig5";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig6";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -2075,7 +2075,7 @@ if (CLAUDE_ENABLED) {
   });
   /* 戳第 5 档是 turn → t5 → face 三步序列，三步都对着同一段「转身生气」，中间不重播 */
   const CLAWD_RIG_C = Object.freeze({
-    grab: 'grab', drag: 'drag', fly: 'fly', land: 'land', stomp: 'stomp', pet: 'pet',
+    press: 'press', grab: 'grab', drag: 'drag', fly: 'fly', land: 'land', stomp: 'stomp', pet: 'pet',
     t2: 'poke2', t3: 'poke3', t4: 'poke4', turn: 'sulk', t5: 'sulk', face: 'sulk',
   });
   let clawdRigPokeT1 = 'poke1';        // 第 1 档：蹦一下 / 害羞捂眼，每次戳随机一个
@@ -5773,9 +5773,11 @@ if (CLAUDE_ENABLED) {
     }
     button.style.setProperty('transition', 'none', 'important');
     try { button.setPointerCapture(event.pointerId); } catch (error) { /* 老 WebView 没有就算了 */ }
-    /* 视觉上的“抓住”从手指落下就开始；5px 阈值只判断松手后算戳还是抛，
-       不再让用户等到第一次大位移才看到反馈。 */
-    setClawdC('grab', 0);
+    /* 手指落下立刻给反馈（2.0.143 定的：不能等第一次大位移才有反应），
+       但在地上时只是「被按住」（压扁一点、影子还在），挪动超过 5px 才拎起来——
+       以前一按下就摆被拎起来的姿势，按住想轻抚时会先吊起来再切轻抚（Lulu 2026-09-24）。
+       在半空中被接住的，直接就是拎着。 */
+    setClawdC(A2.fy < 0 ? 'grab' : 'press', 0);
     /* 轻抚（Lulu 2026-09-24）：按住不动 0.6 秒。手机没有悬停，只能靠这个；电脑上按住也一样算。
        挪动超过 5px 就是拖，0.6 秒内松手还是戳，三者分得开。 */
     hostWindow.clearTimeout(A2.petTimer);
@@ -5808,7 +5810,8 @@ if (CLAUDE_ENABLED) {
       A2.dragging = true;
       dragStarted = true;
       hostWindow.clearTimeout(A2.petTimer);
-      if (A2.petting) { A2.petting = false; setClawdC('grab', 0); }   // 摸着摸着拎起来了：照常进入拖
+      A2.petting = false;
+      setClawdC('grab', 0);                    // 挪动超过阈值才真的拎起来（按住 / 摸着摸着拖动都一样）
       hostWindow.setTimeout(() => { if (A2.dragging) setClawdC('drag', 0); }, 350);
     }
     if (!A2.moved) return;

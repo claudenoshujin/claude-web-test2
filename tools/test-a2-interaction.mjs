@@ -211,11 +211,10 @@ lift(100, 100);
 await wait(1500);
 
 /* ---------- 2. 抓的反馈立刻给；5px 阈值只决定松手后是戳还是抛 ---------- */
-/* 2.0.143 起 grab 姿势在 pointerdown 就上，不再等第一次大位移——
-   等到阈值才给反馈的话，手指落下到画面有反应之间会空掉一拍。
-   阈值现在只用来判定松手后走 a2Poke 还是 a2Ballistic。 */
+/* 2.0.143 起按下立刻给反馈，不再等第一次大位移——等到阈值才给反馈的话，手指落下到画面有反应之间会空掉一拍。
+   C1b（2026-09-24）起按下的反馈是「被按住」，挪动超过阈值才是「拎起来」，免得按住轻抚时先吊起来。 */
 press(100, 100);
-assert.equal(cTrack(), 'grab', '手指一落下就该看到抓住的反馈，不能等位移超过阈值');
+assert.equal(cTrack(), 'press', '手指一落下就该看到被按住的反馈，但还不能拎起来');
 move(102, 101);                       // 位移 3px，还在阈值内
 lift(102, 101);
 assert.equal(cTrack(), 't1', '没拖过就该走戳，第一档是 t1');
@@ -474,7 +473,7 @@ function cancel(x, y, id = 1) {
   clawd.dispatchEvent(event);
 }
 press(50, 50);
-assert.equal(cTrack(), 'grab', '按下就该是 grab');
+assert.equal(cTrack(), 'press', '按下就该是 press（被按住）');
 cancel(50, 50);
 assert.equal(cTrack(), '', 'pointercancel 不能被当成一次戳');
 
@@ -492,7 +491,7 @@ function pointerAs(type, x, y, id) { const e = pointer(type, x, y); e.pointerId 
 clawd.dispatchEvent(pointerAs('pointerdown', 50, 50, 1));
 clawd.dispatchEvent(pointerAs('pointerdown', 60, 60, 2));
 clawd.dispatchEvent(pointerAs('pointerup', 60, 60, 2));
-assert.equal(cTrack(), 'grab', '第二根手指抬起不能让第一根手指的抓取结束');
+assert.equal(cTrack(), 'press', '第二根手指抬起不能让第一根手指的按住结束');
 clawd.dispatchEvent(pointerAs('pointerup', 50, 50, 1));
 await wait(2000);
 
@@ -576,6 +575,7 @@ assert.equal(cTrack(), '', '轻抚播完回到空闲');
 press(50, 50);
 await wait(300);
 move(90, 50);
+assert.equal(cTrack(), 'grab', '挪动超过阈值才拎起来');
 await wait(500);
 assert.notEqual(cTrack(), 'pet', '按下以后拖动了就是抓，不能再算轻抚');
 lift(90, 50);

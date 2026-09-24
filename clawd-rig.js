@@ -250,6 +250,7 @@ export function buildClawdRig() {
         next: opt.next || null,             // 播完自动接哪个（例：抓起 → 吊着）
         noShadow: !!opt.noShadow,           // 允许中途没有影子（离地、缩进输入框）
         clipGround: !!opt.clipGround,       // 地面线以下剪掉
+        hold: !!opt.hold,                   // 播完停在最后一帧等下一个状态（例：被按住，等松手 / 拖动 / 轻抚）
         group: opt.group || 'long' });
       // smooth：哪些层的位移不按 100ms 节拍跳，而是平滑移动。只给「整张图不变、只是换位置」的层用
       //（整只平移、跳起的弧线、飞行的道具）；换姿势、换帧仍然按节拍跳
@@ -1216,6 +1217,16 @@ export function buildClawdRig() {
     sym(c, 400, 'vein', { x: 4, y: 2, dur: 2400 });
     c.at(3000, 'body', { f: 'turnL' }).at(3000, 'eyes', { f: 'open', x: -1 });
     c.at(3200, 'body', { f: 'stand' }).at(3200, 'eyes', { x: 0 });
+  }
+
+  /* ── 被按住：手指 / 鼠标按下还没拖（Lulu 2026-09-24）──
+     以前一按下就摆「被拎起来」的姿势，按住想轻抚时会先吊起来再切轻抚。
+     现在按下只被压扁一点、贴在地上（影子还在），挪动超过 5px 才拎起来，按住 0.6 秒才轻抚。 */
+  {
+    const c = def(new Clip('press', '被按住', 300, { track: 'C', hold: true, group: 'touch' }));
+    c.beat(0, '被按下去：身子一沉、腿收一点、眯眼').beat(200, '停在这里等：松手是戳，拖动是拎起来，按住 0.6 秒是轻抚');
+    c.at(0, 'upper', { y: 1 }).at(0, 'legs', { f: 'crouch' }).at(0, 'eyes', { f: 'half' });
+    c.flex(0, { sx: 1.1, sy: .9 }).flex(100, { sx: 1.04, sy: .96 }).flex(200, {});
   }
 
   /* ════ 抓、丢（C 轨）════
