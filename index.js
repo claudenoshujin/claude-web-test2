@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig2";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig3";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4364,6 +4364,202 @@ if (CLAUDE_ENABLED) {
     return ok[ok.length - 1].id;
   }
 
+  /* ===== 临时：Clawd 动作调试菜单（只放测试版，C1b 做完后整段删掉）=====
+     Lulu 2026-09-24 要的：在酒馆里直接点着看每个动作，不用等随机抽到。
+     页面左边一个小标签「动作」，点开是按钮列表。播放走真实的三条轨道
+     （setClawdA / B / C），所以看到的就是实际会出现的样子，包括新旧交接。
+     播放期间和之后 30 秒不自动抽闲置、不刷新犯困，免得被打断。 */
+  const CLAWD_DEBUG_MENU = true;
+  const CLAWD_DEBUG_ID = 'claude-clawd-debug-menu';
+  let clawdDebugUntil = 0;
+  let clawdDebugA = false;          // A 轨由菜单接管时，到点只收回，不结算成「完成」
+  let clawdDebugTimers = [];
+  let clawdDebugRate = 1;
+  let clawdDebugNoAmbient = true;   // 菜单开着时默认停掉随机闲置
+  let clawdDebugStatusTimer = 0;
+  let clawdDebugOpen = false;       // 只有面板展开时「停掉随机闲置」才生效
+
+  function clawdDebugLater(ms, fn) { clawdDebugTimers.push(hostWindow.setTimeout(fn, ms)); }
+
+  /* 慢放：把输入框 Clawd 身上正在跑的动画（含 ::before 和骨架各层）统一调速 */
+  function clawdDebugApplyRate() {
+    if (clawdDebugRate === 1) return;
+    const button = composerClawd();
+    if (!button) return;
+    hostWindow.requestAnimationFrame(() => {
+      try { button.getAnimations({ subtree: true }).forEach(anim => { anim.playbackRate = clawdDebugRate; }); }
+      catch (error) { /* 老 WebView 没有 getAnimations 就不慢放 */ }
+    });
+  }
+
+  function clawdDebugStop() {
+    clawdDebugTimers.forEach(id => hostWindow.clearTimeout(id));
+    clawdDebugTimers = [];
+    composerClawd()?.classList.remove(INPUT_TEXT_CLASS);
+    /* 没在生成时，A 轨上残留的完成 / 出错也一起收掉，不然它会盖住要看的动作 */
+    clawdDebugA = false;
+    if (clawdTracks.A && !generationEventActive) setClawdA(null);
+    if (clawdTracks.C && !a2Locked()) setClawdC(null);
+    idleAsleep = false;
+    ccDrowsy = false;
+    clawdTracks.bUntil = 0;
+    syncClawdBState();
+  }
+
+  /* 播一段：steps 是 [[时长, 开始时做的事], ...]，时长按慢放倍率拉长 */
+  function clawdDebugPlay(label, steps) {
+    const status = hostDocument.querySelector(`#${CLAWD_DEBUG_ID} .cdm-now`);
+    if (generationEventActive) {
+      if (status) status.textContent = '正在生成，等它结束再点';
+      return;
+    }
+    clawdDebugStop();
+    let t = 0;
+    steps.forEach(([ms, fn]) => {
+      clawdDebugLater(t, () => { fn(ms / clawdDebugRate); clawdDebugApplyRate(); });
+      t += ms / clawdDebugRate;
+    });
+    clawdDebugLater(t, () => clawdDebugStop());
+    clawdDebugUntil = Date.now() + t + 30000;
+    if (status) status.textContent = `正在播：${label}（${(t / 1000).toFixed(1)} 秒）`;
+  }
+
+  /* A 轨：直接摆状态，aUntil 清零，到点由菜单自己收回 */
+  const debugA = state => () => { clawdDebugA = true; setClawdA(state); clawdTracks.aUntil = 0; };
+
+  function clawdDebugGroups() {
+    const rig = Object.values(CLAWD_RIG.clips)
+      .filter(clip => clip.track === 'B' || clip.id === 'pet')
+      .map(clip => [clip.name, [[clip.dur, ms => setClawdB('rig:' + clip.id, ms)]]]);
+    const b = (state, ms) => [[ms, d => setClawdB(state, d)]];
+    const c = (tier, ms) => [[ms, d => setClawdC(tier, d)]];
+    return [
+      ['新 · 复合动作', rig],
+      ['生成', [
+        ['思考 3 秒', [[3000, debugA('think')]]],
+        ['写字 5 秒 → 完成', [[5000, debugA('stream')], [1800, debugA('done')]]],
+        ['坐着写 5 秒 → 完成', [[5000, debugA('sit')], [1800, debugA('done')]]],
+        ['出错', [[1400, debugA('error')]]],
+        ['停止', [[1400, debugA('stopped')]]],
+      ]],
+      ['旧 · 打字', [
+        ['低头看、点头', [[3000, d => { composerClawd()?.classList.add(INPUT_TEXT_CLASS); setClawdB('compose', d); }]]],
+        ['「？」歪头', b('tilt', 1600)],
+        ['「！」惊讶', b('wow', 1200)],
+      ]],
+      ['旧 · 闲置', [
+        ['东张西望', b('around', 1720)],
+        ['转圈', b('spin', 1070)],
+        ['侧靠', b('lean', 1420)],
+        ['躲进去', b('hide', 2600)],
+        ['蹦床', b('tramp', 1150)],
+        ['被冷落', b('neglected', 4000)],
+      ]],
+      ['旧 · 睡觉', [
+        ['犯困 4 秒', [[4000, () => { ccDrowsy = true; syncClawdBState(); }]]],
+        ['入睡 → 睡 5 秒 → 醒来', [
+          [SLEEP_TRANSITION_MS, () => { idleAsleep = true; playSleepTransition(); }],
+          [5000, () => syncClawdBState()],
+          [500, d => { idleAsleep = false; setClawdB('wake', d); }],
+        ]],
+      ]],
+      ['旧 · 戳', [
+        ...[1, 2, 3, 4].map(n => [`第 ${n} 档`, c('t' + n, A2_TMS[n - 1])]),
+        ['第 5 档：生气', [[3400, () => a2SulkSeq()]]],
+      ]],
+    ];
+  }
+
+  function mountClawdDebugMenu() {
+    if (!CLAWD_DEBUG_MENU || hostDocument.getElementById(CLAWD_DEBUG_ID)) return;
+    const groups = clawdDebugGroups();
+    const actions = [];
+    const root = hostDocument.createElement('div');
+    root.id = CLAWD_DEBUG_ID;
+    const R = `#${CLAWD_DEBUG_ID}`;
+    root.innerHTML = `<style>
+      ${R}{position:fixed;left:0;top:30vh;z-index:40000;font:12px/1.4 system-ui,sans-serif;color:var(--cl-ink,#222)}
+      ${R} button{font:inherit;color:inherit;cursor:pointer}
+      ${R} .cdm-tab{writing-mode:vertical-rl;padding:8px 4px;border:1px solid var(--cl-line-strong,#bbb);border-left:0;
+        border-radius:0 8px 8px 0;background:var(--cl-surface,#fff);opacity:.85}
+      ${R} .cdm-panel{position:absolute;left:0;top:0;width:220px;max-height:62vh;overflow:auto;padding:8px 10px 10px;
+        background:var(--cl-surface,#fff);border:1px solid var(--cl-line-strong,#bbb);border-left:0;border-radius:0 10px 10px 0;
+        box-shadow:var(--cl-floating-shadow,0 8px 24px rgba(0,0,0,.2))}
+      ${R} .cdm-panel[hidden]{display:none}
+      ${R} .cdm-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;font-weight:600}
+      ${R} h4{margin:8px 0 4px;font-size:11px;font-weight:600;color:var(--cl-muted,#777)}
+      ${R} .cdm-list{display:flex;flex-wrap:wrap;gap:4px}
+      ${R} .cdm-list button,${R} .cdm-row button{padding:3px 7px;border:1px solid var(--cl-line,#ccc);border-radius:6px;background:var(--cl-soft,#f4f4f2)}
+      ${R} .cdm-list button:hover{border-color:var(--cl-accent,#d97757)}
+      ${R} .cdm-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:4px 0}
+      ${R} .cdm-row button[aria-pressed="true"]{border-color:var(--cl-accent,#d97757);color:var(--cl-accent,#d97757)}
+      ${R} .cdm-now,${R} .cdm-live{margin-top:6px;font-size:11px;color:var(--cl-muted,#777);word-break:break-all}
+    </style>
+    <button class="cdm-tab" type="button" aria-expanded="false">Clawd 动作</button>
+    <div class="cdm-panel" hidden>
+      <div class="cdm-head"><span>Clawd 动作（测试用）</span><button type="button" data-cdm="close" aria-label="收起">×</button></div>
+      <div class="cdm-row">速度
+        <button type="button" data-rate="1" aria-pressed="true">1×</button>
+        <button type="button" data-rate="0.5" aria-pressed="false">0.5×</button>
+        <button type="button" data-rate="0.25" aria-pressed="false">0.25×</button>
+      </div>
+      <div class="cdm-row"><label><input type="checkbox" data-cdm="noambient" checked> 面板开着时停掉随机闲置</label>
+        <button type="button" data-cdm="stop">停</button></div>
+      ${groups.map(([title, items]) => `<h4>${title}</h4><div class="cdm-list">${items.map(([label, steps]) => {
+        actions.push([label, steps]);
+        return `<button type="button" data-act="${actions.length - 1}">${label}</button>`;
+      }).join('')}</div>`).join('')}
+      <div class="cdm-now">点一个动作开始播</div>
+      <div class="cdm-live"></div>
+    </div>`;
+    const tab = root.querySelector('.cdm-tab');
+    const panel = root.querySelector('.cdm-panel');
+    const live = root.querySelector('.cdm-live');
+    const setOpen = open => {
+      clawdDebugOpen = open;
+      panel.hidden = !open;
+      tab.hidden = open;
+      tab.setAttribute('aria-expanded', String(open));
+      hostWindow.clearInterval(clawdDebugStatusTimer);
+      clawdDebugStatusTimer = 0;
+      if (open) {
+        const tick = () => {
+          const button = composerClawd();
+          live.textContent = `A=${clawdTracks.A || '-'}  B=${clawdTracks.B || '-'}  C=${clawdTracks.C || '-'}  骨架=${button?.dataset.clawdRig || '-'}  片段=${button?.dataset.clawdClip || '-'}`;
+        };
+        tick();
+        clawdDebugStatusTimer = hostWindow.setInterval(tick, 300);
+      }
+    };
+    tab.addEventListener('click', () => setOpen(true));
+    root.addEventListener('click', event => {
+      const target = event.target.closest('button');
+      if (!target) return;
+      if (target.dataset.cdm === 'close') setOpen(false);
+      else if (target.dataset.cdm === 'stop') { clawdDebugStop(); root.querySelector('.cdm-now').textContent = '已停'; }
+      else if (target.dataset.rate) {
+        clawdDebugRate = Number(target.dataset.rate);
+        root.querySelectorAll('[data-rate]').forEach(el => el.setAttribute('aria-pressed', String(el === target)));
+      } else if (target.dataset.act) {
+        const [label, steps] = actions[Number(target.dataset.act)];
+        clawdDebugPlay(label, steps);
+      }
+    });
+    root.querySelector('[data-cdm="noambient"]').addEventListener('change', event => {
+      clawdDebugNoAmbient = event.target.checked;
+    });
+    hostDocument.body.append(root);
+  }
+
+  function unmountClawdDebugMenu() {
+    hostWindow.clearInterval(clawdDebugStatusTimer);
+    clawdDebugStatusTimer = 0;
+    clawdDebugTimers.forEach(id => hostWindow.clearTimeout(id));
+    clawdDebugTimers = [];
+    clawdDebugOpen = false;
+    hostDocument.getElementById(CLAWD_DEBUG_ID)?.remove();
+  }
+
   function setClawdA(value, duration = 0) {
     /* 生成永远优先：它能取消 A2 的生气序列。反过来不行——序列锁只挡 C 轨。 */
     a2CancelSeq();
@@ -4469,7 +4665,9 @@ if (CLAUDE_ENABLED) {
       || clawdTracks.bUntil
       || Boolean(box && hostDocument.activeElement === box)
       || Boolean(box?.value?.trim())
-      || isTypingActive();
+      || isTypingActive()
+      || (clawdDebugNoAmbient && clawdDebugOpen)
+      || now < clawdDebugUntil;
     if (blocked) {
       scheduleClawdBAmbient(now, true);
       return;
@@ -4558,7 +4756,7 @@ if (CLAUDE_ENABLED) {
     }
     if (A2.lockUntil && !a2Locked()) { A2.lockUntil = 0; A2.lockName = ''; }
     if (A2.throws > 0 && now - A2.lastThrow > 15000) A2.throws = 0;
-    if (now - clawdLastIdleTickAt >= 5000) {
+    if (now - clawdLastIdleTickAt >= 5000 && now >= clawdDebugUntil) {
       clawdLastIdleTickAt = now;
       refreshIdleSleep();
     }
@@ -10618,6 +10816,7 @@ if (CLAUDE_ENABLED) {
     void installAutoCompleteResizeGuard();
     installStyle();
     installClawdRigStyle();
+    mountClawdDebugMenu();
     hostWindow.console?.info?.('[Claude-Clawd] build:', KEYBOARD_BUILD.id);
     hostDocument.body.classList.add(READY_CLASS);
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
@@ -10941,6 +11140,7 @@ if (CLAUDE_ENABLED) {
     });
     hostDocument.getElementById(STYLE_ID)?.remove();
     hostDocument.getElementById(CLAWD_RIG_STYLE_ID)?.remove();
+    unmountClawdDebugMenu();
     hostDocument.body?.classList.remove(
       READY_CLASS,
       GENERATING_CLASS,

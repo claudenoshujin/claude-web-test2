@@ -510,6 +510,31 @@ for (const id of ['polish', 'eat', 'letter', 'plant', 'butterfly', 'stretch', 'w
   assert.match(rigBuilt.css, new RegExp(`data-clawd-clip="${id}"`), `${id} 的 CSS 要挂在按钮的 data-clawd-clip 上`);
 }
 
+/* ⑧ 临时动作菜单（测试版专用）：点新动作要真的走 B 轨播出来，点「停」要回到空闲 */
+const menu = window.document.getElementById('claude-clawd-debug-menu');
+assert.ok(menu, '测试版要挂动作菜单');
+menu.querySelector('.cdm-tab').click();
+assert.equal(menu.querySelector('.cdm-panel').hidden, false, '点标签要展开面板');
+const polishBtn = [...menu.querySelectorAll('[data-act]')].find(el => el.textContent === '擦杯子');
+assert.ok(polishBtn, '菜单里要有擦杯子');
+polishBtn.click();
+await wait(150);
+assert.equal(clawd.dataset.clawdClip, 'polish', '点擦杯子要真的播擦杯子');
+assert.equal(api.clawdState().B, 'rig:polish');
+menu.querySelector('[data-cdm="stop"]').click();
+await wait(150);
+assert.equal(api.clawdState().B, 'idle', '点「停」要回到空闲');
+assert.ok(!clawd.dataset.clawdClip, '停了以后不再播复合动作');
+const writeBtn = [...menu.querySelectorAll('[data-act]')].find(el => el.textContent.startsWith('写字'));
+writeBtn.click();
+await wait(150);
+assert.equal(api.clawdState().A, 'stream', '菜单的写字要走 A 轨');
+assert.equal(clawd.dataset.clawdClip, 'write');
+menu.querySelector('[data-cdm="stop"]').click();
+await wait(150);
+assert.equal(api.clawdState().A, null, '停了以后 A 轨收回，不结算成完成');
+menu.querySelector('[data-cdm="close"]').click();
+
 /* ⑥ 减少动态：闲置小动作的调度必须查系统设置 */
 assert.match(src, /clawdPrefersReducedMotion\(\)/, '闲置小动作要尊重系统的「减少动态」');
 
