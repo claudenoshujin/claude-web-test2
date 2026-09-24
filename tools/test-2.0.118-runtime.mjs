@@ -199,7 +199,8 @@ emitRuntimeEvent('generation_ended');
 assert.equal(window.__claudeClawdInteraction.clawdState().A, 'done', 'generation must settle once into done');
 emitRuntimeEvent('generation_stopped');
 assert.equal(window.__claudeClawdInteraction.clawdState().A, 'done', 'duplicate terminal events must not settle the same round twice');
-await new Promise(resolve => window.setTimeout(resolve, 1800));
+/* C1b 起 done 是 1800ms（复合动作「完成」），加上 200ms tick 的最坏相位 */
+await new Promise(resolve => window.setTimeout(resolve, 2200));
 assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'B', 'B must resume after done clears');
 assert.equal(window.document.querySelector('#chat .clawd-message-signoff-clawd'), null, 'settling a reply must not re-create a message-end Clawd');
 assert.equal(window.document.querySelectorAll('button.clawd-signoff-button').length, 1, 'still exactly one Clawd after a full generation round');

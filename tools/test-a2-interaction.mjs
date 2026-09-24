@@ -406,6 +406,8 @@ try {
   emitRuntimeEvent('generation_started', 'normal', {}, false);
   await wait(1200);                              // think → stream
   const round = api.clawdState().round;
+  assert.equal(clawd.dataset.clawdClip, 'write', 'C1b：字在往外流时骨架要播写字循环');
+  assert.equal(clawd.dataset.clawdRig, 'on', 'C1b：写字时骨架接管画面');
   skew += 25000;                                 // 假装已经过了 25 秒，还在流式输出
   await wait(450);
   assert.notEqual(api.clawdState().settledRound, round,
@@ -417,6 +419,7 @@ try {
   await wait(250);
   assert.equal(api.clawdState().settledRound, round, '真正的结束事件必须能结算这一轮');
   assert.equal(api.clawdState().A, 'done', '正常结束应该进入 done');
+  assert.equal(clawd.dataset.clawdClip, 'done', 'C1b：写字之后的完成要播丢笔丢纸那段');
 
   /* ①b 请求失败：酒馆只发 GENERATION_ENDED、聊天里没有新回复 → 按失败收场，不庆祝 */
   await wait(1700);
@@ -487,6 +490,21 @@ clawd.dispatchEvent(pointerAs('pointerup', 60, 60, 2));
 assert.equal(cTrack(), 'grab', '第二根手指抬起不能让第一根手指的抓取结束');
 clawd.dispatchEvent(pointerAs('pointerup', 50, 50, 1));
 await wait(2000);
+
+/* ⑦ C1b 分件骨架：挂在输入框那只 Clawd 里，9 层；静止拼图和现网 open 帧逐像素一致 */
+const { buildClawdRig } = await import(pathToFileURL(path.join(root, 'clawd-rig.js')).href);
+const rigBuilt = buildClawdRig();
+assert.equal(rigBuilt.selfCheck(), 0, '骨架静止时必须和 --clawd-f-open 逐像素一致');
+assert.equal(clawd.querySelectorAll(':scope > .clawd-rig .clr-p').length, 9, '骨架要有 9 层');
+assert.ok(window.document.getElementById('claude-clawd-rig-style'), '骨架的样式要装上');
+await wait(3000);
+assert.equal(clawd.dataset.clawdRig, api.clawdState().owner === 'B' && api.clawdState().B === 'idle' ? 'on' : 'off',
+  `骨架只在 B 轨空闲时接管待机画面（当前 ${JSON.stringify(api.clawdState())}）`);
+assert.ok(!clawd.dataset.clawdClip, '空闲待机不播任何复合动作');
+for (const id of ['polish', 'eat', 'letter', 'plant', 'butterfly', 'stretch', 'walk', 'write', 'done']) {
+  assert.ok(rigBuilt.clips[id], `复合动作 ${id} 要生成出来`);
+  assert.match(rigBuilt.css, new RegExp(`data-clawd-clip="${id}"`), `${id} 的 CSS 要挂在按钮的 data-clawd-clip 上`);
+}
 
 /* ⑥ 减少动态：闲置小动作的调度必须查系统设置 */
 assert.match(src, /clawdPrefersReducedMotion\(\)/, '闲置小动作要尊重系统的「减少动态」');

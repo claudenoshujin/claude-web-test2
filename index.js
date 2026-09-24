@@ -14,6 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig1";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -2049,6 +2050,25 @@ if (CLAUDE_ENABLED) {
     settledRound: 0,
     genStartedAt: 0,
   };
+
+  /* ===== C1b 分件骨架 =====
+     输入框上那只 Clawd 里挂一套 9 层的骨架（clawd-rig.js 生成的 CSS）。
+     骨架只在两种时候接管画面：B 轨空闲待机（新呼吸）和播复合动作；
+     其余所有状态（戳、抓、思考、睡觉、打字反应、旧的闲置小动作）仍然由原来的 ::before 画。
+     骨架静止时和 --clawd-f-open 逐像素一致，所以两边切换不会跳。 */
+  const CLAWD_RIG = buildClawdRig();
+  const CLAWD_RIG_STYLE_ID = 'claude-clawd-rig-style';
+  /* 闲置随机池里的长动作：权重、冷却按 docs/Clawd动作分配-生态场-20260924.md §3 */
+  const CLAWD_RIG_POOL = Object.freeze([
+    { id: 'polish', weight: 3, cool: 240000 },
+    { id: 'walk', weight: 3, cool: 120000 },
+    { id: 'butterfly', weight: 1, cool: 600000 },
+    { id: 'plant', weight: 1, cool: 600000 },
+    { id: 'eat', weight: 0.3, mealWeight: 3, cool: 1800000 },
+  ]);
+  const clawdRigLastPlayed = {};
+  let clawdRigLastGenClip = '';
+  let clawdLetterPending = false;
 
   /* ===== A2 的状态量 =====
      放在这里而不是跟 A2 的函数放一起：setClawdC / setClawdA / clawdRuntimeTick
@@ -4249,7 +4269,99 @@ if (CLAUDE_ENABLED) {
       button.classList.toggle('clawd-sleeping', useBState && clawdTracks.B === 'sleep');
       button.classList.toggle('clawd-idle-drowsy', useBState && clawdTracks.B === 'drowsy');
       button.classList.toggle(NEGLECTED_CLASS, useBState && clawdTracks.B === 'neglected');
+      if (isComposer) syncClawdRig(button, owner);
     });
+  }
+
+  function installClawdRigStyle() {
+    hostDocument.getElementById(CLAWD_RIG_STYLE_ID)?.remove();
+    const RB = `#send_form > button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}`;
+    const style = hostDocument.createElement('style');
+    style.id = CLAWD_RIG_STYLE_ID;
+    /* 骨架的位置、缩放、缩放原点和现网 ::before 完全一样（left:-4px; top:-14px; scale(.85); 原点 24px 48px），
+       A2 的抓起 / 抛出挪的是按钮本身，骨架跟着一起走。 */
+    style.textContent = `
+      ${RB} > .clawd-rig { display: none; position: absolute; left: -4px; top: -14px; width: 3px; height: 3px;
+        transform: scale(.85); transform-origin: 24px 48px; pointer-events: none; }
+      ${RB}[data-clawd-rig="on"] > .clawd-rig { display: block; }
+      ${RB}[data-clawd-rig="on"]::before { opacity: 0 !important; animation: none !important; }
+      ${RB} .clr-root { position: absolute; left: 0; top: 0; }
+      ${RB} .clr-p { position: absolute; left: 0; top: 0; width: 3px; height: 3px; }
+      /* 待机时眼睛照旧跟着鼠标看（沿用现网的 clawd-look-* 四个方向），播动作时由动作自己管眼睛 */
+      ${RB}[data-clawd-rig="on"]:not([data-clawd-clip]).clawd-look-l .clr-p-eyes { translate: -3px 0; }
+      ${RB}[data-clawd-rig="on"]:not([data-clawd-clip]).clawd-look-r .clr-p-eyes { translate: 3px 0; }
+      ${RB}[data-clawd-rig="on"]:not([data-clawd-clip]).clawd-look-u .clr-p-eyes { translate: 0 -3px; }
+      ${RB}[data-clawd-rig="on"]:not([data-clawd-clip]).clawd-look-d .clr-p-eyes { translate: 0 3px; }
+      @media (prefers-reduced-motion: reduce) {
+        ${RB} .clawd-rig, ${RB} .clawd-rig * { animation: none !important; }
+      }
+    ` + CLAWD_RIG.css;
+    hostDocument.head.append(style);
+  }
+
+  function ensureClawdRig(button) {
+    if (button.querySelector(':scope > .clawd-rig')) return;
+    const rig = hostDocument.createElement('span');
+    rig.className = 'clawd-rig';
+    rig.setAttribute('aria-hidden', 'true');
+    const root = hostDocument.createElement('span');
+    root.className = 'clr-root';
+    const flex = hostDocument.createElement('span');
+    flex.className = 'clr-flex';
+    CLAWD_RIG.parts.forEach(part => {
+      const node = hostDocument.createElement('i');
+      node.className = `clr-p clr-p-${part}`;
+      flex.append(node);
+    });
+    root.append(flex);
+    rig.append(root);
+    button.append(rig);
+  }
+
+  /* 决定骨架此刻演什么：
+     A 轨：字在往外流（stream / sit）→ 写字循环；写完（done）且刚才在写 → 「完成」丢笔丢纸。
+     B 轨：rig:<动作> → 那个复合动作；idle → 骨架待机（新呼吸）。其余一律交还 ::before。 */
+  function syncClawdRig(button, owner) {
+    ensureClawdRig(button);
+    let clip = '';
+    let on = false;
+    if (owner === 'A') {
+      if (clawdTracks.A === 'stream' || clawdTracks.A === 'sit') clip = 'write';
+      else if (clawdTracks.A === 'done' && (clawdRigLastGenClip === 'write' || clawdRigLastGenClip === 'done')) clip = 'done';
+    } else if (owner === 'B') {
+      const b = clawdTracks.B || 'idle';
+      if (b.startsWith('rig:') && CLAWD_RIG.clips[b.slice(4)]) clip = b.slice(4);
+      else if (b === 'idle') on = true;
+    }
+    if (owner === 'A') clawdRigLastGenClip = clip || (clawdTracks.A === 'think' ? '' : clawdRigLastGenClip);
+    else clawdRigLastGenClip = '';
+    on = on || Boolean(clip);
+    button.dataset.clawdRig = on ? 'on' : 'off';
+    const current = button.dataset.clawdClip || '';
+    if (clip === current) return;
+    button.removeAttribute('data-clawd-clip');
+    if (clip) {
+      void button.offsetWidth;                 // 同一个动作连播两次时让动画从头开始
+      button.dataset.clawdClip = clip;
+    }
+  }
+
+  function clawdMealTime(now = new Date()) {
+    const m = now.getHours() * 60 + now.getMinutes();
+    return (m >= 690 && m <= 780) || (m >= 1050 && m <= 1170);   // 11:30–13:00、17:30–19:30
+  }
+
+  /* 从长动作池里抽一个；抽不到（都在冷却）返回 null */
+  function pickClawdRigClip(now) {
+    const meal = clawdMealTime();
+    const ok = CLAWD_RIG_POOL
+      .filter(item => !(clawdRigLastPlayed[item.id] && now - clawdRigLastPlayed[item.id] < item.cool))
+      .map(item => ({ ...item, w: meal && item.mealWeight ? item.mealWeight : item.weight }));
+    const total = ok.reduce((sum, item) => sum + item.w, 0);
+    if (!total) return null;
+    let roll = Math.random() * total;
+    for (const item of ok) { if ((roll -= item.w) <= 0) return item.id; }
+    return ok[ok.length - 1].id;
   }
 
   function setClawdA(value, duration = 0) {
@@ -4290,7 +4402,8 @@ if (CLAUDE_ENABLED) {
     const round = clawdTracks.activeRound;
     if (!round || clawdTracks.settledRound === round) return;
     clawdTracks.settledRound = round;
-    setClawdA(outcome, 1400);
+    /* 复合动作的「完成」是 1.8 秒（丢笔丢纸 + 蹦两下），比旧的欢呼长一点 */
+    setClawdA(outcome, outcome === 'done' ? 1800 : 1400);
   }
 
   function syncClawdBState() {
@@ -4363,6 +4476,17 @@ if (CLAUDE_ENABLED) {
       return;
     }
 
+    /* C1b：约三成的轮次抽长的复合动作（带冷却），其余照旧抽短的填空小动作 */
+    if (Math.random() < 0.3) {
+      const id = pickClawdRigClip(now);
+      if (id) {
+        clawdRigLastPlayed[id] = now;
+        clawdBLastAmbient = 'rig:' + id;
+        setClawdB('rig:' + id, CLAWD_RIG.clips[id].dur);
+        scheduleClawdBAmbient(now + CLAWD_RIG.clips[id].dur);
+        return;
+      }
+    }
     const choices = CLAWD_B_AMBIENT_POSES.filter(pose => pose.state !== clawdBLastAmbient);
     const pose = choices[Math.floor(Math.random() * choices.length)] || CLAWD_B_AMBIENT_POSES[0];
     clawdBLastAmbient = pose.state;
@@ -4562,6 +4686,12 @@ if (CLAUDE_ENABLED) {
       source.on(type, handler);
       generationSubscriptions.push({ source, type, handler });
     };
+
+    /* C1b：你不在页面上时来了回复，等你回来 Clawd 读一封信 */
+    const receivedType = types.MESSAGE_RECEIVED || 'message_received';
+    const onReceived = () => { if (hostDocument.hidden) clawdLetterPending = true; };
+    source.on(receivedType, onReceived);
+    generationSubscriptions.push({ source, type: receivedType, handler: onReceived });
 
     subscribe('GENERATION_STARTED', 'generation_started', 'start');
     subscribe('GENERATION_ENDED', 'generation_ended', 'done');
@@ -5889,6 +6019,15 @@ if (CLAUDE_ENABLED) {
       return;
     }
     ccReturnedAt = Date.now();
+    /* C1b：离开期间来了回复 → 回来后读信（只在 B 轨空闲、没在生成、没被碰时） */
+    if (clawdLetterPending) {
+      clawdLetterPending = false;
+      hostWindow.setTimeout(() => {
+        if (destroyed || clawdTracks.A || clawdTracks.C || clawdTracks.B !== 'idle') return;
+        setClawdB('rig:letter', CLAWD_RIG.clips.letter.dur);
+      }, 800);
+      return;
+    }
     if (ccHiddenAt && ccReturnedAt - ccHiddenAt > 2000) {
       const button = hostDocument.querySelector('button.' + BUTTON_CLASS);
       if (button && !button.classList.contains('clawd-sleeping')) {
@@ -10479,6 +10618,7 @@ if (CLAUDE_ENABLED) {
     if (destroyed) return;
     void installAutoCompleteResizeGuard();
     installStyle();
+    installClawdRigStyle();
     hostWindow.console?.info?.('[Claude-Clawd] build:', KEYBOARD_BUILD.id);
     hostDocument.body.classList.add(READY_CLASS);
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
@@ -10801,6 +10941,7 @@ if (CLAUDE_ENABLED) {
       delete indicator.dataset.clawdTypingRun;
     });
     hostDocument.getElementById(STYLE_ID)?.remove();
+    hostDocument.getElementById(CLAWD_RIG_STYLE_ID)?.remove();
     hostDocument.body?.classList.remove(
       READY_CLASS,
       GENERATING_CLASS,
