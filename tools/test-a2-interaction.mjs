@@ -412,10 +412,31 @@ try {
     '生成事件还在进行时，stream 的超时兜底不能把这一轮结算掉（提前庆祝）');
   assert.ok(['stream', 'sit'].includes(api.clawdState().A),
     `长生成中途应该还在 stream / sit，实际是 ${api.clawdState().A}`);
+  context.chat.push({ is_user: false, mes: '很长的一段回复', swipes: ['很长的一段回复'], swipe_id: 0 });
   emitRuntimeEvent('generation_ended');
   await wait(250);
   assert.equal(api.clawdState().settledRound, round, '真正的结束事件必须能结算这一轮');
   assert.equal(api.clawdState().A, 'done', '正常结束应该进入 done');
+
+  /* ①b 请求失败：酒馆只发 GENERATION_ENDED、聊天里没有新回复 → 按失败收场，不庆祝 */
+  await wait(1700);
+  context.chat.push({ is_user: true, mes: '再来一次' });
+  emitRuntimeEvent('generation_started', 'normal', {}, false);
+  await wait(250);
+  emitRuntimeEvent('generation_ended', context.chat.length);
+  await wait(100);
+  assert.equal(api.clawdState().A, 'error', '没收到回复的「结束」必须当成失败，不能庆祝');
+
+  /* ①c 重新生成（swipe）：条数不变、换了一个 swipe，也算收到回复 */
+  await wait(1700);
+  context.chat.push({ is_user: false, mes: '第一版', swipes: ['第一版'], swipe_id: 0 });
+  emitRuntimeEvent('generation_started', 'swipe', {}, false);
+  await wait(250);
+  const lastMsg = context.chat[context.chat.length - 1];
+  lastMsg.swipes.push('第二版'); lastMsg.swipe_id = 1; lastMsg.mes = '第二版';
+  emitRuntimeEvent('generation_ended', context.chat.length);
+  await wait(100);
+  assert.equal(api.clawdState().A, 'done', '重新生成换了 swipe 也要算成功');
 
   /* ② 结束事件丢了：超过 5 分钟按「停止」收场，下一轮开始事件要能开新一轮 */
   await wait(1700);

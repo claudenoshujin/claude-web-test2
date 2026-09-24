@@ -193,6 +193,8 @@ assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'C', 'touch mus
    旧值 850ms 是按 2.0.139 那条 560ms 的 composer 分支定的。 */
 await new Promise(resolve => window.setTimeout(resolve, 1100));
 assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'A', 'A must resume after the touch track clears');
+/* C1a 起：结束时要真的收到回复才算 done（酒馆请求失败时也只发 GENERATION_ENDED）。 */
+context.chat.push({ is_user: false, mes: 'streamed reply', swipes: ['streamed reply'], swipe_id: 0 });
 emitRuntimeEvent('generation_ended');
 assert.equal(window.__claudeClawdInteraction.clawdState().A, 'done', 'generation must settle once into done');
 emitRuntimeEvent('generation_stopped');

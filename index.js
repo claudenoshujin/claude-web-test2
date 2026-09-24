@@ -4499,6 +4499,31 @@ if (CLAUDE_ENABLED) {
     }, GEN_TIMER_LINGER_MS);
   }
 
+  /* 生成开始时记下聊天的样子，结束时对比，判断这一轮有没有真的收到回复。
+     impersonate（替你写）和 quiet（后台生成）不往聊天里写东西，不做这个判断。 */
+  let clawdGenSnapshot = null;
+  function snapshotChatForClawd(type) {
+    const chat = getContext()?.chat;
+    if (!Array.isArray(chat)) return null;
+    const last = chat[chat.length - 1];
+    return {
+      type: String(type || 'normal'),
+      len: chat.length,
+      lastMes: last?.mes ?? null,
+      lastSwipes: Array.isArray(last?.swipes) ? last.swipes.length : 0,
+    };
+  }
+  function clawdReplyArrived(snap) {
+    if (/^(impersonate|quiet)$/.test(snap.type)) return true;
+    const chat = getContext()?.chat;
+    if (!Array.isArray(chat)) return true;       // 读不到聊天就别冤枉它，照常庆祝
+    const last = chat[chat.length - 1];
+    if (!last || last.is_user || !String(last.mes ?? '').trim()) return false;
+    if (chat.length > snap.len) return true;     // 多了一条新回复
+    const swipes = Array.isArray(last.swipes) ? last.swipes.length : 0;
+    return last.mes !== snap.lastMes || swipes !== snap.lastSwipes;   // 重新生成 / 继续写
+  }
+
   function watchGenerationEvents() {
     if (generationSubscriptions.length || destroyed) return;
     const context = getContext();
@@ -4521,8 +4546,17 @@ if (CLAUDE_ENABLED) {
         if (active) startGenTimer(); else stopGenTimer();
         /* 上一轮如果是兜底收场的（结束事件丢了），generationEventActive 会一直是 true；
            这时新的开始事件也要开新一轮，否则这一轮的结束会被 settledRound 挡掉。 */
-        if (active && (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound)) beginClawdGeneration();
-        else if (!active) settleClawdGeneration(outcome);
+        if (active && (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound)) {
+          beginClawdGeneration();
+          clawdGenSnapshot = snapshotChatForClawd(args[0]);
+        } else if (!active) {
+          /* C1a：酒馆 1.18 请求失败（503、额度用完）时只发 GENERATION_ENDED，
+             根本没有 GENERATION_FAILED 这个事件。所以「结束」时要自己看这一轮
+             到底有没有收到回复：没收到就按失败收场，不庆祝。 */
+          const final = outcome === 'done' && clawdGenSnapshot && !clawdReplyArrived(clawdGenSnapshot) ? 'error' : outcome;
+          settleClawdGeneration(final);
+          clawdGenSnapshot = null;
+        }
         scheduleRefresh();
       };
       source.on(type, handler);
