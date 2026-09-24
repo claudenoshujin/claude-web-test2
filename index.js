@@ -4437,13 +4437,12 @@ if (CLAUDE_ENABLED) {
   /* 原型里不需要新帧的低频在场动作。复用现有 200ms runtime tick，不新增
      高频监听，也不读布局。每次演完才安排下一次，避免空闲页上一直闹腾。 */
   const CLAWD_B_AMBIENT_POSES = Object.freeze([
+    /* 2026-09-24 Lulu 定：双跳（像「完成」）、扒边（和滚动时扒住输入框重复）、甩身子 移出闲置池。
+       它们的样式先留着，等第 4 批按新骨架重做短闲置时一起清。 */
     { state: 'around', duration: 1720 },
-    { state: 'shake', duration: 740 },
     { state: 'spin', duration: 1070 },
-    { state: 'dhop', duration: 920 },
     { state: 'lean', duration: 1420 },
     { state: 'hide', duration: 2600 },
-    { state: 'ledge', duration: 2400 },
     { state: 'tramp', duration: 1150 },
   ]);
   let clawdBAmbientNextAt = Date.now() + 18000;

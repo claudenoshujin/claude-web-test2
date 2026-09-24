@@ -373,7 +373,11 @@ for (const animation of ['trampP', 'shakeP', 'aroundP', 'aroundF', 'spinP', 'spi
 }
 assert.match(src, /CLAWD_B_AMBIENT_POSES/,
   '空闲姿势不能只留在样式表里，必须接入低频 B 轨在场调度');
-for (const pose of ['around', 'shake', 'spin', 'dhop', 'lean', 'hide', 'ledge', 'tramp']) {
+/* 2026-09-24 Lulu 定：双跳（像「完成」）、扒边（和滚动时扒住输入框重复）、甩身子 移出闲置池 */
+for (const pose of ['dhop', 'ledge', 'shake']) {
+  assert.doesNotMatch(src, new RegExp(`state: '${pose}', duration`), `${pose} 已移出闲置池`);
+}
+for (const pose of ['around', 'spin', 'lean', 'hide', 'tramp']) {
   assert.match(src, new RegExp(`state: '${pose}'`),
     `${pose} 必须有实际触发，不能只做成 CSS 库存`);
 }
