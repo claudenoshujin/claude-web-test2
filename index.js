@@ -366,7 +366,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.155-welcome-cover-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.156-playbill-align-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -7175,7 +7175,14 @@ if (CLAUDE_ENABLED) {
     /* 幕号：**一个存档就是一幕**，最旧的那个是 Act I，往后依次递增。
        必须在 pinned 排序之前按时间单独算一遍 —— 幕号是这个存档的固有编号，
        置顶只改它在列表里的位置，不能把它的幕号一起改掉。
-       右栏幕次表用的是同一套编号（见 fillAsideChats）。 */
+
+       ⚠ 2.0.156 起这一套编号**只剩这一栏在用**。右栏幕次表已经改成
+       「本场对话内部的幕次目录」（见 fillAsideActs），一幕 = 一个用户回合。
+       所以同一个屏幕上「幕」有两个意思：左栏是第几个存档，右栏是本场第几幕。
+       参考稿 剧场主题_THE_PLAYBILL.html 两处都是后者（左栏那行
+       `Elias · 第 VII 幕 · 49 句` 说的是这一场里有七幕）。
+       要对齐得先拿到每个存档的用户回合数，接口只给总句数，
+       所以这一步没做，留着这条说明别再被当成同一套编号。 */
     const byAge = entries.slice().sort((a, b) => timeOf(a.dateText) - timeOf(b.dateText));
     byAge.forEach((entry, i) => { entry.actNo = i + 1; });
 
@@ -7410,6 +7417,22 @@ if (CLAUDE_ENABLED) {
     }
     list.dataset.clawdOwned = '1';
     list.textContent = '';
+    /* 列表头右侧的条数。参考稿 剧场主题_THE_PLAYBILL.html 的列表头是
+       `上演中 … 6`：左边分区名、右边一个计数，和右栏那些 .cw-r 是同一种
+       「标签 / 值」行。计数写在 label 里而不是另起一个节点 ——
+       label 已经是那一行了，再加一层就得再对一次基线。
+       只在四栏形态下显示（rail 那一列窄，塞不下），显隐交给 CSS。 */
+    const label = slot.querySelector('.clawd-rail-recents-label');
+    if (label) {
+      let count = label.querySelector('.clawd-rail-recents-count');
+      if (!count) {
+        count = hostDocument.createElement('span');
+        count.className = 'clawd-rail-recents-count';
+        label.append(count);
+      }
+      const n = String(entries.length);
+      if (count.textContent !== n) count.textContent = n;
+    }
     for (const entry of entries) {
       const row = buildRecentRow(entry);
       /* 监听器绑在自己造的节点上，不依赖酒馆的任何绑定时机。
@@ -10887,7 +10910,13 @@ if (CLAUDE_ENABLED) {
     const model = (src && ccs[src + '_model']) || ccs[(ctx.mainApi || '') + '_model'] || src || ctx.mainApi || '';
     const turns = chat.filter(m => m.is_user).length;
     return {
-      角色: ctx.characters?.[ctx.characterId]?.name || ctx.name2 || '',
+      /* 欢迎态下 ctx.name2 是欢迎助手（"SillyTavern System"），**不是角色** ——
+         那是系统消息的发件人。宁可空着也不写错的名字。
+         2.0.154 在 buildCover 里修过这一条，右栏这份漏了：同一个欢迎页上
+         封面的「角色」是「—」，演职员栏却写着 SillyTavern System。 */
+      角色: inWelcome()
+        ? ''
+        : (ctx.characters?.[ctx.characterId]?.name || ctx.name2 || ''),
       用户: ctx.name1 || '',
       模型: model,
       存档: ctx.getCurrentChatId?.() || '',
@@ -11484,14 +11513,29 @@ if (CLAUDE_ENABLED) {
       + ' data-view="' + act + '">'
       + '<span>' + pbEsc(label) + '</span><b></b></button>';
 
+    /* 2.0.156：封面改回参考稿的竖排 ——
+       眉标 → 实心短线 → 大标题 → 副题 → 细线表 → 页脚，一样一行往下走。
+
+       之前是 `角色 / 存档名 [头像]` 挤成一行 28px 的大标题（第十五轮照
+       Are.na 的频道头做的）。那一行把「这是谁的哪个存档」这种**位置信息**
+       放大成了页面上最大的字，而存档名是 ` C laude - 2026-07-26@09h14m…`
+       这种机器串，占满整行还要截断。位置信息归面包屑条（见 buildCrumb），
+       封面只留「今晚演什么」。
+
+       眉标固定用 Tonight's Programme —— 参考稿封面和对话页都是这一句，
+       它是节目单的抬头，不随内容变。角色名不再放这里（演职员那一格有）。
+       头像也不放了：参考稿封面没有，而且每条消息的头上都有一张。 */
+    /* 只有一幕时不写「一场 I 幕对话」—— 罗马数字 I 单独出现读起来像个错字，
+       参考稿那句是「一场七幕对话」，用的是中文数字、而且本来就有七幕。 */
+    const sub = isWelcome
+      ? '还没有开演。挑一个角色，或者从下面的入口开始。'
+      : (acts > 1 ? '一场 ' + pbRoman(acts) + ' 幕对话 · 共 ' : '一场对话 · 共 ')
+        + chatArr.length + ' 句';
     const html =
-      /* 眉标：对话页是角色名（`角色 / 存档名` 的层级，照 Are.na 的 `组织 / 频道`）；
-         欢迎页没有角色，用参考稿封面那句 Tonight's Programme。 */
-      '<div class="cw-kicker">' + pbEsc(isWelcome ? "Tonight's Programme" : (who || '未命名')) + '</div>'
-      + '<div class="cw-mark">/</div>'
+      '<div class="cw-kicker">' + "Tonight's Programme" + '</div>'
+      + '<div class="cw-mark"></div>'
       + '<h1 class="cw-cover-title">' + pbEsc(title) + '</h1>'
-      + (face ? '<img class="cw-cover-badge" src="' + pbEsc(face) + '" alt="">'
-              : '<span class="cw-cover-badge is-text">' + pbEsc((who || '·').slice(0, 1)) + '</span>')
+      + '<p class="cw-cover-sub">' + pbEsc(sub) + '</p>'
       + '<div class="cw-cover-grid">'
       +   '<dl><div class="cw-h">本场</div>'
       +     pbRow('开演', started ? started[1] : '—')
@@ -11515,6 +11559,9 @@ if (CLAUDE_ENABLED) {
             pbImage() ? '' : '在设置面板的「剧场配图」里填图片地址或选本地文件')
       +   '</dl>'
       + '</div>'
+      /* 页脚。参考稿写的是「向下滚动开演」，那是给一屏封面之后还有正文的
+         情况用的。这里照搬，但欢迎态下面没有台词可滚，就不写。 */
+      + (isWelcome ? '' : '<p class="cw-cover-foot">向下滚动开演</p>')
       ;   /* 标语不在这里 —— 它在配图下面当图注（.cw-cover-cap，见 buildCoverArt）。 */
 
     /* 配图不在这里 —— 它是 .cw-cover-art（见 buildCoverArt）。
@@ -11527,6 +11574,51 @@ if (CLAUDE_ENABLED) {
        照 Are.na 的编辑页来 —— 标题和信息表在图上面，图注在图下面。 */
     chat.insertBefore(el, chat.firstElementChild);
     pbBindCoverView(el);
+  }
+
+  /* ---- 面包屑条 ----
+     参考稿 剧场主题_THE_PLAYBILL.html 正文列顶上有一条 12.5px 的细条：
+     左边 `剧目 / 上演中 / **雨夜的第二封信**`，右边 `幕 I / VII`。
+     ST 里对应的层级是 `角色 / 存档名`，右边同样是「第几幕 / 共几幕」。
+     这一段位置信息本来被塞进封面当大标题了，现在归位。
+
+     **做成 #chat 的第一个子节点 + position:sticky**，不是 position:fixed：
+     fixed 要自己算左右边界（四栏的列宽是变量，算错就错位），还要给 #chat
+     补一个和条等高的 padding-top 才不会盖住第一条内容。sticky 贴的是
+     #chat 自己的滚动容器，宽度天然就是正文列，也不用补 padding。
+
+     ⚠ 欢迎态那条「#chat 里除了问候语一律 display:none」是 (1,2,2) 带
+     !important 的，和封面一样要靠 `body.clawd-welcome` 把权重抬过去，
+     不是靠写在后面。 */
+  function buildCrumb() {
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+    const old = chat.querySelector(':scope > .cw-crumb');
+    if (!stageOn()) { old?.remove(); return; }
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return;
+
+    const isWelcome = inWelcome();
+    const who = isWelcome ? '' : (ctx.characters?.[ctx.characterId]?.name || ctx.name2 || '');
+    const title = isWelcome ? '今晚的节目单' : (ctx.getCurrentChatId?.() || '未命名的一场');
+    const turns = (ctx.chat || []).filter(m => m.is_user).length;
+    const acts = pbActsOf(turns);
+
+    const html =
+      '<span class="cw-crumb-path">'
+      + (who ? '<span>' + pbEsc(who) + '</span><i>/</i>' : '')
+      + '<b>' + pbEsc(title) + '</b>'
+      + '</span>'
+      /* 右边那半：欢迎态没有幕，留空而不是写「幕 I / I」——
+         那会让一个还没开演的页面看起来已经演了一幕。 */
+      + (isWelcome ? '<span class="cw-crumb-count"></span>'
+                   : '<span class="cw-crumb-count">幕 ' + pbRoman(acts) + '</span>');
+
+    if (old) { if (old.innerHTML !== html) old.innerHTML = html; return; }
+    const el = document.createElement('div');
+    el.className = 'cw-crumb';
+    el.innerHTML = html;
+    chat.insertBefore(el, chat.firstElementChild);
   }
 
   /* 第四列「视图」的三个开关。用事件委托绑在 .cw-cover 上，
@@ -11567,50 +11659,6 @@ if (CLAUDE_ENABLED) {
     } catch (e) { console.warn('[Claude Web] 命令执行失败：', cmd, e); }
   }
 
-  let pbChatsCache = { key: '', rows: [] };
-  async function loadCharChats() {
-    const ctx = window.SillyTavern?.getContext?.();
-    const ch = ctx?.characters?.[ctx?.characterId];
-    if (!ch) return [];
-    if (pbChatsCache.key === ch.avatar) return pbChatsCache.rows;
-
-    let rows = [];
-    try {
-      const res = await fetch('/api/characters/chats', {
-        method: 'POST',
-        headers: ctx.getRequestHeaders ? ctx.getRequestHeaders() : { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatar_url: ch.avatar }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        rows = (Array.isArray(data) ? data : []).map(d => ({
-          name: String(d.file_name || '').replace(/\.jsonl$/, ''),
-          count: d.chat_items ?? d.message_count ?? '',
-          date: d.last_mes || '',
-          /* 接口把最后一条消息原样带回来，含标签和换行，直接塞进一行会很难看。
-             这里只做两件事：去掉尖括号标签、把空白压成一个空格。截断交给 CSS。 */
-          preview: String(d.mes || d.preview_message || '')
-            .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120),
-        }));
-      }
-    } catch { /* 退回下面的兜底 */ }
-
-    if (!rows.length) {
-      rows = [...document.querySelectorAll('.clawd-rail-recents .recentChat')].map(r => ({
-        name: r.dataset.file || r.querySelector('.chatName')?.textContent || '',
-        count: '',
-        date: r.querySelector('.chatDate')?.textContent || '',
-      }));
-    }
-    /* 幕号：最旧的存档是 Act I。接口和兜底两条路给回来的都是新→旧，
-       所以倒着数。左栏列表行里的「第 X 幕」用的是同一套编号
-       （见 collectRecentEntries 里的 byAge），两处必须一致，
-       否则同一个存档在左右两栏会显示成两个幕号。 */
-    rows.forEach((r, i) => { r.actNo = rows.length - i; });
-    pbChatsCache = { key: ch.avatar, rows };
-    return rows;
-  }
-
   /* ---- 每条消息的头 ----
      从上往下：细线分隔 / 场景标语 / 居中头像 / 居中名字 / 正文 /
      左轨时间 / 底部居中的操作键。用户消息和角色消息**同一套格式**。
@@ -11624,9 +11672,18 @@ if (CLAUDE_ENABLED) {
      就得改 DOM 顺序。这里自己放一张 img，src 从这条消息自己的头像上抄 ——
      角色消息用角色的脸、用户消息用用户的脸，各是各的。 */
 
-  /* 幕次表要用的：每一幕的第一条消息、幕号、场景标语。buildCards 顺手记下来，
-     右栏直接读，不用再扫一遍 DOM。 */
+  /* 幕次表要用的：每一幕的第一条消息、幕号、场景标语、开场那句正文。
+     buildCards 顺手记下来，右栏直接读，不用再扫一遍 DOM。 */
   let pbActs = [];
+
+  /* 一幕的开场白 = 开这一幕那条消息的正文，压成一行。
+     取 .mes_text 的 textContent 而不是 innerHTML：正文里有 <em>、代码块、
+     思维链折叠这些结构，取文本才不会把标签带进右栏。
+     不截断 —— 截断交给 CSS 的 ellipsis，那样列宽变了不用改这里。 */
+  function pbActLine(mes) {
+    const raw = mes.querySelector('.mes_text')?.textContent || '';
+    return raw.replace(/\s+/g, ' ').trim();
+  }
 
   function buildCards() {
     const chat = document.getElementById('chat');
@@ -11655,7 +11712,12 @@ if (CLAUDE_ENABLED) {
       const name = mes.getAttribute('ch_name') || '';
       const when = mes.dataset.time ? new Date('2000/01/01 ' + mes.dataset.time) : null;
       const note = pbLine(id, when);
-      if (isNewAct) acts.push({ no: act, roman: pbRoman(act), note, el: mes });
+      /* 幕次表要的是**这一幕真的说了什么**，所以另外抓一句正文。
+         note（pbLine）是按 mesid 取模从一个固定池子里选的**气氛标语**，
+         和内容无关 —— 它挂在幕次条上当场景注是对的（那本来就是布景说明），
+         但放进幕次表就成了「每一幕看起来都在讲天气」。
+         2.0.156 第一版直接用了 note，lulu 一眼看出来是随机的。 */
+      if (isNewAct) acts.push({ no: act, roman: pbRoman(act), note, line: pbActLine(mes), el: mes });
 
       const src = showFace
         ? (mes.querySelector('.mesAvatarWrapper .avatar img')?.getAttribute('src') || '')
@@ -11727,6 +11789,56 @@ if (CLAUDE_ENABLED) {
     });
 
     pbActs = acts;
+    /* 幕次表就地填，不放回 ensureAside —— refreshTheatre 里 ensureAside 排在
+       buildCards **前面**，在那边填会拿到上一帧的 pbActs，整栏慢一拍。
+       ensureAside 每帧重建 #clawd-aside 的 innerHTML（只留一个空的块头），
+       所以这里每帧填一次是必须的，不是重复劳动。 */
+    fillAsideActs();
+  }
+
+  /* ---- 右栏「幕次表」= 本场对话的幕次目录 ----
+     参考稿 剧场主题_THE_PLAYBILL.html 那一栏是 `Act I | 雨。旧剧场后台…`：
+     **一行一幕，写的是这一幕的场景注**，点一下跳到那一幕。
+
+     2.0.155 之前这里列的是「这个角色的历史存档」，一个存档当一幕。
+     那个模型下，存档名会原样显示，而存档名是**建档时的角色名 + 时间戳**——
+     角色改过名、或者从别处挪过来的存档，就会在 C laude 的幕次表里
+     顶着「马清枢 - …」，看着像混进了别的角色（2026-08-25 实测：
+     那个文件确实在 ` C laude/` 目录下，是它自己的存档，显示没错，
+     但这一栏本来就不该是存档列表）。
+
+     换存档仍然走左栏的会话列表；重命名和删除走酒馆自己的
+     「Manage chat files」—— 删存档不可撤销，不在这一栏代劳。 */
+  function fillAsideActs() {
+    const host = document.getElementById('clawd-aside-chats');
+    if (!host) return;
+    if (!pbActs.length) {
+      host.innerHTML = '<div class="cw-h">幕次表</div><div class="cw-empty">（还没有幕次）</div>';
+      return;
+    }
+    /* 当前幕次 = 最后一幕。和封面/演职员栏的「当前幕次」是同一个数，
+       那两处走 pbActsOf(用户回合数)，这里走 pbActs 的长度 —— 同一套编号。 */
+    const curNo = pbActs[pbActs.length - 1].no;
+    host.innerHTML = '<div class="cw-h">幕次表</div>'
+      + pbActs.map(a => {
+          /* 正文优先。空消息（比如刚开一幕还没打字）才退回场景标语，
+             总比留一行空白强；两者都没有就放一个破折号。 */
+          const text = a.line || a.note || '—';
+          return '<button type="button" class="cw-r cw-act-row' + (a.no === curNo ? ' is-current' : '')
+          + '" data-act="' + a.no + '" title="' + pbEsc(text) + '">'
+          + '<span>Act ' + a.roman + '</span>'
+          + '<b>' + pbEsc(text) + '</b>'
+          + '</button>';
+        }).join('');
+    host.querySelectorAll('.cw-act-row').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const no = Number(btn.dataset.act);
+        const hit = pbActs.find(a => a.no === no);
+        /* el 是那一幕第一条消息的节点。它可能已经被酒馆重渲染掉了
+           （流式输出会整块换 .mes_text，换栏目也会重建），所以先确认还连着。 */
+        if (hit?.el?.isConnected) hit.el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+    });
   }
 
   /* ---- 配图 ----
@@ -11764,6 +11876,336 @@ if (CLAUDE_ENABLED) {
      塞进去会变成网格项，得再写一条 grid-column 才能横跨，不如放外面干净。 */
   const PB_ART_H = 470;
 
+  /* ============================================================================
+     欢迎页 —— 独立页面，照 Are.na 频道页（规格见 welcome-page-spec.md）
+     ----------------------------------------------------------------------------
+     §0 挂载：**挂在 body 上，是 #cw-shell 的兄弟，不在对话页里面**。
+     以前它长在 #chat 里，于是把对话页的家具（导航 / 会话列表 / 演职员栏 /
+     输入区）全继承了一遍。欢迎态下整个 #cw-shell 收起，这一页占满视口。
+
+     §7 全页只有两个字号：标题 28px，其余一律 13px 常规体。
+     **没有粗体** —— 层级靠位置、留白和颜色，不靠字重和字号阶梯。
+     线只有两种：1px 细线，和文字块的 1px 边框。没有卡片 / 圆角 / 阴影 / 填充。
+     ============================================================================ */
+
+  const W_ORDERS = [
+    { id: 'recent', label: '最近使用' },
+    { id: 'oldest', label: '最早' },
+    { id: 'name',   label: '按名称' },
+    { id: 'lines',  label: '按句数' },
+  ];
+  /* 文字块的长度预算。超了就**换一条**，不截断、不加省略号（§8）。
+     180 个字在 ~300px 宽、13px 的一栏里大约十行，再长就把一列吃光。 */
+  const W_TEXT_BUDGET = 300;
+  const W_TEXT_RATIO = 0.3;      /* §8：约三成文字块，七成图片块 */
+
+  function wOrder() {
+    try {
+      const v = window.localStorage.getItem('claude-web:arena-order');
+      return W_ORDERS.some(o => o.id === v) ? v : 'recent';
+    } catch { return 'recent'; }
+  }
+  function wSetOrder(v) {
+    try { window.localStorage.setItem('claude-web:arena-order', v); } catch { /* 隐私模式 */ }
+  }
+
+  /* 读会话行。行是 collectRecentEntries 渲染的，幕号 / 句数 / 头像都算过了。 */
+  function wEntries() {
+    return [...document.querySelectorAll('.clawd-rail-recents .recentChat')].map((r, i) => {
+      const meta = (r.querySelector('.chatMeta, .recentChatMeta')?.textContent || '')
+        .replace(/\s+/g, ' ').trim();
+      const m = meta.match(/(\d+)\s*句/);
+      return {
+        /* file 是稳定标识，和 getCurrentChatId() 同一个串。认行只能靠它 ——
+           下标会随「最近使用」重排而指到别的存档上（写坏过一个存档）。 */
+        file: r.dataset.file || '',
+        avatar: r.dataset.avatar || '',
+        group: r.dataset.group || '',
+        meta,
+        lines: m ? Number(m[1]) : 0,
+        /* 块里的图用**原图**不用缩略图。/thumbnail 给的是 96×144，
+           铺到 380px 宽的一栏要放大四倍，糊得一眼可见；
+           /characters/<avatar> 是 512×768 的原件（2026-08-26 实测）。
+           缩略图留作兜底：原图取不到时总比空框强。 */
+        full: r.dataset.avatar ? '/characters/' + encodeURIComponent(r.dataset.avatar) : '',
+        face: r.querySelector('.avatar img')?.getAttribute('src') || '',
+        seq: i,
+      };
+    }).filter(e => e.file);
+  }
+
+  function wSort(list, order) {
+    const out = list.slice();
+    if (order === 'oldest') out.reverse();
+    else if (order === 'name') out.sort((a, b) => a.file.localeCompare(b.file, 'zh-Hans-CN'));
+    else if (order === 'lines') out.sort((a, b) => b.lines - a.lines);
+    return out;
+  }
+
+  /* 存档正文。一个存档只拉一次，存下来 —— 版面每帧都会重建，
+     每帧拉一次接口会把服务端打满。 */
+  const wChatCache = new Map();
+  async function wLoadChat(entry) {
+    if (wChatCache.has(entry.file)) return wChatCache.get(entry.file);
+    /* 群聊走另一个接口，这里不做 —— 拿不到就当没有正文，退回图片块。 */
+    if (entry.group) { wChatCache.set(entry.file, []); return []; }
+    const ctx = window.SillyTavern?.getContext?.();
+    const ch = (ctx?.characters || []).find(c => c && c.avatar === entry.avatar);
+    if (!ctx || !ch) { wChatCache.set(entry.file, []); return []; }
+    let out = [];
+    try {
+      const res = await fetch('/api/chats/get', {
+        method: 'POST',
+        headers: ctx.getRequestHeaders(),
+        cache: 'no-cache',
+        body: JSON.stringify({ ch_name: ch.name, file_name: entry.file, avatar_url: ch.avatar }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        /* [0] 是这个存档的元数据，不是消息。 */
+        out = Array.isArray(data) ? data.slice(1).filter(m => m && typeof m.mes === 'string') : [];
+      }
+    } catch { /* 拿不到就当没有正文 */ }
+    wChatCache.set(entry.file, out);
+    return out;
+  }
+
+  /* 从一个存档里挑一条能当文字块的消息（§8）：
+       - 掐掉**第一条和最后一条**：开头是问候，结尾常是被打断的半句
+       - 只用**完整的一条**，超预算就换一条，绝不截断
+     一条都挑不出来就返回空，调用方退回图片块。 */
+  /* 取一条消息的**正文**。
+     ⚠ 不能只用 `replace(/<[^>]*>/g,'')` 去标签：那只抹掉尖括号，
+     **把包在里面的字留了下来**。角色卡常用 <bbs_start>2024/5/20 10:00</bbs_start>
+     这类自造标签装时间戳，去完标签就变成正文头尾各粘一个日期
+     （2026-08-26 实测：「2024/5/20 10:00 你好，零！…告诉我哦。） 2024/5/20 10:01」，
+     看着像两条消息被拼在了一起）。
+
+     规矩：**自造标签连内容一起丢，标准标签只丢标签留文字**。
+     自造标签在 DOM 里是 HTMLUnknownElement，拿这个判断，
+     比维护一张 bbs_start / bbs_end 的黑名单可靠 —— 换个角色卡就换一套标签名。 */
+  function wMessageText(raw) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = String(raw || '');
+    tpl.content.querySelectorAll('*').forEach(el => {
+      const t = el.tagName;
+      if (el instanceof window.HTMLUnknownElement || t === 'STYLE' || t === 'SCRIPT') el.remove();
+    });
+    return (tpl.content.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function wPickMessage(messages) {
+    /* §8 掐头去尾：开头是问候，结尾常是被打断的半句。 */
+    const pool = messages.slice(1, -1)
+      .map(m => wMessageText(m.mes))
+      /* 超预算就**换一条**，不截断、不加省略号。预算按最坏情况（全中文）
+         算：一栏内容宽 ~315px、13px 字约 24 字一行，420px 高放得下 ~19 行，
+         所以 300 字一定排得进去，不会顶破高度上限。 */
+      .filter(t => t.length > 0 && t.length <= W_TEXT_BUDGET);
+    if (!pool.length) return '';
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  /* 版面计划。**随机只在进入欢迎页时算一次**（§8「每次打开都不一样」）——
+     buildWelcomeArena 每帧都会跑，每帧重掷骰子整页会闪个不停。
+     存档列表变了（新建 / 删除 / 改名）才重算。 */
+  let wPlan = null;
+  let wPlanning = false;
+  function wSignature(list) { return list.map(e => e.file).join(''); }
+
+  async function wMakePlan(list) {
+    const sig = wSignature(list);
+    const blocks = [];
+    /* §8 约三成文字块。
+       ⚠ **不能先抽定三成再去取正文**：抽中的存档里挑不出合规的正文时
+       就白白少一个文字块（2026-08-26 实测：五个存档抽中两个，一个没有
+       合规正文，整页只剩一个文字块 = 两成）。
+       改成「按随机顺序一个个试，凑够为止」：试到的存档没有合规正文就跳过，
+       接着试下一个，所以只要全页存在足够多的可用正文，比例就能凑到。 */
+    const want = Math.max(1, Math.round(list.length * W_TEXT_RATIO));
+    const order = list.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {      /* 洗牌，别按固定间隔取 */
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const texts = new Map();
+    for (const i of order) {
+      if (texts.size >= want) break;
+      const t = wPickMessage(await wLoadChat(list[i]));
+      if (t) texts.set(i, t);
+    }
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      const text = texts.get(i) || '';
+      blocks.push({
+        file: e.file,
+        /* 挑不出合规的正文就退回图片块 —— 文字块是一种块，不是"没图时的替补"，
+           但反过来「没有合规正文」时也不该硬塞一段截断的话。 */
+        kind: text ? 'text' : 'image',
+        text,
+        face: e.face,
+        cap: e.meta || e.file,
+      });
+    }
+    return { sig, blocks };
+  }
+
+  function buildWelcomeArena() {
+    const host = document.body;
+    if (!host) return;
+    let el = document.getElementById('cw-welcome');
+    if (!stageOn() || !inWelcome()) { el?.remove(); wPlan = null; return; }
+
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return;
+
+    const list = wEntries();
+    const order = wOrder();
+    const sig = wSignature(list);
+
+    /* 计划过期就重算。异步，算完再重建一次；这一帧先用现有的（或空的）画。 */
+    if (list.length && (!wPlan || wPlan.sig !== sig) && !wPlanning) {
+      wPlanning = true;
+      wMakePlan(list).then(p => {
+        wPlanning = false;
+        wPlan = p;
+        buildWelcomeArena();
+      }).catch(() => { wPlanning = false; });
+    }
+
+    const byFile = new Map((wPlan?.blocks || []).map(b => [b.file, b]));
+    const rows = wSort(list, order);
+
+    const chars = (ctx.characters || []).filter(c => c && c.name);
+    const avatarsOn = document.documentElement.dataset.claudeAvatars !== 'off';
+    const structure = document.documentElement.dataset.claudeStructure || 'linear';
+    const art = pbImage();
+
+    /* §4 选项行：**记号是行首的一个圆点**，选中项不加粗、不换颜色。 */
+    const opt = (on, label, attr, dis) =>
+      '<button type="button" class="cw-w-opt' + (on ? ' is-on' : '')
+      + (dis ? ' is-disabled" disabled title="' + pbEsc(dis) : '"')
+      + ' ' + attr + '>'
+      + '<i class="cw-w-dot"></i><span>' + pbEsc(label) + '</span>'
+      + '</button>';
+    const kv = (k, v) =>
+      '<div class="cw-w-kv"><span>' + pbEsc(k) + '</span><b>' + pbEsc(v) + '</b></div>';
+
+    const html =
+      /* §2 顶栏：细、安静，下面**没有分隔线**。 */
+      '<header class="cw-w-top">'
+      +   '<div class="cw-w-top-l">'
+      +     '<span class="cw-w-mark"></span>'
+      +     '<span class="cw-w-search">搜索剧目…</span>'
+      +   '</div>'
+      +   '<div class="cw-w-top-r">'
+      +     '<span class="cw-w-login">Log in</span>'
+      +     '<span class="cw-w-signup">Sign up</span>'
+      +   '</div>'
+      + '</header>'
+      + '<div class="cw-w-body">'
+      /* §3 标题行：28px 常规体 + 一个描边小方块；右边只有一个搜索图标。 */
+      +   '<div class="cw-w-titlerow">'
+      +     '<h1 class="cw-w-title">今晚的节目单</h1>'
+      +     '<span class="cw-w-badge">剧</span>'
+      +     '<span class="cw-w-find" aria-hidden="true"></span>'
+      +   '</div>'
+      /* §4 四栏等宽、铺满内容列；每栏**先一条细线，标签在线下面**。 */
+      +   '<div class="cw-w-cols">'
+      +     '<section class="cw-w-col"><div class="cw-w-rule"></div><div class="cw-w-label">信息</div>'
+      +       '<div class="cw-w-dash">—</div>'
+      +       kv('存档', String(list.length))
+      +       kv('角色', String(chars.length))
+      +     '</section>'
+      +     '<section class="cw-w-col"><div class="cw-w-rule"></div><div class="cw-w-label">演职员</div>'
+      +       kv('用户', ctx.name1 || '—')
+      +       chars.slice(0, 4).map(c => kv(c.name,
+             String(list.filter(e => e.avatar === c.avatar).length) + ' 场')).join('')
+      +     '</section>'
+      +     '<section class="cw-w-col"><div class="cw-w-rule"></div><div class="cw-w-label">视图</div>'
+      +       opt(avatarsOn, '显示头像', 'data-view="avatars"')
+      +       opt(structure === 'linear', '四栏结构', 'data-view="structure"')
+      +       opt(!!art, '剧场配图', 'data-view="art"',
+             art ? '' : '在设置面板的「剧场配图」里填图片地址或选本地文件')
+      +     '</section>'
+      +     '<section class="cw-w-col"><div class="cw-w-rule"></div><div class="cw-w-label">排序</div>'
+      +       W_ORDERS.map(o => opt(o.id === order, o.label, 'data-order="' + o.id + '"')).join('')
+      +     '</section>'
+      +   '</div>'
+      /* §6 块网格：四列**真错落**（CSS 多栏），块高由内容决定。 */
+      +   (rows.length
+          ? '<div class="cw-w-grid">'
+            + rows.map(e => {
+                const b = byFile.get(e.file);
+                const body = (b && b.kind === 'text')
+                  ? '<div class="cw-w-text">' + pbEsc(b.text) + '</div>'
+                  : ((e.full || e.face)
+                      /* 兜底地址放 data-fb，出错时由下面的 error 监听换过去 ——
+                         不写成行内 onerror：那要把 URL 塞进 HTML 属性里再塞进
+                         JS 字符串，引号要转两层，很容易escape错。 */
+                      ? '<img class="cw-w-img" src="' + pbEsc(e.full || e.face) + '"'
+                        + ' data-fb="' + pbEsc(e.face || '') + '" alt="">'
+                      : '<div class="cw-w-img is-empty"></div>');
+                return '<figure class="cw-w-block" data-file="' + pbEsc(e.file) + '">'
+                  + body
+                  + '<figcaption class="cw-w-cap">' + pbEsc(b?.cap || e.meta || e.file) + '</figcaption>'
+                  + '</figure>';
+              }).join('')
+            + '</div>'
+          : '<div class="cw-w-empty">还没有存档。</div>')
+      +   '<div class="cw-w-foot">1</div>'
+      + '</div>';
+
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'cw-welcome';
+      /* 挂在 body 上，**不放进 #cw-shell** —— 欢迎态整个 shell 会收起，
+         放进去就跟着一起消失了。 */
+      host.appendChild(el);
+    }
+    /* ⚠ 只有**真的重写了 innerHTML** 才重新绑事件。
+       这个函数排在 refreshTheatre 里，每一帧都会跑；HTML 没变时子节点还是
+       原来那几个，每帧再 addEventListener 一次就会**层层叠加**：
+       几秒之后点一下块，row.click() 会被连着触发几百次。
+       重写 innerHTML 会换掉所有子节点，所以「改了就绑一次」正好是对的。 */
+    const changed = el.innerHTML !== html;
+    if (changed) el.innerHTML = html;
+
+    /* 视图三项走封面同一套委托（data-view）。它自己用 dataset 记了是否绑过，
+       委托绑在 el 上、不在子节点上，所以重写 innerHTML 也不用重绑。 */
+    pbBindCoverView(el);
+    if (!changed) return;
+
+    /* 原图取不到就退回缩略图，缩略图也挂就留一个空框。
+       只换一次：换完把 data-fb 摘掉，否则缩略图挂了会自己跟自己死循环。 */
+    el.querySelectorAll('.cw-w-img[data-fb]').forEach(img => {
+      img.addEventListener('error', () => {
+        const fb = img.dataset.fb;
+        img.removeAttribute('data-fb');
+        if (fb) { img.src = fb; return; }
+        const blank = document.createElement('div');
+        blank.className = 'cw-w-img is-empty';
+        img.replaceWith(blank);
+      });
+    });
+
+    el.querySelectorAll('[data-order]').forEach(btn => {
+      btn.addEventListener('click', () => { wSetOrder(btn.dataset.order); buildWelcomeArena(); });
+    });
+
+    /* 点块 = 打开那个存档。**按 data-file 找行**，找不到什么都不做。 */
+    el.querySelectorAll('.cw-w-block').forEach(fig => {
+      fig.addEventListener('click', () => {
+        const file = fig.dataset.file;
+        if (!file) return;
+        const row = [...document.querySelectorAll('.clawd-rail-recents .recentChat')]
+          .find(r => r.dataset.file === file);
+        if (row) row.click();
+        else console.warn('[Claude-Clawd] 块找不到对应的会话行：', file);
+      });
+    });
+  }
+
   function buildCoverArt() {
     const chat = document.getElementById('chat');
     if (!chat) return;
@@ -11800,73 +12242,6 @@ if (CLAUDE_ENABLED) {
     const line = pbLine(arr.filter(m => m.is_user).length,
       arr[0] ? new Date(arr[0].send_date) : null);
     if (cap.textContent !== line) cap.textContent = line;
-  }
-
-  /* 把历史存档填进右栏第三块。点一行 = 打开那个存档，走酒馆自己的
-     /chat 斜杠命令，不去碰它的加载流程。 */
-  async function fillAsideChats() {
-    const host = document.getElementById('clawd-aside-chats');
-    if (!host) return;
-    const ctx = window.SillyTavern?.getContext?.();
-    const cur = ctx?.getCurrentChatId?.() || '';
-    const rows = await loadCharChats();
-    const host2 = document.getElementById('clawd-aside-chats');   /* await 期间可能已被重建 */
-    if (!host2) return;
-    if (!rows.length) {
-      host2.innerHTML = '<div class="cw-h">幕次表</div><div class="cw-empty">（没有别的存档）</div>';
-      return;
-    }
-    /* 2.0.150：一行一幕，和参考稿 剧场主题_THE_PLAYBILL.html 的幕次表一致
-       （那边是 `Act I | 雨。旧剧场后台…`）。
-
-       原来是两行：上面 Act 号 + 存档名 + 句数，下面再夹两行正文预览。
-       预览是整个右栏里最占地方的一段，而这一栏的职责是「一眼扫完有哪几幕、
-       现在在第几幕」—— 每行三行高的话，六个存档就把整栏吃光了。
-       预览没有删掉，收进 title：要看的时候悬停就有，不看的时候不占版面。
-
-       顶行本来就是 auto / 1fr / auto 三列网格（见 day-pc.css 第 25 段），
-       形状已经是参考稿要的那个，所以这里只是把第二行摘掉，不用重排。 */
-    host2.innerHTML = '<div class="cw-h">幕次表</div>'
-      + rows.map((r, i) => {
-          /* 悬停提示：存档名（行内会截断）+ 正文预览。
-             接口没给预览就只放名字，不编一段假的摘要。 */
-          const tip = r.preview ? r.name + '\n' + r.preview : r.name;
-          return ''
-          + '<div class="cw-chat-row' + (r.name === cur ? ' is-current' : '')
-          + '" data-file="' + pbEsc(r.name) + '">'
-          + '<button type="button" class="cw-chat-open" title="' + pbEsc(tip) + '">'
-          +   '<span class="cw-chat-top">'
-          +     '<i class="cw-chat-act">Act ' + pbRoman(r.actNo || (rows.length - i)) + '</i>'
-          +     '<b>' + pbEsc(r.name) + '</b>'
-          +     '<em>' + pbEsc(r.count !== '' ? r.count + ' 句' : r.date) + '</em>'
-          +   '</span>'
-          + '</button>'
-          + '<span class="cw-chat-acts">'
-          +   '<button type="button" class="cw-chat-edit" title="重命名">✎</button>'
-          +   '<button type="button" class="cw-chat-del" title="删除">🗑</button>'
-          + '</span>'
-          + '</div>';
-        }).join('');
-    host2.querySelectorAll('.cw-chat-row').forEach(row => {
-      const file = row.dataset.file;
-      row.querySelector('.cw-chat-open')?.addEventListener('click', () => {
-        if (!file || file === cur) return;
-        pbSlash(ctx, '/chat ' + file);
-      });
-      row.querySelector('.cw-chat-edit')?.addEventListener('click', e => {
-        e.stopPropagation();
-        const next = window.prompt('新的存档名', file);
-        if (next && next !== file) { pbSlash(ctx, '/renamechat ' + next); pbChatsCache.key = ''; }
-      });
-      /* 删除不自己发请求，交给酒馆原生的 Manage chat files ——
-         删存档是不可逆的，走它自己的确认流程比我再造一个确认框稳妥。 */
-      row.querySelector('.cw-chat-del')?.addEventListener('click', e => {
-        e.stopPropagation();
-        pbOpenDrawer('option_select_chat');
-        window.alert('已打开酒馆的「Manage chat files」，在那里删除「' + file + '」。\n'
-          + '删存档不可撤销，所以这一步走酒馆自己的确认流程。');
-      });
-    });
   }
 
   /* ==========================================================================
@@ -12119,11 +12494,11 @@ if (CLAUDE_ENABLED) {
       + row('Token', s.Token ? s.Token.toLocaleString('en-US') : '—')
       + row('开演', shortTime(s.开演)) + row('最近', shortTime(s.最近))
       + '</div>'
-      /* 幕次表 = 这个角色的历史存档。之前拆成了两块（一块列本场的幕、
-         一块列存档），其实是同一件事的两种说法 —— 一个存档就是一幕。
-         合成一块，块名用「幕次表」。数据异步取，先占位再填。 */
+      /* 幕次表 = **本场对话的幕次目录**（照参考稿：一行一幕 + 场景注，点了跳）。
+         这里只出一个空块头，内容由 buildCards 末尾的 fillAsideActs 填 ——
+         refreshTheatre 里 ensureAside 排在 buildCards 前面，在这儿填会拿到
+         上一帧的 pbActs。 */
       + (stageOn() ? '<div class="cw-g" id="clawd-aside-chats"><div class="cw-h">幕次表</div></div>' : '');
-    if (stageOn()) fillAsideChats();
     /* Recents 每行的 data-file 和 getCurrentChatId() 是同一个字符串，
        高亮当前行、以及接 Manage chat files 都靠它。 */
     document.querySelectorAll('.recentChat').forEach(r => {
@@ -12145,7 +12520,11 @@ if (CLAUDE_ENABLED) {
       /* buildCover 必须在 buildCoverArt 之前 —— 配图那一组是插在 .cw-cover
          后面的，标题区还没建出来就没有参照物，会掉到 #chat 最前面去。 */
       buildCover();
+      buildWelcomeArena();
       buildCoverArt();
+      /* 面包屑排在这几个之后：它往 #chat 的最前面插，最后插的才是第一个。
+         顺序要的是 面包屑 → 封面 → 块网格 → 配图。 */
+      buildCrumb();
       buildNav();
       buildCast();
       buildTopbar();

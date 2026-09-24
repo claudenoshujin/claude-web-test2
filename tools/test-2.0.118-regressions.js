@@ -7,12 +7,16 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.155');
-assert.equal(manifest.js, 'loader-2.0.155.js');
+assert.equal(manifest.version, '2.0.156');
+assert.equal(manifest.js, 'loader-2.0.156.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
+/* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
+   而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
+   升版脚本会漏掉它，然后测试以「loader 没有破缓存」的名义失败，
+   看起来像 loader 坏了，其实只是断言过期了。2.0.156 就这么绊了一次。 */
 assert.match(
   fs.readFileSync(path.join(root, manifest.js), 'utf8'),
-  /index\.js\?v=2\.0\.155/,
+  new RegExp('index\\.js\\?v=' + manifest.version.replace(/\./g, '\\.')),
   'loader must defeat Android WebView module cache',
 );
 
@@ -103,4 +107,4 @@ assert.match(index, /COMPOSER_CLAWD_CLASS[\s\S]{0,900}?touch-action: none !impor
 assert.match(index, /function a2Down[\s\S]*setClawdC\('grab', 0\)/, 'pointerdown must show the grab pose immediately');
 assert.match(index, /a2Place\(button\);\s*if \(dragStarted\) a2DeferGrabFeedback\(button\);/, 'the first drag position must be written before layout-reading feedback');
 
-console.log('✓ Claude Web 2.0.155 focused regressions passed');
+console.log('✓ Claude Web 2.0.156 focused regressions passed');

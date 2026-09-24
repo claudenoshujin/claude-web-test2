@@ -5876,8 +5876,13 @@ html[data-claude-avatars="off"] .recentChat > .avatar{ display:none !important; 
     z-index:4000 !important;
   }
   html[data-claude-structure="linear"] body #top-settings-holder > .drawer > .drawer-content{
-    left:var(--cw-c-nav) !important;
-    right:0 !important;
+    /* 2.0.156：只占正文列，不再铺满 ——
+       原来是 left:--cw-c-nav / right:0，1464px 宽的窗口下面板 1288px，
+       把会话列表和演职员栏一起盖掉，等于全屏（2026-08-25 实测 176→1464）。
+       设置是「第三列里的一个视图」，四栏框架应当始终看得见：
+       左边让开导航 + 会话列表，右边让开演职员栏，和 #chat 同一个盒子。 */
+    left:calc(var(--cw-c-nav) + var(--cw-c-list)) !important;
+    right:var(--cw-c-cast) !important;
     top:calc(var(--cw-shell-top, 0px) + var(--cw-drawer-head-h)) !important;
     bottom:0 !important;
     width:auto !important;
@@ -5939,8 +5944,9 @@ html[data-claude-avatars="off"] .recentChat > .avatar{ display:none !important; 
      不加遮罩：面板已经盖住了，再来一层是白费。 */
   #cw-drawer-head{
     position:fixed;
-    left:var(--cw-c-nav);
-    right:0;
+    /* 和面板同宽：只占正文列。见下面 .drawer-content 那条的说明。 */
+    left:calc(var(--cw-c-nav) + var(--cw-c-list));
+    right:var(--cw-c-cast);
     top:var(--cw-shell-top, 0px);
     height:var(--cw-drawer-head-h);
     z-index:4001;              /* 抽屉是 4000；把手 4100、剧场顶栏 4200 都在上面 */
@@ -6148,7 +6154,18 @@ html[data-claude-structure="linear"] .clawd-rail-brand{
   font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
   font-weight:700 !important; text-transform:uppercase !important;
   letter-spacing:normal !important; color:var(--cw-text-body) !important;
+  /* 分区名靠左、条数靠右，和右栏 .cw-r 是同一种「标签 / 值」行。
+     参考稿 剧场主题_THE_PLAYBILL.html 的列表头就是 `上演中 … 6`。 */
+  display:flex !important; align-items:baseline !important;
+  justify-content:space-between !important; gap:12px !important;
 }
+/* 条数：不加粗、不大写，用次级墨色 —— 它是个注脚，不是第二个标题。
+   rail 形态下那一列窄，不显示（index.js 照样会写这个节点，只是不画）。 */
+html[data-claude-structure="linear"] .clawd-rail-recents-count{
+  font-weight:400 !important; text-transform:none !important;
+  color:var(--cw-text-muted) !important;
+}
+html[data-claude-structure="rail"] .clawd-rail-recents-count{ display:none !important; }
 /* 图标：**不要 display:none。**
    .drawer-icon 被官网皮做成了 position:absolute;inset:0 的整行命中区
    （见上面 "图标撑满整行当命中区" 那段）—— 酒馆把 role=button 挂在它身上，
@@ -6421,38 +6438,35 @@ html[data-claude-structure="linear"] .clawd-rail-recents-label::after{
 }
 
 /* ---------------------------------------------------------------------------
-   台词区 —— 三轨：左边注 / 台词 / 右边注
+   台词区 —— .mes_block 的整套重置
 
-   .mesAvatarWrapper 必须 display:contents，否则 tokenCounterDisplay 困在
-   左栏里去不了第三轨。这条也是踩出来的。
+   ⚠ 这一段原来是**三轨排版**（左边注 / 台词 / 右边注）：.mes 是三列网格，
+   .mes_block 落第二列，头像落第一列。**那套已经在第八轮被整个换掉了**
+   —— 见本文件「第八轮：消息改成单列上下居中」那一节，那里写的是
+   `.mes{display:block}`，同分且在后面，所以三轨的 display:grid 从此不生效。
+
+   2.0.156 把死掉的部分删了：.mes 那整条（九个声明全部被第八轮/第十四轮
+   重新下发过）、.mes_block 的 grid-column / grid-row（父级已经不是网格，
+   grid-* 在块级盒子上是惰性的）、用户消息 padding-left:36px（第八轮起
+   两种消息同一套格式，不再缩进）、还有 .mesAvatarWrapper 的
+   display:contents（第八轮把它整个 display:none 了）。
+   删之前逐项比过计算样式，两条消息的 .mes / .mes_block / .mes_text /
+   .cw-card-head 全部零差异。
+
+   **--cw-track-l / -r / -gap 三个令牌没删**：.mes_buttons 还在用 --cw-track-r
+   定宽（见下面「按钮不进网格第三列」那段）。
    --------------------------------------------------------------------------- */
-html[data-claude-structure="linear"] #chat .mes{
-  display:grid !important;
-  grid-template-columns:var(--cw-track-l) minmax(0,1fr) var(--cw-track-r) !important;
-  column-gap:var(--cw-track-gap) !important;
-  align-items:start !important;
-  width:auto !important; max-width:none !important;
-  margin:0 !important; padding:9px 0 !important;
-  border:0 !important; border-radius:0 !important;
-  background:none !important; box-shadow:none !important;
-}
 /* **整套重置**，不是逐条抵消。官网皮在 .mes_block 上一次性下发了
    border / border-radius / box-shadow / width / max-width / background /
-   margin / padding 八个属性，这里八个全部接管。 */
+   margin / padding 八个属性，这里八个全部接管。
+   （width / max-width 之后被第十四轮改写成 100% / none，其余六个仍然只有这里管。） */
 html[data-claude-structure="linear"] #chat .mes .mes_block{
-  grid-column:2 !important; grid-row:1 / span 20 !important;
   width:auto !important; max-width:none !important; min-width:0 !important;
   margin:0 !important; padding:0 !important;
   border:0 !important; border-radius:0 !important;
   background:none !important; box-shadow:none !important;
   position:static !important;
 }
-/* 用户与 AI 的区分：正文栏整体缩进，不左右分列、不加底色。 */
-html[data-claude-structure="linear"] #chat .mes[is_user="true"] .mes_block{
-  padding-left:36px !important;
-}
-
-html[data-claude-structure="linear"] #chat .mesAvatarWrapper{ display:contents !important; }
 html[data-claude-structure="linear"] #chat .mesAvatarWrapper .avatar{
   grid-column:1 !important; grid-row:1 !important; justify-self:end !important;
   width:26px !important; height:26px !important; margin:0 !important;
@@ -6900,25 +6914,6 @@ html[data-claude-structure="linear"] #chat .cw-act-note{
 }
 
 /* ---------------------------------------------------------------- 右栏历史对话 */
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row{
-  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
-  width:100%; padding:6px 0;
-  border:0; border-bottom:1px solid var(--cw-rule-hairline);
-  background:none; cursor:pointer; text-align:left;
-  font-family:var(--cl-sans);
-  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
-  color:var(--cw-text-secondary);
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row > span{
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row > em{
-  font-style:normal; color:var(--cw-text-faint); white-space:nowrap;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row:hover{ color:var(--cw-text-body); }
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row.is-current{
-  color:var(--cw-text-body); font-weight:700;
-}
 html[data-claude-structure="linear"] #clawd-aside .cw-empty{
   padding:6px 0; color:var(--cw-text-faint); font-size:var(--cw-fs-s);
 }
@@ -6931,17 +6926,60 @@ html[data-claude-structure="linear"] #clawd-aside .cw-empty{
 html[data-claude-structure="linear"] body #form_sheld #send_form,
 html[data-claude-structure="linear"] body #form_sheld #send_form.compact{
   display:grid !important;
-  grid-template-columns:auto minmax(0,1fr) auto !important;
+  /* 五列。**必须把角色快速选择和麦克风也算进来** ——
+     欢迎态另有两条老规则用行号硬放它们（`.clawd-character-switcher{grid-column:3}`
+     day-pc.css 4529、`.clawd-fake-mic{grid-column:4}` 4585），那是给更早那版
+     四列欢迎页输入区写的。只声明三列的话，`grid-area:send` 解析出来正好也是
+     第三列，于是**发送键和角色选择叠在同一格里**：2026-08-25 实测
+     #send_but 占 1178–1235，而 .clawd-character-effort 1183–1212、
+     chevron 1217–1231 全被盖在它下面。
+     （这个冲突一直潜伏着 —— 在 #nonQRFormItems 改成 display:contents 之前，
+       #rightSendForm 根本不是网格项，抢不到格子，所以看不出来。）
+
+     排法照参考稿 .composer-bar：**左边是这一场的上下文，右边是动作**。
+     角色选择是 ST 版的「安河 · Opus 5 · 幕 I」，所以放左边跟功能键一排，
+     和发送键之间隔着那条 1fr —— 不是靠加间距把它们推开，是本来就不该挨着。 */
+  grid-template-columns:auto auto minmax(0,1fr) auto auto !important;
   grid-template-areas:
-    "text text text"
-    "left mid  send" !important;
+    "text text text text text"
+    "left who  mid  mic  send" !important;
   align-items:center !important;
   gap:8px 12px !important;
+}
+/* 把那两条按行号硬放的老规则接管过来。它们带 !important，
+   靠特异性压：这里两个 id（#form_sheld / #send_form）对它们的一个。 */
+html[data-claude-structure="linear"] body #form_sheld #send_form .clawd-character-switcher{
+  grid-area:who !important;
+  justify-self:start !important; align-self:center !important;
+}
+html[data-claude-structure="linear"] body #form_sheld #send_form .clawd-fake-mic{
+  grid-area:mic !important;
+  justify-self:end !important; align-self:center !important;
+}
+/* ⚠ #nonQRFormItems 必须 display:contents，否则上面那张网格一格都排不出来。
+   grid-area 只对网格的**直接子元素**有效，而酒馆把 #send_textarea /
+   #leftSendForm / #rightSendForm 三样全包在 #nonQRFormItems 里 ——
+   下面那三条 grid-area 于是**全部落空**：真正的网格项只有 #nonQRFormItems
+   一个，它按 auto 落进第一格，把整条输入区压回原来的 flex 一行。
+   2026-08-25 实测（1464×820）：#send_form 720px 宽，而 #send_textarea
+   只有 216px，三列算出来是 `377.7px 318.3px 0px` —— 就是「输入框比例不对」。
+   改成 contents 之后：textarea 整行 720px，功能键和 Send 落到第二行两端。
+
+   同一个坑本文件 6426（.mesAvatarWrapper）和 7178（.ch_name）各记过一次，
+   legacy/2.0 的样式表里也早就写着这条 —— 换成 linear 之后漏带过来了。 */
+html[data-claude-structure="linear"] body #form_sheld #nonQRFormItems{
+  display:contents !important;
 }
 html[data-claude-structure="linear"] body #form_sheld #send_textarea{
   grid-area:text !important;
   width:100% !important; min-height:48px !important;
   padding:0 !important;
+}
+/* 占位符左对齐。酒馆给 ::placeholder 写的是 text-align:center ——
+   输入框只有 216px 宽的时候看不出来，铺满整行之后整句飘到正中间。
+   参考稿 剧场主题_THE_PLAYBILL.html 的「写下你的台词……」是左对齐的。 */
+html[data-claude-structure="linear"] body #form_sheld #send_textarea::placeholder{
+  text-align:start !important;
 }
 html[data-claude-structure="linear"] body #form_sheld :is(#leftSendForm,#options_button,#extensionsMenuButton){
   grid-area:left !important;
@@ -7046,63 +7084,31 @@ html[data-claude-structure="linear"] #chat .cw-act-face.is-blank{
   background:linear-gradient(90deg,transparent,var(--cw-mark),transparent);
 }
 
-/* ---- 右栏「历史对话」照原生 Manage chat files 的信息量来 ---- */
-/* 幕次表的行要和上面「演职员 / 本场」那两组的 .cw-r 对齐 ——
-   参考稿 剧场主题_THE_PLAYBILL.html 里这三组用的是同一个 .row，
-   右栏读下来是一张连续的表，不是两种行混排。
+/* ---- 右栏「幕次表」的行 ----
+   2.0.156：这一栏从「这个角色的历史存档」改成「本场对话的幕次目录」——
+   照参考稿 剧场主题_THE_PLAYBILL.html：`Act I | 雨。旧剧场后台…`，
+   一行一幕、写的是场景注，点一下跳到那一幕。
 
-   原来这里是 `minmax(0,1fr) auto` 两列，第二列放 .cw-chat-acts（重命名/删除）。
-   那两个按钮平时 visibility:hidden —— **hidden 只是不画，格子还占着宽**，
-   于是这一行的内容比上面的 .cw-r 短 35px（2026-08-25 实测：.cw-r 右边缘 1980，
-   幕次行 1945）。看起来就是「幕次表没跟演职员对齐」。
-   改成单列 + 操作键绝对定位浮在右上，行宽和 .cw-r 完全一致。 */
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row{
-  position:relative !important;
-  display:block !important;
-  padding:6px 0 !important;              /* 和 .cw-r 同一档，行距才连得上 */
-  border-bottom:1px solid var(--cw-rule-hairline) !important;
+   原来那七个 .cw-chat-* 类连同 index.js 的 fillAsideChats 一起删了
+   （21 条规则，tools/strip-dead-chat-rules.mjs）。规则跟着节点一起走，
+   不留「写着但永远匹配不到」的死规则 —— 本文件为这类东西栽过三次
+   （见 2.0.148 回归记录 §1）。
+
+   行本身**直接复用 .cw-r**：参考稿里「演职员 / 本场 / 幕次表」三组用的是
+   同一个 .row，右栏读下来该是一张连续的表，不是两种行混排。
+   所以下面只补「.cw-r 长在 <button> 上」才需要的那几条。 */
+html[data-claude-structure="linear"] #clawd-aside .cw-act-row{
+  width:100%; text-align:left; cursor:pointer;
+  font:inherit; color:inherit; background:none;
+  /* border:0 会连 .cw-r 的分隔线一起抹掉（同分、这条在后面），所以显式写回。 */
+  border:0; border-bottom:1px solid var(--cw-rule-hairline);
 }
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-open{
-  grid-column:1 !important;
-  display:block; width:100%; padding:0; border:0; background:none;
-  cursor:pointer; text-align:left; min-width:0;
+html[data-claude-structure="linear"] #clawd-aside .cw-act-row:hover > b{
+  text-decoration:underline;
 }
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top{
-  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
-  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top b{
-  font-weight:700; color:var(--cw-text-body);
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top em{
-  font-style:normal; color:var(--cw-text-faint); white-space:nowrap;
-}
-/* 2.0.150：`.cw-chat-preview` 那条规则删了 —— 幕次表改成一行一幕之后
-   index.js 不再渲染这个节点，预览收进了 title。
-   规则跟着节点一起删，不留「写着但永远匹配不到」的死规则：
-   本文件为这类东西栽过三次（见 2.0.148 回归记录 §1）。 */
-/* 浮在行的右上角，不占宽度。用 opacity 不用 visibility：
-   visibility:hidden 的元素在网格/流里仍然占位，那正是上面说的 35px。 */
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-acts{
-  position:absolute !important;
-  right:0 !important; top:6px !important;
-  display:flex; gap:6px;
-  opacity:0; pointer-events:none;
-  background:var(--cw-col-surface, var(--cw-surface-page));
-  padding-left:6px;
-  transition:opacity .12s linear;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row:hover .cw-chat-acts{
-  opacity:1; pointer-events:auto;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-acts button{
-  padding:0; border:0; background:none; cursor:pointer;
-  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s); color:var(--cw-text-faint);
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-acts button:hover{ color:var(--cw-text-body); }
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-row.is-current .cw-chat-top b{
-  box-shadow:inset 0 -1px 0 var(--cw-mark);
+/* 当前幕：只把 Act 号提亮加粗，不另起第二种记号 —— 记号只有一种。 */
+html[data-claude-structure="linear"] #clawd-aside .cw-act-row.is-current > span{
+  color:var(--cw-text-body); font-weight:700;
 }
 
 
@@ -7673,15 +7679,235 @@ html[data-claude-structure="linear"] #chat > .mes{ z-index:1; }
 
    配图那一组（.cw-cover-art / .cw-cover-cap）只有用户在设置里填了图才建，
    没填就没有节点，这两条规则匹配不到，不会留空白。 */
-html[data-claude-structure="linear"] body.clawd-welcome #chat > .cw-cover,
-html[data-claude-structure="linear"] body.clawd-welcome #chat > .cw-cover-art,
-html[data-claude-structure="linear"] body.clawd-welcome #chat > .cw-cover-cap{
-  display:block !important;
+/* ============================================================================
+   欢迎页 —— 独立页面（规格：welcome-page-spec.md）
+   ----------------------------------------------------------------------------
+   §0 挂载：#cw-welcome 挂在 body 上，是 #cw-shell 的**兄弟**。
+   欢迎态下整个 #cw-shell 收起 —— 导航 / 会话列表 / 演职员栏 / 输入区
+   都是对话页的家具，这一页一样都不要，它自己占满视口。
+
+   §7 整页只有两个字号：标题 28px，其余一律 --cw-w-fs（13px）常规体。
+   **全页没有一处 font-weight:700** —— 层级靠位置、留白、颜色。
+   线只有两种：1px 细线和文字块的 1px 边框。无卡片 / 圆角 / 阴影 / 填充。
+   ============================================================================ */
+html[data-claude-structure="linear"] body.clawd-welcome #cw-shell{
+  display:none !important;
 }
-/* 欢迎页的封面不需要 40px 顶部留白 —— 上面就是顶栏，不是滚动上来的正文。 */
-html[data-claude-structure="linear"] body.clawd-welcome #chat > .cw-cover{
-  display:grid !important;
-  padding-top:26px !important;
+/* 顶栏是 shell 里那条，欢迎页自己有一条，别出两条。
+   分栏拖柄（.cw-rail-grip）是 position:fixed、z-index 4100，**不在 shell 里面**，
+   所以收起 shell 收不掉它：三条竖线会浮在欢迎页上，还挡着点击。
+   它们拖的是已经藏起来的那几栏，这一页上没有意义。 */
+html[data-claude-structure="linear"] body.clawd-welcome .cw-topbar,
+html[data-claude-structure="linear"] body.clawd-welcome .cw-rail-grip,
+html[data-claude-structure="linear"] body.clawd-welcome .clawd-composer-clawd{
+  display:none !important;
+}
+
+html[data-claude-structure="linear"] #cw-welcome{
+  position:fixed; inset:0; z-index:120;
+  overflow-y:auto; overscroll-behavior:contain;
+  background:var(--cw-surface-page);
+  color:var(--cw-text-body);
+  font-family:var(--cl-sans);
+  /* §7 两个字号里的那个「其余」。全页只引用这一个。 */
+  --cw-w-fs:13px;
+  --cw-w-lh:1.5;
+  /* §1 内容列左右各留 ~65px。这条是「编辑感」的最大来源，不能省。 */
+  --cw-w-gut:65px;
+  --cw-w-link:var(--cw-mark);
+  font-size:var(--cw-w-fs); line-height:var(--cw-w-lh);
+  font-weight:400;
+}
+/* rail 形态下这一页不存在。 */
+html[data-claude-structure="rail"] #cw-welcome{ display:none !important; }
+
+/* ---- §2 顶栏：细、安静、**下面没有线** ---- */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-top{
+  display:flex; align-items:center; justify-content:space-between; gap:24px;
+  height:55px; padding:0 var(--cw-w-gut);
+  border:0;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-top-l{
+  display:flex; align-items:center; gap:22px; min-width:0;
+}
+/* 标识：两个小方块拼的记号，不引图标字体也不引 SVG。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-mark{
+  width:12px; height:12px; flex:none;
+  background:
+    linear-gradient(var(--cw-text-body) 0 0) 0 0 / 5px 5px no-repeat,
+    linear-gradient(var(--cw-text-body) 0 0) 100% 100% / 5px 5px no-repeat;
+}
+/* 搜索是**一行字，没有输入框的边框底色**（§2）。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-search{
+  color:var(--cw-text-muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-top-r{
+  display:flex; align-items:center; gap:18px; flex:none;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-login{ color:var(--cw-text-body); }
+/* Sign up 是全页**唯一**的填充块 —— 它是按钮，不是版面装饰。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-signup{
+  padding:5px 11px;
+  background:var(--cw-text-body); color:var(--cw-surface-page);
+}
+
+/* ---- §1 内容列 ---- */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-body{
+  padding:0 var(--cw-w-gut) 80px;
+}
+
+/* ---- §3 标题行 ---- */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-titlerow{
+  display:flex; align-items:center; gap:10px;
+  padding-top:55px;          /* §3 标题上方 ~55px */
+  margin-bottom:45px;        /* §3 标题到四栏 ~45px */
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-title{
+  margin:0; min-width:0;
+  /* §3/§7 常规体，不是粗体。整页只有这一处用大字号。 */
+  font-size:29px; line-height:1.15; font-weight:400;
+  color:var(--cw-text-body);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* §3 描边小方块，18px，1px 边框 —— 描边不是填充。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; flex:none;
+  border:1px solid var(--cw-rule-hairline);
+  font-size:var(--cw-w-fs); line-height:1; color:var(--cw-text-muted);
+}
+/* §3 右边只有一个搜索图标。用两笔画：一个圈加一根柄。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-find{
+  margin-left:auto; flex:none;
+  width:13px; height:13px;
+  border:1px solid var(--cw-text-muted); border-radius:50%;
+  position:relative;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-find::after{
+  content:""; position:absolute; right:-4px; bottom:-3px;
+  width:5px; height:1px; background:var(--cw-text-muted);
+  transform:rotate(45deg);
+}
+
+/* ---- §4 四栏 ---- */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-cols{
+  display:grid;
+  /* §4 四等分，铺满内容列，栏距 30px。 */
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:30px;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-col{ min-width:0; }
+/* §4 每栏**先一条通栏细线**，标签在线下面。四条线连起来读作横贯整页的一条。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-rule{
+  height:1px; background:var(--cw-rule-hairline);
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-label{
+  padding:7px 0 14px;
+  color:var(--cw-text-muted);
+}
+/* 键值行：标签左、值右，行间细线。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-kv{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:5px 0;
+  border-bottom:1px solid var(--cw-rule-hairline);
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-kv > span{
+  color:var(--cw-text-muted); white-space:nowrap;
+}
+/* §7 值不是粗体，只是更深的颜色。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-kv > b{
+  font-weight:400; color:var(--cw-text-body); text-align:right;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-dash{
+  padding:5px 0; border-bottom:1px solid var(--cw-rule-hairline);
+  color:var(--cw-text-muted);
+}
+/* 选项行：一行一个，**行间没有线**（§4）。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-opt{
+  display:flex; align-items:baseline; gap:8px;
+  width:100%; padding:3px 0;
+  background:none; border:0; cursor:pointer;
+  font:inherit; color:var(--cw-text-body); text-align:left;
+}
+/* §4 记号是**行首左边**的一个小圆点；选中项不加粗、不换颜色。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-dot{
+  width:5px; height:5px; flex:none;
+  background:var(--cw-text-body);
+  clip-path:circle(50%);
+  opacity:0;
+  transform:translateY(-1px);
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-opt.is-on .cw-w-dot{ opacity:1; }
+/* §4 不可用项：同字号，更浅的灰，没有点。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-opt.is-disabled{
+  color:var(--cw-text-faint); cursor:default;
+}
+
+/* ---- §5 页头和页内容之间的 90px ----
+   这一段留白就是「页头」和「页内容」的分界，收窄了两块会糊成一坨。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-grid,
+html[data-claude-structure="linear"] #cw-welcome .cw-w-empty{
+  margin-top:90px;
+}
+
+/* ---- §6 块网格：四列错落 ----
+   用 CSS 多栏做**真正的错落**：块高由自己的内容决定，同一行的块不等高、
+   行与行不对齐。等高方阵会把这一页读成相册而不是页面。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-grid{
+  column-count:4;
+  column-gap:30px;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-block{
+  /* 块不许被拆到两栏里。 */
+  break-inside:avoid; -webkit-column-break-inside:avoid;
+  /* block 而不是 inline-block：inline-block 是行内级的，块与块之间会多出
+     一个文字基线的空隙，行距看着不匀。不拆栏靠的是上面的 break-inside。 */
+  display:block; width:100%;
+  /* 宽度**永远等于栏宽**：多栏容器里 width:100% 就是一栏宽，
+     所以没有哪一块会比别人宽、也没有哪一块能跨两栏。行距 = 这里的下外边距。 */
+  margin:0 0 30px; padding:0;
+  cursor:pointer;
+}
+/* 图片块：宽度 = 栏宽，高度按原始比例算出来（§6），
+   但**高度封顶 420px** —— 超了就裁，不许把块撑高。
+   角色卡是 512×768 的竖图，一栏 ~355px 宽算下来有 532px 高，
+   四张排下来一屏只剩图（2026-08-26 实测）。
+   **图片是内容，不是版面的尺子** —— 版面由栏宽和这个上限决定。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-img{
+  display:block; width:100%; height:auto;
+  max-height:420px; object-fit:cover; object-position:center top;
+  border:0; border-radius:0;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-img.is-empty{
+  aspect-ratio:1 / 1;
+  border:1px solid var(--cw-rule-hairline);
+}
+/* 文字块：1px 边框 + 20px 内边距，正文自然折行。
+   它是**一等公民的块型**，不是没有图时的替补（§6）。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-text{
+  padding:20px;
+  border:1px solid var(--cw-rule-hairline);
+  color:var(--cw-text-body);
+  white-space:normal; overflow-wrap:anywhere;
+}
+/* 图注：块**下面**，左对齐，链接色，单行截断。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-cap{
+  margin-top:10px;
+  color:var(--cw-w-link);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-block:hover .cw-w-cap{
+  text-decoration:underline;
+}
+html[data-claude-structure="linear"] #cw-welcome .cw-w-empty{
+  color:var(--cw-text-faint);
+}
+/* §6 页码：小、浅、网格右下角。 */
+html[data-claude-structure="linear"] #cw-welcome .cw-w-foot{
+  margin-top:40px; text-align:right;
+  color:var(--cw-text-faint);
 }
 
 /* ---- 4. 品牌行：副行不跟着大写 ----
@@ -7710,13 +7936,6 @@ html[data-claude-structure="linear"] #clawd-aside .cw-act-link:hover{ color:var(
 html[data-claude-structure="linear"] #clawd-aside .cw-act-link em{
   font-style:normal; color:var(--cw-text-body); font-weight:700;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:9em;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-act{
-  font-style:normal; font-weight:700; color:var(--cw-text-muted);
-  margin-right:7px; white-space:nowrap;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top{
-  flex-wrap:wrap;
 }
 
 
@@ -7804,10 +8023,6 @@ html[data-claude-structure="linear"] body #form_sheld #send_but::before{
 }
 
 /* ---- 5. 右栏「幕次表」（= 历史存档）行 ---- */
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-act{
-  font-style:normal; font-weight:700; color:var(--cw-text-muted);
-  margin-right:8px; white-space:nowrap;
-}
 
 /* 限宽要压过 `html body #chat > .mes[is_user="false"] .mes_block{max-width:100%}`
    —— 那条是 (1,3,2)，选择器里不写 body 就只有 (1,3,1)，压不住，
@@ -8384,20 +8599,6 @@ html[data-claude-structure="linear"] #chat .cw-msg-acts:focus-within{
 /* ---- 25. 右栏幕次表：三段各占固定列位 ----
    原来是 flex，谁长谁占地方：存档名一长，右边的「49 句」就被挤出去或者换行。
    网格三列 auto / 1fr / auto —— Act 号和句数位置固定，要截断只截中间的名字。 */
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top{
-  display:grid !important;
-  grid-template-columns:auto minmax(0,1fr) auto !important;
-  align-items:baseline !important;
-  gap:8px !important;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top b{
-  min-width:0 !important;
-  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
-}
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top i,
-html[data-claude-structure="linear"] #clawd-aside .cw-chat-top em{
-  white-space:nowrap !important;
-}
 
 
 /* ============================================================================
@@ -8494,57 +8695,101 @@ html[data-claude-structure="linear"] .cw-top-btn.is-primary{
    `角色 / 存档名 [头像]` 一行网格，下面四列细线表。
    层级和 Are.na 的 `Are.na / channel` 是同一个：一个角色底下有多个存档，
    就像一个组织底下有多个频道。 */
+/* 2.0.156：封面改回参考稿的竖排。
+   第十五轮把它做成了 `角色 / 存档名 [头像]` 一行 28px 的横排大标题
+   （照 Are.na 的频道头）。问题是那一行把「这是谁的哪个存档」这种位置信息
+   放大成了整页最大的字，而存档名是机器串，占满一行还要截断。
+   位置信息已经归到面包屑条（.cw-crumb），封面只回答「今晚演什么」。 */
 html[data-claude-structure="linear"] #chat > .cw-cover{
-  display:grid !important;
-  grid-template-columns:auto auto minmax(0,1fr) auto !important;
-  align-items:center !important;
-  column-gap:12px !important;
-  padding-top:34px !important;
-  padding-bottom:38px !important;
+  display:block !important;
+  /* ⚠ width:100% 不能省。#chat 是 flex 列且 align-items:center，
+     里面的块级子元素会**收缩到 fit-content 再居中** —— 不写宽度的话
+     封面会缩成「两列细线表的自然宽度」（2026-08-25 实测 451px，
+     而正文列是 752px），整块往中间缩一截。
+     .mes 那边（第十四轮）也是靠 width:100% + max-width 令牌解决的，
+     .cw-cover 不在 .mes 里，所以要自己写一份。 */
+  width:100% !important;
+  padding-top:64px !important;
+  padding-bottom:56px !important;
 }
 html[data-claude-structure="linear"] .cw-kicker{
-  grid-column:1; margin:0; padding:0;
-  font-size:var(--cw-fs-l) !important; line-height:1.1 !important;
-  font-weight:700 !important; text-transform:none !important; letter-spacing:0 !important;
+  margin:0 !important; padding:0 !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
+  font-weight:700 !important; text-transform:uppercase !important;
+  letter-spacing:normal !important;
   color:var(--cw-text-muted) !important;
-  white-space:nowrap;
+  white-space:normal !important;
 }
+/* 一段实心短线，不是斜杠。参考稿 .mark 是 26×3 的色块 ——
+   斜杠是上一版横排时用来隔开「角色 / 存档名」的，竖排之后没有东西要隔。 */
 html[data-claude-structure="linear"] .cw-mark{
-  grid-column:2;
-  width:auto !important; height:auto !important; margin:0 !important; background:none !important;
-  font-size:var(--cw-fs-l) !important; line-height:1.1 !important; font-weight:400 !important;
-  color:var(--cw-text-faint) !important;
+  width:26px !important; height:3px !important;
+  margin:22px 0 !important;
+  background:var(--cw-mark) !important;
+  font-size:0 !important; line-height:0 !important; color:transparent !important;
 }
 html[data-claude-structure="linear"] .cw-cover-title{
-  grid-column:3;
-  min-width:0; max-width:none !important; margin:0 !important;
-  font-size:var(--cw-fs-l) !important; line-height:1.1 !important; font-weight:700 !important;
+  margin:0 !important; max-width:20ch !important;
+  font-size:var(--cw-fs-l) !important; line-height:1.25 !important;
+  font-weight:700 !important;
   color:var(--cw-text-body) !important; text-align:left !important;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  /* 存档名可能很长（` C laude - 2026-07-26@09h14m11s184ms - Branch #1`）。
+     参考稿的标题是短句，直接放开会撑成四五行 28px 的大字。
+     截到两行：够认出是哪一场，又不会把封面吃光。 */
+  display:-webkit-box !important;
+  -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden !important; text-overflow:ellipsis !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere;
 }
-/* 右边那个小方块：Are.na 放的是频道可见性首字母，这里放角色头像 ——
-   同样是「这是谁的地盘」的标记，但我们有真图，就别放字母。 */
-html[data-claude-structure="linear"] .cw-cover-badge{
-  grid-column:4; align-self:center;
-  display:inline-flex; align-items:center; justify-content:center;
-  width:26px; height:26px; margin:0;
-  object-fit:cover; border-radius:0;
-  background:var(--cw-surface-hover); color:var(--cw-text-body);
-  font-family:var(--cl-sans); font-size:var(--cw-fs-s); line-height:1; font-weight:700;
+html[data-claude-structure="linear"] .cw-cover-sub{
+  margin:16px 0 0 !important; max-width:42ch !important;
+  font-family:var(--cl-sans) !important;
+  font-size:var(--cw-fs-m) !important; line-height:var(--cw-lh-m) !important;
+  color:var(--cw-text-secondary) !important;
 }
+/* 两列，不是四列。参考稿是 演出 / 场务 两栏。
+   四列还有一个实际毛病：`gcli-gemini-3.1-pro-preview` 这种长模型名
+   在四分之一的宽度里要折两行，把「本场」那一列的行高一起带歪
+   （2.0.155 回归记录 §5 记的第一条）。两列宽一倍，这条顺带解决。 */
 html[data-claude-structure="linear"] .cw-cover-grid{
-  grid-column:1 / -1 !important;
   display:grid !important;
-  grid-template-columns:repeat(4, minmax(0,1fr)) !important;
-  gap:16px !important;
-  margin-top:38px !important;
+  grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+  /* 行距 36px：四个 dl 排成两行，不留行距的话上一组的最后一行和下一组的
+     组名会贴在一起，读起来像同一张表继续往下走。参考稿只有一行两栏，
+     所以它写的是 `gap:0 48px`，这里多一行就得多一个行距。 */
+  gap:36px 48px !important;
+  margin-top:56px !important;
 }
 html[data-claude-structure="linear"] .cw-cover-grid dl{ min-width:0; margin:0; padding:0; }
 html[data-claude-structure="linear"] .cw-cover-foot{
-  grid-column:1 / -1 !important;
-  margin-top:22px !important;
+  margin-top:56px !important;
+  font-size:var(--cw-fs-s) !important; line-height:var(--cw-lh-s) !important;
   color:var(--cw-text-muted) !important;
 }
+
+/* ---- 面包屑条 ----
+   参考稿正文列顶上那条 12.5px 的细条：左边 `角色 / **存档名**`，右边 `幕 I`。
+   sticky 贴 #chat 自己的滚动容器 —— 宽度天然就是正文列，不用像 fixed
+   那样自己算四栏的左右边界，也不用给 #chat 补 padding-top。 */
+html[data-claude-structure="linear"] #chat > .cw-crumb{
+  position:sticky; top:0; z-index:3;
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+  margin:0 0 0 !important; padding:14px 0 12px !important;
+  background:var(--cw-surface-page);
+  border-bottom:1px solid var(--cw-rule-hairline);
+  font-family:var(--cl-sans);
+  font-size:var(--cw-fs-s); line-height:var(--cw-lh-s);
+  color:var(--cw-text-muted);
+}
+html[data-claude-structure="linear"] .cw-crumb-path{
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+html[data-claude-structure="linear"] .cw-crumb-path i{ font-style:normal; padding:0 6px; }
+html[data-claude-structure="linear"] .cw-crumb-path b{
+  font-weight:700; color:var(--cw-text-body);
+}
+html[data-claude-structure="linear"] .cw-crumb-count{ white-space:nowrap; }
 
 /* 第四列的三个开关。做成和左边三列的键值行**一样的样子** ——
    它们在同一张表里，长得不一样会读成两种东西。
@@ -8631,10 +8876,10 @@ html[data-claude-structure="linear"] #chat > .cw-cover{
 html[data-claude-structure="linear"] #chat > .cw-cover-cap{
   margin-bottom:44px !important;
 }
-/* 标语已经不在标题区里了（挪到图注去了），旧节点如果还在就别画。 */
-html[data-claude-structure="linear"] #chat > .cw-cover .cw-cover-foot{
-  display:none !important;
-}
+/* 2.0.156：.cw-cover-foot 又启用了，所以这里不再藏它。
+   以前藏是因为那时 foot 里装的是**场景标语**，标语挪到图注（.cw-cover-cap）
+   之后旧节点是重复的。现在 foot 装的是参考稿封面那句「向下滚动开演」，
+   是引导语不是标语，两者不冲突。 */
 
 /* Claude Web 2.0.62 — a closed desktop drawer must leave layout entirely.
    Earlier reveal animations forced every drawer to display:block, keeping
