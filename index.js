@@ -2047,6 +2047,7 @@ if (CLAUDE_ENABLED) {
     round: 0,
     activeRound: 0,
     settledRound: 0,
+    genStartedAt: 0,
   };
 
   /* ===== A2 的状态量 =====
@@ -2084,7 +2085,7 @@ if (CLAUDE_ENABLED) {
     feel: 0.64,                  // 手感总调，0~1，喂给 a2Phys()
     irr: 0, throws: 0, lastThrow: 0, lastDec: 0,
     lockUntil: 0, lockName: '', seqRun: 0, seqOwned: false,
-    flying: 0, dragging: false, moved: false, held: false,
+    flying: 0, dragging: false, moved: false, held: false, pointerId: null,
     dragFeedbackRun: 0,
     bndReady: false, bndRaf: 0,
     sx: 0, sy: 0, ox: 0, oy: 0, vx: 0, vy: 0, lx: 0, ly: 0, lt: 0,
@@ -4281,6 +4282,7 @@ if (CLAUDE_ENABLED) {
   function beginClawdGeneration() {
     clawdTracks.round += 1;
     clawdTracks.activeRound = clawdTracks.round;
+    clawdTracks.genStartedAt = Date.now();
     setClawdA('think');
   }
 
@@ -4332,6 +4334,11 @@ if (CLAUDE_ENABLED) {
     { state: 'tramp', duration: 1150 },
   ]);
   let clawdBAmbientNextAt = Date.now() + 18000;
+  /* C1a：系统开了「减少动态」就不播闲置小动作。每次现查，用户中途改设置也能跟上。 */
+  function clawdPrefersReducedMotion() {
+    try { return Boolean(hostWindow.matchMedia?.('(prefers-reduced-motion: reduce)').matches); }
+    catch (error) { return false; }
+  }
   let clawdBLastAmbient = '';
 
   function scheduleClawdBAmbient(now = Date.now(), retry = false) {
@@ -4342,6 +4349,7 @@ if (CLAUDE_ENABLED) {
     if (now < clawdBAmbientNextAt) return;
     const box = hostDocument.querySelector('#send_textarea');
     const blocked = hostDocument.hidden
+      || clawdPrefersReducedMotion()
       || !composerClawd()
       || clawdTracks.A
       || clawdTracks.C
@@ -4380,12 +4388,18 @@ if (CLAUDE_ENABLED) {
   /* 先做离散疲劳态：流式生成持续 12 秒后坐下。下一阶段的 applyTired 会把
      这段改成连续量（跳高、周期、下沉一起渐变），这里先确保 sit 真正有触发。 */
   const CLAWD_TIRED_SIT_MS = 12000;
+  /* 生成事件丢失时的最后兜底：一轮生成最长认 5 分钟。 */
+  const CLAWD_GEN_MAX_MS = 300000;
 
   function clawdRuntimeTick() {
     if (destroyed) return;
     const now = Date.now();
     if (genTimerStartedAt) tickGenTimer();
-    if (clawdTracks.A === 'think'
+    const inGeneration = clawdTracks.A === 'think' || clawdTracks.A === 'stream' || clawdTracks.A === 'sit';
+    if (inGeneration && generationEventActive && now - clawdTracks.genStartedAt >= CLAWD_GEN_MAX_MS) {
+      /* C1a：结束事件一直没来（事件丢失）的最后兜底，按「停止」收场，不庆祝。 */
+      settleClawdGeneration('stopped');
+    } else if (clawdTracks.A === 'think'
       && generationEventActive
       && now - clawdTracks.aStartedAt >= 900) {
       setClawdA('stream');
@@ -4398,7 +4412,11 @@ if (CLAUDE_ENABLED) {
       renderClawdTracks();
     } else if (clawdTracks.aUntil && now >= clawdTracks.aUntil) {
       if (clawdTracks.A === 'think' || clawdTracks.A === 'stream' || clawdTracks.A === 'sit') {
-        settleClawdGeneration('done');
+        /* C1a：think / stream 的时长只是兜底。酒馆的生成事件还说「在生成」时，
+           到点也不结算——以前 stream 的 20 秒一到就会在长回复中途提前庆祝，
+           而且会把这一轮标成已结算，真正的结束 / 失败事件来了反而被挡掉。
+           事件一直不来的情况由本函数开头的 CLAWD_GEN_MAX_MS 兜底处理。 */
+        if (!generationEventActive) settleClawdGeneration('done');
       } else {
         setClawdA(null);
       }
@@ -4501,7 +4519,9 @@ if (CLAUDE_ENABLED) {
         const wasActive = generationEventActive;
         generationEventActive = active;
         if (active) startGenTimer(); else stopGenTimer();
-        if (active && !wasActive) beginClawdGeneration();
+        /* 上一轮如果是兜底收场的（结束事件丢了），generationEventActive 会一直是 true；
+           这时新的开始事件也要开新一轮，否则这一轮的结束会被 settledRound 挡掉。 */
+        if (active && (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound)) beginClawdGeneration();
         else if (!active) settleClawdGeneration(outcome);
         scheduleRefresh();
       };
@@ -5338,6 +5358,9 @@ if (CLAUDE_ENABLED) {
   }
 
   function a2Down(button, event) {
+    /* C1a：已经被一根手指抓着时，第二根手指按下不算新的一次抓取（多指触控）。 */
+    if (A2.held && event.pointerId !== A2.pointerId) { event.preventDefault(); return; }
+    A2.pointerId = event.pointerId;
     A2.tookPointer = false;
     a2NoteInteraction();
     a2TraceMark('pointerdown', { x: event.clientX, y: event.clientY });
@@ -5391,7 +5414,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function a2Move(button, event) {
-    if (!A2.held) return;
+    if (!A2.held || event.pointerId !== A2.pointerId) return;
     const dx = event.clientX - A2.sx;
     const dy = event.clientY - A2.sy;
     let dragStarted = false;
@@ -5417,8 +5440,8 @@ if (CLAUDE_ENABLED) {
     if (dragStarted) a2DeferGrabFeedback(button);
   }
 
-  function a2Up(button) {
-    if (!A2.held) return;
+  function a2Up(button, event) {
+    if (!A2.held || (event && event.pointerId !== A2.pointerId)) return;
     A2.held = false;
     A2.tookPointer = true;
     A2.dragFeedbackRun += 1;
@@ -5601,8 +5624,28 @@ if (CLAUDE_ENABLED) {
     /* setPointerCapture 之后 move/up 都会打到这个按钮上，不用往 document 上挂。 */
     button.addEventListener('pointerdown', event => a2Down(button, event));
     button.addEventListener('pointermove', event => a2Move(button, event));
-    button.addEventListener('pointerup', () => a2Up(button));
-    button.addEventListener('pointercancel', () => a2Up(button));
+    button.addEventListener('pointerup', event => a2Up(button, event));
+    /* C1a：pointercancel（浏览器把手势收走去滚动、来电、多指缩放）和意外丢失捕获，
+       以前都直接走松手路径——拖过就按最后的速度抛出去，没拖过就算一次戳。
+       现在单独收尾：不抛、不戳、不加烦躁，在空中就原地掉下来。 */
+    button.addEventListener('pointercancel', event => a2Cancel(button, event));
+    button.addEventListener('lostpointercapture', event => a2Cancel(button, event));
+  }
+
+  function a2Cancel(button, event) {
+    if (!A2.held || (event && event.pointerId !== A2.pointerId)) return;
+    A2.held = false;
+    A2.tookPointer = true;
+    A2.dragFeedbackRun += 1;
+    A2.dragging = false;
+    A2.rot = 0;
+    if (A2.moved || A2.fy < 0) {
+      a2Ballistic(button, true);               // drop：不计抛掷次数、不加烦躁
+    } else {
+      button.style.removeProperty('transition');
+      a2Place(button);
+      setClawdC(null);
+    }
   }
 
   /* A1 的点击反应：连点彩蛋、随机反应动画、粒子、视线/姿势脉冲。

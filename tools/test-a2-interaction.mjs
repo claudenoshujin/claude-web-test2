@@ -392,5 +392,83 @@ assert.match(src, /setClawdB\('wake', 500\)/,
 box.value = '';
 box.dispatchEvent(new window.Event('input', { bubbles: true }));
 
+/* ===== C1a · 状态切换稳定性 =====
+   这几条要等真实时间过去；生成那条用假时钟把 Date.now 往前拨，不真等 25 秒。 */
+await wait(4000);                               // 让前面的戳 / 生气全部结束
+const api = window.__claudeClawdInteraction;
+assert.ok(api?.clawdState, 'C1a 测试需要 clawdState 调试入口');
+
+/* ① 长生成：stream 的 20 秒兜底不能在生成事件还没结束时提前结算 */
+const realNow = Date.now;
+let skew = 0;
+Date.now = () => realNow() + skew;
+try {
+  emitRuntimeEvent('generation_started', 'normal', {}, false);
+  await wait(1200);                              // think → stream
+  const round = api.clawdState().round;
+  skew += 25000;                                 // 假装已经过了 25 秒，还在流式输出
+  await wait(450);
+  assert.notEqual(api.clawdState().settledRound, round,
+    '生成事件还在进行时，stream 的超时兜底不能把这一轮结算掉（提前庆祝）');
+  assert.ok(['stream', 'sit'].includes(api.clawdState().A),
+    `长生成中途应该还在 stream / sit，实际是 ${api.clawdState().A}`);
+  emitRuntimeEvent('generation_ended');
+  await wait(250);
+  assert.equal(api.clawdState().settledRound, round, '真正的结束事件必须能结算这一轮');
+  assert.equal(api.clawdState().A, 'done', '正常结束应该进入 done');
+
+  /* ② 结束事件丢了：超过 5 分钟按「停止」收场，下一轮开始事件要能开新一轮 */
+  await wait(1700);
+  emitRuntimeEvent('generation_started', 'normal', {}, false);
+  await wait(250);
+  const lost = api.clawdState().round;
+  skew += 301000;
+  await wait(450);
+  assert.equal(api.clawdState().settledRound, lost, '事件丢失时 5 分钟兜底要收场');
+  assert.equal(api.clawdState().A, 'stopped', '兜底收场按「停止」，不庆祝');
+  await wait(1700);
+  emitRuntimeEvent('generation_started', 'normal', {}, false);   // 上一轮的 ended 从没来过
+  await wait(250);
+  assert.ok(api.clawdState().round > lost, '上一轮已经兜底结算过，新的开始事件必须开新一轮');
+  emitRuntimeEvent('generation_failed');
+  await wait(250);
+  assert.equal(api.clawdState().A, 'error', '新一轮的失败事件不能被旧一轮的 settledRound 挡掉');
+} finally {
+  Date.now = realNow;
+}
+await wait(1700);
+
+/* ③ pointercancel：没拖过就取消，不算戳，C 轨直接清空 */
+function cancel(x, y, id = 1) {
+  const event = pointer('pointercancel', x, y);
+  event.pointerId = id;
+  clawd.dispatchEvent(event);
+}
+press(50, 50);
+assert.equal(cTrack(), 'grab', '按下就该是 grab');
+cancel(50, 50);
+assert.equal(cTrack(), '', 'pointercancel 不能被当成一次戳');
+
+/* ④ pointercancel：拖过再取消，不按最后的速度抛出去，只原地掉落（不计抛掷） */
+press(50, 50);
+move(90, 30);
+move(140, 10);
+cancel(140, 10);
+await wait(60);
+assert.ok(['fly', ''].includes(cTrack()), `拖动中被取消应该原地掉落，实际 C 轨是 ${cTrack()}`);
+await wait(2500);
+
+/* ⑤ 多指：已经被一根手指抓着时，第二根手指的按下 / 抬起都不算数 */
+function pointerAs(type, x, y, id) { const e = pointer(type, x, y); e.pointerId = id; return e; }
+clawd.dispatchEvent(pointerAs('pointerdown', 50, 50, 1));
+clawd.dispatchEvent(pointerAs('pointerdown', 60, 60, 2));
+clawd.dispatchEvent(pointerAs('pointerup', 60, 60, 2));
+assert.equal(cTrack(), 'grab', '第二根手指抬起不能让第一根手指的抓取结束');
+clawd.dispatchEvent(pointerAs('pointerup', 50, 50, 1));
+await wait(2000);
+
+/* ⑥ 减少动态：闲置小动作的调度必须查系统设置 */
+assert.match(src, /clawdPrefersReducedMotion\(\)/, '闲置小动作要尊重系统的「减少动态」');
+
 console.log('✓ A2 interaction regressions passed');
 process.exit(0);
