@@ -4,7 +4,8 @@
    - 坐标原点对齐现网 ::before（BOX = [0, 6]），静止时 9 层拼出来和 --clawd-f-open 逐像素一致；
    - 选择器挂在输入框那只 Clawd 按钮上（data-clawd-clip），层用 clr- 前缀，免得和酒馆撞名；
    - 眼睛、描边颜色跟现网主题变量走；
-   - 原型里留着对比的「逐格踱步」和旧「戳」不带过来。 */
+   - 躲进输入框的剪切挂在 .clawd-rig 上；
+   - 动作的 CSS 按需生成：一次全生成约 500KB，改成播到哪个才生成哪个（cssFor）。 */
 
 const RB = 'button.clawd-signoff-button.clawd-composer-clawd';
 
@@ -25,6 +26,9 @@ export function buildClawdRig() {
     'O': '#d97757', 'q': '#e8a88e', 'Q': '#f1cbbb',   // 节点：本色 / 淡 / 更淡
     'e': 'var(--clr-ink)', // 墨迹
     'h': 'rgba(20,20,19,.16)', // 影子
+    // 道具描边：不用深墨色。一格描边在输入框那个尺寸下约 2.5 屏幕像素，深色就成了一圈粗黑边（Lulu 2026-09-24 真机）。
+    // 改成比道具本色深两三档的同色系中间调：纸、信封用暖灰，杯子、碗用灰蓝。日夜两套底色上都看得清。
+    'd': '#9a8e80', 'D': '#6f8ca6',
   };
 
   /* ════════════════════════════════════════════════════════════════════
@@ -58,12 +62,16 @@ export function buildClawdRig() {
       // 走路：近侧一对腿着地（本色、两格长），远侧一对抬起（暗部色、一格长），两对交替（Lulu 2026-09-24 改）
       walkA:  F(['.#.s....#.s.', '.#......#...']),
       walkB:  F(['.s.#....s.#.', '...#......#.']),
+      // 被拎起来：腿岔开往下垂，两帧交替就是在空中蹬腿
+      // 被拎着蹬腿：左边两条和右边两条轮流伸长 / 缩短，四条腿都在动（以前中间两条的脚一直在同一格，看着不动）
+      dangle: F(['.#.#....#.#.', '.#.#........']),
+      dangle2:F(['.#.#....#.#.', '........#.#.']),
     },
     eyes: {
       open:   F(['o......o', 'o......o']),
       half:   F(['o......o'], 0, 1),
       shut:   F(['oo......oo'], -1, 1),
-      happy:  F(['o.o....o.o', '.o......o.'], -1),
+      happy:  F(['.o......o.', 'o.o....o.o'], -1),   // ^^ 笑眼（以前画成了 ∨∨，Lulu 2026-09-24 改）
       squint: F(['o......o', '.o....o.', 'o......o']),
       wide:   F(['oo......oo', 'oo......oo'], -1),
     },
@@ -85,20 +93,21 @@ export function buildClawdRig() {
     },
     prop: {
       // 擦杯子
-      mug:   F(['..kkkk', 'kkkbwk', 'k.kbbk', 'kkkbbk', '..kkkk']),
+      mug:   F(['..DDDD', 'DDDbwD', 'D.DbbD', 'DDDbbD', '..DDDD']),
       cloth: F(['cw..', 'wccc', '.cwc', '..c.']),
       // 吃饭
       // 饭压平、比碗口宽一点（Lulu 2026-09-24 改）
-      bowl:  F(['wwwwwww', 'kBBBBBk', '.kBwBk.', '..kkk..']),
-      bowlEmpty: F(['kgggggk', '.kBwBk.', '..kkk..'], 0, 1),
+      // 碗缩小、筷子改短，不再伸出身体外面（Lulu 2026-09-24）
+      bowl:  F(['wwwww', 'DBwBD', '.DDD.']),
+      bowlEmpty: F(['DgggD', '.DDD.'], 0, 1),
       // 筷子从右钳往左下斜插进碗里，不再横过脸
-      chop:  F(['....nn', '...nn.', '..nn..', '.nn...', 'nn....']),
-      chopRice: F(['....nn', '...nn.', '..nn..', '.nn...', 'wn....']),
+      chop:  F(['...n', '..n.', '.n..', 'n...']),
+      chopRice: F(['...n', '..n.', '.n..', 'w...']),
       // 读信
-      env:   F(['kkkkkkkk', 'kkwwwwkk', 'kwkwwkwk', 'kwwkkwwk', 'kwwwwwwk', 'kkkkkkkk']),
-      envOpen: F(['..kkkk..', '.kwwwwk.', 'kkkkkkkk', 'kwwwwwwk', 'kwwwwwwk', 'kwwwwwwk', 'kwwwwwwk', 'kkkkkkkk'], 0, -2),
-      letter: F(['kkkkkkk', 'kccccck', 'kgggcck', 'kccccck', 'kggggck', 'kccccck', 'kggccrk', 'kkkkkkk']),
-      letterFold: F(['kkkkk', 'kccck', 'kcrck', 'kkkkk']),
+      env:   F(['dddddddd', 'ddwwwwdd', 'dwdwwdwd', 'dwwddwwd', 'dwwwwwwd', 'dddddddd']),
+      envOpen: F(['..dddd..', '.dwwwwd.', 'dddddddd', 'dwwwwwwd', 'dwwwwwwd', 'dwwwwwwd', 'dwwwwwwd', 'dddddddd'], 0, -2),
+      letter: F(['ddddddd', 'dcccccd', 'dgggccd', 'dcccccd', 'dggggcd', 'dcccccd', 'dggccrd', 'ddddddd']),
+      letterFold: F(['ddddd', 'dcccd', 'dcrcd', 'ddddd']),
       // 种节点（生长帧以根为原点，往上长）
       seed:  F(['On', 'nO']),
       p1:    F(['O', 'l', 'l'], 0, -2),
@@ -114,6 +123,9 @@ export function buildClawdRig() {
       bfRest:F(['..B..', '.BB..', '..k..'], -2, -2),
       // 伸懒腰
       tear:  F(['b', 'b']),
+      // 出错时纸上画叉
+      sheetErr: F(['cerrcccrrccccc', 'ceerrcrreccccc', 'gggggggggggggg'], 0, -2),
+      quillDown: F(['k.BB', '.BB.'], 0, 0),   // 掉在地上躺平的笔
       // 写字
       quill: F(['...BB', '..BB.', '.k...', 'k....'], 0, -3),
       quillFly: F(['BB.', '.BB', '..k'], 0, -2),
@@ -129,6 +141,9 @@ export function buildClawdRig() {
       dots:  F(['k.k.k'], -2, 4),
       dots1: F(['k....'], -2, 4), dots2: F(['k.k..'], -2, 4),
       tilde: F(['.k...', 'k.k.k', '...k.'], -2, 2),
+      z:     F(['kkkkk', '...k.', '..k..', '.k...', 'kkkkk'], -2, 0),   // 睡觉的 Z（5×5，4×4 的斜线太短，看着像「工」）
+      vein:  F(['.r.r.', 'rr.rr', '.....', 'rr.rr', '.r.r.'], -2),   // 生气的青筋（「哼」）
+      sweat: F(['.B.', 'BbB', 'BbB', '.B.'], -1, 1),          // 汗滴（灰蓝描边，浅底上也看得见）
     },
   };
   // 左钳 = 右钳镜像
@@ -228,7 +243,13 @@ export function buildClawdRig() {
   class Clip {
     constructor(id, name, dur, opt = {}) {
       Object.assign(this, { id, name, dur, loop: !!opt.loop, pool: !!opt.pool, weight: opt.weight || 1,
-        cool: opt.cool || 0, track: opt.track || 'B', from: opt.from || null, beats: [] });
+        cool: opt.cool || 0, track: opt.track || 'B', from: opt.from || null, beats: [],
+        // intro：循环动作前面先播一段只播一次的「进场」，然后从 intro 那一刻开始循环（例：坐下再接着写）
+        intro: opt.intro || 0,
+        next: opt.next || null,             // 播完自动接哪个（例：抓起 → 吊着）
+        noShadow: !!opt.noShadow,           // 允许中途没有影子（离地、缩进输入框）
+        clipGround: !!opt.clipGround,       // 地面线以下剪掉
+        group: opt.group || 'long' });
       // smooth：哪些层的位移不按 100ms 节拍跳，而是平滑移动。只给「整张图不变、只是换位置」的层用
       //（整只平移、跳起的弧线、飞行的道具）；换姿势、换帧仍然按节拍跳
       this.smooth = new Set(opt.smooth || []);
@@ -355,48 +376,64 @@ export function buildClawdRig() {
   }
   const pct = (t, dur) => `${+(t / dur * 100).toFixed(3)}%`;
 
+  function clipSegments(clip) {
+    if (clip.loop && clip.intro) return [
+      { t0: 0, t1: clip.intro, iter: '1', fill: ' forwards', delay: '', sfx: '-i' },
+      { t0: clip.intro, t1: clip.dur, iter: 'infinite', fill: '', delay: ` ${clip.intro}ms`, sfx: '' }];
+    return [{ t0: 0, t1: clip.dur, iter: clip.loop ? 'infinite' : '1', fill: clip.loop ? '' : ' forwards', delay: '', sfx: '' }];
+  }
+
   function genClipCSS(clip) {
     // 采样：只在 100ms 节拍上出帧。关键点在写入时已经对齐节拍，所以整段动画只有一个钟——
     // 和官方 GIF 一样，要变就在拍子上变，不会出现 25ms、75ms 这种碎拍。
+    // 有进场段（intro）的循环动作拆成两段关键帧：进场播一次，循环从进场结束那一刻接上。
     const tset = new Set([0, clip.dur]);
     for (let t = 0; t <= clip.dur; t += TICK) tset.add(t);
-
+    if (clip.intro) tset.add(clip.intro);
     const times = [...tset].sort((x, y) => x - y);
-    const n = times.length - 1;
     const states = times.map(t => sampleState(clip, t));
+    const segs = clipSegments(clip);
     let css = '';
-    const iter = clip.loop ? 'infinite' : '1';
-    const fill = clip.loop ? '' : ' forwards';
     const rules = [];
+    // 一条属性按段各出一组关键帧；valueAt(i) 把第 i 个采样点变成一条声明
+    const emitSeg = (baseName, smooth, valueAt) => segs.map(seg => {
+      const idx = [];
+      times.forEach((t, i) => { if (t >= seg.t0 && t <= seg.t1) idx.push(i); });
+      const span = seg.t1 - seg.t0;
+      let kf = '', prev = '', prevWritten = true;
+      idx.forEach((i, k) => {
+        const d = valueAt(i);
+        // 平滑层：值没变的那一格也要把上一格补写出来，否则 linear 会把「停住」也插值成慢慢滑
+        if (smooth && d !== prev && !prevWritten && k > 0) kf += `${pct(times[idx[k - 1]] - seg.t0, span)}{${prev}}`;
+        const write = k === 0 || k === idx.length - 1 || d !== prev;
+        if (write) kf += `${pct(times[i] - seg.t0, span)}{${d}}`;
+        prevWritten = write;
+        prev = d;
+      });
+      const name = baseName + seg.sfx;
+      css += `@keyframes ${name}{${kf}}\n`;
+      return `${name} ${span}ms ${smooth ? 'linear' : 'step-end'}${seg.delay} ${seg.iter}${seg.fill}`;
+    });
     for (const part of PARTS) {
       const tc = touches(clip, part);
       tc.pos = tc.pos || propAttachedPos(clip, part);
-      if (!tc.pos && !tc.f && !tc.z) continue;
+      if (!tc.pos && !tc.f && !tc.z && !tc.sc && !tc.r && !tc.a) continue;
       // 位移、换帧、层级各拆成一条动画：各自只在自己的值变化时写关键帧，
       // 不然每次挪一格都要把整串 box-shadow 再抄一遍，CSS 会胖好几倍
       const anims = [];
-      const emit = (suffix, fn, smooth = false) => {
-        const name = `clr-${clip.id}-${part}-${suffix}`;
-        let kf = '', prev = '', prevWritten = true;
-        states.forEach((s, i) => {
-          const d = fn(s[part]);
-          // 平滑层：值没变的那一格也要把上一格补写出来，否则 linear 会把「停住」也插值成慢慢滑
-          if (smooth && d !== prev && !prevWritten && i > 0) kf += `${pct(times[i - 1], clip.dur)}{${prev}}`;
-          const write = i === 0 || i === n || d !== prev;
-          if (write) kf += `${pct(times[i], clip.dur)}{${d}}`;
-          prevWritten = write;
-          prev = d;
-        });
-        css += `@keyframes ${name}{${kf}}\n`;
-        anims.push(`${name} ${clip.dur}ms ${smooth ? 'linear' : 'step-end'} ${iter}${fill}`);
-      };
       const px = v => +(v * PX).toFixed(2);
       const sm = clip.smooth.has(part) || (clip.smooth.has('upper') && UPPER_KIDS.has(part));
       // 平滑层在隐藏的那一格保持上一次看得见时的位置：不然「藏起来 + 位置归零」会被插值成一道往左下角飞走的线
+      const vis = [];
       let lastVis = { dx: 0, dy: 0 };
-      const posOf = st => { if (st.f || !sm) lastVis = st; return sm ? lastVis : st; };
-      // 符号层用独立的 translate 属性，这样 scale / rotate 围着符号自己的中心转，不会连位移一起缩放
-      if (tc.pos) emit('t', st => { const q = posOf(st); return part === 'sym' ? `translate:${px(q.dx)}px ${px(q.dy)}px` : `transform:translate(${px(q.dx)}px,${px(q.dy)}px)`; }, sm);
+      states.forEach((s, i) => { const st = s[part]; if (st.f || !sm) lastVis = st; vis[i] = sm ? lastVis : st; });
+      const emit = (suffix, fn, smooth = false, usePos = false) =>
+        anims.push(...emitSeg(`clr-${clip.id}-${part}-${suffix}`, smooth, i => fn(usePos ? vis[i] : states[i][part])));
+      // 位置用 left / top，不用 transform：transform 动画在合成线程上跑，换帧的 box-shadow 在主线程上跑，
+      // 两边会差一帧——道具出现的那一帧先在原点（Clawd 框左上角）画出来，下一帧才跳到该在的位置，
+      // 肉眼看就是「从左上角飞进来」（Lulu 2026-09-24 看到的伸懒腰眼泪）。left / top 和 box-shadow 同一次样式计算里生效。
+      // 符号的缩放、旋转仍然用独立的 scale / rotate 属性，围着符号自己的中心转。
+      if (tc.pos) emit('t', q => `left:${px(q.dx)}px;top:${px(q.dy)}px`, sm, true);
       if (tc.f) emit('f', st => `box-shadow:${boxShadow(part, st.f)}`);
       if (tc.z) emit('z', st => `z-index:${st.z}`);
       // 缩放、旋转、不透明度：都是平滑变化（它们不改像素网格上的图，只是整张图的大小、角度、深浅）
@@ -407,43 +444,33 @@ export function buildClawdRig() {
       rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-p-${part}{animation:${base}${anims.join(', ')}}`);
     }
     // 整体平移（走路）；没有平移也生成一条，用来接 animationend
-    const rname = `clr-${clip.id}-root`;
     const rs = clip.smooth.has('root');
-    let rk = '', prev = '', prevW = true;
-    states.forEach((s, i) => {
-      const d = `transform:translate(${+(s.root.dx * PX).toFixed(2)}px,${+(s.root.dy * PX).toFixed(2)}px)`;
-      if (rs && d !== prev && !prevW && i > 0) rk += `${pct(times[i - 1], clip.dur)}{${prev}}`;
-      const w = i === 0 || i === n || d !== prev;
-      if (w) rk += `${pct(times[i], clip.dur)}{${d}}`;
-      prevW = w;
-      prev = d;
-    });
-    css += `@keyframes ${rname}{${rk}}\n`;
-    rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-root{animation:${rname} ${clip.dur}ms ${rs ? 'linear' : 'step-end'} ${iter}${fill}}`);
+    const rootAnims = emitSeg(`clr-${clip.id}-root`, rs,
+      i => `transform:translate(${+(states[i].root.dx * PX).toFixed(2)}px,${+(states[i].root.dy * PX).toFixed(2)}px)`);
+    rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-root{animation:${rootAnims.join(', ')}}`);
     if (clip.flexKeys.length) {
-      const fname = `clr-${clip.id}-flex`;
-      const ks = clip.flexKeys[0][0] === 0 ? clip.flexKeys : [[0, FLEX_ID], ...clip.flexKeys];
-      const all = ks[ks.length - 1][0] === clip.dur ? ks : [...ks, [clip.dur, FLEX_ID]];
       // 弹性层也按节拍一格一格跳（step-end），不再平滑插值：平滑的缩放叠在一格一格跳的像素上，两个钟对不齐，看起来就是抖
-      let kf = '', prev = '';
-      times.forEach((t, i) => {
-        const d = flexCSS(flexAt(clip, t));
-        if (i === 0 || i === n || d !== prev) kf += `${pct(t, clip.dur)}{transform:${d}}`;
-        prev = d;
-      });
-      css += `@keyframes ${fname}{${kf}}\n`;
-      rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-flex{animation:${fname} ${clip.dur}ms step-end ${iter}${fill}}`);
+      const flexAnims = emitSeg(`clr-${clip.id}-flex`, false, i => `transform:${flexCSS(flexAt(clip, times[i]))}`);
+      rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-flex{animation:${flexAnims.join(', ')}}`);
     }
+    if (clip.clipGround) rules.push(groundClipRule(clip));
     return css + rules.join('\n') + '\n';
   }
 
+  /* 躲进输入框：骨架画布里地面线以下的部分剪掉，看起来就是缩到输入框后面。
+     clip-path 挂在不做位移的骨架外框上（原型里是 rig 元素，扩展里是 clawd-rig 元素），所以剪切线不跟着身体一起往下走。 */
+  function groundClipRule(clip) {
+    const bottom = PX - (BOX[1] + 10) * PX;
+    return `${RB}[data-clawd-clip="${clip.id}"] > .clawd-rig{clip-path:inset(-200px -200px ${bottom}px -200px)}`;
+  }
   const FLEX_ID = { sx: 1, sy: 1, r: 0, tx: 0, ty: 0 };
   const flexCSS = v => `translate(${+(v.tx * PX).toFixed(2)}px,${+(v.ty * PX).toFixed(2)}px) rotate(${v.r}deg) scale(${v.sx},${v.sy})`;
   /* 某一时刻的弹性值：关键点之间按缓入缓出插值，出帧时再按节拍取样 */
   function flexAt(clip, t) {
     const ks0 = clip.flexKeys;
     if (!ks0.length) return FLEX_ID;
-    const ks = [...(ks0[0][0] === 0 ? [] : [[0, FLEX_ID]]), ...ks0, ...(ks0[ks0.length - 1][0] === clip.dur ? [] : [[clip.dur, FLEX_ID]])];
+    const tail = clip.loop ? ks0[ks0.length - 1][1] : FLEX_ID;   // 循环动作（如歪头）最后一个值一直保持到循环结束
+    const ks = [...(ks0[0][0] === 0 ? [] : [[0, FLEX_ID]]), ...ks0, ...(ks0[ks0.length - 1][0] === clip.dur ? [] : [[clip.dur, tail]])];
     let i = 0;
     while (i + 1 < ks.length && ks[i + 1][0] <= t) i++;
     const [t0, a] = ks[i], nx = ks[i + 1];
@@ -513,6 +540,9 @@ export function buildClawdRig() {
     spark: { first: 'sparkS', spin: true },                   // 大小交替闪，同时转 90°
     dots:  { first: 'dots1', typing: true },                  // 一个点一个点冒出来
     tilde: { first: 'tilde', rise: 1, sway: true },           // 左右荡
+    z:     { first: 'z', rise: 5, drift: 2, wob: 6, wobT: 400 }, // 睡觉：边往上飘边往右漂
+    vein:  { first: 'vein', pulse: true },                    // 生气：一跳一跳
+    sweat: { first: 'sweat', fall: 2 },                       // 汗：往下滑
   };
   function sym(c, t, kind, { x = 0, y = 0, dur = 900 } = {}) {
     const st = SYM_STYLE[kind];
@@ -528,6 +558,9 @@ export function buildClawdRig() {
     if (st.spin) { for (let k = t + 100, i = 0; k < t1; k += 100, i++) c.at(k, 'sym', { f: i % 2 ? 'sparkS' : 'spark' }); c.at(t1, 'sym', { r: 90 }, 'lin'); }
     if (st.typing) for (let k = t, i = 0; k < t1 - 200; k += 300, i++) c.at(k, 'sym', { f: ['dots1', 'dots2', 'dots'][i % 3] });
     if (st.sway) c.at(t + 300, 'sym', { x: x + 1 }, 'io').at(t + 600, 'sym', { x: x - 1 }, 'io').at(t + 900, 'sym', { x }, 'io');
+    if (st.drift) c.at(t + 200, 'sym', { x }).at(t1, 'sym', { x: x + st.drift }, 'io');
+    if (st.fall) c.at(t + 200, 'sym', { y }).at(t1, 'sym', { y: y + st.fall }, 'in');
+    if (st.pulse) for (let k = t + 300, i = 0; k < t1 - 300; k += 300, i++) c.at(k, 'sym', { sc: i % 2 ? 1 : 1.3 }, 'io');
     // 淡出：最后 300ms
     c.at(t1 - 300, 'sym', { a: 1 }).at(t1, 'sym', { a: 0, f: null }, 'io');
     c.at(t1 + 100, 'sym', { a: 1, sc: 1, r: 0 });   // 看不见了再把数值归位
@@ -589,10 +622,10 @@ export function buildClawdRig() {
     c.at(200, 'eyes', { y: 1 });
     c.at(300, 'clawL', { f: 'front' }).to(300, 500, 'clawL', { x: 3, y: 2 });
     // 碗左上角落在 (5,6)，碗底贴地：左钳 (3,2) 时挂载基点是 (2,4)
-    c.at(500, 'propA', { f: 'bowl', x: 2, y: 5, att: 'clawL' }).at(600, 'propA', { y: 4 });
+    c.at(500, 'propA', { f: 'bowl', x: 3, y: 6, att: 'clawL' }).at(600, 'propA', { y: 5 });
     // 右钳不横过脸，一直在身体右侧外面上下动；筷子右上角贴着钳子左下角，往左下斜插进碗（Lulu 2026-09-24 改）
     c.to(700, 900, 'clawR', { y: -2 });
-    c.at(900, 'propB', { f: 'chop', x: 8, y: 6, att: 'clawR', z: 6 });
+    c.at(900, 'propB', { f: 'chop', x: 10, y: 6, att: 'clawR', z: 6 });
     for (let i = 0; i < 3; i++) {
       const T = 1100 + i * 1500;
       c.to(T, T + 200, 'clawR', { y: -1 });
@@ -618,7 +651,7 @@ export function buildClawdRig() {
 
   /* ── 读信 ───────────────────────────────────────────────── */
   {
-    const c = def(new Clip('letter', '读信', 8800, { pool: true, cool: 60000, smooth: ['propA', 'propB'] }));
+    const c = def(new Clip('letter', '读信', 8800, { cool: 60000, smooth: ['propA', 'propB'] }));
     c.beat(0, '「！」——头顶掉下来一封信').beat(800, '双钳接住，身子一沉').beat(1400, '拆开，信纸升起来').beat(2600, '逐行读（眼睛从左扫到右 ×3）').beat(5400, '开心，左右晃').beat(6600, '叠好，塞到身后');
     sym(c, 100, 'bang', { x: 6, y: 2, dur: 700 });
     c.at(100, 'eyes', { f: 'open', y: -1 });   // 不用大眼（Lulu 2026-09-24 改）
@@ -709,36 +742,33 @@ export function buildClawdRig() {
   }
 
   /* ── 伸懒腰 ─────────────────────────────────────────────── */
-  {
-    const c = def(new Clip('stretch', '伸懒腰', 3800, { pool: true, cool: 30000, smooth: ['root', 'shadow'] }));
-    c.beat(0, '蹲一下蓄力').beat(450, '双钳举过头，身体抻长，左右晃').beat(1800, '松下来，一屁股坐扁').beat(2300, '挤出一滴眼泪').beat(3000, '往下一沉，再弹起来');
-    c.at(100, 'eyes', { f: 'half' });
-    c.at(200, 'upper', { y: 1 }).at(200, 'legs', { f: 'crouch' });
-    c.at(450, 'upper', { y: 0 }).at(450, 'legs', { f: 'stand' }).at(450, 'body', { f: 'tall' });   // 身体往上长一格，脚不离地（以前上半身抬 1 格，和腿之间会露缝）
-    raise(c, 450, 'clawL'); raise(c, 450, 'clawR');
-    c.at(450, 'eyes', { f: 'shut' });
-    c.at(450, 'shadow', { f: 'w10' });
-    sym(c, 600, 'tilde', { y: -1, dur: 1000 });
-    c.at(1800, 'body', { f: 'stand' }).at(1800, 'upper', { y: 0 }).at(1800, 'shadow', { f: 'w12' });
-    c.at(1800, 'clawL', { f: 'stub', y: -3 }).at(1800, 'clawR', { f: 'stub', y: -3 });
-    c.at(1900, 'clawL', { y: 0 }).at(1900, 'clawR', { y: 0 });
+  function stretchBody(c, O) {
+    c.at(O + 100, 'eyes', { f: 'half' });
+    c.at(O + 200, 'upper', { y: 1 }).at(O + 200, 'legs', { f: 'crouch' });
+    c.at(O + 450, 'upper', { y: 0 }).at(O + 450, 'legs', { f: 'stand' }).at(O + 450, 'body', { f: 'tall' });   // 身体往上长一格，脚不离地（以前上半身抬 1 格，和腿之间会露缝）
+    raise(c, O + 450, 'clawL'); raise(c, O + 450, 'clawR');
+    c.at(O + 450, 'eyes', { f: 'shut' });
+    c.at(O + 450, 'shadow', { f: 'w10' });
+    sym(c, O + 600, 'tilde', { y: -1, dur: 1000 });
+    c.at(O + 1800, 'body', { f: 'stand' }).at(O + 1800, 'upper', { y: 0 }).at(O + 1800, 'shadow', { f: 'w12' });
+    c.at(O + 1800, 'clawL', { f: 'stub', y: -3 }).at(O + 1800, 'clawR', { f: 'stub', y: -3 });
+    c.at(O + 1900, 'clawL', { y: 0 }).at(O + 1900, 'clawR', { y: 0 });
     // 坐得更扁：身体只剩 4 格加一条暗部，腿只露一格（Lulu 2026-09-24 改）
-    c.at(2000, 'body', { f: 'squash2' }).at(2000, 'legs', { f: 'crouch' }).at(2000, 'eyes', { f: 'half', y: 3 }).at(2000, 'shadow', { f: 'w14' });
-    c.at(2300, 'body', { f: 'stand' }).at(2300, 'legs', { f: 'stand' }).at(2300, 'eyes', { y: 0 }).at(2300, 'shadow', { f: 'w12' });
-    c.at(2400, 'propA', { f: 'tear', x: 3, y: 3, att: 'upper' }).at(2600, 'propA', { y: 4 }).at(2800, 'propA', { y: 5 }).at(3000, 'propA', { f: null, x: 0, y: 0, att: null });
-    c.at(2600, 'eyes', { f: 'open' });
-    // 往下一沉再弹起来（Lulu 2026-09-24 画的箭头）
-    c.at(3000, 'upper', { y: 1 }).at(3000, 'legs', { f: 'crouch' });
-    c.at(3100, 'upper', { y: 0 }).at(3100, 'legs', { f: 'stand' }).at(3100, 'root', { y: -1 }).at(3100, 'shadow', { y: 1, f: 'w10' });
-    c.at(3300, 'root', { y: 0 }).at(3300, 'shadow', { y: 0, f: 'w12' });
-    c.at(3400, 'upper', { y: 1 }).at(3400, 'legs', { f: 'crouch' });
-    c.at(3500, 'upper', { y: 0 }).at(3500, 'legs', { f: 'stand' });
+    c.at(O + 2000, 'body', { f: 'squash2' }).at(O + 2000, 'legs', { f: 'crouch' }).at(O + 2000, 'eyes', { f: 'half', y: 3 }).at(O + 2000, 'shadow', { f: 'w14' });
+    c.at(O + 2300, 'body', { f: 'stand' }).at(O + 2300, 'legs', { f: 'stand' }).at(O + 2300, 'eyes', { y: 0 }).at(O + 2300, 'shadow', { f: 'w12' });
+    c.at(O + 2400, 'propA', { f: 'tear', x: 3, y: 3, att: 'upper' }).at(O + 2600, 'propA', { y: 4 }).at(O + 2800, 'propA', { y: 5 }).at(O + 3000, 'propA', { f: null, x: 0, y: 0, att: null });
+    c.at(O + 2600, 'eyes', { f: 'open' });
+    // 结尾原来有「往下一沉再弹起来」，接在坐扁后面看着像又深蹲一下，去掉（Lulu 2026-09-24）
     // 弹性层：原版伸懒腰 Q 弹的做法——整只做平滑的挤压 / 拉伸，每个停点都冲过头一点再回来
-    c.flex(200, { sx: 1.08, sy: .9 })
-     .flex(450, { sx: .86, sy: 1.18 }).flex(700, { sx: .94, sy: 1.08 })
-     .flex(1000, { sx: .94, sy: 1.08, r: -4 }).flex(1300, { sx: .94, sy: 1.08, r: 4 }).flex(1600, { sx: .94, sy: 1.08, r: 0 })
-     .flex(1800, {}).flex(2000, { sx: 1.2, sy: .8 }).flex(2200, { sx: .93, sy: 1.07 }).flex(2350, { sx: 1.03, sy: .97 }).flex(2500, {})
-     .flex(3000, { sx: 1.12, sy: .86 }).flex(3150, { sx: .88, sy: 1.16 }).flex(3300, { sx: 1.07, sy: .94 }).flex(3450, { sx: .98, sy: 1.02 }).flex(3600, {});
+    c.flex(O + 200, { sx: 1.08, sy: .9 })
+     .flex(O + 450, { sx: .86, sy: 1.18 }).flex(O + 700, { sx: .94, sy: 1.08 })
+     .flex(O + 1000, { sx: .94, sy: 1.08, r: -4 }).flex(O + 1300, { sx: .94, sy: 1.08, r: 4 }).flex(O + 1600, { sx: .94, sy: 1.08, r: 0 })
+     .flex(O + 1800, {}).flex(O + 2000, { sx: 1.2, sy: .8 }).flex(O + 2200, { sx: .93, sy: 1.07 }).flex(O + 2350, { sx: 1.03, sy: .97 }).flex(O + 2500, {});
+  }
+  {
+    const c = def(new Clip('stretch', '伸懒腰', 3200, { cool: 30000, smooth: ['root', 'shadow'], group: 'sleep' }));
+    c.beat(0, '蹲一下蓄力').beat(450, '双钳举过头，身体抻长，左右晃').beat(1800, '松下来，一屁股坐扁').beat(2300, '挤出一滴眼泪');
+    stretchBody(c, 0);
   }
 
   /* ── 踱步（平滑）─────────────────────────────────────────
@@ -770,53 +800,145 @@ export function buildClawdRig() {
     c.at(e3, 'body', { f: 'stand' }).at(e3, 'eyes', { x: 0 });
   }
 
-  /* ── 写字（生成中循环）────────────────────────────────── */
+  /* ════════════════════════════════════════════════════════════════════
+     生成（A 轨）
+     2026-09-24 Lulu：「思考」去掉——一按发送就直接进写字，所以写字自带一段「拿出纸笔」的进场。
+     生成超过 12 秒坐下接着写；结束有三种：完成、停止、出错，各有站着 / 坐着两个版本。
+     ════════════════════════════════════════════════════════════════════ */
   const WRITE_POSE = c => t => {
     c.at(t, 'eyes', { f: 'open', x: 1, y: 1 });
     c.at(t, 'clawR', { x: 1, y: 2 });
     // 笔尖贴在纸面上：右钳 (1,2) 时笔尖在 (17,7)
     c.at(t, 'propA', { f: 'quill', x: 16, y: 5, att: 'clawR' });
-    c.at(t, 'propB', { f: 'sheet0', x: 17, y: 9, z: 6 });
+    c.at(t, 'propB', { f: 'sheet0', x: 17, y: 9, z: 6, a: 1 });
   };
+  /* 睡姿：上半身沉 2 格，把腿整个盖住（和犯困最低那一下一样，看不见脚；Lulu 2026-09-24） */
+  const SLEEP_POSE = c => t => {
+    c.at(t, 'upper', { y: 2 }).at(t, 'legs', { f: 'crouch' }).at(t, 'shadow', { f: 'w14' });
+  };
+  /* 坐姿：上半身往下沉 1 格，腿收成一排，影子摊开一点 */
+  const SIT_POSE = c => t => {
+    c.at(t, 'upper', { y: 1 }).at(t, 'legs', { f: 'tuck' }).at(t, 'shadow', { f: 'w14' });
+  };
+
+  /* ── 写字（生成中循环，带进场）──────────────────────────── */
+  const WRITE_IN = 600;
   {
-    const c = def(new Clip('write', '写字 · 生成中', 3600, { loop: true, track: 'A' }));
-    c.beat(0, '右钳握笔，贴着纸写（身子不歪）').beat(150, '墨迹一段段往右长').beat(3000, '一行写完，点下头，换一张');
+    const O = WRITE_IN;
+    const c = def(new Clip('write', '写字', O + 3600, { loop: true, intro: O, track: 'A', group: 'gen' }));
+    c.beat(0, '一按发送：低头，纸从右边滑进来，右钳摸出笔').beat(O, '贴着纸写（循环）').beat(O + 3000, '一行写完，点下头，换一张');
+    // 进场
+    c.at(100, 'eyes', { x: 1, y: 1 });
+    c.at(100, 'propB', { f: 'sheet0', x: 21, y: 9, z: 6, a: 0 }).to(100, 400, 'propB', { x: 17, a: 1 });
+    c.at(200, 'clawR', { y: -1 });
+    c.at(300, 'propA', { f: 'quill', x: 16, y: 5, att: 'clawR' });
+    // 循环
     const setPose = WRITE_POSE(c);
-    setPose(0);
+    setPose(O);
     const wig = [{ x: 1, y: 2 }, { x: 2, y: 2 }, { x: 2, y: 1 }, { x: 1, y: 1 }];
-    for (let i = 0; i < 15; i++) c.at(i * 200, 'clawR', wig[i % 4]);
-    for (let i = 1; i <= 10; i++) c.at(i * 300 - 200, 'propB', { f: 'sheet' + i });
-    c.at(3000, 'propB', { f: 'sheet0' }).at(3000, 'clawR', { x: 1, y: 2 });
-    c.at(3000, 'eyes', { f: 'shut' }).at(3000, 'upper', { y: 1 }).at(3200, 'upper', { y: 0 });
-    c.at(3300, 'eyes', { f: 'open' });
-    setPose(3600);
+    for (let i = 0; i < 15; i++) c.at(O + i * 200, 'clawR', wig[i % 4]);
+    for (let i = 1; i <= 10; i++) c.at(O + i * 300 - 200, 'propB', { f: 'sheet' + i });
+    c.at(O + 3000, 'propB', { f: 'sheet0' }).at(O + 3000, 'clawR', { x: 1, y: 2 });
+    c.at(O + 3000, 'eyes', { f: 'shut' }).at(O + 3000, 'upper', { y: 1 }).at(O + 3200, 'upper', { y: 0 });
+    c.at(O + 3300, 'eyes', { f: 'open' });
+    setPose(O + 3600);
   }
 
-  /* ── 完成（接在写字后面）──────────────────────────────── */
+  /* ── 坐着写（生成超过 12 秒，带「坐下」进场）──────────── */
+  const SIT_IN = 500;
   {
-    const c = def(new Clip('done', '完成', 1800, { track: 'A', from: 'write', smooth: ['root', 'shadow', 'propA', 'propB'] }));
-    c.beat(0, '写完了').beat(150, '笔往右上一抛，纸也扬起来飞走').beat(300, '双钳举起蹦两下，闪光');
+    const O = SIT_IN, L = 4800;
+    const c = def(new Clip('sitWrite', '坐着写', O + L, { loop: true, intro: O, track: 'A', from: 'write', group: 'gen' }));
+    c.beat(0, '写累了，眼皮耷拉').beat(200, '一屁股坐下（身子沉 1 格，腿收起来）').beat(O, '坐着接着写，比站着慢（循环）').beat(O + 2100, '慢慢眨一下眼').beat(O + 4500, '写完一行，头一点');
     WRITE_POSE(c)(0);
-    c.at(0, 'propB', { f: 'sheet10' });
-    c.at(100, 'eyes', { f: 'happy', x: 0, y: 0 });
-    // 丢笔：右钳一甩，笔脱手翻着飞走
-    c.at(100, 'clawR', { x: 0, y: -2 }).at(150, 'clawR', { f: 'up', x: 0, y: 0 });
-    c.at(150, 'propA', { f: 'quillFly', x: 19, y: 1, att: null }).to(150, 600, 'propA', { x: 29, y: -12 }, 'out');
-    c.seq(250, 100, 'propA', [{ f: 'quill' }, { f: 'quillFly' }, { f: 'quill' }, { f: 'quillFly' }]);
-    fadeOut(c, 'propA', 400, 700);
-    // 丢纸：纸从地上扬起来往右飞
-    c.at(200, 'propB', { f: 'sheetFly', x: 21, y: 7 }).to(200, 700, 'propB', { x: 33, y: -7 }, 'out');
-    fadeOut(c, 'propB', 450, 800);
-    raise(c, 300, 'clawL');
-    hop(c, 400);
-    sym(c, 300, 'spark', { dur: 700 });
-    lower(c, 1000, 'clawL'); lower(c, 1000, 'clawR');
-    c.at(1500, 'eyes', { f: 'open' });
+    c.at(100, 'eyes', { f: 'half' });
+    SIT_POSE(c)(200);
+    c.flex(100, {}).flex(200, { sx: 1.08, sy: .92 }).flex(300, { sx: .98, sy: 1.02 }).flex(400, {});
+    const pose = t => { WRITE_POSE(c)(t); SIT_POSE(c)(t); c.at(t, 'eyes', { f: 'half' }); };
+    pose(O);
+    const wig = [{ x: 1, y: 2 }, { x: 2, y: 2 }, { x: 2, y: 1 }, { x: 1, y: 1 }];
+    for (let i = 0; i < 15; i++) c.at(O + i * 300, 'clawR', wig[i % 4]);
+    for (let i = 1; i <= 10; i++) c.at(O + i * 450 - 300, 'propB', { f: 'sheet' + i });
+    c.at(O + 2100, 'eyes', { f: 'shut' }).at(O + 2500, 'eyes', { f: 'half' });
+    c.at(O + 4500, 'propB', { f: 'sheet0' }).at(O + 4500, 'clawR', { x: 1, y: 2 });
+    c.at(O + 4500, 'upper', { y: 2 }).at(O + 4500, 'eyes', { f: 'shut' }).at(O + 4700, 'upper', { y: 1 }).at(O + 4700, 'eyes', { f: 'half' });
+    pose(O + L);
   }
+
+  /* 三种收尾共用。坐着写的时候结束也用这一段：第一帧直接站起来。
+     （原来另做了「坐着」版本，先花 100ms 站起来——单独播时看起来就是开头蹲一下，和站着版看不出别的差别，Lulu 2026-09-24 删掉） */
+  function endClip(id, name, from, dur, beats, body) {
+    const c = def(new Clip(id, name, dur, { track: 'A', from: 'write', group: 'gen', smooth: ['root', 'shadow', 'propA', 'propB'] }));
+    beats.forEach(([t, text]) => c.beat(t, text));
+    body(c, 0);
+  }
+
+  /* ── 完成：丢笔丢纸、蹦两下 ─────────────────────────────── */
+  endClip('done', '完成', 'write', 1800,
+    [[0, '写完了'], [150, '笔往右上一抛，纸也扬起来飞走'], [300, '双钳举起蹦两下，闪光']],
+    (c, O) => {
+      WRITE_POSE(c)(O);
+      c.at(O, 'propB', { f: 'sheet10' });
+      c.at(O + 100, 'eyes', { f: 'happy', x: 0, y: 0 });
+      c.at(O + 100, 'clawR', { x: 0, y: -2 }).at(O + 150, 'clawR', { f: 'up', x: 0, y: 0 });
+      c.at(O + 150, 'propA', { f: 'quillFly', x: 19, y: 1, att: null }).to(O + 150, O + 600, 'propA', { x: 29, y: -12 }, 'out');
+      c.seq(O + 250, 100, 'propA', [{ f: 'quill' }, { f: 'quillFly' }, { f: 'quill' }, { f: 'quillFly' }]);
+      fadeOut(c, 'propA', O + 400, O + 700);
+      c.at(O + 200, 'propB', { f: 'sheetFly', x: 21, y: 7 }).to(O + 200, O + 700, 'propB', { x: 33, y: -7 }, 'out');
+      fadeOut(c, 'propB', O + 450, O + 800);
+      raise(c, O + 300, 'clawL');
+      hop(c, O + 400);
+      sym(c, O + 300, 'spark', { dur: 700 });
+      lower(c, O + 1000, 'clawL'); lower(c, O + 1000, 'clawR');
+      c.at(O + 1500, 'eyes', { f: 'open' });
+    });
+
+  /* ── 停止：手一松，笔掉地上，叹口气；不欢呼 ────────────── */
+  endClip('stopped', '停止', 'write', 1700,
+    [[0, '写到一半被叫停'], [100, '抬头'], [200, '手一松，笔掉到地上'], [300, '「…」'], [500, '叹口气（钳子一耷拉，身子不动）'], [600, '笔和纸淡出'], [1300, '眨眼，回到待机']],
+    (c, O) => {
+      WRITE_POSE(c)(O);
+      c.at(O, 'propB', { f: 'sheet6' });
+      c.at(O + 100, 'eyes', { x: 0, y: 0 });
+      c.at(O + 200, 'clawR', { x: 0, y: 0 });
+      // 笔：离手时在 (17,7)，往下掉到地上躺平
+      c.at(O + 200, 'propA', { x: 17, y: 7, att: null }).to(O + 200, O + 400, 'propA', { y: 9 }, 'in');
+      c.at(O + 400, 'propA', { f: 'quillDown', x: 17, y: 8 });
+      fadeOut(c, 'propA', O + 700, O + 1000);
+      fadeOut(c, 'propB', O + 600, O + 900);
+      sym(c, O + 300, 'dots', { x: 5, dur: 1000 });
+      c.at(O + 400, 'eyes', { f: 'half' });
+      c.at(O + 500, 'clawL', { y: 1 }).at(O + 500, 'clawR', { y: 1 }).at(O + 900, 'clawL', { y: 0 }).at(O + 900, 'clawR', { y: 0 });   // 叹气只让钳子耷拉一下，身子不往下沉（沉一格看着像深蹲）
+      c.at(O + 1100, 'eyes', { f: 'open' });
+      blink(c, O + 1300);
+    });
+
+  /* ── 出错：「！」一哆嗦，笔飞出去，纸上画叉，冒汗 ─────── */
+  endClip('error', '出错', 'write', 2200,
+    [[0, '写着写着'], [100, '「！」一哆嗦，笔脱手飞出去'], [200, '纸上出现红叉'], [500, '低头看这一摊'], [600, '冒汗'], [1300, '纸淡出'], [1500, '叹气（钳子耷拉一下），回到待机']],
+    (c, O) => {
+      WRITE_POSE(c)(O);
+      c.at(O, 'propB', { f: 'sheet5' });
+      sym(c, O + 100, 'bang', { x: 6, y: 2, dur: 800 });
+      c.at(O + 100, 'eyes', { x: 0, y: -1 });
+      c.flex(O, {}).flex(O + 100, { sx: .94, sy: 1.08 }).flex(O + 200, { sx: 1.06, sy: .95 }).flex(O + 300, {});
+      c.at(O + 100, 'clawR', { x: 0, y: -1 }).at(O + 300, 'clawR', { x: 0, y: 0 });
+      c.at(O + 100, 'propA', { f: 'quillFly', x: 17, y: 5, att: null }).to(O + 100, O + 300, 'propA', { x: 20, y: 1 }, 'out')
+       .to(O + 300, O + 600, 'propA', { x: 21, y: 9 }, 'in');
+      c.at(O + 600, 'propA', { f: 'quillDown', x: 20, y: 8 });
+      fadeOut(c, 'propA', O + 900, O + 1200);
+      c.at(O + 200, 'propB', { f: 'sheetErr' });
+      fadeOut(c, 'propB', O + 1300, O + 1600);
+      c.at(O + 500, 'eyes', { x: 1, y: 2 });
+      sym(c, O + 600, 'sweat', { x: 8, y: 4, dur: 1000 });
+      c.at(O + 1500, 'eyes', { f: 'half', x: 0, y: 0 });
+      c.at(O + 1600, 'clawL', { y: 1 }).at(O + 1600, 'clawR', { y: 1 }).at(O + 1900, 'clawL', { y: 0 }).at(O + 1900, 'clawR', { y: 0 });
+      c.at(O + 2000, 'eyes', { f: 'open' });
+    });
 
   /* ── 互动：轻抚（光标在它身上来回划）──────────────────── */
   {
-    const c = def(new Clip('pet', '轻抚', 2200, { track: 'C' }));
+    const c = def(new Clip('pet', '轻抚', 2200, { track: 'C', group: 'touch' }));
     c.beat(0, '眯眼，往手上蹭').beat(700, '冒心').beat(1300, '闭眼享受一下').beat(1900, '心满意足');
     c.at(0, 'eyes', { f: 'shut' });
     c.seq(0, 200, 'clawL', [{ y: -1 }, { y: 0 }, { y: -1 }, { y: 0 }, { y: -1 }, { y: 0 }]);
@@ -829,10 +951,341 @@ export function buildClawdRig() {
     c.flex(0, { sx: .96, sy: 1.05 }).flex(300, { sx: 1.03, sy: .97 }).flex(600, { sx: .96, sy: 1.05 }).flex(900, { sx: 1.03, sy: .97 }).flex(1100, {});
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+     旧动作翻新（2026-09-24）
+     内容照旧版 clawd-合并原型.html，画法换成分件骨架：像素保持竖直、落在格子上，动的是部件。
+     只有两类保留整只变形（Lulu 定）：歪头的整体旋转；弹跳类（蹦床、「！」、落地、被戳蹦一下）的压扁拉长。
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* ── 打字：低头看输入框、点头（循环）──────────────────── */
+  function composeLoop(c, L) {
+    // 眼睛往下挪 3 格（旧版 low-look 的位置），一拍一点头；中间眼睛往右扫一下，像在读
+    c.at(L, 'eyes', { f: 'open', x: 0, y: 3 });
+    c.at(L + 300, 'upper', { y: 1 }).at(L + 300, 'eyes', { f: 'half' });
+    c.at(L + 500, 'upper', { y: 0 }).at(L + 500, 'eyes', { f: 'open' });
+    c.at(L + 800, 'upper', { y: 1 }).at(L + 800, 'eyes', { f: 'half' });
+    c.at(L + 1000, 'upper', { y: 0 }).at(L + 1000, 'eyes', { f: 'open' });
+    c.at(L + 1200, 'eyes', { x: 1 }).at(L + 1500, 'eyes', { x: 0 });
+    c.at(L + 1600, 'eyes', { f: 'open', x: 0, y: 3 });
+  }
+  {
+    const O = 200;
+    const c = def(new Clip('compose', '打字：低头看、点头', O + 1600, { loop: true, intro: O, group: 'type' }));
+    c.beat(0, '眼睛往下看输入框').beat(O, '跟着打字一拍一点头（循环）').beat(O + 1200, '眼睛往右扫一下，像在读');
+    c.at(100, 'eyes', { y: 1 });
+    composeLoop(c, O);
+  }
+
+  /* ── 「？」歪头（循环，带进场；退出用 untilt）──────────── */
+  {
+    const O = 1400, L = 2400;
+    const c = def(new Clip('tilt', '「？」歪头', O + L, { loop: true, intro: O, group: 'type' }));
+    c.beat(0, '输入里有问号').beat(100, '整只歪过去（冲过头一点再回来）').beat(200, '冒「？」').beat(O, '歪着头等（循环）').beat(O + 1200, '「？」再冒一次');
+    c.at(100, 'eyes', { y: -1 });
+    c.flex(0, {}).flex(100, { r: -8 }).flex(200, { r: -16 }).flex(300, { r: -11 }).flex(400, { r: -13 });
+    sym(c, 200, 'q', { x: 3, dur: 1000 });
+    c.flex(O, { r: -13 }).flex(O + L, { r: -13 });
+    c.at(O + 1100, 'eyes', { f: 'half' }).at(O + 1200, 'eyes', { f: 'open' });
+    sym(c, O + 1200, 'q', { x: 3, dur: 1000 });
+  }
+  {
+    const c = def(new Clip('untilt', '歪头 → 回正', 400, { from: 'tilt', group: 'type' }));
+    c.beat(0, '问号删掉了，头摆回来（也冲过头一点）');
+    c.at(0, 'eyes', { y: -1 }).at(200, 'eyes', { y: 0 });
+    c.flex(0, { r: -13 }).flex(100, { r: -4 }).flex(200, { r: 3 }).flex(300, {});
+  }
+
+  /* ── 「！」惊讶：弹起来，然后接着低头看（循环）─────────── */
+  {
+    const O = 1100;
+    const c = def(new Clip('wow', '「！」惊讶', O + 1600, { loop: true, intro: O, smooth: ['root', 'shadow'], group: 'type' }));
+    c.beat(0, '输入里有感叹号，或者一口气打了很多字').beat(100, '一缩').beat(200, '弹起来，冒「！」').beat(400, '落地').beat(600, '低头去看你写了什么').beat(O, '接着低头看、点头（循环）');
+    c.at(100, 'eyes', { y: -1 });
+    c.flex(0, {}).flex(100, { sx: 1.12, sy: .88 });
+    c.at(100, 'root', { y: 0 }).at(100, 'shadow', { y: 0 });
+    c.at(200, 'root', { y: -2 }, 'out').at(200, 'shadow', { y: 2, f: 'w10' }, 'out').flex(200, { sx: .86, sy: 1.2 });
+    c.at(300, 'root', { y: -2 }).at(300, 'shadow', { y: 2 }).flex(300, { sx: .95, sy: 1.06 });
+    c.at(400, 'root', { y: 0 }, 'in').at(400, 'shadow', { y: 0, f: 'w12' }, 'in').flex(400, { sx: 1.1, sy: .92 });
+    c.flex(500, {});
+    sym(c, 200, 'bang', { x: 5, y: 1, dur: 800 });
+    c.at(600, 'eyes', { y: 1 });
+    composeLoop(c, O);
+  }
+
+  /* ── 东张西望 ─────────────────────────────────────────── */
+  {
+    const c = def(new Clip('around', '东张西望', 2100, { group: 'idle' }));
+    c.beat(0, '站着').beat(300, '眨眼，身子转向左边看').beat(1000, '眨眼，转向右边看，「？」').beat(1800, '转回来');
+    blink(c, 300, 'open');
+    c.at(400, 'eyes', { x: -1 }).at(400, 'body', { f: 'turnL' });
+    c.at(1000, 'eyes', { f: 'half', x: 0 }).at(1000, 'body', { f: 'stand' });
+    c.at(1100, 'eyes', { f: 'open', x: 1 }).at(1100, 'body', { f: 'turnR' });
+    sym(c, 1100, 'q', { x: 4, dur: 800 });
+    c.at(1800, 'eyes', { x: 0 }).at(1800, 'body', { f: 'stand' });
+  }
+
+  /* ── 转一圈：用转向帧真的转，不再把整张图横着捏扁 ───────── */
+  {
+    const c = def(new Clip('spin', '转一圈', 1200, { smooth: ['root', 'shadow'], group: 'idle' }));
+    c.beat(0, '一蹲').beat(100, '起跳，转向右').beat(300, '背过身去').beat(500, '转向左').beat(600, '落地转回正面，♪');
+    c.flex(0, {}).flex(100, { sx: 1.1, sy: .9 });
+    c.at(100, 'body', { f: 'turnR' }).at(100, 'eyes', { x: 1 });
+    c.at(100, 'root', { y: 0 }).at(100, 'shadow', { y: 0 });
+    c.at(200, 'root', { y: -2 }, 'out').at(200, 'shadow', { y: 2, f: 'w10' }, 'out').flex(200, { sx: .94, sy: 1.08 });
+    c.at(300, 'body', { f: 'stand' }).at(300, 'eyes', { f: null });   // 背面：没有眼睛
+    c.at(300, 'root', { y: -3 }).at(300, 'shadow', { y: 3, f: 'w8' }).flex(300, {});
+    c.at(500, 'body', { f: 'turnL' }).at(500, 'eyes', { f: 'open', x: -1 });
+    c.at(500, 'root', { y: -2 }).at(500, 'shadow', { y: 2, f: 'w10' });
+    c.at(600, 'root', { y: 0 }, 'in').at(600, 'shadow', { y: 0, f: 'w12' }, 'in').flex(600, { sx: 1.1, sy: .9 });
+    c.at(700, 'body', { f: 'stand' }).at(700, 'eyes', { x: 0 }).flex(700, {});
+    sym(c, 600, 'note', { x: 4, dur: 600 });
+  }
+
+  /* ── 侧身探头：身子往右挪、右钳撑地，不再把整张图压扁 ──── */
+  {
+    const c = def(new Clip('lean', '侧身探头', 1900, { smooth: ['root', 'shadow'], group: 'idle' }));
+    c.beat(0, '往右看').beat(300, '整只往右挪一格（身子不扭），右钳撑地').beat(500, '「？」').beat(1400, '挪回来');
+    c.at(200, 'eyes', { x: 1 });
+    c.at(200, 'root', { x: 0 }).at(400, 'root', { x: 1 }, 'io').at(300, 'eyes', { x: 1 });
+    c.at(300, 'clawR', { f: 'low', x: 0 }).at(300, 'clawL', { y: -1 });
+    sym(c, 500, 'q', { x: 5, dur: 900 });
+    c.at(1100, 'eyes', { f: 'half' }).at(1200, 'eyes', { f: 'open' });
+    c.at(1400, 'clawR', { f: 'stub' }).at(1400, 'clawL', { y: 0 });
+    c.at(1400, 'root', { x: 1 }).at(1600, 'root', { x: 0 }, 'io');
+    c.at(1600, 'eyes', { x: 0 });
+  }
+
+  /* ── 躲进输入框：缩到输入框后面，只露眼睛和两只钳子扒着边 ─ */
+  {
+    const c = def(new Clip('hide', '躲进去', 2900, { smooth: ['root'], group: 'idle', noShadow: true, clipGround: true }));
+    c.beat(0, '往上看一眼').beat(200, '一蹲').beat(300, '缩进输入框后面').beat(600, '两只钳子扒着边，只露眼睛').beat(1100, '左看看，右看看').beat(2100, '蹦出来');
+    c.at(100, 'eyes', { y: -1 });
+    c.at(200, 'upper', { y: 1 }).at(200, 'legs', { f: 'crouch' });
+    c.at(300, 'upper', { y: 0 }).at(300, 'legs', { f: 'stand' }).at(300, 'shadow', { f: null });
+    c.at(300, 'root', { y: 0 }).at(600, 'root', { y: 6 }, 'in');
+    c.at(600, 'clawL', { y: -3 }).at(600, 'clawR', { y: -3 }).at(600, 'eyes', { y: 0 });
+    c.at(1100, 'eyes', { x: -1 }).at(1500, 'eyes', { x: 1 }).at(1800, 'eyes', { x: 0 });
+    blink(c, 1800);
+    c.at(2100, 'clawL', { y: 0 }).at(2100, 'clawR', { y: 0 }).at(2100, 'root', { y: 6 });
+    c.at(2300, 'root', { y: -1 }, 'out').at(2300, 'shadow', { f: 'w10', y: 1 });
+    c.at(2400, 'root', { y: 0 }, 'in').at(2400, 'shadow', { f: 'w12', y: 0 });
+    c.flex(2300, { sx: .92, sy: 1.1 }).flex(2400, { sx: 1.08, sy: .93 }).flex(2500, {});
+  }
+
+  /* ── 蹦床：把输入框当蹦床，一下比一下低 ─────────────── */
+  {
+    const c = def(new Clip('tramp', '蹦床', 1600, { smooth: ['root', 'shadow'], group: 'idle' }));
+    c.beat(0, '蹲下蓄力').beat(200, '蹦老高').beat(700, '砸在输入框上，压扁').beat(800, '弹起来').beat(1000, '再砸一下').beat(1100, '小弹一下，站稳');
+    const air = (t, h, e) => c.at(t, 'root', { y: -h }, e).at(t, 'shadow', { y: h, f: h >= 5 ? 'w8' : h >= 2 ? 'w10' : 'w12' }, e);
+    c.at(100, 'upper', { y: 1 }).at(100, 'legs', { f: 'crouch' }).flex(0, {}).flex(100, { sx: 1.12, sy: .88 });
+    c.at(200, 'upper', { y: 0 }).at(200, 'legs', { f: 'stand' }).at(200, 'eyes', { f: 'happy' });
+    air(200, 0); air(400, 8, 'out'); air(500, 8); air(700, 0, 'in');
+    c.flex(200, { sx: .88, sy: 1.14 }).flex(400, {}).flex(700, { sx: 1.3, sy: .68 });
+    air(900, 5, 'out'); air(1000, 0, 'in');
+    c.flex(800, { sx: .92, sy: 1.1 }).flex(900, {}).flex(1000, { sx: 1.15, sy: .85 });
+    air(1100, 2, 'out'); air(1200, 0, 'in');
+    c.flex(1100, {}).flex(1200, { sx: 1.06, sy: .94 }).flex(1300, {});
+    c.at(1400, 'eyes', { f: 'open' });
+  }
+
+  /* ── 被冷落：低头往一边看，蔫了（循环）──────────────── */
+  {
+    const c = def(new Clip('neglected', '被冷落', 3400, { loop: true, group: 'idle' }));
+    c.beat(0, '眼睛往左下看，钳子耷拉').beat(1200, '更蔫一点（身子沉 1 格）').beat(1400, '「…」').beat(2400, '抬回来一点');
+    c.at(0, 'eyes', { f: 'half', x: -1, y: 2 }).at(0, 'clawL', { y: 1 }).at(0, 'clawR', { y: 1 });
+    c.at(1200, 'upper', { y: 1 }).at(2400, 'upper', { y: 0 });
+    sym(c, 1400, 'dots', { x: -3, dur: 1200 });
+    c.at(3400, 'eyes', { f: 'half', x: -1, y: 2 });
+  }
+
+  /* ════ 睡觉 ════ */
+
+  /* ── 犯困：打盹点头，越点越低，猛地惊醒（循环）─────────── */
+  {
+    const c = def(new Clip('drowsy', '犯困', 2800, { loop: true, group: 'sleep' }));
+    c.beat(0, '眼皮耷拉').beat(300, '头一点').beat(1000, '再一点，更低').beat(1500, '快睡着了').beat(2000, '猛地惊醒，往上看').beat(2200, '眼皮又耷拉下来');
+    c.at(0, 'eyes', { f: 'half', x: 0, y: 0 });
+    c.at(300, 'eyes', { f: 'shut' }).at(300, 'upper', { y: 1 });
+    c.at(700, 'eyes', { f: 'half' }).at(700, 'upper', { y: 0 });
+    c.at(1000, 'eyes', { f: 'shut' }).at(1000, 'upper', { y: 1 });
+    c.at(1500, 'upper', { y: 2 }).at(1500, 'legs', { f: 'crouch' });
+    c.at(2000, 'upper', { y: 0 }).at(2000, 'legs', { f: 'stand' }).at(2000, 'eyes', { f: 'open', y: -1 });
+    c.at(2000, 'clawL', { y: -1 }).at(2000, 'clawR', { y: -1 }).at(2100, 'clawL', { y: 0 }).at(2100, 'clawR', { y: 0 });
+    c.at(2200, 'eyes', { f: 'half', y: 0 });
+    c.at(2800, 'eyes', { f: 'half', y: 0 });
+  }
+
+  /* ── 睡着：打个哈欠、坐下（进场），然后坐着睡、冒 Z（循环）── */
+  {
+    const O = 1500, L = 3200;
+    const c = def(new Clip('sleep', '睡着', O + L, { loop: true, intro: O, smooth: ['clawL', 'clawR'], group: 'sleep' }));
+    c.beat(0, '打个哈欠（身子抻长，钳子抬一点）').beat(700, '松下来').beat(800, '坐下，闭眼').beat(O, '坐着睡：钳子随呼吸慢慢起伏，冒 Z（循环）');
+    c.at(100, 'eyes', { f: 'shut' }).at(100, 'body', { f: 'tall' });
+    c.at(100, 'clawL', { y: -2 }).at(100, 'clawR', { y: -2 });
+    sym(c, 200, 'tilde', { y: -1, dur: 800 });
+    c.flex(0, {}).flex(200, { sx: .92, sy: 1.1 }).flex(500, { sx: .94, sy: 1.08 }).flex(700, {});
+    c.at(700, 'body', { f: 'stand' }).at(700, 'clawL', { y: 0 }).at(700, 'clawR', { y: 0 });
+    SLEEP_POSE(c)(800);
+    c.flex(800, { sx: 1.06, sy: .94 }).flex(1000, {});
+    // 循环：呼吸只动钳子（平滑），和待机一样的做法
+    const sleepPose = t => { SLEEP_POSE(c)(t); c.at(t, 'eyes', { f: 'shut' }).at(t, 'clawL', { y: 0 }).at(t, 'clawR', { y: 0 }); };
+    sleepPose(O);
+    c.at(O + 1600, 'clawL', { y: -1 }, 'io').at(O + 1600, 'clawR', { y: -1 }, 'io');
+    c.at(O + L, 'clawL', { y: 0 }, 'io').at(O + L, 'clawR', { y: 0 }, 'io');
+    sym(c, O + 300, 'z', { x: 4, y: 2, dur: 1800 });
+    c.at(O + L, 'eyes', { f: 'shut' });
+  }
+
+  /* ── 醒来 + 伸懒腰（醒来并进伸懒腰的开头，Lulu 2026-09-24 定）─ */
+  {
+    const O = 500;
+    const c = def(new Clip('wake', '醒来 + 伸懒腰', O + 3200, { from: 'sleep', smooth: ['root', 'shadow'], group: 'sleep' }));
+    c.beat(0, '还坐着睡').beat(100, '眼睛睁开一半').beat(200, '一下弹起来（压扁 → 拉长）').beat(O, '接着伸懒腰');
+    SLEEP_POSE(c)(0); c.at(0, 'eyes', { f: 'shut' });
+    c.at(100, 'eyes', { f: 'half' });
+    c.at(200, 'upper', { y: 0 }).at(200, 'legs', { f: 'stand' }).at(200, 'eyes', { f: 'open', y: -1 });
+    c.at(100, 'root', { y: 0 }).at(100, 'shadow', { y: 0 });
+    c.at(200, 'root', { y: -1 }, 'out').at(200, 'shadow', { y: 1, f: 'w10' }, 'out');
+    c.at(300, 'root', { y: 0 }, 'in').at(300, 'shadow', { y: 0, f: 'w12' }, 'in');
+    c.flex(0, {}).flex(100, { sx: 1.1, sy: .9 }).flex(200, { sx: .94, sy: 1.06 }).flex(300, { sx: 1.04, sy: .97 }).flex(400, {});
+    c.at(400, 'eyes', { y: 0 });
+    stretchBody(c, O);
+  }
+
+  /* ════ 被戳（C 轨）════ */
+
+  /* 第 1 档：蹦一下（开心），或者害羞捂眼 —— 两个随机一个 */
+  {
+    const c = def(new Clip('poke1', '戳 1：蹦一下', 600, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
+    c.beat(0, '一缩，眯成笑眼').beat(100, '蹦起来').beat(300, '落地');
+    c.at(0, 'eyes', { f: 'happy' });
+    c.flex(0, { sx: 1.12, sy: .88 });
+    c.at(100, 'root', { y: -3 }, 'out').at(100, 'shadow', { y: 3, f: 'w8' }, 'out').flex(100, { sx: .9, sy: 1.12 });
+    c.at(300, 'root', { y: 0 }, 'in').at(300, 'shadow', { y: 0, f: 'w12' }, 'in').flex(300, { sx: 1.08, sy: .92 });
+    c.flex(400, {});
+    c.at(500, 'eyes', { f: 'open' });
+  }
+  {
+    const c = def(new Clip('poke1Shy', '戳 1：害羞捂眼', 1100, { track: 'C', group: 'touch' }));
+    c.beat(0, '两只钳子捂住眼睛').beat(200, '冒一颗心').beat(700, '放下来，笑眼').beat(900, '睁眼');
+    // 眼睛藏到钳子后面：只看得见两只钳子贴在脸上
+    c.at(0, 'clawL', { f: 'front', x: 4, y: -3 }).at(0, 'clawR', { f: 'front', x: -4, y: -3 }).at(0, 'eyes', { f: null });
+    c.at(0, 'upper', { y: 1 }).at(300, 'upper', { y: 0 });
+    sym(c, 200, 'heart', { x: 4, dur: 800 });
+    c.at(700, 'clawL', { f: 'stub', x: 0, y: -1 }).at(700, 'clawR', { f: 'stub', x: 0, y: -1 }).at(700, 'eyes', { f: 'happy' });
+    c.at(800, 'clawL', { y: 0 }).at(800, 'clawR', { y: 0 });
+    c.at(900, 'eyes', { f: 'open' });
+  }
+  /* 第 2 档：往左躲一下 */
+  {
+    const c = def(new Clip('poke2', '戳 2：躲一下', 700, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
+    c.beat(0, '眼睛看别处').beat(100, '整只往左挪开一格（身子不扭）').beat(400, '挪回来');
+    c.at(0, 'eyes', { x: -1 }).at(0, 'clawL', { y: -1 });
+    c.at(100, 'root', { x: -1 }, 'out');
+    c.at(300, 'root', { x: -1 }).at(500, 'root', { x: 0 }, 'io');
+    c.at(500, 'clawL', { y: 0 }).at(600, 'eyes', { x: 0 });
+  }
+  /* 第 3 档：左右晃，挤眼 */
+  {
+    const c = def(new Clip('poke3', '戳 3：晃一晃', 700, { track: 'C', group: 'touch' }));
+    c.beat(0, '挤眼，上半身左右晃').beat(400, '停下，眨巴眼');
+    c.at(0, 'eyes', { f: 'shut' });
+    [1, -1, 1, -1].forEach((x, i) => c.at(i * 100, 'upper', { x }));
+    c.at(400, 'upper', { x: 0 }).at(400, 'eyes', { f: 'half' }).at(600, 'eyes', { f: 'open' });
+  }
+  /* 第 4 档：挣扎，两只钳子乱挥 */
+  {
+    const c = def(new Clip('poke4', '戳 4：挣扎', 1100, { track: 'C', group: 'touch' }));
+    c.beat(0, '眯眼，两只钳子一上一下乱挥，身子左右扭').beat(100, '「！」').beat(800, '停下，还眯着眼').beat(1000, '睁眼');
+    c.at(0, 'eyes', { f: 'squint' });
+    for (let i = 0; i < 8; i++) {
+      const t = i * 100, up = i % 2 === 0;
+      c.at(t, 'clawL', { y: up ? -4 : 0 }).at(t, 'clawR', { y: up ? 0 : -4 }).at(t, 'upper', { x: up ? -1 : 1 });
+    }
+    sym(c, 100, 'bang', { x: 5, y: 1, dur: 700 });
+    c.at(800, 'clawL', { y: 0 }).at(800, 'clawR', { y: 0 }).at(800, 'upper', { x: 0 });
+    c.at(1000, 'eyes', { f: 'open' });
+  }
+  /* 第 5 档：转身生气（旧版「转身 → 赌气 → 转回来」一整段，3.4 秒） */
+  {
+    const c = def(new Clip('sulk', '戳 5：转身生气', 3400, { track: 'C', group: 'touch' }));
+    c.beat(0, '转向右').beat(200, '背过身去，一动不动').beat(400, '青筋一跳一跳').beat(3000, '转向左').beat(3200, '转回正面');
+    c.at(0, 'body', { f: 'turnR' }).at(0, 'eyes', { x: 1 });
+    c.at(200, 'body', { f: 'stand' }).at(200, 'eyes', { f: null });
+    sym(c, 400, 'vein', { x: 4, y: 2, dur: 2400 });
+    c.at(3000, 'body', { f: 'turnL' }).at(3000, 'eyes', { f: 'open', x: -1 });
+    c.at(3200, 'body', { f: 'stand' }).at(3200, 'eyes', { x: 0 });
+  }
+
+  /* ════ 抓、丢（C 轨）════
+     抓起来以后整只按钮会被拖走，所以影子一离地就收起来，不跟着飞 */
+  {
+    const c = def(new Clip('grab', '被抓起来', 400, { track: 'C', next: 'drag', noShadow: true, group: 'touch' }));
+    c.beat(0, '一缩').beat(100, '被拎起来，身子抻长，腿垂下去').beat(200, '晃一下');
+    c.at(0, 'eyes', { f: 'squint' }).at(0, 'shadow', { f: null });
+    c.flex(0, { sx: 1.1, sy: .9 }).flex(100, { sx: .84, sy: 1.2 }).flex(200, { sx: 1.04, sy: .97 }).flex(300, {});
+    c.at(100, 'legs', { f: 'dangle' }).at(100, 'clawL', { y: -2 }).at(100, 'clawR', { y: -2 });
+    c.at(400, 'legs', { f: 'dangle' }).at(400, 'clawL', { y: -3 }).at(400, 'clawR', { y: -1 }).at(400, 'eyes', { f: 'squint' });
+  }
+  {
+    const c = def(new Clip('drag', '吊着（拖动中）', 600, { loop: true, track: 'C', noShadow: true, group: 'touch' }));
+    c.beat(0, '被拎着：蹬腿、钳子乱挥（循环）');
+    c.at(0, 'shadow', { f: null }).at(0, 'eyes', { f: 'squint' });
+    [0, 150, 300, 450].forEach((t, i) => {
+      c.at(t, 'legs', { f: i % 2 ? 'dangle2' : 'dangle' });
+      c.at(t, 'clawL', { y: i % 2 ? -1 : -3 }).at(t, 'clawR', { y: i % 2 ? -3 : -1 });
+    });
+    c.at(600, 'legs', { f: 'dangle' }).at(600, 'clawL', { y: -3 }).at(600, 'clawR', { y: -1 });
+  }
+  {
+    const c = def(new Clip('fly', '被丢出去（空中）', 400, { loop: true, track: 'C', noShadow: true, group: 'touch' }));
+    c.beat(0, '在空中：两只钳子举起来（循环）');
+    c.at(0, 'shadow', { f: null }).at(0, 'eyes', { f: 'open', y: -1 });
+    c.at(0, 'clawL', { f: 'up' }).at(0, 'clawR', { f: 'up' });
+    c.at(200, 'clawL', { y: 1 }).at(200, 'clawR', { y: 1 });
+    c.at(400, 'clawL', { y: 0 }).at(400, 'clawR', { y: 0 });
+  }
+  {
+    const c = def(new Clip('land', '落地', 900, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
+    c.beat(0, '砸在地上，压扁（腿被压没）').beat(200, '缓一下').beat(300, '弹起来，举钳').beat(500, '站稳').beat(700, '放下钳子');
+    c.at(0, 'body', { f: 'squash2' }).at(0, 'legs', { f: 'crouch' }).at(0, 'eyes', { f: 'shut', y: 3 }).at(0, 'shadow', { f: 'w14' });
+    c.flex(0, { sx: 1.12, sy: .92 }).flex(200, { sx: 1.06, sy: .96 });
+    c.at(200, 'body', { f: 'squash' }).at(200, 'legs', { f: 'stand' }).at(200, 'eyes', { y: 2 });
+    c.at(300, 'body', { f: 'stand' }).at(300, 'legs', { f: 'stand' }).at(300, 'eyes', { f: 'open', y: -1 });
+    c.at(200, 'root', { y: 0 }).at(200, 'shadow', { y: 0 });
+    c.at(300, 'root', { y: -2 }, 'out').at(300, 'shadow', { y: 2, f: 'w10' }, 'out').flex(300, { sx: .92, sy: 1.1 });
+    raise(c, 400, 'clawL'); raise(c, 400, 'clawR');
+    c.at(500, 'root', { y: 0 }, 'in').at(500, 'shadow', { y: 0, f: 'w12' }, 'in').flex(500, { sx: 1.05, sy: .95 });
+    c.flex(600, {});
+    c.at(600, 'eyes', { y: 0 });
+    lower(c, 700, 'clawL'); lower(c, 700, 'clawR');
+  }
+  {
+    const c = def(new Clip('stomp', '被丢烦了：跺脚', 800, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
+    c.beat(0, '眯眼，钳子一抬').beat(100, '跳起来').beat(200, '重重一跺，「！」').beat(500, '钳子放下');
+    c.at(0, 'eyes', { f: 'squint' }).at(0, 'clawL', { y: -2 }).at(0, 'clawR', { y: -2 });
+    c.at(100, 'root', { y: -2 }, 'out').at(100, 'shadow', { y: 2, f: 'w10' }, 'out').flex(100, { sx: .94, sy: 1.08 });
+    c.at(200, 'root', { y: 0 }, 'in').at(200, 'shadow', { y: 0, f: 'w14' }, 'in').flex(200, { sx: 1.24, sy: .78 });
+    c.at(200, 'clawL', { y: 1 }).at(200, 'clawR', { y: 1 });
+    sym(c, 200, 'bang', { x: 5, y: 1, dur: 500 });
+    c.flex(300, { sx: .98, sy: 1.02 }).flex(400, {});
+    c.at(400, 'shadow', { f: 'w12' });
+    c.at(500, 'clawL', { y: 0 }).at(500, 'clawR', { y: 0 });
+    c.at(700, 'eyes', { f: 'open' });
+  }
+
   const pool = {};
-  let css = genRestCSS();
-  for (const c of Object.values(CLIPS)) { css += genClipCSS(c); pool[c.id] = { id: c.id, name: c.name, dur: c.dur, loop: c.loop, track: c.track }; }
-  return { css, clips: pool, parts: PARTS.slice(), selfCheck };
+  for (const c of Object.values(CLIPS)) {
+    pool[c.id] = { id: c.id, name: c.name, dur: c.dur, loop: c.loop, intro: c.intro, track: c.track, group: c.group, next: c.next };
+  }
+  const made = new Map();
+  /* 某个动作的 CSS：第一次要播时才生成，之后用缓存 */
+  function cssFor(id) {
+    if (!CLIPS[id]) return '';
+    if (!made.has(id)) made.set(id, genClipCSS(CLIPS[id]));
+    return made.get(id);
+  }
+  return { css: genRestCSS(), cssFor, clips: pool, parts: PARTS.slice(), selfCheck };
 
   /* 静止拼图 = 现网 open 帧，返回不一致的格数（0 才对） */
   function selfCheck() {

@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig3";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig4";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -2052,10 +2052,10 @@ if (CLAUDE_ENABLED) {
   };
 
   /* ===== C1b 分件骨架 =====
-     输入框上那只 Clawd 里挂一套 9 层的骨架（clawd-rig.js 生成的 CSS）。
-     骨架只在两种时候接管画面：B 轨空闲待机（新呼吸）和播复合动作；
-     其余所有状态（戳、抓、思考、睡觉、打字反应、旧的闲置小动作）仍然由原来的 ::before 画。
-     骨架静止时和 --clawd-f-open 逐像素一致，所以两边切换不会跳。 */
+     输入框上那只 Clawd 里挂一套 9 层的骨架（clawd-rig.js 由 diagnostics 原型源码生成）。
+     2026-09-24 起骨架接管这只 Clawd 的全部画面：三条轨道的每个状态都对应一个骨架动作（见 CLAWD_RIG_A/B/C），
+     旧 ::before 整帧精灵只留给消息末尾的小 Clawd。新旧两套轮流画会接不上（Lulu 真机反馈），所以不再混用。
+     动作的 CSS 按需生成：第一次要播哪个动作才生成哪个（全部约 440KB）。 */
   const CLAWD_RIG = buildClawdRig();
   const CLAWD_RIG_STYLE_ID = 'claude-clawd-rig-style';
   /* 闲置随机池里的长动作：权重、冷却按 docs/Clawd动作分配-生态场-20260924.md §3 */
@@ -2067,7 +2067,20 @@ if (CLAUDE_ENABLED) {
     { id: 'eat', weight: 0.3, mealWeight: 3, cool: 1800000 },
   ]);
   const clawdRigLastPlayed = {};
-  let clawdRigLastGenClip = '';
+  /* 三轨状态 → 骨架动作。「思考」去掉了（Lulu 2026-09-24）：一按发送就进写字，写字自带「拿出纸笔」的进场 */
+  const CLAWD_RIG_A = Object.freeze({ think: 'write', stream: 'write', sit: 'sitWrite', done: 'done', stopped: 'stopped', error: 'error' });
+  const CLAWD_RIG_B = Object.freeze({
+    compose: 'compose', tilt: 'tilt', wow: 'wow', wake: 'wake', drowsy: 'drowsy', sleep: 'sleep', neglected: 'neglected',
+    around: 'around', spin: 'spin', lean: 'lean', hide: 'hide', tramp: 'tramp',
+  });
+  /* 戳第 5 档是 turn → t5 → face 三步序列，三步都对着同一段「转身生气」，中间不重播 */
+  const CLAWD_RIG_C = Object.freeze({
+    grab: 'grab', drag: 'drag', fly: 'fly', land: 'land', stomp: 'stomp',
+    t2: 'poke2', t3: 'poke3', t4: 'poke4', turn: 'sulk', t5: 'sulk', face: 'sulk',
+  });
+  let clawdRigPokeT1 = 'poke1';        // 第 1 档：蹦一下 / 害羞捂眼，每次戳随机一个
+  let clawdRigUntiltUntil = 0;         // 歪头结束时先回正，这段时间内不切别的
+  const clawdRigInjected = new Set();  // 已经生成过 CSS 的动作
   let clawdLetterPending = false;
 
   /* ===== A2 的状态量 =====
@@ -2075,7 +2088,7 @@ if (CLAUDE_ENABLED) {
      这三个定义更早的函数都要读它，而 const 有暂时性死区，声明必须先于任何一次
      调用执行。 */
   const A2_TIER = ['t1', 't2', 't3', 't4', 't5'];
-  const A2_TMS = [500, 520, 620, 1000, 0];        // t5 的 0 表示时长交给序列管
+  const A2_TMS = [600, 700, 700, 1100, 0];        // 跟骨架动作「戳 1–4」的时长一致；t5 的 0 表示时长交给序列管
   const A2_LINES = [
     ['嗯？', '在呢'],
     ['别', '躲了'],
@@ -4296,7 +4309,17 @@ if (CLAUDE_ENABLED) {
         ${RB} .clawd-rig, ${RB} .clawd-rig * { animation: none !important; }
       }
     ` + CLAWD_RIG.css;
+    clawdRigInjected.clear();
     hostDocument.head.append(style);
+  }
+
+  /* 某个动作第一次要播时，把它的 CSS 追加进骨架样式表 */
+  function ensureClawdRigClipCss(id) {
+    if (clawdRigInjected.has(id)) return;
+    const style = hostDocument.getElementById(CLAWD_RIG_STYLE_ID);
+    if (!style) return;
+    style.append(hostDocument.createTextNode(CLAWD_RIG.cssFor(id)));
+    clawdRigInjected.add(id);
   }
 
   function ensureClawdRig(button) {
@@ -4318,29 +4341,39 @@ if (CLAUDE_ENABLED) {
     button.append(rig);
   }
 
-  /* 决定骨架此刻演什么：
-     A 轨：字在往外流（stream / sit）→ 写字循环；写完（done）且刚才在写 → 「完成」丢笔丢纸。
-     B 轨：rig:<动作> → 那个复合动作；idle → 骨架待机（新呼吸）。其余一律交还 ::before。 */
+  /* 决定骨架此刻演什么：C > A > B 里当前占画面的那条轨道，按 CLAWD_RIG_A/B/C 查表。
+     B 轨 rig:<动作> 是闲置池 / 读信 / 调试菜单直接点名的动作；idle 或查不到 → 骨架待机（呼吸）。 */
+  function clawdRigClipFor(owner) {
+    if (owner === 'C') return clawdTracks.C === 't1' ? clawdRigPokeT1 : (CLAWD_RIG_C[clawdTracks.C] || '');
+    if (owner === 'A') return CLAWD_RIG_A[clawdTracks.A] || '';
+    const b = clawdTracks.B || 'idle';
+    if (b.startsWith('rig:')) return CLAWD_RIG.clips[b.slice(4)] ? b.slice(4) : '';
+    return CLAWD_RIG_B[b] || '';
+  }
+
   function syncClawdRig(button, owner) {
     ensureClawdRig(button);
-    let clip = '';
-    let on = false;
-    if (owner === 'A') {
-      if (clawdTracks.A === 'stream' || clawdTracks.A === 'sit') clip = 'write';
-      else if (clawdTracks.A === 'done' && (clawdRigLastGenClip === 'write' || clawdRigLastGenClip === 'done')) clip = 'done';
-    } else if (owner === 'B') {
-      const b = clawdTracks.B || 'idle';
-      if (b.startsWith('rig:') && CLAWD_RIG.clips[b.slice(4)]) clip = b.slice(4);
-      else if (b === 'idle') on = true;
-    }
-    if (owner === 'A') clawdRigLastGenClip = clip || (clawdTracks.A === 'think' ? '' : clawdRigLastGenClip);
-    else clawdRigLastGenClip = '';
-    on = on || Boolean(clip);
-    button.dataset.clawdRig = on ? 'on' : 'off';
+    button.dataset.clawdRig = 'on';
     const current = button.dataset.clawdClip || '';
+    if (owner === 'C' && clawdTracks.C === 't1' && current !== 'poke1' && current !== 'poke1Shy') {
+      clawdRigPokeT1 = Math.random() < .34 ? 'poke1Shy' : 'poke1';
+    }
+    let clip = clawdRigClipFor(owner);
+    /* 歪头结束（问号删掉、或者被别的状态接走）：先播 0.4 秒回正，播完再切过去 */
+    if (clip !== 'tilt') {
+      const now = Date.now();
+      if (current === 'tilt') {
+        clawdRigUntiltUntil = now + CLAWD_RIG.clips.untilt.dur;
+        hostWindow.setTimeout(() => { if (!destroyed) renderClawdTracks(); }, CLAWD_RIG.clips.untilt.dur + 20);
+        clip = 'untilt';
+      } else if (current === 'untilt' && now < clawdRigUntiltUntil) {
+        clip = 'untilt';
+      }
+    }
     if (clip === current) return;
     button.removeAttribute('data-clawd-clip');
     if (clip) {
+      ensureClawdRigClipCss(clip);
       void button.offsetWidth;                 // 同一个动作连播两次时让动画从头开始
       button.dataset.clawdClip = clip;
     }
@@ -4428,45 +4461,25 @@ if (CLAUDE_ENABLED) {
   const debugA = state => () => { clawdDebugA = true; setClawdA(state); clawdTracks.aUntil = 0; };
 
   function clawdDebugGroups() {
-    const rig = Object.values(CLAWD_RIG.clips)
-      .filter(clip => clip.track === 'B' || clip.id === 'pet')
-      .map(clip => [clip.name, [[clip.dur, ms => setClawdB('rig:' + clip.id, ms)]]]);
-    const b = (state, ms) => [[ms, d => setClawdB(state, d)]];
-    const c = (tier, ms) => [[ms, d => setClawdC(tier, d)]];
+    /* 骨架动作按原型里的分组列出来；循环动作放「进场 + 两轮」那么长 */
+    const len = clip => (clip.loop ? (clip.intro || 0) + 2 * (clip.dur - (clip.intro || 0)) : clip.dur);
+    const rigItem = clip => [clip.name, clip.next
+      ? [[clip.dur, ms => setClawdB('rig:' + clip.id, ms)], [len(CLAWD_RIG.clips[clip.next]), ms => setClawdB('rig:' + clip.next, ms)]]
+      : [[len(clip), ms => setClawdB('rig:' + clip.id, ms)]]];
+    const group = g => Object.values(CLAWD_RIG.clips).filter(clip => clip.group === g && clip.id !== 'untilt').map(rigItem);
+    const flow = (label, tail) => [label, [[5000, debugA('stream')], [CLAWD_RIG.clips[tail].dur, debugA(tail)]]];
     return [
-      ['新 · 复合动作', rig],
-      ['生成', [
-        ['思考 3 秒', [[3000, debugA('think')]]],
-        ['写字 5 秒 → 完成', [[5000, debugA('stream')], [1800, debugA('done')]]],
-        ['坐着写 5 秒 → 完成', [[5000, debugA('sit')], [1800, debugA('done')]]],
-        ['出错', [[1400, debugA('error')]]],
-        ['停止', [[1400, debugA('stopped')]]],
+      ['生成（真实三轨）', [
+        flow('写字 5 秒 → 完成', 'done'),
+        flow('写字 5 秒 → 停止', 'stopped'),
+        flow('写字 5 秒 → 出错', 'error'),
+        ['坐着写 5 秒 → 完成', [[5000, debugA('sit')], [CLAWD_RIG.clips.done.dur, debugA('done')]]],
       ]],
-      ['旧 · 打字', [
-        ['低头看、点头', [[3000, d => { composerClawd()?.classList.add(INPUT_TEXT_CLASS); setClawdB('compose', d); }]]],
-        ['「？」歪头', b('tilt', 1600)],
-        ['「！」惊讶', b('wow', 1200)],
-      ]],
-      ['旧 · 闲置', [
-        ['东张西望', b('around', 1720)],
-        ['转圈', b('spin', 1070)],
-        ['侧靠', b('lean', 1420)],
-        ['躲进去', b('hide', 2600)],
-        ['蹦床', b('tramp', 1150)],
-        ['被冷落', b('neglected', 4000)],
-      ]],
-      ['旧 · 睡觉', [
-        ['犯困 4 秒', [[4000, () => { ccDrowsy = true; syncClawdBState(); }]]],
-        ['入睡 → 睡 5 秒 → 醒来', [
-          [SLEEP_TRANSITION_MS, () => { idleAsleep = true; playSleepTransition(); }],
-          [5000, () => syncClawdBState()],
-          [500, d => { idleAsleep = false; setClawdB('wake', d); }],
-        ]],
-      ]],
-      ['旧 · 戳', [
-        ...[1, 2, 3, 4].map(n => [`第 ${n} 档`, c('t' + n, A2_TMS[n - 1])]),
-        ['第 5 档：生气', [[3400, () => a2SulkSeq()]]],
-      ]],
+      ['长动作', group('long')],
+      ['短闲置', group('idle')],
+      ['打字（歪头结束会自动回正）', group('type')],
+      ['犯困 · 睡觉', group('sleep')],
+      ['戳 · 抓 · 丢', group('touch')],
     ];
   }
 
@@ -4599,7 +4612,7 @@ if (CLAUDE_ENABLED) {
     if (!round || clawdTracks.settledRound === round) return;
     clawdTracks.settledRound = round;
     /* 复合动作的「完成」是 1.8 秒（丢笔丢纸 + 蹦两下），比旧的欢呼长一点 */
-    setClawdA(outcome, outcome === 'done' ? 1800 : 1400);
+    setClawdA(outcome, CLAWD_RIG.clips[outcome]?.dur || 1400);
   }
 
   function syncClawdBState() {
@@ -4635,11 +4648,11 @@ if (CLAUDE_ENABLED) {
   const CLAWD_B_AMBIENT_POSES = Object.freeze([
     /* 2026-09-24 Lulu 定：双跳（像「完成」）、扒边（和滚动时扒住输入框重复）、甩身子 移出闲置池。
        它们的样式先留着，等第 4 批按新骨架重做短闲置时一起清。 */
-    { state: 'around', duration: 1720 },
-    { state: 'spin', duration: 1070 },
-    { state: 'lean', duration: 1420 },
-    { state: 'hide', duration: 2600 },
-    { state: 'tramp', duration: 1150 },
+    { state: 'around', duration: CLAWD_RIG.clips.around.dur },
+    { state: 'spin', duration: CLAWD_RIG.clips.spin.dur },
+    { state: 'lean', duration: CLAWD_RIG.clips.lean.dur },
+    { state: 'hide', duration: CLAWD_RIG.clips.hide.dur },
+    { state: 'tramp', duration: CLAWD_RIG.clips.tramp.dur },
   ]);
   let clawdBAmbientNextAt = Date.now() + 18000;
   /* C1a：系统开了「减少动态」就不播闲置小动作。每次现查，用户中途改设置也能跟上。 */
@@ -5936,7 +5949,7 @@ if (CLAUDE_ENABLED) {
               a2Say(button, '不理你了');
               a2SulkSeq();
             } else if (A2.throws >= 3) {
-              setClawdC('stomp', 560);
+              setClawdC('stomp', CLAWD_RIG.clips.stomp.dur);
               a2Say(button, '你够了');
               a2Parts(button, 3);
             } else {
@@ -6434,7 +6447,7 @@ if (CLAUDE_ENABLED) {
     /* 只有真的从 idleAsleep 醒来才播 wake；普通 focus/input 不要每次都弹一下。
        wake 留在 B 轨，若用户是通过抓 Clawd 叫醒它，C 轨会先显示抓取动作，
        这段短 wake 在后台自然结束，不会抢画面。 */
-    if (!ccSleeping) setClawdB('wake', 500);
+    if (!ccSleeping) setClawdB('wake', CLAWD_RIG.clips.wake.dur);   // 醒来并进了伸懒腰的开头
   }
 
   /* 滑动箭头跟随滚动。

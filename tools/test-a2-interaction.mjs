@@ -390,7 +390,7 @@ assert.match(src, /CLAWD_TIRED_SIT_MS = 12000/,
   '长生成要在明确阈值后进入 sit，下一阶段再由 applyTired 改成连续疲劳');
 assert.match(src, /clawdTracks\.A = 'sit'/,
   'sit 必须真正接进 A 轨，不能只有选择器');
-assert.match(src, /setClawdB\('wake', 500\)/,
+assert.match(src, /setClawdB\('wake', CLAWD_RIG\.clips\.wake\.dur\)/,
   '从真实睡眠恢复时必须进入 wake，普通输入不能反复触发');
 
 box.value = '';
@@ -461,6 +461,7 @@ try {
   emitRuntimeEvent('generation_failed');
   await wait(250);
   assert.equal(api.clawdState().A, 'error', '新一轮的失败事件不能被旧一轮的 settledRound 挡掉');
+  await wait(2500);   // 等「出错」那段（2.2 秒）在拨快的时钟里播完，再把时钟拨回去；不然它的结束时间停在 5 分钟后
 } finally {
   Date.now = realNow;
 }
@@ -502,13 +503,39 @@ assert.equal(rigBuilt.selfCheck(), 0, '骨架静止时必须和 --clawd-f-open �
 assert.equal(clawd.querySelectorAll(':scope > .clawd-rig .clr-p').length, 9, '骨架要有 9 层');
 assert.ok(window.document.getElementById('claude-clawd-rig-style'), '骨架的样式要装上');
 await wait(3000);
-assert.equal(clawd.dataset.clawdRig, api.clawdState().owner === 'B' && api.clawdState().B === 'idle' ? 'on' : 'off',
-  `骨架只在 B 轨空闲时接管待机画面（当前 ${JSON.stringify(api.clawdState())}）`);
-assert.ok(!clawd.dataset.clawdClip, '空闲待机不播任何复合动作');
-for (const id of ['polish', 'eat', 'letter', 'plant', 'butterfly', 'stretch', 'walk', 'write', 'done']) {
+assert.equal(clawd.dataset.clawdRig, 'on', `骨架接管输入框 Clawd 的全部画面（当前 ${JSON.stringify(api.clawdState())}）`);
+assert.ok(!clawd.dataset.clawdClip, `空闲待机不播任何复合动作（当前 ${clawd.dataset.clawdClip} ${JSON.stringify(api.clawdState())}）`);
+for (const id of ['polish', 'eat', 'letter', 'plant', 'butterfly', 'stretch', 'walk', 'write', 'done', 'stopped', 'error', 'sitWrite',
+  'compose', 'tilt', 'untilt', 'wow', 'around', 'spin', 'lean', 'hide', 'tramp', 'neglected', 'drowsy', 'sleep', 'wake',
+  'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4', 'sulk', 'grab', 'drag', 'fly', 'land', 'stomp']) {
   assert.ok(rigBuilt.clips[id], `复合动作 ${id} 要生成出来`);
-  assert.match(rigBuilt.css, new RegExp(`data-clawd-clip="${id}"`), `${id} 的 CSS 要挂在按钮的 data-clawd-clip 上`);
+  assert.match(rigBuilt.cssFor(id), new RegExp(`data-clawd-clip="${id}"`), `${id} 的 CSS 要挂在按钮的 data-clawd-clip 上`);
 }
+assert.ok(!/data-clawd-clip="/.test(rigBuilt.css), 'C1b：动作 CSS 按需生成，装样式时只装待机那部分');
+assert.match(rigBuilt.cssFor('hide'), /> \.clawd-rig\{clip-path:inset\(/, '躲进去要剪掉地面线以下');
+
+/* C1b 全面接管：各轨道状态都有对应的骨架动作 */
+const rigCase = async (label, fn, want) => {
+  fn(); await wait(80);
+  assert.equal(clawd.dataset.clawdClip || '', want, `${label} → 骨架应该播 ${want}（当前 ${JSON.stringify(api.clawdState())}）`);
+};
+box.focus();
+box.value = '这是什么？';
+box.dispatchEvent(new window.Event('input', { bubbles: true }));
+await wait(120);
+assert.equal(clawd.dataset.clawdClip, 'tilt', '输入里有问号 → 歪头');
+box.value = '好的';
+box.dispatchEvent(new window.Event('input', { bubbles: true }));
+await wait(120);
+assert.equal(clawd.dataset.clawdClip, 'untilt', '问号删掉 → 先回正，不直接弹回去');
+await wait(600);
+assert.equal(clawd.dataset.clawdClip, 'compose', '回正之后接着低头看输入框');
+box.value = '';
+box.dispatchEvent(new window.Event('input', { bubbles: true }));
+box.blur();
+await wait(150);
+assert.ok(window.document.getElementById('claude-clawd-rig-style').textContent.includes('data-clawd-clip="compose"'),
+  '播过的动作 CSS 要追加进骨架样式表');
 
 /* ⑧ 临时动作菜单（测试版专用）：点新动作要真的走 B 轨播出来，点「停」要回到空闲 */
 const menu = window.document.getElementById('claude-clawd-debug-menu');
