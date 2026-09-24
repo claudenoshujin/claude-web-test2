@@ -529,10 +529,20 @@ await wait(120);
 assert.equal(clawd.dataset.clawdClip, 'untilt', '问号删掉 → 先回正，不直接弹回去');
 await wait(600);
 assert.equal(clawd.dataset.clawdClip, 'compose', '回正之后接着低头看输入框');
+box.value = '这是什么？好！';
+box.dispatchEvent(new window.Event('input', { bubbles: true }));
+await wait(120);
+assert.equal(clawd.dataset.clawdClip, 'wow', '问号后面又打了感叹号 → 看最后一个标点，惊讶');
+box.value = '好！真的吗？';
+box.dispatchEvent(new window.Event('input', { bubbles: true }));
+await wait(120);
+assert.equal(clawd.dataset.clawdClip, 'tilt', '感叹号后面又打了问号 → 歪头');
+await wait(2000);                                // 歪头进场播完，再清空；清空后等回正（0.4 秒）播完
+
 box.value = '';
 box.dispatchEvent(new window.Event('input', { bubbles: true }));
 box.blur();
-await wait(150);
+await wait(700);
 assert.ok(window.document.getElementById('claude-clawd-rig-style').textContent.includes('data-clawd-clip="compose"'),
   '播过的动作 CSS 要追加进骨架样式表');
 

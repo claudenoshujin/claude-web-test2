@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig6";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig7";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4621,18 +4621,21 @@ if (CLAUDE_ENABLED) {
     const box = hostDocument.querySelector('#send_textarea');
     const focused = Boolean(box && hostDocument.activeElement === box);
     const text = box?.value?.trim() || '';
+    /* 打字反应看「最后打的那个标点」：以前只要文本里有问号就一直歪头，问号后面再打感叹号也不会惊讶。
+       打字反应也排在「被冷落」前面：你正在打字，Clawd 就该看着你打，不该还蔫着（Lulu 2026-09-24 真机：打！没反应）。 */
+    const mark = (text.match(/[?？!！](?=[^?？!！]*$)/) || [''])[0];
     const next = (idleAsleep || ccSleeping)
       ? 'sleep'
       : ccDrowsy
         ? 'drowsy'
-        : neglected
-          ? 'neglected'
-          : focused && /[?？]/.test(text)
-            ? 'tilt'
-            : focused && (/[!！]/.test(text) || text.length >= 20)
-              ? 'wow'
-              : focused && text
-                ? 'compose'
+        : focused && /[?？]/.test(mark)
+          ? 'tilt'
+          : focused && (/[!！]/.test(mark) || text.length >= 20)
+            ? 'wow'
+            : focused && text
+              ? 'compose'
+              : neglected
+                ? 'neglected'
                 : 'idle';
 
     /* hide / ledge 是有限时长的 B 轨在场动作。只有完全空闲时才允许它们
