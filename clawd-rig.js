@@ -1,9 +1,10 @@
 /* Clawd 分件骨架 · 复合动作（C1b）
-   从 diagnostics/clawd-复合动作原型.html 原样搬来，只改了三处：
+   由 diagnostics 原型的源码自动生成（make-rig.py），不要手改：改动作先改原型、看过，再重新生成。
+   和原型的区别只有：
    - 坐标原点对齐现网 ::before（BOX = [0, 6]），静止时 9 层拼出来和 --clawd-f-open 逐像素一致；
    - 选择器挂在输入框那只 Clawd 按钮上（data-clawd-clip），层用 clr- 前缀，免得和酒馆撞名；
-   - 眼睛、描边颜色跟现网主题变量走。
-   动作的时间轴、精灵、生成器逻辑都没改。要改动作，先改原型、看过，再同步到这里。 */
+   - 眼睛、描边颜色跟现网主题变量走；
+   - 原型里留着对比的「逐格踱步」和旧「戳」不带过来。 */
 
 const RB = 'button.clawd-signoff-button.clawd-composer-clawd';
 
@@ -17,12 +18,12 @@ export function buildClawdRig() {
     '#': '#d97757',      // 壳体（现网同色）
     's': '#bf684c',      // 暗部：转面、在身前的钳子。新增的第三个本体色
     'o': 'var(--cl-clawd-eye, #000)',   // 眼睛：跟现网 ::before 同一个变量
-    'k': 'var(--cl-ink, #3a322c)', // 道具描边：跟主题的正文色走，日间深、夜间浅
+    'k': 'var(--clr-ink)', // 道具描边、符号：主题正文色掺暖灰，日间暖深棕、夜间浅色（--clr-ink 在 genRestCSS 里定义一次）
     'w': '#fbf8f1', 'c': '#ecdfc6', 'g': '#a8a194',
     'b': '#cfe3ee', 'B': '#5b8fb9', 'y': '#e8b64a', 'r': '#cc4f45',
     'p': '#ef9aa6', 'n': '#8b5e3c', 'l': '#6a6158',
     'O': '#d97757', 'q': '#e8a88e', 'Q': '#f1cbbb',   // 节点：本色 / 淡 / 更淡
-    'e': 'var(--cl-ink, #3a322c)', // 墨迹
+    'e': 'var(--clr-ink)', // 墨迹
     'h': 'rgba(20,20,19,.16)', // 影子
   };
 
@@ -403,7 +404,7 @@ export function buildClawdRig() {
       if (tc.r) emit('r', st => `rotate:${st.r}deg`, true);
       if (tc.a) emit('a', st => `opacity:${st.a}`, true);
       const base = part === 'eyes' ? 'clr-blink 4400ms step-end infinite, ' : '';
-      rules.push(`button.clawd-signoff-button.clawd-composer-clawd[data-clawd-clip="${clip.id}"] .clr-p-${part}{animation:${base}${anims.join(', ')}}`);
+      rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-p-${part}{animation:${base}${anims.join(', ')}}`);
     }
     // 整体平移（走路）；没有平移也生成一条，用来接 animationend
     const rname = `clr-${clip.id}-root`;
@@ -418,7 +419,7 @@ export function buildClawdRig() {
       prev = d;
     });
     css += `@keyframes ${rname}{${rk}}\n`;
-    rules.push(`button.clawd-signoff-button.clawd-composer-clawd[data-clawd-clip="${clip.id}"] .clr-root{animation:${rname} ${clip.dur}ms ${rs ? 'linear' : 'step-end'} ${iter}${fill}}`);
+    rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-root{animation:${rname} ${clip.dur}ms ${rs ? 'linear' : 'step-end'} ${iter}${fill}}`);
     if (clip.flexKeys.length) {
       const fname = `clr-${clip.id}-flex`;
       const ks = clip.flexKeys[0][0] === 0 ? clip.flexKeys : [[0, FLEX_ID], ...clip.flexKeys];
@@ -431,7 +432,7 @@ export function buildClawdRig() {
         prev = d;
       });
       css += `@keyframes ${fname}{${kf}}\n`;
-      rules.push(`button.clawd-signoff-button.clawd-composer-clawd[data-clawd-clip="${clip.id}"] .clr-flex{animation:${fname} ${clip.dur}ms step-end ${iter}${fill}}`);
+      rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-flex{animation:${fname} ${clip.dur}ms step-end ${iter}${fill}}`);
     }
     return css + rules.join('\n') + '\n';
   }
@@ -454,33 +455,26 @@ export function buildClawdRig() {
   const FLEX_ORIGIN = [(BOX[0] + 8) * PX, (BOX[1] + 10) * PX];   // 脚底中点
 
   function genRestCSS() {
-    let css = '';
+    let css = `${RB}{--clr-ink:color-mix(in srgb, var(--cl-ink, #121212) 60%, #7a6a5c)}\n`;
     for (const part of PARTS) {
-      css += `button.clawd-signoff-button.clawd-composer-clawd .clr-p-${part}{z-index:${REST_Z[part]};box-shadow:${boxShadow(part, REST_F[part])}}\n`;
+      css += `${RB} .clr-p-${part}{z-index:${REST_Z[part]};box-shadow:${boxShadow(part, REST_F[part])}}\n`;
     }
     // 基础眨眼：4.4 秒一轮，不被动作占用眼睛帧的时候一直在跑
     const o = boxShadow('eyes', 'open'), h = boxShadow('eyes', 'half'), s = boxShadow('eyes', 'shut');
     css += `@keyframes clr-blink{0%{box-shadow:${o}}${pct(4000, 4400)}{box-shadow:${h}}${pct(4100, 4400)}{box-shadow:${s}}${pct(4200, 4400)}{box-shadow:${h}}${pct(4300, 4400)}{box-shadow:${o}}100%{box-shadow:${o}}}\n`;
-    // 待机呼吸：整只上下沉一格在 16 格高的身体上太大（一格 ≈ 身高的 1/8），看起来像深蹲。
-    // 所以不动身体，换成下面三种，页面上可以切换对比（Lulu 2026-09-24）：
-    //   claw：只有两只钳子起伏——吸气时一起抬 1 格，呼气时放下，身体和眼睛不动
-    //   soft：整只做很小的平滑缩放（横 1.02、纵 0.98，3.2 秒一轮），不到一格，不按节拍跳。clawd-on-desk 的待机就是这个数
-    //   both：上面两种一起（Lulu 选定的默认）
-    //   off ：只眨眼
+    // 待机呼吸：只有两只钳子起伏，平滑地抬 1 格再放下，身体和眼睛不动（Lulu 2026-09-24 定）。
+    //   整只上下沉一格像深蹲；整只细微缩放在输入框那个尺寸下不到 1 屏幕像素，看不出来，所以都不用。
+    //   钳子以前是一格一格跳（step-end），看着卡，现在走平滑缓动；代价是中途落在半格上，边缘会略虚。
     const B = 3200, in0 = 1400, in1 = 2600;
     css += `@keyframes clr-breathe-claw{0%{transform:translate(0,0)}${pct(in0, B)}{transform:translate(0,-${PX}px)}${pct(in1, B)}{transform:translate(0,0)}100%{transform:translate(0,0)}}\n`;
-    css += `@keyframes clr-breathe-soft{0%,100%{transform:scale(1,1)}50%{transform:scale(1.02,.98)}}\n`;
-    css += `button.clawd-signoff-button.clawd-composer-clawd .clr-p-eyes{animation:clr-blink 4400ms step-end infinite}\n`;
-    css += `button.clawd-signoff-button.clawd-composer-clawd .clr-p-sym{transform-origin:${(BOX[0] + ORIGIN.sym[0] + .5) * PX}px ${(BOX[1] + ORIGIN.sym[1] + 2.5) * PX}px}\n`;
-    css += `button.clawd-signoff-button.clawd-composer-clawd .clr-flex{position:absolute;left:0;top:0;transform-origin:${FLEX_ORIGIN[0]}px ${FLEX_ORIGIN[1]}px}\n`;
-    // 呼吸定为「细微缩放 + 钳子起伏」一起（Lulu 2026-09-24）
-    css += `${RB} .clr-p-clawL,${RB} .clr-p-clawR{animation:clr-breathe-claw ${B}ms step-end infinite}\n`;
-    css += `${RB} .clr-flex{animation:clr-breathe-soft ${B}ms ease-in-out infinite}\n`;
+    css += `${RB} .clr-p-eyes{animation:clr-blink 4400ms step-end infinite}\n`;
+    css += `${RB} .clr-p-sym{transform-origin:${(BOX[0] + ORIGIN.sym[0] + .5) * PX}px ${(BOX[1] + ORIGIN.sym[1] + 2.5) * PX}px}\n`;
+    css += `${RB} .clr-flex{position:absolute;left:0;top:0;transform-origin:${FLEX_ORIGIN[0]}px ${FLEX_ORIGIN[1]}px}\n`;
+    css += `${RB} .clr-p-clawL,${RB} .clr-p-clawR{animation:clr-breathe-claw ${B}ms ease-in-out infinite}\n`;
     // 播动作时呼吸停掉（动作自己管身体），只留眨眼；动作规则写在后面，会覆盖这几条
     css += `${RB}[data-clawd-clip] .clr-p-body,${RB}[data-clawd-clip] .clr-p-clawL,${RB}[data-clawd-clip] .clr-p-clawR,${RB}[data-clawd-clip] .clr-flex{animation:none}\n${RB}[data-clawd-clip] .clr-p-eyes{animation:clr-blink 4400ms step-end infinite}\n`;
     return css;
   }
-
   /* ════════════════════════════════════════════════════════════════════
      6. 动作表
         坐标都是美术像素，相对各层的静止位置。y 向下为正。
@@ -762,18 +756,17 @@ export function buildClawdRig() {
     return t1;
   }
   {
-    const c = def(new Clip('walk', '踱步', 10800, { pool: true, cool: 45000, smooth: ['root'] }));
-    c.beat(0, '转向左，横着走 8 格').beat(2500, '停下，左右张望「？」').beat(4000, '转向右，走过头 6 格').beat(8200, '回头看一眼').beat(8600, '走回原位');
+    const c = def(new Clip('walk', '踱步', 10000, { pool: true, cool: 45000, smooth: ['root'] }));
+    // 停下只回头看一眼就走，不再完整张望、不冒「？」（和东张西望重复，Lulu 2026-09-24）
+    c.beat(0, '转向左，横着走 8 格').beat(2500, '停下，回头看一眼').beat(3100, '转向右，走过头 6 格').beat(7300, '回头看一眼').beat(7800, '走回原位');
     c.at(100, 'body', { f: 'turnL' }).at(100, 'eyes', { x: -1 });
     const e1 = glide(c, 100, 0, -8);
-    c.at(e1, 'body', { f: 'stand' }).at(e1, 'eyes', { x: 0 });
-    c.at(2800, 'eyes', { x: -1 }).at(3200, 'eyes', { x: 1 }).at(3600, 'eyes', { x: -1 }).at(3900, 'eyes', { x: 0 });
-    sym(c, 2900, 'q', { dur: 800 });
-    c.at(4000, 'body', { f: 'turnR' }).at(4000, 'eyes', { x: 1 });
-    const e2 = glide(c, 4000, -8, 6);
+    c.at(e1, 'body', { f: 'stand' }).at(e1, 'eyes', { x: 0 }).at(e1 + 100, 'eyes', { x: 1 }).at(e1 + 500, 'eyes', { x: 0 });
+    c.at(e1 + 600, 'body', { f: 'turnR' }).at(e1 + 600, 'eyes', { x: 1 });
+    const e2 = glide(c, e1 + 600, -8, 6);
     c.at(e2, 'body', { f: 'stand' }).at(e2, 'eyes', { x: 0 }).at(e2 + 200, 'eyes', { x: -1 });
-    c.at(8600, 'body', { f: 'turnL' });
-    const e3 = glide(c, 8600, 6, 0);
+    c.at(e2 + 500, 'body', { f: 'turnL' });
+    const e3 = glide(c, e2 + 500, 6, 0);
     c.at(e3, 'body', { f: 'stand' }).at(e3, 'eyes', { x: 0 });
   }
 

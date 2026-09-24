@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig1";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig2";
 
 const CLAUDE_EXTENSION_MODE = true;
 
