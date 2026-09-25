@@ -1045,13 +1045,11 @@ export function buildClawdRig() {
   /* ── 侧身探头：身子往右挪、右钳撑地，不再把整张图压扁 ──── */
   {
     const c = def(new Clip('lean', '侧身探头', 1900, { smooth: ['root', 'shadow'], group: 'idle' }));
-    c.beat(0, '往右看').beat(300, '整只往右挪一格（身子不扭），右钳撑地').beat(500, '「？」').beat(1400, '挪回来');
+    c.beat(0, '往右看').beat(300, '整只往右挪一格（身子、钳子都不变，Lulu 2026-09-24：单纯位移）').beat(500, '「？」').beat(1400, '挪回来');
     c.at(200, 'eyes', { x: 1 });
     c.at(200, 'root', { x: 0 }).at(400, 'root', { x: 1 }, 'io').at(300, 'eyes', { x: 1 });
-    c.at(300, 'clawR', { f: 'low', x: 0 }).at(300, 'clawL', { y: -1 });
     sym(c, 500, 'q', { x: 5, dur: 900 });
     c.at(1100, 'eyes', { f: 'half' }).at(1200, 'eyes', { f: 'open' });
-    c.at(1400, 'clawR', { f: 'stub' }).at(1400, 'clawL', { y: 0 });
     c.at(1400, 'root', { x: 1 }).at(1600, 'root', { x: 0 }, 'io');
     c.at(1600, 'eyes', { x: 0 });
   }

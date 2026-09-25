@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig8";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig9";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4300,6 +4300,12 @@ if (CLAUDE_ENABLED) {
         transform: scale(.85); transform-origin: 24px 48px; pointer-events: none; }
       ${RB}[data-clawd-rig="on"] > .clawd-rig { display: block; }
       ${RB}[data-clawd-rig="on"]::before { opacity: 0 !important; animation: none !important; }
+      /* 旧画法里直接动整个按钮的效果，输入框这只一律关掉，动作全交给骨架：
+         C 轨期间整只弹一下（clawd-state-touch）、输入框聚焦时整只抬高 3px（连影子一起飘起来）、点击反应动画 */
+      ${RB}[data-clawd-rig="on"].clawd-state-touch,
+      ${RB}[data-clawd-rig="on"].clawd-button-pop,
+      ${RB}[data-clawd-rig="on"][class*="clawd-react-"] { animation: none !important; }
+      ${RB}[data-clawd-rig="on"].${INPUT_ACTIVE_CLASS} { translate: none !important; }
       ${RB} .clr-root { position: absolute; left: 0; top: 0; }
       ${RB} .clr-p { position: absolute; left: 0; top: 0; width: 3px; height: 3px; }
       /* 待机时眼睛照旧跟着鼠标看（沿用现网的 clawd-look-* 四个方向），播动作时由动作自己管眼睛 */
@@ -5576,6 +5582,8 @@ if (CLAUDE_ENABLED) {
   }
 
   function a2Parts(button, count) {
+    /* 同上：输入框这只不再冒旧的文字粒子，情绪由骨架动作自己的符号表现（「！」、青筋、心） */
+    if (button.classList.contains(COMPOSER_CLAWD_CLASS)) return;
     for (let i = 0; i < count; i += 1) {
       if (i === 0) createParticle(button);
       else hostWindow.setTimeout(() => createParticle(button), i * 70);
@@ -6106,6 +6114,10 @@ if (CLAUDE_ENABLED) {
     lastPokeAt = Date.now();
     if (neglected) setNeglected(false);
     if (handleCcCombo(button)) return;
+    /* C1b：输入框这只的戳反应全部由骨架动作（戳 1–4）表现。旧的按钮整体弹跳（clawd-react-*）、
+       文字粒子（✦ ✧ ? ♥ ·）、::before 姿势脉冲都是旧画法，叠在新动作上会打架——
+       Lulu 真机看到头顶右上角多一个灰色小问号（2026-09-24）。台词气泡照旧。 */
+    if (button.classList.contains(COMPOSER_CLAWD_CLASS)) return;
     const reaction = animateButton(button);
     createParticle(button, reaction === 'clawd-react-shy' ? 'clawd-particle-heart' : '');
     if (reaction === 'clawd-react-hop' && Math.random() < .42) {
