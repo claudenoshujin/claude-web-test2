@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig11";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig12";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4389,12 +4389,16 @@ if (CLAUDE_ENABLED) {
     return over(ext.r, ext.l) < over(ext.l, ext.r);
   }
 
-  /* 被打断时手上的道具掉下来淡出（分配方案 §4 第 1 条）：把正在显示的道具按当前样子复制一份，
-     先往上一弹，再往 Clawd 外侧翻着掉下去，0.7 秒淡出（道具在左半边就往左飞、右半边就往右）。
-     第二版：原来只是原地往下掉 4 格、0.4 秒，戳的时候正好被光标挡住，看不出来（Lulu 2026-09-24） */
-  function clawdRigDropProps(button) {
+  /* 被打断时手上的东西怎么收场（分配方案 §4 第 1 条）：把正在显示的道具按当前样子复制一份，再按道具种类演：
+     - 种节点的树 / 种子：原地枯萎（褪色、往下缩、淡掉），不飞走
+     - 追蝴蝶的蝴蝶：往外侧斜上方飞走
+     - 其余（杯子、碗、信、笔、纸……）：先往上一弹，再往 Clawd 外侧翻着掉下去
+     第三版（Lulu 2026-09-24）：掉落的幅度和距离加大；树和蝴蝶不再跟着别的道具一起「掉」 */
+  const CLAWD_RIG_INTERRUPT = Object.freeze({ plant: 'wither', butterfly: 'fly' });
+  function clawdRigDropProps(button, clipBase) {
     const flex = button.querySelector(':scope > .clawd-rig .clr-flex');
     if (!flex || clawdPrefersReducedMotion()) return;
+    const kind = CLAWD_RIG_INTERRUPT[clipBase] || 'drop';
     const mid = 8 * 3;                           // Clawd 框中线（骨架坐标，未缩放）
     for (const node of flex.querySelectorAll('.clr-p-propA, .clr-p-propB')) {
       const cs = hostWindow.getComputedStyle(node);
@@ -4402,18 +4406,30 @@ if (CLAUDE_ENABLED) {
       const pts = [...cs.boxShadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px 0px/g)].map(m => [Number(m[1]), Number(m[2])]);
       const ax = pts.length ? pts.reduce((sum, pt) => sum + pt[0], 0) / pts.length : mid;
       const ay = pts.length ? pts.reduce((sum, pt) => sum + pt[1], 0) / pts.length : 0;
+      const by = pts.length ? Math.max(...pts.map(pt => pt[1])) : 0;
       const dir = ax + (parseFloat(cs.left) || 0) < mid ? -1 : 1;
+      const o = Number(cs.opacity);
       const ghost = hostDocument.createElement('i');
       ghost.className = 'clr-p clr-ghost';
-      ghost.style.cssText = `box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};z-index:${cs.zIndex};opacity:${cs.opacity};transform-origin:${ax}px ${ay}px`;
+      ghost.style.cssText = `box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};z-index:${cs.zIndex};opacity:${o};`
+        + `transform-origin:${ax}px ${kind === 'wither' ? by : ay}px`;
       flex.append(ghost);
-      hostWindow.setTimeout(() => ghost.remove(), 900);
+      hostWindow.setTimeout(() => ghost.remove(), 1200);
+      const frames = kind === 'wither' ? [
+        { scale: '1 1', filter: 'none', opacity: o },
+        { scale: '1 .7', filter: 'grayscale(1)', opacity: o * .7, offset: .4 },
+        { scale: '1 .15', filter: 'grayscale(1)', opacity: 0 },
+      ] : kind === 'fly' ? [
+        { translate: '0 0', opacity: o },
+        { translate: `${dir * 15}px -15px`, opacity: o, offset: .4 },
+        { translate: `${dir * 36}px -42px`, opacity: 0 },
+      ] : [
+        { translate: '0 0', rotate: '0deg', opacity: o },
+        { translate: `${dir * 15}px -12px`, rotate: `${dir * 30}deg`, opacity: o, offset: .3 },
+        { translate: `${dir * 36}px 24px`, rotate: `${dir * 110}deg`, opacity: 0 },
+      ];
       try {
-        ghost.animate([
-          { translate: '0 0', rotate: '0deg', opacity: Number(cs.opacity) },
-          { translate: `${dir * 9}px -6px`, rotate: `${dir * 15}deg`, opacity: Number(cs.opacity), offset: .3 },
-          { translate: `${dir * 21}px 15px`, rotate: `${dir * 40}deg`, opacity: 0 },
-        ], { duration: 700, easing: 'ease-in', fill: 'forwards' });
+        ghost.animate(frames, { duration: kind === 'drop' ? 900 : 1000, easing: kind === 'fly' ? 'ease-out' : 'ease-in', fill: 'forwards' });
       } catch (error) { ghost.remove(); }
     }
   }
@@ -4448,7 +4464,7 @@ if (CLAUDE_ENABLED) {
       clip = mirror ? base + '-m' : base;
     }
     if (clip === current) return;
-    if (current && !continues) clawdRigDropProps(button);
+    if (current && !continues) clawdRigDropProps(button, curBase);
     button.removeAttribute('data-clawd-clip');
     if (clip) {
       ensureClawdRigClipCss(clip);
@@ -4652,9 +4668,19 @@ if (CLAUDE_ENABLED) {
     hostDocument.getElementById(CLAWD_DEBUG_ID)?.remove();
   }
 
+  /* 打断：B 轨上有时限的动作（闲置小动作、复合动作、走路、读信……）被 A / C 盖过去以后就作废。
+     以前 B 轨还挂着，等 A / C 结束又从头播一遍（Lulu 2026-09-24：被打断的动作过一会又自己播起来）。
+     打字、睡觉这些没有时限的 B 状态不动，它们本来就该在 A / C 结束后回来。 */
+  function clawdCancelTransientB() {
+    if (!clawdTracks.bUntil) return;
+    clawdTracks.B = 'idle';
+    clawdTracks.bUntil = 0;
+  }
+
   function setClawdA(value, duration = 0) {
     /* 生成永远优先：它能取消 A2 的生气序列。反过来不行——序列锁只挡 C 轨。 */
     a2CancelSeq();
+    if (value) clawdCancelTransientB();
     const now = Date.now();
     clawdTracks.A = value || null;
     clawdTracks.aStartedAt = value ? now : 0;
@@ -4674,6 +4700,7 @@ if (CLAUDE_ENABLED) {
      散到各处的后果是真踩过的：抛掷的落地回调曾经绕过全部守卫，把生气序列砸穿。 */
   function setClawdC(value, duration = 0) {
     if (a2Locked() && !A2.seqOwned) return;
+    if (value) clawdCancelTransientB();
     clawdTracks.C = value || null;
     clawdTracks.cUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();

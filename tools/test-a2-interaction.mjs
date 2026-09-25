@@ -564,6 +564,14 @@ assert.equal(api.clawdState().B, 'rig:polish');
 menu.querySelector('[data-cdm="stop"]').click();
 await wait(150);
 assert.equal(api.clawdState().B, 'idle', '点「停」要回到空闲');
+/* 被打断的动作作废，不许等打断结束又从头播（Lulu 2026-09-24） */
+polishBtn.click();
+await wait(150);
+press(50, 50);
+lift(50, 50);                                     // 戳一下打断擦杯子
+await wait(1500);                                 // 戳的动作最长 1.1 秒
+assert.equal(api.clawdState().B, 'idle', '擦杯子被戳断以后 B 轨要作废');
+assert.notEqual(clawd.dataset.clawdClip, 'polish', '戳完不许又从头播擦杯子');
 assert.ok(!clawd.dataset.clawdClip, '停了以后不再播复合动作');
 const writeBtn = [...menu.querySelectorAll('[data-act]')].find(el => el.textContent.startsWith('写字'));
 writeBtn.click();
