@@ -6341,6 +6341,8 @@ if (CLAUDE_ENABLED) {
   }
 
   function showCcToast(button, html, variant) {
+    /* C1b：输入框这只不再冒文字气泡（Lulu 2026-09-24：旧版的文字弹幕一起去掉），情绪全交给骨架动作和像素符号 */
+    if (button.classList?.contains(COMPOSER_CLAWD_CLASS)) return;
     const host = button.parentElement;
     if (!host) return;
     // 挂在 clawd 的父节点上，这样按钮自己的挤压 transform 不会带着气泡一起变形

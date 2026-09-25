@@ -275,19 +275,12 @@ lift(100, 100);
 assert.equal(irrNow(), 1, '生气播完烦躁要清零，下一次戳重新从 1 算');
 assert.ok(['t1', 't2', 't3', 't4'].includes(cTrack()), '生气播完再戳，照常随机播戳的动作');
 
-/* ---------- 7. 气泡跟着 Clawd 走，不再留在输入框上 ---------- */
+/* ---------- 7. 输入框这只不再冒文字气泡（C1b，Lulu 2026-09-24：旧版文字弹幕去掉） ---------- */
 await wait(1500);
 press(300, 300);
-move(360, 240);                       // 拖开一段
-await wait(120);                      // 等 a2DeferGrabFeedback 的 rAF + setTimeout
-const toast = clawd.parentElement.querySelector('.clawd-hi-toast, .clawd-cc-toast');
-assert.ok(toast, '拖动时应该冒一个气泡出来');
-assert.ok(toast.style.translate,
-  '气泡必须跟着 Clawd 位移，否则它会留在输入框上、像是话从输入框飘出来的');
-/* 用独立的 translate 属性，不是 transform：气泡的 transform 被 translateY(-50%)
-   和入场动画占着，写 transform 会把入场动画顶掉。 */
-assert.equal(toast.style.transform, '',
-  '不许改气泡的 transform，那是 translateY(-50%) 和入场动画在用');
+move(360, 240);                       // 拖开一段（以前这里会冒「放我下来」）
+await wait(120);
+assert.equal(clawd.parentElement.querySelector('.clawd-hi-toast, .clawd-cc-toast'), null, '拖动时不再冒文字气泡');
 lift(360, 240);
 await wait(1600);
 
