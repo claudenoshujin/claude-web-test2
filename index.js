@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig12";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig13";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4394,12 +4394,39 @@ if (CLAUDE_ENABLED) {
      - 追蝴蝶的蝴蝶：往外侧斜上方飞走
      - 其余（杯子、碗、信、笔、纸……）：先往上一弹，再往 Clawd 外侧翻着掉下去
      第三版（Lulu 2026-09-24）：掉落的幅度和距离加大；树和蝴蝶不再跟着别的道具一起「掉」 */
-  const CLAWD_RIG_INTERRUPT = Object.freeze({ plant: 'wither', butterfly: 'fly' });
+  const CLAWD_RIG_INTERRUPT = Object.freeze({ plant: 'wither', plantWilt: 'wither', butterfly: 'fly' });
+  /* 收场的复制品不能挂在 Clawd 身上：被拎起来的时候它会跟着一起飞上去（Lulu 2026-09-24：种子跟着 Clawd 一起起来了）。
+     挂到按钮外面一层，按打断那一刻按钮和骨架的位置、缩放摆好，之后 Clawd 怎么动都不影响它 */
+  function clawdRigGhostLayer(button) {
+    const host = button.offsetParent || button.parentElement;
+    const rig = button.querySelector(':scope > .clawd-rig');
+    if (!host || !rig) return null;
+    const bcs = hostWindow.getComputedStyle(button);
+    const rcs = hostWindow.getComputedStyle(rig);
+    const root = rig.querySelector('.clr-root');
+    const layer = hostDocument.createElement('span');
+    layer.className = 'clr-ghost-layer';
+    layer.setAttribute('aria-hidden', 'true');
+    layer.style.cssText = `position:absolute;pointer-events:none;left:${button.offsetLeft}px;top:${button.offsetTop}px;`
+      + `width:${button.offsetWidth}px;height:${button.offsetHeight}px;z-index:${bcs.zIndex === 'auto' ? 1 : bcs.zIndex};`
+      + `transform:${bcs.transform};transform-origin:${bcs.transformOrigin};translate:${bcs.translate || 'none'}`;
+    const frame = hostDocument.createElement('span');
+    frame.style.cssText = `position:absolute;left:${rcs.left};top:${rcs.top};width:3px;height:3px;`
+      + `transform:${rcs.transform};transform-origin:${rcs.transformOrigin}`;
+    const inner = hostDocument.createElement('span');
+    inner.style.cssText = `position:absolute;left:0;top:0;transform:${root ? hostWindow.getComputedStyle(root).transform : 'none'}`;
+    frame.append(inner);
+    layer.append(frame);
+    host.append(layer);
+    hostWindow.setTimeout(() => layer.remove(), 1300);
+    return inner;
+  }
   function clawdRigDropProps(button, clipBase) {
     const flex = button.querySelector(':scope > .clawd-rig .clr-flex');
     if (!flex || clawdPrefersReducedMotion()) return;
     const kind = CLAWD_RIG_INTERRUPT[clipBase] || 'drop';
     const mid = 8 * 3;                           // Clawd 框中线（骨架坐标，未缩放）
+    let layer = null;
     for (const node of flex.querySelectorAll('.clr-p-propA, .clr-p-propB')) {
       const cs = hostWindow.getComputedStyle(node);
       if (!cs.boxShadow || cs.boxShadow === 'none' || Number(cs.opacity) === 0) continue;
@@ -4409,11 +4436,13 @@ if (CLAUDE_ENABLED) {
       const by = pts.length ? Math.max(...pts.map(pt => pt[1])) : 0;
       const dir = ax + (parseFloat(cs.left) || 0) < mid ? -1 : 1;
       const o = Number(cs.opacity);
+      layer = layer || clawdRigGhostLayer(button);
+      if (!layer) return;
       const ghost = hostDocument.createElement('i');
-      ghost.className = 'clr-p clr-ghost';
-      ghost.style.cssText = `box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};z-index:${cs.zIndex};opacity:${o};`
-        + `transform-origin:${ax}px ${kind === 'wither' ? by : ay}px`;
-      flex.append(ghost);
+      ghost.className = 'clr-ghost';
+      ghost.style.cssText = `position:absolute;width:3px;height:3px;box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};`
+        + `z-index:${cs.zIndex};opacity:${o};transform-origin:${ax}px ${kind === 'wither' ? by : ay}px`;
+      layer.append(ghost);
       hostWindow.setTimeout(() => ghost.remove(), 1200);
       const frames = kind === 'wither' ? [
         { scale: '1 1', filter: 'none', opacity: o },
@@ -4816,9 +4845,11 @@ if (CLAUDE_ENABLED) {
         }
       } else if (id) {
         clawdRigLastPlayed[id] = now;
-        clawdBLastAmbient = 'rig:' + id;
-        setClawdB('rig:' + id, CLAWD_RIG.clips[id].dur);
-        scheduleClawdBAmbient(now + CLAWD_RIG.clips[id].dur);
+        /* 种节点有两种结尾，随机一个：节点散成点飘走 / 原地枯萎（Lulu 2026-09-24） */
+        const play = id === 'plant' && Math.random() < .5 ? 'plantWilt' : id;
+        clawdBLastAmbient = 'rig:' + play;
+        setClawdB('rig:' + play, CLAWD_RIG.clips[play].dur);
+        scheduleClawdBAmbient(now + CLAWD_RIG.clips[play].dur);
         return;
       }
     }

@@ -719,10 +719,9 @@ export function buildClawdRig() {
     blink(c, 7900);
   }
 
-  /* ── 种节点 ─────────────────────────────────────────────── */
-  {
-    const c = def(new Clip('plant', '种节点', 8400, { pool: true, cool: 90000, smooth: ['root', 'shadow'] }));
-    c.beat(0, '右钳拿出一颗种子').beat(600, '右钳放低，贴着身体把种子放到地上').beat(1100, '拍两下').beat(2300, '等……').beat(3200, '长出一株节点树').beat(4200, '转过去看').beat(4600, '举钳欢呼').beat(6400, '树在原地枯萎：褪色、耷拉、变矮，淡掉');
+  /* ── 种节点 ─────────────────────────────────────────────
+     两种结尾随机一个（Lulu 2026-09-24）：节点散成点飘走（原版），或者树在原地枯萎 */
+  function plantBody(c) {
     c.at(100, 'eyes', { x: 1 });
     c.to(100, 300, 'clawR', { y: -1 });
     // 种子在右钳边上：右钳 (0,-1) 时种子在 (16,4)
@@ -747,6 +746,20 @@ export function buildClawdRig() {
     hop(c, 4600);
     lower(c, 5300, 'clawL'); lower(c, 5300, 'clawR');
     blink(c, 5900);
+  }
+  {
+    const c = def(new Clip('plant', '种节点', 8400, { pool: true, cool: 90000, smooth: ['root', 'shadow'] }));
+    c.beat(0, '右钳拿出一颗种子').beat(600, '右钳放低，贴着身体把种子放到地上').beat(1100, '拍两下').beat(2300, '等……').beat(3200, '长出一株节点树').beat(4200, '转过去看').beat(4600, '举钳欢呼').beat(6400, '节点散成点，飘走');
+    plantBody(c);
+    c.at(6400, 'propB', { f: 'd1' }).at(6600, 'propB', { f: 'd2' }).at(6800, 'propB', { f: 'd3' }).at(7000, 'propB', { f: null, x: 0, y: 0, z: 8 });
+    c.at(6400, 'eyes', { f: 'open', x: 1, y: -1 });
+    c.at(7000, 'eyes', { x: 0, y: 0 });
+    c.at(7400, 'eyes', { f: 'shut' }).at(7900, 'eyes', { f: 'open' });
+  }
+  {
+    const c = def(new Clip('plantWilt', '种节点（枯萎结尾）', 8400, { pool: true, cool: 90000, smooth: ['root', 'shadow'] }));
+    c.beat(0, '右钳拿出一颗种子').beat(600, '右钳放低，贴着身体把种子放到地上').beat(1100, '拍两下').beat(2300, '等……').beat(3200, '长出一株节点树').beat(4200, '转过去看').beat(4600, '举钳欢呼').beat(6400, '树在原地枯萎：褪色、耷拉、变矮，淡掉');
+    plantBody(c);
     c.at(6400, 'propB', { f: 'wilt1' }).at(6700, 'propB', { f: 'wilt2' }).at(7000, 'propB', { f: 'wilt3' });
     fadeOut(c, 'propB', 7100, 7500);
     c.at(7600, 'propB', { x: 0, y: 0, z: 8 });
