@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig14";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig15";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -2081,6 +2081,15 @@ if (CLAUDE_ENABLED) {
     t2: 'poke2', t3: 'poke3', t4: 'poke4', turn: 'sulk', t5: 'sulk', face: 'sulk',
   });
   let clawdRigPokeT1 = 'poke1';        // 第 1 档：蹦一下 / 害羞捂眼，每次戳随机一个
+  /* 被拎着、被丢烦了跺脚：新版和旧版各一半，每次拎起 / 每次跺脚抽一次（Lulu 2026-09-25：旧版的也可爱，拿回来随机）
+     旧版吊着 = 钟摆似的晃 + 四条腿轮流岔开；旧版跺脚 = 跳起来落地时低头、一只钳子往地上一拍 */
+  const CLAWD_RIG_VARIANTS = Object.freeze({ drag: ['drag', 'dragSwing'], stomp: ['stomp', 'stompSlap'] });
+  const clawdRigVariant = { drag: 'drag', stomp: 'stomp' };
+  function clawdRigPickVariant(key) {
+    const pool = CLAWD_RIG_VARIANTS[key].filter(id => CLAWD_RIG.clips[id]);
+    clawdRigVariant[key] = pool[Math.floor(Math.random() * pool.length)] || key;
+    return clawdRigVariant[key];
+  }
   let clawdRigUntiltUntil = 0;         // 歪头结束时先回正，这段时间内不切别的
   const clawdRigInjected = new Set();  // 已经生成过 CSS 的动作
   let clawdLetterPending = false;
@@ -4328,7 +4337,7 @@ if (CLAUDE_ENABLED) {
      按需生成时，每往样式表里追加一段，酒馆那一万多个节点都要重算一遍样式（真机约 60ms 一次），
      按下 → 拎起 → 吊着连着三段就是两百来毫秒卡在手指落下那一刻，
      打断收场的道具也跟着卡住不动（Lulu 2026-09-25：拿起来时杯子过一会儿才掉）。 */
-  const CLAWD_RIG_PREWARM = ['press', 'grab', 'drag', 'fly', 'land', 'stomp', 'pet', 'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4'];
+  const CLAWD_RIG_PREWARM = ['press', 'grab', 'drag', 'dragSwing', 'fly', 'land', 'stomp', 'stompSlap', 'pet', 'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4'];
   let clawdRigPrewarmTimer = 0;
   function clawdRigSchedulePrewarm() {
     if (clawdRigPrewarmTimer) return;
@@ -4382,7 +4391,11 @@ if (CLAUDE_ENABLED) {
   /* 决定骨架此刻演什么：C > A > B 里当前占画面的那条轨道，按 CLAWD_RIG_A/B/C 查表。
      B 轨 rig:<动作> 是闲置池 / 读信 / 调试菜单直接点名的动作；idle 或查不到 → 骨架待机（呼吸）。 */
   function clawdRigClipFor(owner) {
-    if (owner === 'C') return clawdTracks.C === 't1' ? clawdRigPokeT1 : (CLAWD_RIG_C[clawdTracks.C] || '');
+    if (owner === 'C') {
+      if (clawdTracks.C === 't1') return clawdRigPokeT1;
+      if (clawdTracks.C in clawdRigVariant) return clawdRigVariant[clawdTracks.C];
+      return CLAWD_RIG_C[clawdTracks.C] || '';
+    }
     if (owner === 'A') return CLAWD_RIG_A[clawdTracks.A] || '';
     const b = clawdTracks.B || 'idle';
     if (b.startsWith('rig:')) {
@@ -6094,7 +6107,7 @@ if (CLAUDE_ENABLED) {
       hostWindow.clearTimeout(A2.petTimer);
       A2.petting = false;
       setClawdC('grab', 0);                    // 挪动超过阈值才真的拎起来（按住 / 摸着摸着拖动都一样）
-      hostWindow.setTimeout(() => { if (A2.dragging) setClawdC('drag', 0); }, 350);
+      hostWindow.setTimeout(() => { if (A2.dragging) { clawdRigPickVariant('drag'); setClawdC('drag', 0); } }, 350);
     }
     if (!A2.moved) return;
     A2.fy = Math.max(A2.bnd.miny, Math.min(A2.bnd.maxy, A2.oy + dy));
@@ -6257,7 +6270,7 @@ if (CLAUDE_ENABLED) {
               a2Say(button, '不理你了');
               a2SulkSeq();
             } else if (A2.throws >= 3) {
-              setClawdC('stomp', CLAWD_RIG.clips.stomp.dur);
+              setClawdC('stomp', CLAWD_RIG.clips[clawdRigPickVariant('stomp')].dur);
               a2Say(button, '你够了');
               a2Parts(button, 3);
             } else {

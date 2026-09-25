@@ -68,6 +68,10 @@ export function buildClawdRig() {
       // 被拎着蹬腿：左边两条和右边两条轮流伸长到 3 格 / 缩到 1 格，四条腿都在动，幅度 2 格
       dangle: F(['.#.#....#.#.', '.#.#........', '.#.#........']),
       dangle2:F(['.#.#....#.#.', '........#.#.', '........#.#.']),
+      // 旧版被拎着：四条腿三种岔法轮流换，看着是腿在前后乱晃（Lulu 2026-09-25 要回来，和上面那版随机）
+      flailA: F(['#...#..#...#', '#..........#']),
+      flailB: F(['..#.#..#.#..', '....#..#....']),
+      flailC: F(['#..#....#..#', '...#....#..#']),
     },
     eyes: {
       open:   F(['o......o', 'o......o']),
@@ -1309,6 +1313,17 @@ export function buildClawdRig() {
     c.at(800, 'legs', { f: 'dangle' }).at(800, 'clawL', { y: -4 }).at(800, 'clawR', { y: 0 }).at(800, 'upper', { x: -1 });
   }
   {
+    /* 旧版的吊着（Lulu 2026-09-25：旧版的也可爱，拿回来和上面那版随机）：
+       整只像钟摆一样左右慢慢晃（±5°，1.2 秒一个来回），四条腿三种岔法轮流换，眼睛 ><，钳子不动。
+       旧版腿 63ms 换一次，这里按 100ms 节拍换 */
+    const c = def(new Clip('dragSwing', '吊着：腿乱晃（旧版）', 1200, { loop: true, track: 'C', from: 'grab', noShadow: true, group: 'touch' }));
+    c.beat(0, '被拎着：整只左右钟摆似的晃，四条腿轮流岔开乱蹬（循环）');
+    c.at(0, 'shadow', { f: null }).at(0, 'eyes', { f: 'squint' });
+    const legs = ['flailA', 'flailB', 'flailC'];
+    for (let i = 0; i <= 12; i++) c.at(i * 100, 'legs', { f: legs[i % 3] });
+    c.flex(0, { r: -5 }).flex(600, { r: 5 }).flex(1200, { r: -5 });
+  }
+  {
     const c = def(new Clip('fly', '被丢出去（空中）', 400, { loop: true, track: 'C', noShadow: true, group: 'touch' }));
     c.beat(0, '在空中：两只钳子举起来（循环）');
     c.at(0, 'shadow', { f: null }).at(0, 'eyes', { f: 'open', y: -1 });
@@ -1358,6 +1373,22 @@ export function buildClawdRig() {
     c.at(400, 'shadow', { f: 'w12' });
     c.at(500, 'clawL', { y: 0 }).at(500, 'clawR', { y: 0 });
     c.at(700, 'eyes', { f: 'open' });
+  }
+
+  {
+    /* 旧版的跺脚（Lulu 2026-09-25：拿回来，和上面那版随机）：
+       两只钳子举起来、一跳，落地那一下整只压扁，低头，一只钳子（右）往地上一拍，另一只还举着；
+       然后低头看着地，慢慢缓过来。没有符号，旧版这里也没有 */
+    const c = def(new Clip('stompSlap', '被丢烦了：低头拍地（旧版）', 700, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
+    c.beat(0, '两只钳子举起来').beat(100, '跳起来').beat(200, '重重落下：压扁、低头，右钳往地上一拍').beat(400, '低头看着地，钳子收回').beat(600, '抬眼');
+    c.at(0, 'clawL', { y: -2 }).at(0, 'clawR', { y: -2 });
+    c.at(100, 'root', { y: -2 }, 'out').at(100, 'shadow', { y: 2, f: 'w10' }, 'out').flex(100, { sx: .94, sy: 1.08 });
+    c.at(200, 'root', { y: 0 }, 'in').at(200, 'shadow', { y: 0, f: 'w14' }, 'in').flex(200, { sx: 1.24, sy: .76 });
+    c.at(200, 'eyes', { f: 'half', y: 1 }).at(200, 'clawR', { y: 1 });
+    c.flex(300, { sx: 1.2, sy: .79 });
+    c.at(400, 'clawL', { y: 0 }).at(400, 'clawR', { y: 0 }).at(400, 'shadow', { f: 'w12' }).flex(400, { sx: 1.1, sy: .9 });
+    c.flex(500, { sx: 1.04, sy: .96 }).flex(600, {});
+    c.at(600, 'eyes', { f: 'open', y: 0 });
   }
 
   /* ════════════════════════════════════════════════════════════════════
