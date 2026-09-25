@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig13";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig14";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4321,6 +4321,34 @@ if (CLAUDE_ENABLED) {
     ` + CLAWD_RIG.css;
     clawdRigInjected.clear();
     hostDocument.head.append(style);
+    clawdRigSchedulePrewarm();
+  }
+
+  /* 摸、戳、拎、丢这几段的 CSS 提前在空闲时一次备好（左右两版）。
+     按需生成时，每往样式表里追加一段，酒馆那一万多个节点都要重算一遍样式（真机约 60ms 一次），
+     按下 → 拎起 → 吊着连着三段就是两百来毫秒卡在手指落下那一刻，
+     打断收场的道具也跟着卡住不动（Lulu 2026-09-25：拿起来时杯子过一会儿才掉）。 */
+  const CLAWD_RIG_PREWARM = ['press', 'grab', 'drag', 'fly', 'land', 'stomp', 'pet', 'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4'];
+  let clawdRigPrewarmTimer = 0;
+  function clawdRigSchedulePrewarm() {
+    if (clawdRigPrewarmTimer) return;
+    const run = () => {
+      clawdRigPrewarmTimer = 0;
+      if (destroyed) return;
+      const style = hostDocument.getElementById(CLAWD_RIG_STYLE_ID);
+      if (!style) return;
+      // 打断收场用的常驻容器也在这时建好：第一次按下时再建，要往 body 里插节点、读祖先层级，又是一次整页重算
+      const composer = hostDocument.querySelector(`#send_form > button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}`);
+      if (composer) clawdRigGhostHostFor(composer);
+      const ids = CLAWD_RIG_PREWARM.filter(id => CLAWD_RIG.clips[id])
+        .flatMap(id => [id, id + '-m']).filter(id => !clawdRigInjected.has(id));
+      if (!ids.length) return;
+      style.append(hostDocument.createTextNode(ids.map(id => CLAWD_RIG.cssFor(id)).join('\n')));
+      ids.forEach(id => clawdRigInjected.add(id));
+    };
+    clawdRigPrewarmTimer = typeof hostWindow.requestIdleCallback === 'function'
+      ? hostWindow.requestIdleCallback(run, { timeout: 4000 })
+      : hostWindow.setTimeout(run, 1500);
   }
 
   /* 某个动作第一次要播时，把它的 CSS 追加进骨架样式表 */
@@ -4396,74 +4424,121 @@ if (CLAUDE_ENABLED) {
      第三版（Lulu 2026-09-24）：掉落的幅度和距离加大；树和蝴蝶不再跟着别的道具一起「掉」 */
   const CLAWD_RIG_INTERRUPT = Object.freeze({ plant: 'wither', plantWilt: 'wither', butterfly: 'fly' });
   /* 收场的复制品不能挂在 Clawd 身上：被拎起来的时候它会跟着一起飞上去（Lulu 2026-09-24：种子跟着 Clawd 一起起来了）。
-     第二版：挂在 body 上、position:fixed，按打断那一刻骨架在屏幕上的位置和缩放摆好。
-     （第一版挂在 #send_form 里，欢迎页那条「#send_form > 除 #nonQRFormItems 外全部隐藏」把它一起藏了，
-     Lulu 那边看到的就是道具直接消失）。层级取按钮最外层带 z-index 的祖先（酒馆里是 #sheld），同值、后插入，所以压在输入框那一层上面 */
-  function clawdRigGhostLayer(button) {
-    const rig = button.querySelector(':scope > .clawd-rig');
-    if (!rig || !hostDocument.body) return null;
-    const rcs = hostWindow.getComputedStyle(rig);
-    const rect = rig.getBoundingClientRect();
-    const scale = rect.width / 3 || .85;          // .clawd-rig 本身 3×3px，量出来的宽 / 3 = 屏幕上实际缩放
-    const [ox, oy] = rcs.transformOrigin.split(' ').map(v => parseFloat(v) || 0);
-    let z = 1;
-    for (let el = button.parentElement; el && el !== hostDocument.body; el = el.parentElement) {
-      const zi = hostWindow.getComputedStyle(el).zIndex;
-      if (zi !== 'auto') z = Number(zi) || z;
+     挂在 body 下一个常驻的 position:fixed 容器里，按打断那一刻骨架在屏幕上的位置和缩放摆好。
+     （第一版挂在 #send_form 里，欢迎页那条「#send_form > 除 #nonQRFormItems 外全部隐藏」把它一起藏了。）
+     层级取按钮最外层带 z-index 的祖先（酒馆里是 #sheld），同值、后插入，所以压在输入框那一层上面。
+
+     性能（Lulu 2026-09-25：拿起来时杯子过一会儿才掉）：酒馆页面一万多个节点，每次「改了 DOM 再读样式」都要整页重算一遍，
+     约 50ms。以前每个道具「读样式 → 往 body 里插一层 → 再读下一个道具 → animate」，按下那一下要重算三四遍、卡 150ms 左右。
+     现在先把要读的一次读完，再一次性插进常驻容器（容器早就在 body 里，往它里面加东西不牵动整页），最后才开始动画。 */
+  let clawdRigGhostHost = null;
+  function clawdRigGhostHostFor(button) {
+    if (!clawdRigGhostHost || !clawdRigGhostHost.isConnected) {
+      clawdRigGhostHost = hostDocument.createElement('span');
+      clawdRigGhostHost.className = 'clr-ghost-host';
+      clawdRigGhostHost.setAttribute('aria-hidden', 'true');
+      let z = 1;
+      for (let el = button.parentElement; el && el !== hostDocument.body; el = el.parentElement) {
+        const zi = hostWindow.getComputedStyle(el).zIndex;
+        if (zi !== 'auto') z = Number(zi) || z;
+      }
+      clawdRigGhostHost.style.cssText = `position:fixed;display:block;left:0;top:0;width:0;height:0;margin:0;padding:0;`
+        + `pointer-events:none;overflow:visible;contain:layout style;z-index:${z}`;
+      hostDocument.body.append(clawdRigGhostHost);
     }
+    return clawdRigGhostHost;
+  }
+  /* ① 读：道具现在的样子和骨架在屏幕上的位置。
+     这一步要在「改 DOM / 改样式」之前做才便宜：按钮上改一个内联样式，再读就得整页重算（约 60ms）。
+     所以按下那一刻先拍一张（clawdRigSnapshotProps，a2Down 一进来就拍），打断收场时直接用；
+     别的地方打断（生成开始、闲置换动作……）没有预先拍的，就当场读 */
+  function clawdRigReadProps(button) {
+    const rig = button.querySelector(':scope > .clawd-rig');
+    const flex = rig && rig.querySelector('.clr-flex');
+    if (!flex || !button.dataset.clawdClip) return null;
+    const props = [];
+    for (const node of flex.querySelectorAll('.clr-p-propA, .clr-p-propB')) {
+      const cs = hostWindow.getComputedStyle(node);
+      const o = Number(cs.opacity);
+      if (!cs.boxShadow || cs.boxShadow === 'none' || o === 0) continue;
+      props.push({ shadow: cs.boxShadow, left: cs.left, top: cs.top, z: cs.zIndex, o });
+    }
+    if (!props.length) return null;
+    const rcs = hostWindow.getComputedStyle(rig);
     const root = rig.querySelector('.clr-root');
+    const rootCs = root ? hostWindow.getComputedStyle(root) : null;
+    const rect = rig.getBoundingClientRect();
+    return {
+      props, rect,
+      rootT: rootCs ? rootCs.transform : 'none',
+      rootL: rootCs ? rootCs.left : '0px', rootT2: rootCs ? rootCs.top : '0px',
+      origin: rcs.transformOrigin.split(' ').map(v => parseFloat(v) || 0),
+    };
+  }
+  let clawdRigSnap = null;
+  function clawdRigSnapshotProps(button) {
+    clawdRigSnap = null;
+    if (!button.dataset.clawdClip || clawdPrefersReducedMotion()) return;
+    clawdRigSnap = { clip: button.dataset.clawdClip, at: Date.now(), data: clawdRigReadProps(button) };
+  }
+  function clawdRigDropProps(button, clipBase) {
+    if (clawdPrefersReducedMotion()) { clawdRigSnap = null; return; }
+    const cur = button.dataset.clawdClip || '';
+    const snap = clawdRigSnap && clawdRigSnap.clip === cur && Date.now() - clawdRigSnap.at < 150 ? clawdRigSnap : null;
+    clawdRigSnap = null;
+    const data = snap ? snap.data : clawdRigReadProps(button);
+    if (!data) return;
+    const { props, rect, rootT, rootL, rootT2 } = data;
+    const [ox, oy] = data.origin;
+    const kind = CLAWD_RIG_INTERRUPT[clipBase] || 'drop';
+    const mid = 8 * 3;                           // Clawd 框中线（骨架坐标，未缩放）
+    const scale = rect.width / 3 || .85;          // .clawd-rig 本身 3×3px，量出来的宽 / 3 = 屏幕上实际缩放
+    const host = clawdRigGhostHostFor(button);
+    // ② 再写：整组一次插进去
     const layer = hostDocument.createElement('span');
-    layer.className = 'clr-ghost-layer';
-    layer.setAttribute('aria-hidden', 'true');
     // 缩放绕 (ox, oy) 做：缩放后的左上角 = 原左上角 + 原点 × (1 − 缩放)，倒推回原左上角
-    layer.style.cssText = `position:fixed;display:block;pointer-events:none;margin:0;padding:0;width:3px;height:3px;z-index:${z};`
+    layer.style.cssText = `position:absolute;display:block;width:3px;height:3px;`
       + `left:${rect.left - ox * (1 - scale)}px;top:${rect.top - oy * (1 - scale)}px;`
       + `transform:scale(${scale});transform-origin:${ox}px ${oy}px`;
     const inner = hostDocument.createElement('span');
-    inner.style.cssText = `position:absolute;display:block;left:0;top:0;transform:${root ? hostWindow.getComputedStyle(root).transform : 'none'}`;
+    inner.style.cssText = `position:absolute;display:block;left:${rootL};top:${rootT2};transform:${rootT}`;
     layer.append(inner);
-    hostDocument.body.append(layer);
-    hostWindow.setTimeout(() => layer.remove(), 1300);
-    return inner;
-  }
-  function clawdRigDropProps(button, clipBase) {
-    const flex = button.querySelector(':scope > .clawd-rig .clr-flex');
-    if (!flex || clawdPrefersReducedMotion()) return;
-    const kind = CLAWD_RIG_INTERRUPT[clipBase] || 'drop';
-    const mid = 8 * 3;                           // Clawd 框中线（骨架坐标，未缩放）
-    let layer = null;
-    for (const node of flex.querySelectorAll('.clr-p-propA, .clr-p-propB')) {
-      const cs = hostWindow.getComputedStyle(node);
-      if (!cs.boxShadow || cs.boxShadow === 'none' || Number(cs.opacity) === 0) continue;
-      const pts = [...cs.boxShadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px 0px/g)].map(m => [Number(m[1]), Number(m[2])]);
+    const UP = 'cubic-bezier(.2,.7,.4,1)', DOWN = 'cubic-bezier(.55,0,.85,.5)';
+    const jobs = props.map(p => {
+      const pts = [...p.shadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px 0px/g)].map(m => [Number(m[1]), Number(m[2])]);
       const ax = pts.length ? pts.reduce((sum, pt) => sum + pt[0], 0) / pts.length : mid;
       const ay = pts.length ? pts.reduce((sum, pt) => sum + pt[1], 0) / pts.length : 0;
       const by = pts.length ? Math.max(...pts.map(pt => pt[1])) : 0;
-      const dir = ax + (parseFloat(cs.left) || 0) < mid ? -1 : 1;
-      const o = Number(cs.opacity);
-      layer = layer || clawdRigGhostLayer(button);
-      if (!layer) return;
+      const dir = ax + (parseFloat(p.left) || 0) < mid ? -1 : 1;
+      const o = p.o;
       const ghost = hostDocument.createElement('i');
       ghost.className = 'clr-ghost';
-      ghost.style.cssText = `position:absolute;display:block;width:3px;height:3px;box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};`
-        + `z-index:${cs.zIndex};opacity:${o};transform-origin:${ax}px ${kind === 'wither' ? by : ay}px`;
-      layer.append(ghost);
-      hostWindow.setTimeout(() => ghost.remove(), 1200);
+      ghost.style.cssText = `position:absolute;display:block;width:3px;height:3px;box-shadow:${p.shadow};left:${p.left};top:${p.top};`
+        + `z-index:${p.z};opacity:${o};transform-origin:${ax}px ${kind === 'wither' ? by : ay}px`;
+      inner.append(ghost);
+      /* 缓动写在每一段上，整体 linear。以前整体 ease-in：前 30% 的时间几乎不动，
+         杯子、信在原地僵半秒才往下掉。现在一打断就动：掉落先快速往上一弹（减速），再加速掉下去；枯萎一开始就往下缩 */
       const frames = kind === 'wither' ? [
-        { scale: '1 1', filter: 'none', opacity: o },
-        { scale: '1 .7', filter: 'grayscale(1)', opacity: o * .7, offset: .4 },
+        { scale: '1 1', filter: 'none', opacity: o, easing: 'ease-out' },
+        { scale: '1 .7', filter: 'grayscale(1)', opacity: o * .7, offset: .35, easing: 'ease-in' },
         { scale: '1 .15', filter: 'grayscale(1)', opacity: 0 },
       ] : kind === 'fly' ? [
-        { translate: '0 0', opacity: o },
-        { translate: `${dir * 15}px -15px`, opacity: o, offset: .4 },
+        { translate: '0 0', opacity: o, easing: 'ease-out' },
+        { translate: `${dir * 15}px -15px`, opacity: o, offset: .35 },
         { translate: `${dir * 36}px -42px`, opacity: 0 },
       ] : [
-        { translate: '0 0', rotate: '0deg', opacity: o },
-        { translate: `${dir * 15}px -12px`, rotate: `${dir * 30}deg`, opacity: o, offset: .3 },
+        { translate: '0 0', rotate: '0deg', opacity: o, easing: UP },
+        { translate: `${dir * 15}px -12px`, rotate: `${dir * 30}deg`, opacity: o, offset: .25, easing: DOWN },
         { translate: `${dir * 36}px 24px`, rotate: `${dir * 110}deg`, opacity: 0 },
       ];
+      return [ghost, frames];
+    });
+    host.append(layer);
+    hostWindow.setTimeout(() => layer.remove(), 1200);
+    // ③ 最后开始动
+    for (const [ghost, frames] of jobs) {
       try {
-        ghost.animate(frames, { duration: kind === 'drop' ? 900 : 1000, easing: kind === 'fly' ? 'ease-out' : 'ease-in', fill: 'forwards' });
+        ghost.animate(frames, { duration: kind === 'drop' ? 800 : 900, easing: 'linear', fill: 'forwards' });
       } catch (error) { ghost.remove(); }
     }
   }
@@ -4502,7 +4577,9 @@ if (CLAUDE_ENABLED) {
     button.removeAttribute('data-clawd-clip');
     if (clip) {
       ensureClawdRigClipCss(clip);
-      void button.offsetWidth;                 // 同一个动作连播两次时让动画从头开始
+      /* 以前这里无条件 void button.offsetWidth 强制重排，想让同一个动作连播时从头开始。
+         但走到这里时 clip 一定和 current 不同（相同的上面已经 return 了），属性值一变动画本来就会重播；
+         在酒馆这么大的页面上这一下要 90ms 左右，按下拎起时全卡在这里（Lulu 2026-09-25） */
       button.dataset.clawdClip = clip;
     }
   }
@@ -5975,6 +6052,7 @@ if (CLAUDE_ENABLED) {
       A2.bndAt = Date.now();
       A2.bndReady = true;
     }
+    clawdRigSnapshotProps(button);             // 改样式之前先拍下手上的道具（打断收场用，见 clawdRigReadProps）
     button.style.setProperty('transition', 'none', 'important');
     try { button.setPointerCapture(event.pointerId); } catch (error) { /* 老 WebView 没有就算了 */ }
     /* 手指落下立刻给反馈（2.0.143 定的：不能等第一次大位移才有反应），

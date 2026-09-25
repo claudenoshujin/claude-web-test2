@@ -50,6 +50,8 @@ export function buildClawdRig() {
       tall:  F(rep('############', 9), 0, -1),
       squash:F(['.ssssssssssss.', ...rep('##############', 5)], -1, 2),
       squash2:F(['.ssssssssssss.', ...rep('##############', 4)], -1, 4),   // 坐得更扁：配 legs.crouch
+      // 摔成一张饼：只剩 3 行，腿压没了，钳子（y+3）贴在两边——旧版落地那一帧（Lulu 2026-09-25：旧版的挣扎很可爱，加回来）
+      flat:  F(['ssssssssssss', ...rep('############', 2)], 0, 7),
       turnL: F(rep('###########s', 8)),          // 面朝左：右边一列暗部
       turnR: F(rep('s###########', 8)),          // 面朝右：左边一列暗部
       leanR: F([...rep('.############', 4), ...rep('############.', 4)]),
@@ -1315,19 +1317,34 @@ export function buildClawdRig() {
     c.at(400, 'clawL', { y: 0 }).at(400, 'clawR', { y: 0 });
   }
   {
-    const c = def(new Clip('land', '落地', 900, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
-    c.beat(0, '砸在地上，压扁（腿被压没）').beat(200, '缓一下').beat(300, '弹起来，举钳').beat(500, '站稳').beat(700, '放下钳子');
-    c.at(0, 'body', { f: 'squash2' }).at(0, 'legs', { f: 'crouch' }).at(0, 'eyes', { f: 'shut', y: 3 }).at(0, 'shadow', { f: 'w14' });
-    c.flex(0, { sx: 1.12, sy: .92 }).flex(200, { sx: 1.06, sy: .96 });
-    c.at(200, 'body', { f: 'squash' }).at(200, 'legs', { f: 'stand' }).at(200, 'eyes', { y: 2 });
-    c.at(300, 'body', { f: 'stand' }).at(300, 'legs', { f: 'stand' }).at(300, 'eyes', { f: 'open', y: -1 });
-    c.at(200, 'root', { y: 0 }).at(200, 'shadow', { y: 0 });
-    c.at(300, 'root', { y: -2 }, 'out').at(300, 'shadow', { y: 2, f: 'w10' }, 'out').flex(300, { sx: .92, sy: 1.1 });
-    raise(c, 400, 'clawL'); raise(c, 400, 'clawR');
-    c.at(500, 'root', { y: 0 }, 'in').at(500, 'shadow', { y: 0, f: 'w12' }, 'in').flex(500, { sx: 1.05, sy: .95 });
-    c.flex(600, {});
-    c.at(600, 'eyes', { y: 0 });
-    lower(c, 700, 'clawL'); lower(c, 700, 'clawR');
+    /* 落地（Lulu 2026-09-25：旧版的「摔扁了在地上挣扎」很可爱，加回来）
+       旧版：砸成一张 3 行高的扁饼，腿压没了，扁着待一会儿，再鼓起来、弹起来站好。
+       这里照着来，扁着的时候两只钳子在地上轮流扑腾、身子一鼓一鼓，看着是在使劲往起爬。
+       抛出去的时候按钮本身还有弹跳压扁（物理那边），叠在一起就是旧版那种在地上扭的样子。 */
+    const c = def(new Clip('land', '落地', 1100, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
+    c.beat(0, '砸在地上，摔成一张饼（腿压没了，眼睛闭成两道）').beat(100, '扁着挣扎：钳子轮流扑腾，身子一鼓一鼓')
+     .beat(400, '鼓起来（半蹲）').beat(500, '一下弹起来，睁眼').beat(600, '举钳').beat(700, '站稳').beat(900, '放下钳子');
+    const flat = t => c.at(t, 'body', { f: 'flat' }).at(t, 'legs', { f: null }).at(t, 'eyes', { f: 'shut', x: 0, y: 5 });
+    flat(0);
+    c.at(0, 'shadow', { f: 'w14' }).at(0, 'clawL', { f: 'stub', y: 3 }).at(0, 'clawR', { f: 'stub', y: 3 });
+    c.flex(0, { sx: 1.12, sy: .9 });
+    // 扑腾：每 100ms 一只钳子抬一格、另一只拍回地面；身子跟着一鼓一瘪
+    c.at(100, 'clawL', { y: 2 }).at(100, 'clawR', { y: 3 }).flex(100, { sx: 1.05, sy: .97 });
+    c.at(200, 'clawL', { y: 3 }).at(200, 'clawR', { y: 2 }).flex(200, { sx: 1.1, sy: .92 });
+    c.at(300, 'clawL', { y: 2 }).at(300, 'clawR', { y: 3 }).flex(300, { sx: 1.04, sy: .98 });
+    // 鼓起来：半蹲
+    c.at(400, 'body', { f: 'squash2' }).at(400, 'legs', { f: 'crouch' }).at(400, 'eyes', { f: 'shut', y: 3 });
+    c.at(400, 'clawL', { y: 2 }).at(400, 'clawR', { y: 2 }).flex(400, { sx: 1.06, sy: .95 });
+    // 弹起来
+    c.at(500, 'body', { f: 'stand' }).at(500, 'legs', { f: 'stand' }).at(500, 'eyes', { f: 'open', y: -1 });
+    c.at(500, 'clawL', { y: 0 }).at(500, 'clawR', { y: 0 });
+    c.at(400, 'root', { y: 0 }).at(400, 'shadow', { y: 0 });
+    c.at(500, 'root', { y: -2 }, 'out').at(500, 'shadow', { y: 2, f: 'w10' }, 'out').flex(500, { sx: .92, sy: 1.1 });
+    raise(c, 600, 'clawL'); raise(c, 600, 'clawR');
+    c.at(700, 'root', { y: 0 }, 'in').at(700, 'shadow', { y: 0, f: 'w12' }, 'in').flex(700, { sx: 1.05, sy: .95 });
+    c.flex(800, {});
+    c.at(800, 'eyes', { y: 0 });
+    lower(c, 900, 'clawL'); lower(c, 900, 'clawR');
   }
   {
     const c = def(new Clip('stomp', '被丢烦了：跺脚', 800, { track: 'C', smooth: ['root', 'shadow'], group: 'touch' }));
