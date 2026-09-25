@@ -4869,17 +4869,13 @@ if (CLAUDE_ENABLED) {
     /* hide / ledge 是有限时长的 B 轨在场动作。只有完全空闲时才允许它们
        继续；一旦用户聚焦输入框、输入内容或进入睡眠/冷落状态，立即回到更
        有信息量的 B 状态。A/C 轨不清空它，只是在画面优先级上盖过去。 */
-    if (clawdTracks.bUntil > Date.now() && next === 'idle' && !focused) {
-      renderClawdTracks();
-      return;
-    }
-    /* 滚动时扒着输入框、停下后爬出来，这两段不让「被冷落 / 犯困」这类待机状态抢走。
-       以前 200ms 一次的状态刷新会立刻把 peek 换成 neglected，滚轮每拨一格就重扒一次，
-       看起来就是下去、上来、下去、上来（Lulu 2026-09-25 真机：很鬼畜，还会被闲置动作盖过去）。
-       睡着不算：睡着时根本不扒（见 clawdScrollTilt）。 */
-    const scrollOwned = clawdTracks.B === 'peek'
-      || (clawdTracks.B === 'rig:peekOut' && clawdTracks.bUntil > Date.now());
-    if (scrollOwned && !focused && next !== 'sleep') {
+    /* 有时长的 B 轨动作（闲置池、调试菜单点的、滚动扒边和爬出来、醒来……）播完之前，
+       不被「空闲 / 被冷落 / 犯困 / 睡着」这类待机状态抢走，播完下一次刷新自然接上；
+       只有聚焦输入框时的打字反应（歪头、惊讶、看你打字）可以立刻接管。
+       以前只挡「空闲」：一进被冷落，200ms 一次的刷新就把菜单点的动作、滚动扒边统统换掉
+       （Lulu 2026-09-25：滚轮一拨一跳、被冷落盖过点的动作）。 */
+    if (clawdTracks.bUntil > Date.now() && !focused
+      && (next === 'idle' || next === 'neglected' || next === 'drowsy' || next === 'sleep')) {
       renderClawdTracks();
       return;
     }
@@ -6754,6 +6750,9 @@ if (CLAUDE_ENABLED) {
   let lastPokeAt = Date.now();
   let neglected = false;
   let ccDrowsy = false;
+  const CLAWD_NEGLECT_SHOW_MS = 2 * 3400;       // 被冷落那段循环两遍
+  const CLAWD_NEGLECT_REPEAT_MS = 240000;
+  let clawdNeglectShownAt = -Infinity;
 
   function setSleeping(on) {
     if (!on && idleAsleep) idleAsleep = false;
@@ -6804,7 +6803,16 @@ if (CLAUDE_ENABLED) {
       && !isTypingActive()
       && ![...ccInteractiveTargets()].some(b => b.classList.contains(SHY_AMBIENT_CLASS))
       && Date.now() - lastPokeAt > NEGLECT_POKE_MS;
-    setNeglected(shouldBeNeglected);
+    /* 被冷落只演一段（两个来回，约 7 秒）就回待机，之后 4 分钟内不再演，除非又被戳过。
+       以前一进冷落就一直循环，直到你戳它或者快睡着——正常聊天时每过一分钟就蔫在那里，
+       闲置动作也全被挡掉（Lulu 2026-09-25：一直重复被冷落） */
+    const nowN = Date.now();
+    if (!shouldBeNeglected) setNeglected(false);
+    else if (neglected) { if (nowN - clawdNeglectShownAt > CLAWD_NEGLECT_SHOW_MS) setNeglected(false); }
+    else if (nowN - clawdNeglectShownAt > CLAWD_NEGLECT_REPEAT_MS && clawdTracks.B === 'idle' && !clawdTracks.bUntil) {
+      clawdNeglectShownAt = nowN;
+      setNeglected(true);
+    }
 
     if (idle === idleAsleep) {
       if (idle) setSleeping(true);
@@ -6976,7 +6984,9 @@ if (CLAUDE_ENABLED) {
     if (mag < 2.2) return;                       // 死区
     /* fy 不为 0 就是还在空中或者被举着，那时候不该再叠一层歪。 */
     if (clawdTracks.A || clawdTracks.C || a2Locked() || A2.held || A2.fy !== 0) return;
-    if (idleAsleep || ccSleeping) return;        // 睡着了就接着睡，不被滚动弄醒
+    /* 睡着、犯困（包括调试菜单点的睡觉 / 犯困）时不扒，接着睡（Lulu 2026-09-25：菜单点了睡觉，一滚就被打断） */
+    const bBase = String(clawdTracks.B || '').replace(/^rig:/, '').replace(/-m$/, '');
+    if (idleAsleep || ccSleeping || ccDrowsy || bBase === 'sleep' || bBase === 'drowsy') return;
     const button = composerClawd();
     if (!button) return;
 

@@ -588,6 +588,17 @@ assert.equal(clawd.dataset.clawdClip, 'write');
 menu.querySelector('[data-cdm="stop"]').click();
 await wait(150);
 assert.equal(api.clawdState().A, null, '停了以后 A 轨收回，不结算成完成');
+/* 菜单点了睡觉，滚动不许把它弄醒（Lulu 2026-09-25） */
+const sleepBtn = [...menu.querySelectorAll('[data-act]')].find(el => el.textContent === '睡着');
+assert.ok(sleepBtn, '菜单里要有睡着');
+sleepBtn.click();
+await wait(150);
+for (let i = 1; i <= 10; i += 1) { scrollTo(6000 + i * 180); await wait(28); }
+assert.equal(api.clawdState().B, 'rig:sleep', `睡着时滚动不扒输入框（当前 ${JSON.stringify(api.clawdState())}）`);
+assert.equal(clawd.classList.contains('clawd-scroll-hold'), false, '睡着时滚动不扒输入框');
+await wait(1000);
+menu.querySelector('[data-cdm="stop"]').click();
+await wait(150);
 menu.querySelector('[data-cdm="close"]').click();
 
 /* ⑨ 轻抚：按住不动 0.6 秒（手机只能这样），或者鼠标在它身上来回划 */
