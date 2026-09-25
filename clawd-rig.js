@@ -542,7 +542,8 @@ export function buildClawdRig() {
     css += `@keyframes clr-breathe-claw{0%{transform:translate(0,0)}${pct(in0, B)}{transform:translate(0,-${PX}px)}${pct(in1, B)}{transform:translate(0,0)}100%{transform:translate(0,0)}}\n`;
     css += `${RB} .clr-p-eyes{animation:clr-blink 4400ms step-end infinite}\n`;
     css += `${RB} .clr-p-sym{transform-origin:${(BOX[0] + ORIGIN.sym[0] + .5) * PX}px ${(BOX[1] + ORIGIN.sym[1] + 2.5) * PX}px}\n`;
-    css += `${RB} .clr-flex{position:absolute;left:0;top:0;transform-origin:${FLEX_ORIGIN[0]}px ${FLEX_ORIGIN[1]}px}\n`;
+    // z-index:2：影子（z 1）在弹性层外面（见 makeRig），弹性层自成一层压在影子上面
+    css += `${RB} .clr-flex{position:absolute;left:0;top:0;z-index:2;transform-origin:${FLEX_ORIGIN[0]}px ${FLEX_ORIGIN[1]}px}\n`;
     css += `${RB} .clr-p-clawL,${RB} .clr-p-clawR{animation:clr-breathe-claw ${B}ms ease-in-out infinite}\n`;
     // 播动作时呼吸停掉（动作自己管身体），只留眨眼；动作规则写在后面，会覆盖这几条
     css += `${RB}[data-clawd-clip] .clr-p-body,${RB}[data-clawd-clip] .clr-p-clawL,${RB}[data-clawd-clip] .clr-p-clawR,${RB}[data-clawd-clip] .clr-flex{animation:none}\n${RB}[data-clawd-clip] .clr-p-eyes{animation:clr-blink 4400ms step-end infinite}\n`;

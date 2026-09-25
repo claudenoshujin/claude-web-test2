@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig15";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4378,10 +4378,12 @@ if (CLAUDE_ENABLED) {
     root.className = 'clr-root';
     const flex = hostDocument.createElement('span');
     flex.className = 'clr-flex';
+    /* 影子挂在 root 上、不进弹性层：弹性层会整体旋转（歪头、钟摆晃），影子是地上的，不该跟着歪
+       （Lulu 2026-09-25 真机：歪头时脚下影子也歪了）。弹性层 z-index:2 自成一层压在影子上面（见 clawd-rig.js） */
     CLAWD_RIG.parts.forEach(part => {
       const node = hostDocument.createElement('i');
       node.className = `clr-p clr-p-${part}`;
-      flex.append(node);
+      (part === 'shadow' ? root : flex).append(node);
     });
     root.append(flex);
     rig.append(root);
