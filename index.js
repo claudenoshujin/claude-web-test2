@@ -4396,28 +4396,33 @@ if (CLAUDE_ENABLED) {
      第三版（Lulu 2026-09-24）：掉落的幅度和距离加大；树和蝴蝶不再跟着别的道具一起「掉」 */
   const CLAWD_RIG_INTERRUPT = Object.freeze({ plant: 'wither', plantWilt: 'wither', butterfly: 'fly' });
   /* 收场的复制品不能挂在 Clawd 身上：被拎起来的时候它会跟着一起飞上去（Lulu 2026-09-24：种子跟着 Clawd 一起起来了）。
-     挂到按钮外面一层，按打断那一刻按钮和骨架的位置、缩放摆好，之后 Clawd 怎么动都不影响它 */
+     第二版：挂在 body 上、position:fixed，按打断那一刻骨架在屏幕上的位置和缩放摆好。
+     （第一版挂在 #send_form 里，欢迎页那条「#send_form > 除 #nonQRFormItems 外全部隐藏」把它一起藏了，
+     Lulu 那边看到的就是道具直接消失）。层级取按钮最外层带 z-index 的祖先（酒馆里是 #sheld），同值、后插入，所以压在输入框那一层上面 */
   function clawdRigGhostLayer(button) {
-    const host = button.offsetParent || button.parentElement;
     const rig = button.querySelector(':scope > .clawd-rig');
-    if (!host || !rig) return null;
-    const bcs = hostWindow.getComputedStyle(button);
+    if (!rig || !hostDocument.body) return null;
     const rcs = hostWindow.getComputedStyle(rig);
+    const rect = rig.getBoundingClientRect();
+    const scale = rect.width / 3 || .85;          // .clawd-rig 本身 3×3px，量出来的宽 / 3 = 屏幕上实际缩放
+    const [ox, oy] = rcs.transformOrigin.split(' ').map(v => parseFloat(v) || 0);
+    let z = 1;
+    for (let el = button.parentElement; el && el !== hostDocument.body; el = el.parentElement) {
+      const zi = hostWindow.getComputedStyle(el).zIndex;
+      if (zi !== 'auto') z = Number(zi) || z;
+    }
     const root = rig.querySelector('.clr-root');
     const layer = hostDocument.createElement('span');
     layer.className = 'clr-ghost-layer';
     layer.setAttribute('aria-hidden', 'true');
-    layer.style.cssText = `position:absolute;pointer-events:none;left:${button.offsetLeft}px;top:${button.offsetTop}px;`
-      + `width:${button.offsetWidth}px;height:${button.offsetHeight}px;z-index:${bcs.zIndex === 'auto' ? 1 : bcs.zIndex};`
-      + `transform:${bcs.transform};transform-origin:${bcs.transformOrigin};translate:${bcs.translate || 'none'}`;
-    const frame = hostDocument.createElement('span');
-    frame.style.cssText = `position:absolute;left:${rcs.left};top:${rcs.top};width:3px;height:3px;`
-      + `transform:${rcs.transform};transform-origin:${rcs.transformOrigin}`;
+    // 缩放绕 (ox, oy) 做：缩放后的左上角 = 原左上角 + 原点 × (1 − 缩放)，倒推回原左上角
+    layer.style.cssText = `position:fixed;display:block;pointer-events:none;margin:0;padding:0;width:3px;height:3px;z-index:${z};`
+      + `left:${rect.left - ox * (1 - scale)}px;top:${rect.top - oy * (1 - scale)}px;`
+      + `transform:scale(${scale});transform-origin:${ox}px ${oy}px`;
     const inner = hostDocument.createElement('span');
-    inner.style.cssText = `position:absolute;left:0;top:0;transform:${root ? hostWindow.getComputedStyle(root).transform : 'none'}`;
-    frame.append(inner);
-    layer.append(frame);
-    host.append(layer);
+    inner.style.cssText = `position:absolute;display:block;left:0;top:0;transform:${root ? hostWindow.getComputedStyle(root).transform : 'none'}`;
+    layer.append(inner);
+    hostDocument.body.append(layer);
     hostWindow.setTimeout(() => layer.remove(), 1300);
     return inner;
   }
@@ -4440,7 +4445,7 @@ if (CLAUDE_ENABLED) {
       if (!layer) return;
       const ghost = hostDocument.createElement('i');
       ghost.className = 'clr-ghost';
-      ghost.style.cssText = `position:absolute;width:3px;height:3px;box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};`
+      ghost.style.cssText = `position:absolute;display:block;width:3px;height:3px;box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};`
         + `z-index:${cs.zIndex};opacity:${o};transform-origin:${ax}px ${kind === 'wither' ? by : ay}px`;
       layer.append(ghost);
       hostWindow.setTimeout(() => ghost.remove(), 1200);
