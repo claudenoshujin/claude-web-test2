@@ -4873,6 +4873,16 @@ if (CLAUDE_ENABLED) {
       renderClawdTracks();
       return;
     }
+    /* 滚动时扒着输入框、停下后爬出来，这两段不让「被冷落 / 犯困」这类待机状态抢走。
+       以前 200ms 一次的状态刷新会立刻把 peek 换成 neglected，滚轮每拨一格就重扒一次，
+       看起来就是下去、上来、下去、上来（Lulu 2026-09-25 真机：很鬼畜，还会被闲置动作盖过去）。
+       睡着不算：睡着时根本不扒（见 clawdScrollTilt）。 */
+    const scrollOwned = clawdTracks.B === 'peek'
+      || (clawdTracks.B === 'rig:peekOut' && clawdTracks.bUntil > Date.now());
+    if (scrollOwned && !focused && next !== 'sleep') {
+      renderClawdTracks();
+      return;
+    }
     setClawdB(next);
   }
 
@@ -6931,6 +6941,7 @@ if (CLAUDE_ENABLED) {
           读 scrollTop 会摊上一次完整重排；trackSwipeArrows 在生成期间
           吃掉 3823ms 就是这么来的。
      用的是已有的那个滚动监听，没有新增第二套订阅。 */
+  const CLAWD_SCROLL_REST_MS = 700;
   let clawdScrollVel = 0;
   let clawdScrollLastTop = 0;
   let clawdScrollLastAt = 0;
@@ -6965,6 +6976,7 @@ if (CLAUDE_ENABLED) {
     if (mag < 2.2) return;                       // 死区
     /* fy 不为 0 就是还在空中或者被举着，那时候不该再叠一层歪。 */
     if (clawdTracks.A || clawdTracks.C || a2Locked() || A2.held || A2.fy !== 0) return;
+    if (idleAsleep || ccSleeping) return;        // 睡着了就接着睡，不被滚动弄醒
     const button = composerClawd();
     if (!button) return;
 
@@ -6978,13 +6990,17 @@ if (CLAUDE_ENABLED) {
       /* C1b：扒着输入框由骨架画（peek：缩下去 4 格、两只钳子扒着边），停下后播「出来」 */
       setClawdB('peek', 60000);
     }
-    /* 停止判定：最后一次「有效滚动」之后 220ms 没动静就松手。 */
+    /* 刚滚过就别马上抽闲置动作：停下、爬出来之后隔一段再说 */
+    scheduleClawdBAmbient(now);
+    /* 停止判定：最后一次「有效滚动」之后 CLAWD_SCROLL_REST_MS 没动静才松手。
+       以前是 220ms：鼠标滚轮一格一格拨，两格之间常常隔 250–500ms，
+       于是每拨一格都松手、爬出来、再扒下去（Lulu 2026-09-25） */
     if (clawdScrollRestTimer) hostWindow.clearTimeout(clawdScrollRestTimer);
     clawdScrollRestTimer = hostWindow.setTimeout(() => {
       clawdScrollRestTimer = 0;
       clawdScrollVel = 0;
       clawdScrollRelease(button);
-    }, 220);
+    }, CLAWD_SCROLL_REST_MS);
   }
 
   /* 欢迎态：聊天里没有真实消息时，复刻官网那个「问候语 + 输入框居中」的形态。

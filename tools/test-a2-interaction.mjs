@@ -182,7 +182,14 @@ assert.ok(clawd.classList.contains('clawd-scroll-hold'),
 assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peek', 'C1b：扒着输入框由骨架的 peek 画');
 assert.equal(clawd.style.rotate || '', '',
   '一次滚动只做两次 class 变化，中间不许逐帧写样式');
-await wait(400);
+/* 鼠标滚轮一格一格拨：两格之间隔 400ms，中间不能松手又重扒（Lulu 2026-09-25：下去一下又上来，很鬼畜） */
+for (let notch = 0; notch < 3; notch += 1) {
+  await wait(400);
+  assert.ok(clawd.classList.contains('clawd-scroll-hold'), `滚轮两格之间（第 ${notch + 1} 次停顿）不能松手`);
+  assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peek', `滚轮两格之间骨架要一直扒着（当前 ${clawd.dataset.clawdClip}）`);
+  for (let i = 1; i <= 5; i += 1) { scrollTo(1800 + notch * 900 + i * 180); await wait(28); }
+}
+await wait(1000);
 assert.equal(clawd.classList.contains('clawd-scroll-hold'), false,
   '停下之后要松手');
 assert.ok(clawd.classList.contains('clawd-scroll-release'),
@@ -193,7 +200,7 @@ assert.equal(clawd.classList.contains('clawd-scroll-release'), false,
   '收尾播完要把 class 撤干净');
 
 /* 慢滚必须落在死区里，一点开销都不该产生 */
-for (let i = 1; i <= 8; i += 1) { scrollTo(1800 + i); await wait(70); }
+for (let i = 1; i <= 8; i += 1) { scrollTo(4500 + i); await wait(70); }   // 接着上面滚轮停下的位置（1800 + 2×900 + 5×180）
 assert.equal(clawd.classList.contains('clawd-scroll-hold'), false,
   '慢速滚动必须落在死区里不触发，否则长聊天里每一次滚动都要付代价');
 
