@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig9";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig10";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -2072,6 +2072,8 @@ if (CLAUDE_ENABLED) {
   const CLAWD_RIG_B = Object.freeze({
     compose: 'compose', tilt: 'tilt', wow: 'wow', wake: 'wake', drowsy: 'drowsy', sleep: 'sleep', neglected: 'neglected',
     around: 'around', spin: 'spin', lean: 'lean', hide: 'hide', tramp: 'tramp',
+    scratch: 'scratch', crouch: 'crouch', heart: 'heart', point: 'point', facepalm: 'facepalm', nudge: 'nudge',
+    peek: 'peek',
   });
   /* 戳第 5 档是 turn → t5 → face 三步序列，三步都对着同一段「转身生气」，中间不重播 */
   const CLAWD_RIG_C = Object.freeze({
@@ -4355,30 +4357,88 @@ if (CLAUDE_ENABLED) {
     if (owner === 'C') return clawdTracks.C === 't1' ? clawdRigPokeT1 : (CLAWD_RIG_C[clawdTracks.C] || '');
     if (owner === 'A') return CLAWD_RIG_A[clawdTracks.A] || '';
     const b = clawdTracks.B || 'idle';
-    if (b.startsWith('rig:')) return CLAWD_RIG.clips[b.slice(4)] ? b.slice(4) : '';
+    if (b.startsWith('rig:')) {
+      const id = b.slice(4);
+      return CLAWD_RIG.clips[id.replace(/-m$/, '')] ? id : '';
+    }
     return CLAWD_RIG_B[b] || '';
+  }
+
+  /* 两个动作是不是「接着演」的关系（写字 → 完成、歪头 → 回正、扒着 → 出来、抓起 → 吊着）：
+     接着演的时候朝向保持和上一个一样，手上的道具也不用掉 */
+  function clawdRigContinues(base, curBase) {
+    const meta = CLAWD_RIG.clips[base], cur = CLAWD_RIG.clips[curBase];
+    if (!meta || !cur) return false;
+    return meta.from === curBase || meta.after === curBase || cur.next === base
+      || cur.from === base || Boolean(meta.from && meta.from === cur.from);
+  }
+
+  /* 靠边时换镜像版（分配方案 §1）：动作朝右伸出去的部分放不下、朝左放得下，就用左右翻过来的版本 */
+  const CLAWD_RIG_CELL = 3 * .85;              // 一格美术像素在屏幕上多宽（骨架整体缩放 .85）
+  function clawdRigShouldMirror(button, base) {
+    const ext = CLAWD_RIG.extentFor(base);
+    if (!ext.l && !ext.r) return false;
+    const now = Date.now();
+    if (!A2.bndReady || now - A2.bndAt > A2_BOUNDS_TTL) {
+      A2.bnd = a2Walls(button);
+      A2.bndAt = now;
+      A2.bndReady = true;
+    }
+    const left = A2.x - A2.bnd.minx, right = A2.bnd.maxxHome - A2.x;
+    const over = (l, r) => Math.max(0, r * CLAWD_RIG_CELL - right) + Math.max(0, l * CLAWD_RIG_CELL - left);
+    return over(ext.r, ext.l) < over(ext.l, ext.r);
+  }
+
+  /* 被打断时手上的道具掉下来淡出（分配方案 §4 第 1 条）：把正在显示的道具按当前样子复制一份，往下掉 4 格、0.4 秒淡出 */
+  function clawdRigDropProps(button) {
+    const flex = button.querySelector(':scope > .clawd-rig .clr-flex');
+    if (!flex || clawdPrefersReducedMotion()) return;
+    for (const node of flex.querySelectorAll('.clr-p-propA, .clr-p-propB')) {
+      const cs = hostWindow.getComputedStyle(node);
+      if (!cs.boxShadow || cs.boxShadow === 'none' || Number(cs.opacity) === 0) continue;
+      const ghost = hostDocument.createElement('i');
+      ghost.className = 'clr-p clr-ghost';
+      ghost.style.cssText = `box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};z-index:${cs.zIndex};opacity:${cs.opacity}`;
+      flex.append(ghost);
+      hostWindow.setTimeout(() => ghost.remove(), 600);
+      try {
+        ghost.animate([{ translate: '0 0', opacity: Number(cs.opacity) }, { translate: '0 12px', opacity: 0 }],
+          { duration: 400, easing: 'cubic-bezier(.5,0,1,1)', fill: 'forwards' });
+      } catch (error) { ghost.remove(); }
+    }
   }
 
   function syncClawdRig(button, owner) {
     ensureClawdRig(button);
     button.dataset.clawdRig = 'on';
     const current = button.dataset.clawdClip || '';
-    if (owner === 'C' && clawdTracks.C === 't1' && current !== 'poke1' && current !== 'poke1Shy') {
+    const curBase = current.replace(/-m$/, '');
+    if (owner === 'C' && clawdTracks.C === 't1' && curBase !== 'poke1' && curBase !== 'poke1Shy') {
       clawdRigPokeT1 = Math.random() < .34 ? 'poke1Shy' : 'poke1';
     }
     let clip = clawdRigClipFor(owner);
     /* 歪头结束（问号删掉、或者被别的状态接走）：先播 0.4 秒回正，播完再切过去 */
-    if (clip !== 'tilt') {
+    if (clip.replace(/-m$/, '') !== 'tilt') {
       const now = Date.now();
-      if (current === 'tilt') {
+      if (curBase === 'tilt') {
         clawdRigUntiltUntil = now + CLAWD_RIG.clips.untilt.dur;
         hostWindow.setTimeout(() => { if (!destroyed) renderClawdTracks(); }, CLAWD_RIG.clips.untilt.dur + 20);
         clip = 'untilt';
-      } else if (current === 'untilt' && now < clawdRigUntiltUntil) {
+      } else if (curBase === 'untilt' && now < clawdRigUntiltUntil) {
         clip = 'untilt';
       }
     }
+    const base = clip.replace(/-m$/, '');
+    const continues = Boolean(base && curBase && clawdRigContinues(base, curBase));
+    /* 朝向：点名要镜像版的（rig:xxx-m）和走路（方向由走路自己定）照办；同一个动作接着播不换朝向；
+       接着上一个动作演的，朝向跟上一个一样；其余看两边的空间够不够 */
+    if (base && !clip.endsWith('-m') && base !== 'walkLoop') {
+      if (base === curBase) return;
+      const mirror = continues ? current.endsWith('-m') : clawdRigShouldMirror(button, base);
+      clip = mirror ? base + '-m' : base;
+    }
     if (clip === current) return;
+    if (current && !continues) clawdRigDropProps(button);
     button.removeAttribute('data-clawd-clip');
     if (clip) {
       ensureClawdRigClipCss(clip);
@@ -4485,6 +4545,7 @@ if (CLAUDE_ENABLED) {
       ]],
       ['长动作', group('long')],
       ['短闲置', group('idle')],
+      ['走路（真的挪位置）', [['走到别处', [[9000, () => { clawdWalk(); }]]]]],
       ['打字（歪头结束会自动回正）', group('type')],
       ['犯困 · 睡觉', group('sleep')],
       ['戳 · 抓 · 丢', group('touch')],
@@ -4664,6 +4725,13 @@ if (CLAUDE_ENABLED) {
     { state: 'lean', duration: CLAWD_RIG.clips.lean.dur },
     { state: 'hide', duration: CLAWD_RIG.clips.hide.dur },
     { state: 'tramp', duration: CLAWD_RIG.clips.tramp.dur },
+    /* 第二批（2026-09-24）：旧原型里的挠一下、蹲起、比爱心、指向、扶额；推发送按钮只在挨着发送按钮时才抽 */
+    { state: 'scratch', duration: CLAWD_RIG.clips.scratch.dur },
+    { state: 'crouch', duration: CLAWD_RIG.clips.crouch.dur },
+    { state: 'heart', duration: CLAWD_RIG.clips.heart.dur },
+    { state: 'point', duration: CLAWD_RIG.clips.point.dur },
+    { state: 'facepalm', duration: CLAWD_RIG.clips.facepalm.dur },
+    { state: 'nudge', duration: CLAWD_RIG.clips.nudge.dur },
   ]);
   let clawdBAmbientNextAt = Date.now() + 18000;
   /* C1a：系统开了「减少动态」就不播闲置小动作。每次现查，用户中途改设置也能跟上。 */
@@ -4700,7 +4768,16 @@ if (CLAUDE_ENABLED) {
     /* C1b：约三成的轮次抽长的复合动作（带冷却），其余照旧抽短的填空小动作 */
     if (Math.random() < 0.3) {
       const id = pickClawdRigClip(now);
-      if (id) {
+      if (id === 'walk') {
+        /* 踱步 = 真的走到输入框上沿别处，走到哪就待在哪（分配方案 §0）；这次走不了（两边都没地方）就改抽短动作 */
+        clawdRigLastPlayed.walk = now;
+        const ms = clawdWalk(now);
+        if (ms) {
+          clawdBLastAmbient = 'rig:walk';
+          scheduleClawdBAmbient(now + ms);
+          return;
+        }
+      } else if (id) {
         clawdRigLastPlayed[id] = now;
         clawdBLastAmbient = 'rig:' + id;
         setClawdB('rig:' + id, CLAWD_RIG.clips[id].dur);
@@ -4708,11 +4785,72 @@ if (CLAUDE_ENABLED) {
         return;
       }
     }
-    const choices = CLAWD_B_AMBIENT_POSES.filter(pose => pose.state !== clawdBLastAmbient);
+    const choices = CLAWD_B_AMBIENT_POSES.filter(pose => pose.state !== clawdBLastAmbient
+      && (pose.state !== 'nudge' || clawdNearSend()));
     const pose = choices[Math.floor(Math.random() * choices.length)] || CLAWD_B_AMBIENT_POSES[0];
     clawdBLastAmbient = pose.state;
     setClawdB(pose.state, pose.duration);
+    if (pose.state === 'nudge') hostWindow.setTimeout(clawdShakeSend, 400);
     scheduleClawdBAmbient(now);
+  }
+
+  /* 推发送按钮：发送按钮就在 Clawd 右边不远（左缘离 Clawd 右缘 60px 以内）才抽 */
+  function clawdNearSend() {
+    const send = hostDocument.querySelector('#send_but');
+    const button = composerClawd();
+    if (!send || !button) return false;
+    const a = button.getBoundingClientRect(), b = send.getBoundingClientRect();
+    const gap = b.left - a.right;
+    return b.width > 0 && gap >= -8 && gap < 60;
+  }
+  function clawdShakeSend() {
+    const send = hostDocument.querySelector('#send_but');
+    if (!send || destroyed || clawdTracks.B !== 'nudge') return;
+    try { send.animate([{ translate: '0 0' }, { translate: '3px 0' }, { translate: '-1px 0' }, { translate: '0 0' }], { duration: 320 }); }
+    catch (error) { /* 老 WebView 没有 animate 就不晃 */ }
+  }
+
+  /* 走路：整只按钮沿输入框上沿平移过去，腿在骨架里原地迈步（walkLoop；往右走用镜像版）。
+     一步 300ms 走 1 格，和原型里的踱步同速。走整条范围的 20%–40%，往空间大的那边走。
+     半路被抓 / 被戳 / 开始生成：就停在当时的位置。返回这次走多久（毫秒），走不了返回 0。 */
+  let clawdWalkRun = 0;
+  function clawdWalk(now = Date.now()) {
+    const button = composerClawd();
+    if (!button || A2.held || A2.fy !== 0) return 0;
+    if (!A2.bndReady || now - A2.bndAt > A2_BOUNDS_TTL) {
+      A2.bnd = a2Walls(button);
+      A2.bndAt = now;
+      A2.bndReady = true;
+    }
+    const lo = A2.bnd.minx, hi = A2.bnd.maxxHome;
+    if (!(hi - lo > 40 && hi - lo < 1e5)) return 0;
+    const roomL = A2.x - lo, roomR = hi - A2.x;
+    const want = (hi - lo) * (.2 + Math.random() * .2);
+    let dir = roomR > roomL + 20 ? 1 : roomL > roomR + 20 ? -1 : (Math.random() < .5 ? -1 : 1);
+    let dist = Math.min(want, dir > 0 ? roomR : roomL);
+    if (dist < 24) { dir = -dir; dist = Math.min(want, dir > 0 ? roomR : roomL); }
+    if (dist < 24) return 0;
+    const steps = Math.max(2, Math.floor(dist / CLAWD_RIG_CELL));
+    const walkMs = steps * 300;
+    const intro = CLAWD_RIG.clips.walkLoop.intro || 0;
+    const from = A2.x, to = from + dir * steps * CLAWD_RIG_CELL;
+    const state = dir > 0 ? 'rig:walkLoop-m' : 'rig:walkLoop';
+    const run = ++clawdWalkRun;
+    setClawdB(state, intro + walkMs + 50);
+    button.style.setProperty('transition', 'none', 'important');
+    const t0 = Date.now() + intro;
+    const end = () => { A2.homeX = A2.x; button.style.removeProperty('transition'); };
+    const step = () => {
+      if (run !== clawdWalkRun || destroyed) return;
+      if (clawdTracks.B !== state || clawdTracks.A || clawdTracks.C || A2.held || A2.fy !== 0) { end(); return; }
+      const k = Math.min(1, Math.max(0, (Date.now() - t0) / walkMs));
+      A2.x = from + (to - from) * k;
+      a2Place(button);
+      if (k < 1) hostWindow.requestAnimationFrame(step);
+      else end();
+    };
+    hostWindow.requestAnimationFrame(step);
+    return intro + walkMs + 50;
   }
 
   function ensureComposerClawd() {
@@ -6656,6 +6794,7 @@ if (CLAUDE_ENABLED) {
 
   function clawdScrollRelease(button) {
     clawdScrollHolding = false;
+    if (clawdTracks.B === 'peek') setClawdB('rig:peekOut', CLAWD_RIG.clips.peekOut.dur);
     button.classList.remove('clawd-scroll-hold');
     button.classList.add('clawd-scroll-release');
     if (clawdScrollClearTimer) hostWindow.clearTimeout(clawdScrollClearTimer);
@@ -6690,6 +6829,8 @@ if (CLAUDE_ENABLED) {
       clawdScrollClearTimer = 0;
       button.classList.remove('clawd-scroll-release');
       button.classList.add('clawd-scroll-hold');
+      /* C1b：扒着输入框由骨架画（peek：缩下去 4 格、两只钳子扒着边），停下后播「出来」 */
+      setClawdB('peek', 60000);
     }
     /* 停止判定：最后一次「有效滚动」之后 220ms 没动静就松手。 */
     if (clawdScrollRestTimer) hostWindow.clearTimeout(clawdScrollRestTimer);

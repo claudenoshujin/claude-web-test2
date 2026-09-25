@@ -179,6 +179,7 @@ await wait(60);
 for (let i = 1; i <= 10; i += 1) { scrollTo(i * 180); await wait(28); }
 assert.ok(clawd.classList.contains('clawd-scroll-hold'),
   '滚动开始时 Clawd 要扒住输入框');
+assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peek', 'C1b：扒着输入框由骨架的 peek 画');
 assert.equal(clawd.style.rotate || '', '',
   '一次滚动只做两次 class 变化，中间不许逐帧写样式');
 await wait(400);
@@ -186,6 +187,7 @@ assert.equal(clawd.classList.contains('clawd-scroll-hold'), false,
   '停下之后要松手');
 assert.ok(clawd.classList.contains('clawd-scroll-release'),
   '松手时要播一次探回来的收尾');
+assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peekOut', 'C1b：松手时骨架播「从输入框里出来」');
 await wait(600);
 assert.equal(clawd.classList.contains('clawd-scroll-release'), false,
   '收尾播完要把 class 撤干净');
@@ -505,11 +507,14 @@ assert.equal(clawd.dataset.clawdRig, 'on', `骨架接管输入框 Clawd 的全�
 assert.ok(!clawd.dataset.clawdClip, `空闲待机不播任何复合动作（当前 ${clawd.dataset.clawdClip} ${JSON.stringify(api.clawdState())}）`);
 for (const id of ['polish', 'eat', 'letter', 'plant', 'butterfly', 'stretch', 'walk', 'write', 'done', 'stopped', 'error', 'sitWrite',
   'compose', 'tilt', 'untilt', 'wow', 'around', 'spin', 'lean', 'hide', 'tramp', 'neglected', 'drowsy', 'sleep', 'wake',
-  'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4', 'sulk', 'grab', 'drag', 'fly', 'land', 'stomp']) {
+  'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4', 'sulk', 'grab', 'drag', 'fly', 'land', 'stomp',
+  'press', 'pet', 'walkLoop', 'peek', 'peekOut', 'scratch', 'crouch', 'heart', 'point', 'facepalm', 'nudge']) {
   assert.ok(rigBuilt.clips[id], `复合动作 ${id} 要生成出来`);
   assert.match(rigBuilt.cssFor(id), new RegExp(`data-clawd-clip="${id}"`), `${id} 的 CSS 要挂在按钮的 data-clawd-clip 上`);
 }
 assert.ok(!/data-clawd-clip="/.test(rigBuilt.css), 'C1b：动作 CSS 按需生成，装样式时只装待机那部分');
+assert.match(rigBuilt.cssFor('write-m'), /data-clawd-clip="write-m"/, '镜像版按 id-m 生成');
+assert.ok(rigBuilt.extentFor('write').r > 10 && rigBuilt.extentFor('write').l === 0, '写字的纸伸在右边：extentFor 要算得出来');
 assert.match(rigBuilt.cssFor('hide'), /> \.clawd-rig\{clip-path:inset\(/, '躲进去要剪掉地面线以下');
 
 /* C1b 全面接管：各轨道状态都有对应的骨架动作 */

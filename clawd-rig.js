@@ -5,7 +5,7 @@
    - 选择器挂在输入框那只 Clawd 按钮上（data-clawd-clip），层用 clr- 前缀，免得和酒馆撞名；
    - 眼睛、描边颜色跟现网主题变量走；
    - 躲进输入框的剪切挂在 .clawd-rig 上；
-   - 动作的 CSS 按需生成：一次全生成约 500KB，改成播到哪个才生成哪个（cssFor）。 */
+   - 动作的 CSS 按需生成：一次全生成约 500KB，改成播到哪个才生成哪个（cssFor；id 加 -m 是镜像版）。 */
 
 const RB = 'button.clawd-signoff-button.clawd-composer-clawd';
 
@@ -206,12 +206,13 @@ export function buildClawdRig() {
     return out;
   }
   const SHADOW_CACHE = new Map();
-  function boxShadow(part, name) {
-    const key = part + ':' + name;
+  function boxShadow(part, name, mirror = false) {
+    const key = part + ':' + name + (mirror ? ':m' : '');
     if (SHADOW_CACHE.has(key)) return SHADOW_CACHE.get(key);
     const px = pixelsOf(part, name);
+    // mirror：以 Clawd 框（0–15 格）的中线左右翻转像素
     const v = px.length
-      ? px.map(([x, y, ch]) => `${(x + BOX[0]) * PX}px ${(y + BOX[1]) * PX}px 0 .3px ${PAL[ch]}`).join(',')
+      ? px.map(([x, y, ch]) => `${((mirror ? 15 - x : x) + BOX[0]) * PX}px ${(y + BOX[1]) * PX}px 0 .3px ${PAL[ch]}`).join(',')
       : 'none';
     SHADOW_CACHE.set(key, v);
     return v;
@@ -248,6 +249,7 @@ export function buildClawdRig() {
         intro: opt.intro || 0,
         next: opt.next || null,             // 播完自动接哪个（例：抓起 → 吊着）
         noShadow: !!opt.noShadow,           // 允许中途没有影子（离地、缩进输入框）
+        after: opt.after || null,           // 接在哪个动作的「结尾」后面（例：从输入框里出来，接在扒着输入框后面）
         clipGround: !!opt.clipGround,       // 地面线以下剪掉
         hold: !!opt.hold,                   // 播完停在最后一帧等下一个状态（例：被按住，等松手 / 拖动 / 轻抚）
         group: opt.group || 'long' });
@@ -384,7 +386,36 @@ export function buildClawdRig() {
     return [{ t0: 0, t1: clip.dur, iter: clip.loop ? 'infinite' : '1', fill: clip.loop ? '' : ' forwards', delay: '', sfx: '' }];
   }
 
-  function genClipCSS(clip) {
+  /* 左右镜像版（id 后面加 -m）：Clawd 站在输入框右边、朝右的动作会出界时用。
+     整只左右翻：各层像素以 Clawd 框中线翻转、左右位移取反、弹性层的旋转和平移取反；
+     只有头顶符号不翻像素（「？」翻过来就不是问号了），只把位置镜过去。 */
+  function mirrorState(st) {
+    for (const part of PARTS) {
+      const p = st[part];
+      p.dx = part === 'sym' ? 1 - p.dx : -p.dx;   // 符号都是以第 7 格为中心画的，翻到对面要多挪 1 格
+    }
+    st.root.dx = -st.root.dx;
+    return st;
+  }
+  /* 动作在左右两边最多伸出 Clawd 框多少格（扩展用来判断靠边时要不要换镜像版） */
+  function clipExtent(clip) {
+    let lo = 0, hi = 15;
+    for (let t = 0; t <= clip.dur; t += TICK) {
+      const st = sampleState(clip, t);
+      for (const part of PARTS) {
+        if (part === 'shadow' || !st[part].f) continue;
+        for (const [x] of pixelsOf(part, st[part].f)) {
+          const X = x + st[part].dx + st.root.dx;
+          if (X < lo) lo = X; if (X > hi) hi = X;
+        }
+      }
+    }
+    return { l: Math.ceil(-lo), r: Math.ceil(hi - 15) };
+  }
+
+  function genClipCSS(src, opt = {}) {
+    const M = !!opt.mirror;
+    const clip = M ? Object.assign(Object.create(src), { id: src.id + '-m' }) : src;
     // 采样：只在 100ms 节拍上出帧。关键点在写入时已经对齐节拍，所以整段动画只有一个钟——
     // 和官方 GIF 一样，要变就在拍子上变，不会出现 25ms、75ms 这种碎拍。
     // 有进场段（intro）的循环动作拆成两段关键帧：进场播一次，循环从进场结束那一刻接上。
@@ -392,7 +423,8 @@ export function buildClawdRig() {
     for (let t = 0; t <= clip.dur; t += TICK) tset.add(t);
     if (clip.intro) tset.add(clip.intro);
     const times = [...tset].sort((x, y) => x - y);
-    const states = times.map(t => sampleState(clip, t));
+    const states = times.map(t => (M ? mirrorState(sampleState(clip, t)) : sampleState(clip, t)));
+    const flexOf = t => { const v = flexAt(clip, t); return M ? { ...v, r: -v.r, tx: -v.tx } : v; };
     const segs = clipSegments(clip);
     let css = '';
     const rules = [];
@@ -435,7 +467,7 @@ export function buildClawdRig() {
       // 肉眼看就是「从左上角飞进来」（Lulu 2026-09-24 看到的伸懒腰眼泪）。left / top 和 box-shadow 同一次样式计算里生效。
       // 符号的缩放、旋转仍然用独立的 scale / rotate 属性，围着符号自己的中心转。
       if (tc.pos) emit('t', q => `left:${px(q.dx)}px;top:${px(q.dy)}px`, sm, true);
-      if (tc.f) emit('f', st => `box-shadow:${boxShadow(part, st.f)}`);
+      if (tc.f) emit('f', st => `box-shadow:${boxShadow(part, st.f, M && part !== 'sym')}`);
       if (tc.z) emit('z', st => `z-index:${st.z}`);
       // 缩放、旋转、不透明度：都是平滑变化（它们不改像素网格上的图，只是整张图的大小、角度、深浅）
       if (tc.sc) emit('s', st => `scale:${st.sc}`, true);
@@ -451,7 +483,7 @@ export function buildClawdRig() {
     rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-root{animation:${rootAnims.join(', ')}}`);
     if (clip.flexKeys.length) {
       // 弹性层也按节拍一格一格跳（step-end），不再平滑插值：平滑的缩放叠在一格一格跳的像素上，两个钟对不齐，看起来就是抖
-      const flexAnims = emitSeg(`clr-${clip.id}-flex`, false, i => `transform:${flexCSS(flexAt(clip, times[i]))}`);
+      const flexAnims = emitSeg(`clr-${clip.id}-flex`, false, i => `transform:${flexCSS(flexOf(times[i]))}`);
       rules.push(`${RB}[data-clawd-clip="${clip.id}"] .clr-flex{animation:${flexAnims.join(', ')}}`);
     }
     if (clip.clipGround) rules.push(groundClipRule(clip));
@@ -1289,18 +1321,141 @@ export function buildClawdRig() {
     c.at(700, 'eyes', { f: 'open' });
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+     第二批（2026-09-24）：旧原型里另外几个动作 + 走路 + 扒着输入框
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* ── 走路（原地迈步）：扩展里整只按钮跟着平移，走到哪就待在哪（分配方案 §0）──
+     面朝左；往右走用镜像版（walkLoop-m）。一步 300ms、走 1 格，和原型里的踱步同速 */
+  {
+    const O = 100;
+    const c = def(new Clip('walkLoop', '走路（原地迈步）', O + 600, { loop: true, intro: O, smooth: ['root'], group: 'idle' }));
+    c.beat(0, '转向左').beat(O, '迈步：近侧一对腿着地、远侧一对抬起，两对交替，身子轻轻颠（循环；扩展里整只跟着平移）');
+    c.at(O, 'body', { f: 'turnL' }).at(O, 'eyes', { x: -1 });
+    c.at(O, 'legs', { f: 'walkA' }).at(O + 200, 'legs', { f: 'stand' }).at(O + 300, 'legs', { f: 'walkB' }).at(O + 500, 'legs', { f: 'stand' });
+    c.at(O, 'root', { y: 0 }).at(O + 100, 'root', { y: -0.34 }, 'io').at(O + 300, 'root', { y: 0 }, 'io')
+     .at(O + 400, 'root', { y: -0.34 }, 'io').at(O + 600, 'root', { y: 0 }, 'io');
+    c.at(O + 600, 'legs', { f: 'walkA' });
+  }
+
+  /* ── 扒着输入框（滚动聊天时）：缩下去 4 格，两只钳子扒着边，眼睛往上看；一直扒着，等滚动停 ── */
+  {
+    const c = def(new Clip('peek', '扒着输入框（滚动时）', 400, { hold: true, smooth: ['root'], noShadow: true, clipGround: true, group: 'idle' }));
+    c.beat(0, '聊天在滚：往上看一眼').beat(100, '缩进输入框 4 格').beat(300, '两只钳子扒住边，停在这里等滚动停下');
+    c.at(100, 'eyes', { y: -1 });
+    c.at(100, 'root', { y: 0 }).at(100, 'shadow', { f: null }).at(300, 'root', { y: 4 }, 'in');
+    c.at(300, 'clawL', { y: -1 }).at(300, 'clawR', { y: -1 });
+  }
+  {
+    const c = def(new Clip('peekOut', '从输入框里出来', 600, { after: 'peek', smooth: ['root', 'shadow'], noShadow: true, clipGround: true, group: 'idle' }));
+    c.beat(0, '滚动停了').beat(100, '蹦出来').beat(300, '落地站稳');
+    c.at(0, 'eyes', { y: -1 }).at(0, 'root', { y: 4 }).at(0, 'clawL', { y: -1 }).at(0, 'clawR', { y: -1 }).at(0, 'shadow', { f: null });
+    c.at(100, 'clawL', { y: 0 }).at(100, 'clawR', { y: 0 }).at(100, 'root', { y: 4 });
+    c.at(200, 'root', { y: -1 }, 'out').at(200, 'shadow', { f: 'w10', y: 1 });
+    c.at(300, 'root', { y: 0 }, 'in').at(300, 'shadow', { f: 'w12', y: 0 }).at(300, 'eyes', { y: 0 });
+    c.flex(200, { sx: .92, sy: 1.1 }).flex(300, { sx: 1.08, sy: .93 }).flex(400, {});
+  }
+
+  /* ── 挠一下：左钳伸到头顶左上角，飞快挠几下，舒服得眯眼 ── */
+  {
+    const c = def(new Clip('scratch', '挠一下', 1300, { group: 'idle' }));
+    c.beat(0, '眼睛往左上瞟').beat(200, '左钳抬起来').beat(300, '伸到头顶左上角，飞快挠几下').beat(400, '舒服得闭眼').beat(900, '放下来');
+    c.at(100, 'eyes', { f: 'half', x: -1, y: -1 });
+    c.at(200, 'clawL', { y: -3 });
+    for (let i = 0; i < 6; i++) c.at(300 + i * 100, 'clawL', i % 2 ? { x: 2, y: -5 } : { x: 1, y: -6 });
+    c.at(400, 'eyes', { f: 'shut', x: 0, y: 0 });
+    c.at(900, 'clawL', { x: 0, y: -3 }).at(1000, 'clawL', { y: 0 });
+    c.at(1000, 'eyes', { f: 'half' }).at(1100, 'eyes', { f: 'open' });
+  }
+
+  /* ── 蹲下又站起：蹲到底憋一下，一下蹦起来举钳 ── */
+  {
+    const c = def(new Clip('crouch', '蹲下又站起', 1300, { smooth: ['root', 'shadow'], group: 'idle' }));
+    c.beat(0, '往下蹲').beat(200, '蹲到底，憋一下').beat(600, '一下蹦起来，双钳举高').beat(800, '落地').beat(900, '钳子放下');
+    c.at(100, 'upper', { y: 1 }).at(100, 'legs', { f: 'crouch' }).at(100, 'eyes', { f: 'half' });
+    c.at(200, 'upper', { y: 2 }).at(200, 'eyes', { f: 'shut' }).at(200, 'shadow', { f: 'w14' });
+    c.flex(0, {}).flex(100, { sx: 1.08, sy: .92 }).flex(200, { sx: 1.14, sy: .84 });
+    c.at(500, 'root', { y: 0 }).at(500, 'shadow', { y: 0 });
+    c.at(600, 'upper', { y: 0 }).at(600, 'legs', { f: 'stand' }).at(600, 'eyes', { f: 'open' });
+    c.at(600, 'root', { y: -3 }, 'out').at(600, 'shadow', { y: 3, f: 'w8' }, 'out').flex(600, { sx: .86, sy: 1.2 });
+    raise(c, 600, 'clawL'); raise(c, 600, 'clawR');
+    c.at(800, 'root', { y: 0 }, 'in').at(800, 'shadow', { y: 0, f: 'w12' }, 'in').flex(800, { sx: 1.08, sy: .92 });
+    c.flex(900, {});
+    lower(c, 900, 'clawL'); lower(c, 900, 'clawR');
+  }
+
+  /* ── 比爱心：双钳举过头顶往中间靠拢，冒一颗心 ── */
+  {
+    const c = def(new Clip('heart', '比爱心', 1900, { group: 'idle' }));
+    c.beat(0, '双钳举起来').beat(400, '往中间靠拢，在头顶比个心').beat(500, '冒心，笑眼').beat(1400, '分开、放下');
+    raise(c, 200, 'clawL'); raise(c, 200, 'clawR');
+    c.at(400, 'clawL', { x: 3 }).at(400, 'clawR', { x: -3 });
+    c.at(500, 'clawL', { x: 5 }).at(500, 'clawR', { x: -5 }).at(500, 'eyes', { f: 'happy' });
+    sym(c, 500, 'heart', { y: -2, dur: 1000 });
+    c.at(800, 'upper', { y: 1 }).at(1000, 'upper', { y: 0 });
+    c.at(1400, 'clawL', { x: 2 }).at(1400, 'clawR', { x: -2 });
+    c.at(1500, 'clawL', { x: 0 }).at(1500, 'clawR', { x: 0 });
+    lower(c, 1600, 'clawL'); lower(c, 1600, 'clawR');
+    c.at(1700, 'eyes', { f: 'open' });
+  }
+
+  /* ── 指向：右钳伸直指向右边，戳两下 ── */
+  {
+    const c = def(new Clip('point', '指向', 1500, { group: 'idle' }));
+    c.beat(0, '往右看').beat(200, '右钳伸出去').beat(300, '伸直指着，「！」').beat(500, '往前戳两下').beat(1200, '收回来');
+    c.at(100, 'eyes', { x: 1 });
+    c.at(200, 'clawR', { f: 'reach1' }).at(300, 'clawR', { f: 'reach2' });
+    sym(c, 300, 'bang', { x: 6, y: 2, dur: 700 });
+    c.at(500, 'clawR', { f: 'reach1' }).at(600, 'clawR', { f: 'reach2' }).at(800, 'clawR', { f: 'reach1' }).at(900, 'clawR', { f: 'reach2' });
+    c.at(1200, 'clawR', { f: 'reach1' }).at(1300, 'clawR', { f: 'stub' }).at(1300, 'eyes', { x: 0 });
+  }
+
+  /* ── 单手扶额：左钳捂住一只眼，蔫一下，「…」 ── */
+  {
+    const c = def(new Clip('facepalm', '单手扶额', 1900, { group: 'idle' }));
+    c.beat(0, '眼皮一耷拉').beat(200, '左钳抬到脸前').beat(300, '捂住左眼，闭眼').beat(400, '身子一沉').beat(500, '「…」').beat(1300, '放下来');
+    c.at(100, 'eyes', { f: 'half' });
+    c.at(200, 'clawL', { f: 'front', x: 2, y: -2 }).at(300, 'clawL', { x: 4, y: -3 }).at(300, 'eyes', { f: 'shut' });
+    c.at(400, 'upper', { y: 1 });
+    sym(c, 500, 'dots', { x: 4, dur: 1000 });
+    c.at(1300, 'upper', { y: 0 });
+    c.at(1400, 'clawL', { x: 2, y: -2 }).at(1500, 'clawL', { f: 'stub', x: 0, y: 0 });
+    c.at(1500, 'eyes', { f: 'half' }).at(1700, 'eyes', { f: 'open' });
+  }
+
+  /* ── 推发送按钮：往右一顶，右钳推出去（扩展里靠近发送按钮时才抽，推的时候按钮会晃一下）── */
+  {
+    const c = def(new Clip('nudge', '推发送按钮', 1100, { smooth: ['root'], group: 'idle' }));
+    c.beat(0, '往右看').beat(300, '往右一挪，右钳伸出去').beat(400, '用力一推（眯眼）').beat(600, '收力').beat(700, '退回来');
+    c.at(100, 'eyes', { x: 1 });
+    c.at(200, 'root', { x: 0 }).at(300, 'root', { x: 1 }, 'io').at(300, 'clawR', { f: 'reach1' });
+    c.at(400, 'root', { x: 2 }, 'io').at(400, 'clawR', { f: 'reach2' }).at(400, 'eyes', { f: 'squint' });
+    c.at(600, 'root', { x: 1 }, 'io').at(600, 'clawR', { f: 'reach1' }).at(600, 'eyes', { f: 'open' });
+    c.at(700, 'root', { x: 0 }, 'io').at(700, 'clawR', { f: 'stub' });
+    c.at(900, 'eyes', { x: 0 });
+  }
+
   const pool = {};
   for (const c of Object.values(CLIPS)) {
-    pool[c.id] = { id: c.id, name: c.name, dur: c.dur, loop: c.loop, intro: c.intro, track: c.track, group: c.group, next: c.next };
+    pool[c.id] = { id: c.id, name: c.name, dur: c.dur, loop: c.loop, intro: c.intro, track: c.track, group: c.group, next: c.next, hold: c.hold, after: c.after, from: c.from };
   }
   const made = new Map();
-  /* 某个动作的 CSS：第一次要播时才生成，之后用缓存 */
+  /* 某个动作的 CSS：第一次要播时才生成，之后用缓存。id 以 -m 结尾是左右镜像版 */
   function cssFor(id) {
-    if (!CLIPS[id]) return '';
-    if (!made.has(id)) made.set(id, genClipCSS(CLIPS[id]));
+    const mirror = id.endsWith('-m');
+    const base = mirror ? id.slice(0, -2) : id;
+    if (!CLIPS[base]) return '';
+    if (!made.has(id)) made.set(id, genClipCSS(CLIPS[base], { mirror }));
     return made.get(id);
   }
-  return { css: genRestCSS(), cssFor, clips: pool, parts: PARTS.slice(), selfCheck };
+  /* 动作在左右两边最多伸出 Clawd 框多少格（靠边时决定要不要换镜像版），按需算、缓存 */
+  const extents = new Map();
+  function extentFor(id) {
+    if (!CLIPS[id]) return { l: 0, r: 0 };
+    if (!extents.has(id)) extents.set(id, clipExtent(CLIPS[id]));
+    return extents.get(id);
+  }
+  return { css: genRestCSS(), cssFor, extentFor, clips: pool, parts: PARTS.slice(), selfCheck };
 
   /* 静止拼图 = 现网 open 帧，返回不一致的格数（0 才对） */
   function selfCheck() {
