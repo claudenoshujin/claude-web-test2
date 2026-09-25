@@ -206,7 +206,8 @@ assert.equal(window.document.querySelector('#chat .clawd-message-signoff-clawd')
 assert.equal(window.document.querySelectorAll('button.clawd-signoff-button').length, 1, 'still exactly one Clawd after a full generation round');
 composerClawd.click();
 assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'C', 'touching the migrated Clawd must update the shared C track');
-await new Promise(resolve => window.setTimeout(resolve, 1100));
+/* C1b 起戳随机播戳 1–4，最长的「挣扎」1.1 秒，加上 200ms tick 的最坏相位 */
+await new Promise(resolve => window.setTimeout(resolve, 1400));
 assert.equal(window.__claudeClawdInteraction.clawdState().owner, 'B', 'B must resume after the shared touch track clears');
 assert.match(interactionStyle, /\.extraMesButtons \{\s*display: none !important;/, 'overflow actions must start folded');
 assert.match(interactionStyle, /\.extraMesButtons\.visible \{\s*display: flex !important;/, 'native ellipsis expansion must remain available');

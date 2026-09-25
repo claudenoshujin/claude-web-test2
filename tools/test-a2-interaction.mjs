@@ -217,27 +217,32 @@ press(100, 100);
 assert.equal(cTrack(), 'press', '手指一落下就该看到被按住的反馈，但还不能拎起来');
 move(102, 101);                       // 位移 3px，还在阈值内
 lift(102, 101);
-assert.equal(cTrack(), 't1', '没拖过就该走戳，第一档是 t1');
+assert.ok(['t1', 't2', 't3', 't4'].includes(cTrack()), `没拖过就该走戳（随机播戳 1–4 之一），实际是 ${cTrack()}`);
 await wait(1500);
 
 press(100, 100);
 move(120, 100);                       // 位移 20px，超过阈值
 lift(120, 100);
-assert.notEqual(cTrack(), 't1', '拖过就该走抛掷，不是戳');
+assert.ok(!['t1', 't2', 't3', 't4'].includes(cTrack()), '拖过就该走抛掷，不是戳');
 await wait(1400);                     // 让这次抛掷落定
 
 /* ---------- 3. 烦躁衰减从最后一次互动算起 ---------- */
 /* 连戳间隔 760ms。如果衰减是按挂钟固定掉档，净增长只有 0.3 档/秒，
    永远爬不到第 4 档——这条就是用来卡住那个回归的。 */
 await wait(3600);                     // 先把烦躁放干净：抛掷也会加烦躁，衰减是 1 档/秒
+const irrNow = () => window.__claudeClawdInteraction.clawdState().irr;
 let tier = '';
+const seen = [];
 for (let i = 0; i < 4; i += 1) {
   press(100, 100);
   lift(100, 100);
   tier = cTrack();
+  seen.push(tier);
   if (i < 3) await wait(760);
 }
-assert.equal(tier, 't4', `连戳 4 下（间隔 760ms）必须爬到第 4 档，实际是 ${tier || '空'}`);
+assert.equal(irrNow(), 4, `连戳 4 下（间隔 760ms）烦躁必须爬到 4，实际是 ${irrNow()}`);
+assert.ok(['t2', 't3', 't4'].includes(tier), `烦躁 3 以上不再抽开心的第 1 档，实际是 ${tier}`);
+for (let i = 1; i < seen.length; i += 1) assert.notEqual(seen[i], seen[i - 1], `戳的动作连着两次不许一样：${seen.join(',')}`);
 
 /* ---------- 4. 第 5 档进生气序列，锁期间抓不起来 ---------- */
 await wait(760);
@@ -267,7 +272,8 @@ assert.equal(cTrack(), '', '序列播完要把 C 轨清干净，不能留半截�
 /* ---------- 6. 序列播完烦躁归零 ---------- */
 press(100, 100);
 lift(100, 100);
-assert.equal(cTrack(), 't1', '生气播完烦躁要清零，下一次戳应该重新从第 1 档开始');
+assert.equal(irrNow(), 1, '生气播完烦躁要清零，下一次戳重新从 1 算');
+assert.ok(['t1', 't2', 't3', 't4'].includes(cTrack()), '生气播完再戳，照常随机播戳的动作');
 
 /* ---------- 7. 气泡跟着 Clawd 走，不再留在输入框上 ---------- */
 await wait(1500);

@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig7";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig8";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -6021,22 +6021,33 @@ if (CLAUDE_ENABLED) {
     A2.lastDec = Date.now();
     a2NoteInteraction();
     if (clawdTracks.A) {
-      /* 生成中只给最轻那档，不抢 A 轨 */
-      setClawdC('t1', 500);
+      /* 生成中不加烦躁，只随机播一个戳的动作 */
+      a2RandomPoke(1);
       clawdPokeReaction(button);
       return;
     }
     A2.irr = Math.min(5, A2.irr + 1);
     const tier = A2.irr;
     if (tier <= A2_RICH_TIER) {
-      setClawdC(A2_TIER[tier - 1], A2_TMS[tier - 1]);
+      a2RandomPoke(tier);
       clawdPokeReaction(button);
       return;
     }
     a2Say(button, A2_LINES[tier - 1][Math.random() * 2 | 0]);
     a2Parts(button, tier >= 4 ? 3 : 1);
     if (tier >= 5) a2SulkSeq();
-    else setClawdC(A2_TIER[tier - 1], A2_TMS[tier - 1]);
+    else a2RandomPoke(tier);
+  }
+
+  /* 戳的动作随机挑（Lulu 2026-09-24：原来按连戳次数依次播 1、2、3、4，看着像固定套路）。
+     「不耐烦」仍然看烦躁值：台词和粒子按烦躁值变，烦躁到 5 转身生气；
+     烦躁 3 以上不再抽开心的那档（蹦一下 / 害羞），免得嘴上说「够了啊」脸上在笑。连着两次不抽同一个。 */
+  let a2LastPoke = '';
+  function a2RandomPoke(irr) {
+    const pool = (irr >= 3 ? ['t2', 't3', 't4'] : ['t1', 't2', 't3', 't4']).filter(t => t !== a2LastPoke);
+    const t = pool[Math.random() * pool.length | 0];
+    a2LastPoke = t;
+    setClawdC(t, A2_TMS[A2_TIER.indexOf(t)]);
   }
 
   function a2Bind(button) {
@@ -11256,6 +11267,7 @@ if (CLAUDE_ENABLED) {
       visible: clawdVisibleState(),
       round: clawdTracks.activeRound,
       settledRound: clawdTracks.settledRound,
+      irr: A2.irr,
     }),
     drawerStats: () => ({ ...drawerStats }),
     buildId: KEYBOARD_BUILD.id,
