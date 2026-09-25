@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig10";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig11";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -2072,7 +2072,7 @@ if (CLAUDE_ENABLED) {
   const CLAWD_RIG_B = Object.freeze({
     compose: 'compose', tilt: 'tilt', wow: 'wow', wake: 'wake', drowsy: 'drowsy', sleep: 'sleep', neglected: 'neglected',
     around: 'around', spin: 'spin', lean: 'lean', hide: 'hide', tramp: 'tramp',
-    scratch: 'scratch', crouch: 'crouch', heart: 'heart', point: 'point', facepalm: 'facepalm', nudge: 'nudge',
+    scratch: 'scratch', crouch: 'crouch', heart: 'heart', point: 'point', facepalm: 'facepalm',
     peek: 'peek',
   });
   /* 戳第 5 档是 turn → t5 → face 三步序列，三步都对着同一段「转身生气」，中间不重播 */
@@ -4389,21 +4389,31 @@ if (CLAUDE_ENABLED) {
     return over(ext.r, ext.l) < over(ext.l, ext.r);
   }
 
-  /* 被打断时手上的道具掉下来淡出（分配方案 §4 第 1 条）：把正在显示的道具按当前样子复制一份，往下掉 4 格、0.4 秒淡出 */
+  /* 被打断时手上的道具掉下来淡出（分配方案 §4 第 1 条）：把正在显示的道具按当前样子复制一份，
+     先往上一弹，再往 Clawd 外侧翻着掉下去，0.7 秒淡出（道具在左半边就往左飞、右半边就往右）。
+     第二版：原来只是原地往下掉 4 格、0.4 秒，戳的时候正好被光标挡住，看不出来（Lulu 2026-09-24） */
   function clawdRigDropProps(button) {
     const flex = button.querySelector(':scope > .clawd-rig .clr-flex');
     if (!flex || clawdPrefersReducedMotion()) return;
+    const mid = 8 * 3;                           // Clawd 框中线（骨架坐标，未缩放）
     for (const node of flex.querySelectorAll('.clr-p-propA, .clr-p-propB')) {
       const cs = hostWindow.getComputedStyle(node);
       if (!cs.boxShadow || cs.boxShadow === 'none' || Number(cs.opacity) === 0) continue;
+      const pts = [...cs.boxShadow.matchAll(/(-?[\d.]+)px (-?[\d.]+)px 0px/g)].map(m => [Number(m[1]), Number(m[2])]);
+      const ax = pts.length ? pts.reduce((sum, pt) => sum + pt[0], 0) / pts.length : mid;
+      const ay = pts.length ? pts.reduce((sum, pt) => sum + pt[1], 0) / pts.length : 0;
+      const dir = ax + (parseFloat(cs.left) || 0) < mid ? -1 : 1;
       const ghost = hostDocument.createElement('i');
       ghost.className = 'clr-p clr-ghost';
-      ghost.style.cssText = `box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};z-index:${cs.zIndex};opacity:${cs.opacity}`;
+      ghost.style.cssText = `box-shadow:${cs.boxShadow};left:${cs.left};top:${cs.top};z-index:${cs.zIndex};opacity:${cs.opacity};transform-origin:${ax}px ${ay}px`;
       flex.append(ghost);
-      hostWindow.setTimeout(() => ghost.remove(), 600);
+      hostWindow.setTimeout(() => ghost.remove(), 900);
       try {
-        ghost.animate([{ translate: '0 0', opacity: Number(cs.opacity) }, { translate: '0 12px', opacity: 0 }],
-          { duration: 400, easing: 'cubic-bezier(.5,0,1,1)', fill: 'forwards' });
+        ghost.animate([
+          { translate: '0 0', rotate: '0deg', opacity: Number(cs.opacity) },
+          { translate: `${dir * 9}px -6px`, rotate: `${dir * 15}deg`, opacity: Number(cs.opacity), offset: .3 },
+          { translate: `${dir * 21}px 15px`, rotate: `${dir * 40}deg`, opacity: 0 },
+        ], { duration: 700, easing: 'ease-in', fill: 'forwards' });
       } catch (error) { ghost.remove(); }
     }
   }
@@ -4725,13 +4735,13 @@ if (CLAUDE_ENABLED) {
     { state: 'lean', duration: CLAWD_RIG.clips.lean.dur },
     { state: 'hide', duration: CLAWD_RIG.clips.hide.dur },
     { state: 'tramp', duration: CLAWD_RIG.clips.tramp.dur },
-    /* 第二批（2026-09-24）：旧原型里的挠一下、蹲起、比爱心、指向、扶额；推发送按钮只在挨着发送按钮时才抽 */
+    /* 第二批（2026-09-24）：旧原型里的挠一下、蹲起、比爱心、指向、扶额。
+       推发送按钮不放进来：Clawd 只在输入框上沿活动，碰不到发送按钮（Lulu 2026-09-24） */
     { state: 'scratch', duration: CLAWD_RIG.clips.scratch.dur },
     { state: 'crouch', duration: CLAWD_RIG.clips.crouch.dur },
     { state: 'heart', duration: CLAWD_RIG.clips.heart.dur },
     { state: 'point', duration: CLAWD_RIG.clips.point.dur },
     { state: 'facepalm', duration: CLAWD_RIG.clips.facepalm.dur },
-    { state: 'nudge', duration: CLAWD_RIG.clips.nudge.dur },
   ]);
   let clawdBAmbientNextAt = Date.now() + 18000;
   /* C1a：系统开了「减少动态」就不播闲置小动作。每次现查，用户中途改设置也能跟上。 */
@@ -4785,29 +4795,11 @@ if (CLAUDE_ENABLED) {
         return;
       }
     }
-    const choices = CLAWD_B_AMBIENT_POSES.filter(pose => pose.state !== clawdBLastAmbient
-      && (pose.state !== 'nudge' || clawdNearSend()));
+    const choices = CLAWD_B_AMBIENT_POSES.filter(pose => pose.state !== clawdBLastAmbient);
     const pose = choices[Math.floor(Math.random() * choices.length)] || CLAWD_B_AMBIENT_POSES[0];
     clawdBLastAmbient = pose.state;
     setClawdB(pose.state, pose.duration);
-    if (pose.state === 'nudge') hostWindow.setTimeout(clawdShakeSend, 400);
     scheduleClawdBAmbient(now);
-  }
-
-  /* 推发送按钮：发送按钮就在 Clawd 右边不远（左缘离 Clawd 右缘 60px 以内）才抽 */
-  function clawdNearSend() {
-    const send = hostDocument.querySelector('#send_but');
-    const button = composerClawd();
-    if (!send || !button) return false;
-    const a = button.getBoundingClientRect(), b = send.getBoundingClientRect();
-    const gap = b.left - a.right;
-    return b.width > 0 && gap >= -8 && gap < 60;
-  }
-  function clawdShakeSend() {
-    const send = hostDocument.querySelector('#send_but');
-    if (!send || destroyed || clawdTracks.B !== 'nudge') return;
-    try { send.animate([{ translate: '0 0' }, { translate: '3px 0' }, { translate: '-1px 0' }, { translate: '0 0' }], { duration: 320 }); }
-    catch (error) { /* 老 WebView 没有 animate 就不晃 */ }
   }
 
   /* 走路：整只按钮沿输入框上沿平移过去，腿在骨架里原地迈步（walkLoop；往右走用镜像版）。

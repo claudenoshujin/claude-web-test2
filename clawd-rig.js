@@ -450,6 +450,9 @@ export function buildClawdRig() {
     for (const part of PARTS) {
       const tc = touches(clip, part);
       tc.pos = tc.pos || propAttachedPos(clip, part);
+      // 镜像版：左右钳的静止位置也要翻到对面。动作只动了一只钳子时，另一只没有动画、停在待机位置——
+      // 不翻的话两只钳子会叠在同一边（Lulu 2026-09-24：追蝴蝶的镜像版手臂画错）
+      if (M && (part === 'clawL' || part === 'clawR')) tc.f = true;
       if (!tc.pos && !tc.f && !tc.z && !tc.sc && !tc.r && !tc.a) continue;
       // 位移、换帧、层级各拆成一条动画：各自只在自己的值变化时写关键帧，
       // 不然每次挪一格都要把整串 box-shadow 再抄一遍，CSS 会胖好几倍
