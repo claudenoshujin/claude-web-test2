@@ -203,6 +203,18 @@ assert.equal(clawd.classList.contains('clawd-scroll-release'), false,
 for (let i = 1; i <= 8; i += 1) { scrollTo(4500 + i); await wait(70); }   // 接着上面滚轮停下的位置（1800 + 2×900 + 5×180）
 assert.equal(clawd.classList.contains('clawd-scroll-hold'), false,
   '慢速滚动必须落在死区里不触发，否则长聊天里每一次滚动都要付代价');
+/* 进对话时酒馆会把光标放进输入框：输入框空着、有焦点时滚动，照样要扒住，不能被刷新成空闲（Lulu 2026-09-25） */
+{
+  const input = window.document.querySelector('#send_textarea');
+  input.value = '';
+  input.focus();
+  await wait(300);
+  for (let i = 1; i <= 10; i += 1) { scrollTo(4600 + i * 180); await wait(28); }
+  await wait(300);
+  assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peek', `输入框有焦点但空着，滚动也要扒住（当前 ${clawd.dataset.clawdClip}）`);
+  input.blur();
+  await wait(1800);
+}
 
 /* ---------- 1. touch-action 静态就是 none；transition 在拖拽期间被切开 ---------- */
 /* 2.0.143 起 touch-action 不再是 pointerdown 时才切的内联样式，而是常驻的 CSS——
