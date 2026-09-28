@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.163');
-assert.equal(manifest.js, 'loader-2.0.163.js');
+assert.equal(manifest.version, '2.0.164');
+assert.equal(manifest.js, 'loader-2.0.164.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -131,5 +131,14 @@ assert.match(officialCss, /body:not\(\.clawd-welcome\) #chat>\.mes\[is_user\] \.
 assert.match(officialCss, /#top-settings-holder>\.clawd-mobile-new-chat\{position:absolute!important;left:auto!important;right:18px!important/, 'mobile New chat is a right-aligned pill in the account row, not a full-width bar');
 assert.match(officialCss, /#completion_prompt_manager_popup\.openDrawer\{transform:none!important/, 'mobile prompt editor must clear the desktop translate(-50%,-50%)');
 assert.match(officialCss, /\.cw-v4-pm-footer>\.cw-v4-as-btn\{[^}]*flex:0 0 auto!important/, 'prompt footer buttons must beat the 32px flex-basis so their labels do not overflow');
+
+/* 2.0.164：侧栏兼容菜单精简器、设置页 ≡、正则 iframe 白边、两侧箭头开关。 */
+assert.match(officialCss, /#top-settings-holder>\.clawd-rail-recents\{order:1000!important\}/, 'Recents must stay below any inline order written by Menu Cleaner');
+assert.match(officialCss, /#top-settings-holder>\.drawer#persona-management-button\{order:1001!important\}/, 'account row must stay last even when Menu Cleaner reorders the rail');
+assert.match(index, /root\.classList\.toggle\('claude-rail-reordered'/, 'index.js must detect inline order on rail items');
+assert.match(index, /frame\.style\.setProperty\('color-scheme', scheme, 'important'\)/, 'iframe element and injected document must share one color-scheme, or Chrome paints the frame opaque white');
+assert.match(index, /data-claude-side-swipe="off"\] body button\.\$\{LEFT_SWIPE_PROXY_CLASS\}/, 'side swipe arrows must be switchable off');
+assert.match(officialLayout, /closeSettings\(\); win\.requestAnimationFrame\(\(\) => \{ if \(!doc\.body\.classList\.contains\('clawd-mobile-menu-open'\)\) rail\.click\(\)/, 'phone settings ≡ must open the Claude sidebar, not the desktop category list');
+assert.match(officialCss, /html\[data-claude-mode="compat"\]\[data-cw-v4-settings\] \.cw-v4-shell\{z-index:10061!important\}/, 'compat settings header must sit above the raised holder');
 
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

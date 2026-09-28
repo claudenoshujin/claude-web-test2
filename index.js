@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260928f";
+import { installOfficialLayout } from "./official-layout.js?v=20260928g";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -238,6 +238,9 @@ document.documentElement.dataset.claudeFont = CLAUDE_FONT;
 document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');
 document.documentElement.dataset.claudeClawd = claudeReadSetting('clawd', ['on','off'], 'on');
 document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['on','off'], 'on');
+/* 最新回复两侧的左右切换 / 重新生成箭头（扩展自己加的，不是酒馆原生按钮）。手机上容易误触，可以关掉；
+   回复下方操作栏里的 ‹ › 不受影响。 */
+document.documentElement.dataset.claudeSideSwipe = claudeReadSetting('side-swipe', ['on','off'], 'on');
 /* 皮肤属性在设置面板挂载前就得有，否则首帧是旧样式 */
 /* skin 单独存一个键，**不要**从 claude-web:preset 的字符串去猜 ——
    踩过：用户用「我的配色」时 preset 是 null，刷新后 skin 掉回 classic，
@@ -422,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.163-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.164-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -453,7 +456,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20260928f', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20260928g', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -578,15 +581,19 @@ if (CLAUDE_ENABLED) {
     root.classList.toggle('claude-pm-open', !!pm?.classList.contains('openDrawer'));
     root.classList.toggle('claude-top-drawer-open',
       !!holder?.querySelector(':scope > .drawer > .drawer-content.openDrawer'));
+    /* 菜单精简器这类脚本会给侧栏各项写行内 order 来重排。重排后「偏好设置」上方那段分组留白
+       会跟着它跑到别处，显得突兀，所以只要检测到有人重排就去掉这段留白（样式见 official-layout.css）。 */
+    root.classList.toggle('claude-rail-reordered',
+      !!holder?.querySelector(':scope > [style*="order"]'));
   };
   const install = () => {
     const observer = new MutationObserver(sync);
     const pm = document.getElementById('completion_prompt_manager_popup');
     const holder = document.getElementById('top-settings-holder');
     if (pm) observer.observe(pm, { attributes: true, attributeFilter: ['class'] });
-    /* 抽屉是 holder 的孙辈，后来插进来的抽屉也要算，所以用 subtree；只收 class 属性，
-       抽屉里面板内容的增删不会触发。 */
-    if (holder) observer.observe(holder, { attributes: true, attributeFilter: ['class'], subtree: true });
+    /* 抽屉是 holder 的孙辈，后来插进来的抽屉也要算，所以用 subtree；只收 class / style 属性
+       （style 用来发现重排侧栏的行内 order），抽屉里面板内容的增删不会触发。 */
+    if (holder) observer.observe(holder, { attributes: true, attributeFilter: ['class', 'style'], subtree: true });
     sync();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
@@ -3366,6 +3373,10 @@ if (CLAUDE_ENABLED) {
       button.${LEFT_SWIPE_PROXY_CLASS} { left: 0 !important; }
       button.${SWIPE_PROXY_CLASS} { right: 0 !important; }
 
+      /* 设置里关掉「回复两侧的左右切换箭头」：只是不显示，按钮还在，操作栏的 ‹ › 仍靠它们切换。 */
+      html[data-claude-side-swipe="off"] body button.${LEFT_SWIPE_PROXY_CLASS},
+      html[data-claude-side-swipe="off"] body button.${SWIPE_PROXY_CLASS} { display: none !important; }
+
       button.${LEFT_SWIPE_PROXY_CLASS}::before,
       button.${SWIPE_PROXY_CLASS}::before {
         font-family: "Font Awesome 6 Free" !important;
@@ -4582,8 +4593,17 @@ if (CLAUDE_ENABLED) {
     frame.setAttribute(EMBED_ATTRIBUTE, 'true');
     frame.style.setProperty('background', 'transparent', 'important');
     frame.style.setProperty('background-color', 'transparent', 'important');
-    const variant = hostDocument.documentElement.dataset.claudeIntegratedTheme;
-    const scheme = variant === 'day' ? 'light' : 'dark';
+    /* iframe 里文档的 color-scheme 和 <iframe> 元素自己的 color-scheme 不一致时，浏览器会把
+       iframe 画布画成不透明（浅色方案就是一整块白），里面 body 再透明也没用——数据库美化正则
+       的白边就是这个。配色预设可以让页面是深色方案、而日夜变体仍是 day，所以方案取页面实际的
+       color-scheme，并把同一个值同时写到 iframe 元素和注入的样式上，两边永远一致。 */
+    const rootScheme = hostWindow.getComputedStyle(hostDocument.documentElement).colorScheme || '';
+    const scheme = /dark/.test(rootScheme)
+      ? 'dark'
+      : /light/.test(rootScheme)
+        ? 'light'
+        : (hostDocument.documentElement.dataset.claudeIntegratedTheme === 'day' ? 'light' : 'dark');
+    frame.style.setProperty('color-scheme', scheme, 'important');
     const injectedCss = `
       :root { color-scheme: ${scheme}; }
       html, body {
@@ -12535,6 +12555,10 @@ if (CLAUDE_ENABLED) {
                   <input type="checkbox" id="claude-web-avatars">
                   <span>显示头像</span>
                 </label>
+                <label class="checkbox_label claude-web-check claude-web-field" title="关掉后，回复下方操作栏里的 ‹ › 仍然可以切换回复">
+                  <input type="checkbox" id="claude-web-side-swipe">
+                  <span>回复两侧的左右切换箭头</span>
+                </label>
                 <div id="claude-web-playbill-options" class="claude-web-field" hidden>
                   <label for="claude-web-pbimage">THE PLAYBILL 配图</label>
                   <input id="claude-web-pbimage" class="text_pole" placeholder="图片地址，或用下面的按钮选本地文件">
@@ -13167,6 +13191,13 @@ if (CLAUDE_ENABLED) {
       if (!write('avatars', avatarsBox.checked ? 'on' : 'off')) return;
       document.documentElement.dataset.claudeAvatars = avatarsBox.checked ? 'on' : 'off';
       syncPanelPresentationRef();
+    });
+
+    const sideSwipeBox = panel.querySelector('#claude-web-side-swipe');
+    sideSwipeBox.checked = read('side-swipe', ['on', 'off'], 'on') !== 'off';
+    sideSwipeBox.addEventListener('change', () => {
+      if (!write('side-swipe', sideSwipeBox.checked ? 'on' : 'off')) return;
+      document.documentElement.dataset.claudeSideSwipe = sideSwipeBox.checked ? 'on' : 'off';
     });
 
     /* 剧场配图。存两种形态：网址原样存，本地文件转成 data URL 存。

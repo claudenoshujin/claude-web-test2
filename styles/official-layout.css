@@ -285,9 +285,18 @@ html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-
 html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>.fa-chain{order:2!important}
 /* 提示词编辑弹层：桌面版按居中对话框排（left/top 50% + translate(-50%,-50%)），手机上别处把 left/top 归零却没清
    transform，弹层就被推到左上、只剩半屏。手机一律铺满全宽，高度仍由手机键盘冻结高度的规则决定。 */
-html[data-cw-v4] body #completion_prompt_manager_popup.openDrawer{transform:none!important;left:0!important;top:0!important;inset:0 0 auto 0!important;width:100vw!important;max-width:100vw!important;border-radius:0!important}
+html[data-cw-v4] body #completion_prompt_manager_popup.openDrawer{transform:none!important;left:0!important;top:0!important;inset:0 0 auto 0!important;width:100vw!important;max-width:100vw!important;border-radius:0!important;padding:16px!important}
+/* 编辑弹层里 名称 / 角色 / 触发条件 / 位置 在手机上各占一整行（原来三栏挤在 317px 里）；触发条件是原生多选框，
+   改成完整展开的列表：6 项全部可见、行高够手指点，选中项用浅底色而不是系统的深灰。 */
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form .flex-container>.completion_prompt_manager_popup_entry_form_control{flex:1 1 100%!important;min-width:0!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_popup_entry_form_injection_trigger{width:100%!important;height:auto!important;min-height:232px!important;max-height:none!important;padding:4px!important;overflow:auto!important;background:var(--cw-v4-surface,#fff)!important;border:1px solid var(--cw-v4-line)!important;border-radius:10px!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_popup_entry_form_injection_trigger option{padding:8px 12px!important;border-radius:8px!important;color:var(--cw-v4-text)!important;background:transparent!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_popup_entry_form_injection_trigger option:checked{background:linear-gradient(var(--cw-v4-hover),var(--cw-v4-hover))!important;color:var(--cw-v4-text)!important;font-weight:500}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer) :is(.cw-v4-setting-row,.cw-v4-row,.cw-v4-text-row,.cw-v4-api-inline-row,.range-block){border-top:0!important;border-bottom:0!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-section+.cw-v4-section{border-top:1px solid var(--cw-v4-line)!important;padding-top:22px!important}
+/* 预设页的分区分散在几个原生块里（#respective-presets-block、#range_block_openai、#openai_settings…），每块自带一层
+   .cw-v4-drawer-page，块内第一个分区不是任何分区的兄弟，上面那条规则画不到线；第一块之后的块里的首个分区也补上分区线。 */
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel.openDrawer>.cw-v4-drawer-page>*~* .cw-v4-drawer-page>.cw-v4-section:first-child{border-top:1px solid var(--cw-v4-line)!important;padding-top:22px!important}
 }
 .cw-v4-leftovers>.cw-v4-native-rest{display:none!important}
 .cw-v4-leftovers{display:flex;justify-content:flex-end;border:0!important;padding:0!important}
@@ -541,6 +550,11 @@ html[data-cw-v4] body #form_sheld #send_form #send_textarea::placeholder{text-al
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #extensionsMenuButton{display:grid!important;place-items:center!important;order:0!important;flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;margin:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important}
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #options_button{display:grid!important;place-items:center!important;order:1!important;flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;margin:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important}
   html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form #nonQRFormItems #leftSendForm :is(#extensionsMenuButton,#options_button){background:rgba(255,255,255,.05)!important}
+  /* 其他扩展塞进输入栏的按钮（如 QR 助手的星月）：和上面两个圆钮同样 38px、图标 17px，不再一大一小。
+     不写 display——扩展自己隐藏的按钮仍保持隐藏。原来主题把它们统一压成 30px / 15px !important，扩展自己的大小设置也调不动。 */
+  html[data-cw-v4] body #send_form #leftSendForm>:not(#extensionsMenuButton):not(#options_button):not(.clawd-character-switcher):not(.clawd-fake-mic),html[data-cw-v4] body #send_form #rightSendForm>:not(#send_but):not(#mes_stop):not(.mes_stop){flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;min-height:38px!important;margin:0!important;padding:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important;align-items:center!important;justify-content:center!important;place-items:center!important;font-size:17px!important;line-height:1!important;opacity:1!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form #leftSendForm>:not(#extensionsMenuButton):not(#options_button):not(.clawd-character-switcher):not(.clawd-fake-mic),html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form #rightSendForm>:not(#send_but):not(#mes_stop):not(.mes_stop){background:rgba(255,255,255,.05)!important}
+  html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm{width:auto!important;max-width:none!important}
   html[data-cw-v4] .cw-v4-api-row{grid-template-columns:1fr;gap:10px}
   html[data-cw-v4] .clawd-welcome-hero{font-weight:420!important;font-size:32px!important}
   html[data-cw-v4] .clawd-mobile-menu-button>span:last-child{width:50%!important;align-self:flex-start}
@@ -855,8 +869,11 @@ html[data-cw-v4] body #top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-drawe
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-drawer-page>.cw-v4-section:first-child:not(:has(>h2))>.cw-v4-row:first-child{border-top:0!important}
 html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-v4-extension-row{min-height:0!important;padding:11px 2px!important;gap:14px!important;border-bottom:1px solid var(--v4-row-line)!important}
 html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-v4-extension-icon{width:36px!important;height:36px!important;border-radius:10px!important;border-color:var(--v4-line)!important}
-html[data-cw-v4] body #top-settings-holder #right-nav-panel .cw-v4-tags .tag{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;margin:0!important;border-radius:50%!important;border:1px solid var(--v4-line)!important;background:var(--v4-ctl)!important;color:var(--v4-text)!important;opacity:1!important;display:inline-grid!important;place-items:center;box-shadow:none!important;filter:none!important}
+html[data-cw-v4] body #top-settings-holder #right-nav-panel .cw-v4-tags .tag.actionable{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;margin:0!important;border-radius:50%!important;border:1px solid var(--v4-line)!important;background:var(--v4-ctl)!important;color:var(--v4-text)!important;opacity:1!important;display:inline-grid!important;place-items:center;box-shadow:none!important;filter:none!important}
 html[data-cw-v4] body #top-settings-holder #right-nav-panel .cw-v4-tags .tag *{color:var(--v4-text)!important}
+/* 只有筛选/管理这几个动作按钮是 34px 圆钮；真正的标签（如 ST Default）按文字宽度排成胶囊。不写 display，
+   酒馆用行内 display:none 收起标签列表时照样收起（原来 display:inline-grid!important 把它强行显示成被压扁的圆）。 */
+html[data-cw-v4] body #top-settings-holder #right-nav-panel .cw-v4-tags .tag:not(.actionable){width:auto!important;min-width:0!important;max-width:100%!important;height:34px!important;padding:0 12px!important;margin:0!important;border-radius:999px!important;border:1px solid var(--v4-line)!important;background:var(--v4-ctl)!important;color:var(--v4-text)!important;box-shadow:none!important;filter:none!important;align-items:center;gap:6px;white-space:nowrap}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-pref-page>.cw-v4-pref-title+.cw-v4-section{margin-top:26px!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel textarea.cw-v4-area{width:100%!important;min-height:120px;border:1px solid var(--v4-ctl-line)!important;border-radius:10px!important;background:var(--v4-ctl)!important;color:var(--v4-text)!important;padding:10px 12px!important;font:400 13px/1.55 var(--v4-mono)!important;resize:vertical}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel textarea.cw-v4-area.cw-v4-words{font:400 14px/1.5 var(--cw-v4-font)!important;min-height:86px}
@@ -1031,7 +1048,7 @@ html[data-cw-v4] body.no-modelIcons #chat .mes .ch_name .cw-v4-model{display:non
 /* phone in landscape (short screen): the sidebar scrolls as one column and New chat sits at its end */
 @media(max-width:700px) and (max-height:500px){
   html[data-cw-v4][data-cw-v4-landscape] body #top-settings-holder{overflow-y:auto!important;overscroll-behavior:contain}
-  html[data-cw-v4][data-cw-v4-landscape] body #top-settings-holder>.clawd-mobile-new-chat{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;width:auto!important;margin:12px 16px 16px!important;order:90!important;flex:none!important;justify-content:center!important}
+  html[data-cw-v4][data-cw-v4-landscape] body #top-settings-holder>.clawd-mobile-new-chat{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;width:auto!important;margin:12px 16px 16px!important;order:1002!important;flex:none!important;justify-content:center!important}
   html[data-cw-v4][data-cw-v4-landscape] body #top-settings-holder .clawd-rail-recents{padding-bottom:0!important;flex:none!important;max-height:none!important;overflow:visible!important}
 }
 @media(max-width:700px) and (max-height:500px){html[data-cw-v4][data-cw-v4-landscape] body #top-settings-holder{justify-content:flex-start!important;align-content:flex-start!important}html[data-cw-v4][data-cw-v4-landscape] body #top-settings-holder>*{flex-shrink:0!important}}
@@ -1046,3 +1063,19 @@ html[data-cw-v4] body.no-modelIcons #chat .mes .ch_name .cw-v4-model{display:non
   html[data-cw-v4][data-cw-v4-landscape][data-cw-v4-kb] body #form_sheld #send_form #nonQRFormItems #rightSendForm#rightSendForm{grid-area:1/2/2/3!important;align-self:center!important}
   html[data-cw-v4][data-cw-v4-landscape][data-cw-v4-kb] body #form_sheld .clawd-composer-clawd{visibility:hidden!important}
 }
+
+/* 侧栏结构钉位（所有模式）。菜单精简器等脚本会给 #top-settings-holder 的每个子项写行内 order（0、1、2…）来重排入口；
+   入口行跟着它走，但字标必须在最前、Recents 和账号行必须在最后，所以这三处用远超它槽位的值并加 !important。
+   以前 Recents / 账号行只是 6 / 8，精简器给「角色卡」排到 9 以后它就掉到账号行下面去了。 */
+html[data-claude-mode] body #top-settings-holder>.clawd-rail-brand{order:-1000!important}
+html[data-claude-mode] body #top-settings-holder>.clawd-rail-recents{order:1000!important}
+html[data-claude-mode] body #top-settings-holder>.drawer#persona-management-button{order:1001!important}
+/* 被重排时去掉「偏好设置」上方的分组留白（claude-rail-reordered 由 index.js 检测行内 order 后挂上）。 */
+html.claude-rail-reordered body #top-settings-holder>.drawer#user-settings-button{margin-top:0!important}
+/* 兼容模式的手机抽屉页高度用的是键盘出现前冻结的像素高度（--cl-mobile-viewport-height）。浏览器地址栏会随滚动收起 / 出现的
+   （Chrome、Edge 等），冻结时地址栏正好收起，冻结值就比现在看得见的高度大，页面最底下几项被压在地址栏后面拉不出来（扩展多时最明显）。
+   底部补上「冻结高度 − 当前可见高度」这段空白，差多少补多少；两者一样时不多出任何空白。 */
+@media(max-width:700px){html[data-claude-mode="compat"] body #top-settings-holder>.drawer>.drawer-content.openDrawer{padding-bottom:calc(12px + max(0px, var(--cl-mobile-viewport-height, 100dvh) - 100dvh))!important}}
+/* 兼容模式把 #top-settings-holder 提到 z-index 10060（压过美化），设置页的遮罩就跟着盖住了 3002 的设置外壳：
+   顶栏（标题、≡、×）看不见，只剩一条灰带。完整模式里外壳本来就在 holder 之上（3002 > 3001），这里按同样的关系抬到 holder 之上。 */
+html[data-claude-mode="compat"][data-cw-v4-settings] .cw-v4-shell{z-index:10061!important}
