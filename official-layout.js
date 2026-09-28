@@ -1,6 +1,6 @@
-import { officialIcons } from './official-icons.js?v=20260928b';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928b';
-import { tr } from './official-i18n.js?v=20260928b';
+import { officialIcons } from './official-icons.js?v=20260928c';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928c';
+import { tr } from './official-i18n.js?v=20260928c';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -573,13 +573,28 @@ export function installOfficialLayout(win = window) {
     on(win,'resize', () => { resetGeometry(); schedule(); });
     // Read-only keyboard flag for the short-screen (phone landscape) composer.
     // The input keeps focus after Back hides the keyboard, so focus alone is not enough.
+    // Some WebViews (Via) shrink the whole page instead of reporting a keyboard
+    // height, so also compare with the tallest height seen at this width.
     const vk = win.navigator.virtualKeyboard;
+    const fullHeight = new Map();
     const syncKeyboard = () => {
-      const vv = win.visualViewport;
-      const height = Math.max(vk?.boundingRect?.height || 0, vv ? win.innerHeight - vv.height : 0);
+      const vv = win.visualViewport, width = Math.round(win.innerWidth);
+      const visible = Math.min(win.innerHeight, vv?.height || win.innerHeight);
+      const full = Math.max(fullHeight.get(width) || 0, win.innerHeight);
+      fullHeight.set(width, full);
+      const height = Math.max(vk?.boundingRect?.height || 0, win.innerHeight - visible, full - visible);
       const open = height > 80 && doc.activeElement?.id === 'send_textarea';
       if (root.hasAttribute('data-cw-v4-kb') !== open) root.toggleAttribute('data-cw-v4-kb', open);
+      // Orientation of the device, not of the page: a portrait page squeezed by
+      // the keyboard (412×400) would otherwise count as landscape.
+      const scr = win.screen, type = scr?.orientation?.type || '';
+      const landscape = type ? type.startsWith('landscape') : (scr?.width || 0) > (scr?.height || 0);
+      if (root.hasAttribute('data-cw-v4-landscape') !== landscape) root.toggleAttribute('data-cw-v4-landscape', landscape);
     };
+    if (win.screen?.orientation?.addEventListener) on(win.screen.orientation, 'change', syncKeyboard);
+    disposers.push(() => root.removeAttribute('data-cw-v4-landscape'));
+    syncKeyboard();
+    on(win, 'resize', syncKeyboard);
     if (win.visualViewport) on(win.visualViewport, 'resize', syncKeyboard);
     if (vk?.addEventListener) on(vk, 'geometrychange', syncKeyboard);
     on(doc, 'focusin', () => win.setTimeout(syncKeyboard, 350));
