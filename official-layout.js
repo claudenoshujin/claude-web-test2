@@ -1,6 +1,6 @@
-import { officialIcons } from './official-icons.js?v=20260928c';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928c';
-import { tr } from './official-i18n.js?v=20260928c';
+import { officialIcons } from './official-icons.js?v=20260928d';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928d';
+import { tr } from './official-i18n.js?v=20260928d';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -591,14 +591,19 @@ export function installOfficialLayout(win = window) {
       const landscape = type ? type.startsWith('landscape') : (scr?.width || 0) > (scr?.height || 0);
       if (root.hasAttribute('data-cw-v4-landscape') !== landscape) root.toggleAttribute('data-cw-v4-landscape', landscape);
     };
-    if (win.screen?.orientation?.addEventListener) on(win.screen.orientation, 'change', syncKeyboard);
+    // One read per frame: the keyboard fires several resize events in a row, and
+    // each synchronous read here forced a style/layout flush of its own.
+    let kbFrame = 0;
+    const queueKeyboard = () => { if (!kbFrame) kbFrame = win.requestAnimationFrame(() => { kbFrame = 0; syncKeyboard(); }); };
+    disposers.push(() => { if (kbFrame) win.cancelAnimationFrame(kbFrame); });
+    if (win.screen?.orientation?.addEventListener) on(win.screen.orientation, 'change', queueKeyboard);
     disposers.push(() => root.removeAttribute('data-cw-v4-landscape'));
     syncKeyboard();
-    on(win, 'resize', syncKeyboard);
-    if (win.visualViewport) on(win.visualViewport, 'resize', syncKeyboard);
-    if (vk?.addEventListener) on(vk, 'geometrychange', syncKeyboard);
-    on(doc, 'focusin', () => win.setTimeout(syncKeyboard, 350));
-    on(doc, 'focusout', () => win.setTimeout(syncKeyboard, 50));
+    on(win, 'resize', queueKeyboard);
+    if (win.visualViewport) on(win.visualViewport, 'resize', queueKeyboard);
+    if (vk?.addEventListener) on(vk, 'geometrychange', queueKeyboard);
+    on(doc, 'focusin', () => win.setTimeout(queueKeyboard, 350));
+    on(doc, 'focusout', () => win.setTimeout(queueKeyboard, 50));
     disposers.push(() => root.removeAttribute('data-cw-v4-kb'));
     const ctx = win.SillyTavern?.getContext?.();
     for (const key of ['CHAT_CHANGED','CHARACTER_MESSAGE_RENDERED','USER_MESSAGE_RENDERED','MESSAGE_SWIPED','SETTINGS_LOADED','APP_READY']) {
