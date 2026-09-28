@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260927g";
+import { installOfficialLayout } from "./official-layout.js?v=20260928b";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -453,7 +453,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20260927g', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20260928b', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);

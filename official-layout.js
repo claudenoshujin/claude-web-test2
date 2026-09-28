@@ -1,6 +1,6 @@
-import { officialIcons } from './official-icons.js?v=20260927g';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260927g';
-import { tr } from './official-i18n.js?v=20260927g';
+import { officialIcons } from './official-icons.js?v=20260928b';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928b';
+import { tr } from './official-i18n.js?v=20260928b';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -571,6 +571,20 @@ export function installOfficialLayout(win = window) {
     on(doc,'click', e => { const toggle=e.target.closest?.('.drawer-toggle'); const panel=toggle?.parentElement.querySelector(':scope > .drawer-content'); if(panel && panels.has(panel.id)) requestedPanel=panel.id; },true);
     on(doc,'keydown', e => { if (e.key === 'Escape' && current && !doc.querySelector('dialog[open]') && !e.defaultPrevented) { closeSettings(); e.preventDefault(); } });
     on(win,'resize', () => { resetGeometry(); schedule(); });
+    // Read-only keyboard flag for the short-screen (phone landscape) composer.
+    // The input keeps focus after Back hides the keyboard, so focus alone is not enough.
+    const vk = win.navigator.virtualKeyboard;
+    const syncKeyboard = () => {
+      const vv = win.visualViewport;
+      const height = Math.max(vk?.boundingRect?.height || 0, vv ? win.innerHeight - vv.height : 0);
+      const open = height > 80 && doc.activeElement?.id === 'send_textarea';
+      if (root.hasAttribute('data-cw-v4-kb') !== open) root.toggleAttribute('data-cw-v4-kb', open);
+    };
+    if (win.visualViewport) on(win.visualViewport, 'resize', syncKeyboard);
+    if (vk?.addEventListener) on(vk, 'geometrychange', syncKeyboard);
+    on(doc, 'focusin', () => win.setTimeout(syncKeyboard, 350));
+    on(doc, 'focusout', () => win.setTimeout(syncKeyboard, 50));
+    disposers.push(() => root.removeAttribute('data-cw-v4-kb'));
     const ctx = win.SillyTavern?.getContext?.();
     for (const key of ['CHAT_CHANGED','CHARACTER_MESSAGE_RENDERED','USER_MESSAGE_RENDERED','MESSAGE_SWIPED','SETTINGS_LOADED','APP_READY']) {
       const event = ctx?.eventTypes?.[key]; if (event && ctx.eventSource?.on) { ctx.eventSource.on(event,schedule); disposers.push(() => ctx.eventSource.removeListener?.(event,schedule)); }
