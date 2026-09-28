@@ -639,22 +639,6 @@ hr {
   left:calc(var(--avatar-base-width) + 74px) !important;
   bottom:15px !important;
 }
-.typing_indicator::after {
-  content:"";
-  position:absolute;
-  left:38px;
-  z-index:1;
-  width:3px;
-  height:3px;
-  background:transparent;
-  pointer-events:none;
-  box-shadow:var(--cl-greeting-particle-shadow);
-  opacity:.92;
-  transform-origin:27px 12px;
-  will-change:transform, opacity;
-  top:-6px !important;
-  animation:var(--cl-greeting-particle-animation) !important;
-}
 :root {
   /* 1.1 public tuning controls */
   --cl-pc-font-size:.94em;
@@ -1783,22 +1767,6 @@ html body #top-settings-holder :is(.fab, .fa-brands) {
   background:var(--cw-surface-hover) !important;
   opacity:1 !important;
 }
-.typing_indicator::before {
-  content:"";
-  display:block;
-  flex:0 0 auto;
-  position:relative;
-  z-index:2;
-  width:3px;
-  height:3px;
-  margin:0 49px 45px 3px;
-  background:transparent;
-  box-shadow:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  animation:clawd-bounce-inbetween 1.18s cubic-bezier(.42,0,.24,1) infinite !important;
-  backface-visibility:hidden;
-  transform-origin:24px 48px;
-  will-change:transform;
-}
 html:not([data-claude-archive="on"]) #chat > .mes[is_user="true"]:has(.edit_textarea) .ch_name {
   display:flex !important;
   justify-content:flex-end !important;
@@ -1946,9 +1914,6 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
 }
 }
 @media (prefers-reduced-motion:reduce) {
-.typing_indicator::before, .typing_indicator::after {
-  animation:none !important;
-}
 * {
   transition:none !important;
 }
@@ -1957,9 +1922,6 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
 }
 .mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay), .mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay)::before {
   transition:none !important;
-}
-.typing_indicator::after {
-  animation:none !important;
 }
 .mes_reasoning_details .mes_reasoning_arrow, .mes_reasoning_details::details-content, .mes_reasoning_details[open] .mes_reasoning {
   animation:none !important;
@@ -1978,22 +1940,9 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
 #chat > .mes.last_mes[is_user="false"] .mes_text::after, #chat > .mes[is_user="false"]:last-child .mes_text::after {
   transition:none !important;
 }
-.typing_indicator::before {
-  animation:none !important;
-}
-}
-html body .typing_indicator::before {
-  position:absolute !important;
-  left:23px !important;
-  bottom:63px !important;
-  margin:0 !important;
 }
 html body .typing_indicator {
   padding-left:76px !important;
-}
-html body .typing_indicator.clawd-typing-enter::before {
-  animation-delay:140ms !important;
-  animation-fill-mode:backwards !important;
 }
 @media (min-width:701px) {
   .clawd-typing-hit {
@@ -2171,14 +2120,6 @@ html body .typing_indicator {
      沉到底边之下就被裁掉，视觉上始终被下方内容（输入框）挡住。 */
   overflow:hidden !important;
 }
-/* Clawd 不再作为 flex item 参与 typing 文本排版。原生三个点和文字晚一帧
-   插入时，绝对定位锚点不会再从中间被挤向左侧。 */
-html body .typing_indicator::before {
-  position:absolute !important;
-  left:17px !important;
-  bottom:52px !important;
-  margin:0 !important;
-}
 html:not([data-claude-archive="on"]) #chat .mes_edit_buttons {
   gap:6px !important;
 }
@@ -2243,12 +2184,6 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
     animation:cl-reasoning-fallback-in 300ms cubic-bezier(.2,.72,.18,1) both;
   }
 }
-@keyframes clawd-bounce {
-  0%, 100% { transform:translateY(0) scaleY(1); }
-  25% { transform:translateY(1px) scaleY(.94); }
-  55% { transform:translateY(-7px) scaleY(1.03); }
-  80% { transform:translateY(0) scaleY(.98); }
-}
 @keyframes clawd-question-float {
   0%, 7% { opacity:0; transform:translate(-1px,8px); }
   24% { opacity:.82; transform:translate(0,3px); }
@@ -2278,22 +2213,6 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
 @keyframes cl-reasoning-fallback-in {
   from { opacity:0; transform:translateY(-5px); }
   to { opacity:1; transform:translateY(0); }
-}
-@keyframes clawd-bounce-inbetween {
-  0% { transform:translate3d(0,0,0) scaleX(1) scaleY(1); }
-  8% { transform:translate3d(0,0,0) scaleX(1.01) scaleY(.99); }
-  16% { transform:translate3d(0,1px,0) scaleX(1.025) scaleY(.965); }
-  24% { transform:translate3d(0,2px,0) scaleX(1.045) scaleY(.925); }
-  32% { transform:translate3d(0,0,0) scaleX(1.015) scaleY(.985); }
-  40% { transform:translate3d(0,-3px,0) scaleX(.995) scaleY(1.02); }
-  48% { transform:translate3d(0,-6px,0) scaleX(.985) scaleY(1.035); }
-  56% { transform:translate3d(0,-7px,0) scaleX(.985) scaleY(1.04); }
-  64% { transform:translate3d(0,-6px,0) scaleX(.99) scaleY(1.03); }
-  72% { transform:translate3d(0,-3px,0) scaleX(1) scaleY(1.01); }
-  80% { transform:translate3d(0,0,0) scaleX(1.025) scaleY(.965); }
-  88% { transform:translate3d(0,1px,0) scaleX(1.035) scaleY(.945); }
-  94% { transform:translate3d(0,0,0) scaleX(.995) scaleY(1.01); }
-  100% { transform:translate3d(0,0,0) scaleX(1) scaleY(1); }
 }
 
 /* Interaction polish and accessibility */
@@ -2373,7 +2292,7 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
   background-image:none !important;
   isolation:isolate;
 }
-html body:has(#completion_prompt_manager_popup.openDrawer) #form_sheld {
+html.claude-pm-open:not(#claude-spec) body #form_sheld {
   visibility:hidden !important;
   pointer-events:none !important;
 }
@@ -2966,114 +2885,9 @@ html:not([data-claude-archive="on"]) body #chat > .mes[is_user="true"]:has(.edit
   padding:0 !important;
   line-height:0 !important;
 }
-/* ===== v1.2 motion: weighted hop + 2-frame sprite + blink ===== */
-:root {
-  --clawd-f-open:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-look-l:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px var(--cl-clawd-eye), 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px var(--cl-clawd-eye), 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-look-r:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px var(--cl-clawd-eye), 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px var(--cl-clawd-eye), 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 36px 27px 0 .3px var(--cl-clawd-eye), 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-look-u:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px var(--cl-clawd-eye), 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px var(--cl-clawd-eye), 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-look-d:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-blink-u:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-blink-d:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-blink-l:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-blink-r:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 36px 27px 0 .3px var(--cl-clawd-eye), 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-shut:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px var(--cl-clawd-eye), 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 12px 42px 0 .3px #d97757, 18px 42px 0 .3px #d97757, 27px 42px 0 .3px #d97757, 33px 42px 0 .3px #d97757;
-  --clawd-f-cheer-mid:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 0px 24px 0 .3px #d97757, 3px 24px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 42px 24px 0 .3px #d97757, 45px 24px 0 .3px #d97757, 0px 27px 0 .3px #d97757, 3px 27px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 42px 27px 0 .3px #d97757, 45px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-tucked:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 12px 42px 0 .3px #d97757, 18px 42px 0 .3px #d97757, 27px 42px 0 .3px #d97757, 33px 42px 0 .3px #d97757;
-  --clawd-f-tucked-blink:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 12px 42px 0 .3px #d97757, 18px 42px 0 .3px #d97757, 27px 42px 0 .3px #d97757, 33px 42px 0 .3px #d97757;
-  --clawd-f-blink:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-arm-b-1:0px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 30px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px var(--cl-clawd-eye), 12px 30px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px var(--cl-clawd-eye), 33px 30px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 30px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 30px 0 .3px #d97757, 45px 33px 0 .3px #d97757;
-  --clawd-f-arm-b-3:0px 24px 0 .3px #d97757, 0px 27px 0 .3px #d97757, 3px 24px 0 .3px #d97757, 3px 27px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px var(--cl-clawd-eye), 12px 30px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px var(--cl-clawd-eye), 33px 30px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 24px 0 .3px #d97757, 42px 27px 0 .3px #d97757, 45px 24px 0 .3px #d97757, 45px 27px 0 .3px #d97757;
-  --clawd-f-arm-b-mid:0px 27px 0 .3px #d97757, 0px 30px 0 .3px #d97757, 3px 27px 0 .3px #d97757, 3px 30px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px var(--cl-clawd-eye), 12px 30px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px var(--cl-clawd-eye), 33px 30px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 27px 0 .3px #d97757, 42px 30px 0 .3px #d97757, 45px 27px 0 .3px #d97757, 45px 30px 0 .3px #d97757;
-  --clawd-f-back:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-eye-v:0px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px var(--cl-clawd-eye), 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 12px 30px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px var(--cl-clawd-eye), 30px 27px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 33px 30px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 45px 36px 0 .3px #d97757;
-  --clawd-f-flail-a:0px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 6px 42px 0 .3px #d97757, 6px 45px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 18px 42px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 27px 42px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 39px 42px 0 .3px #d97757, 39px 45px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 45px 36px 0 .3px #d97757;
-  --clawd-f-flail-b:0px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 12px 42px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 18px 42px 0 .3px #d97757, 18px 45px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 27px 42px 0 .3px #d97757, 27px 45px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 33px 42px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 45px 36px 0 .3px #d97757;
-  --clawd-f-flail-c:0px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 6px 42px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 39px 42px 0 .3px #d97757, 39px 45px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 45px 36px 0 .3px #d97757;
-  --clawd-f-flail-l:0px 21px 0 .3px #d97757, 0px 24px 0 .3px #d97757, 3px 21px 0 .3px #d97757, 3px 24px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 42px 39px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 45px 39px 0 .3px #d97757;
-  --clawd-f-flail-r:0px 36px 0 .3px #d97757, 0px 39px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 3px 39px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 12px 27px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 21px 0 .3px #d97757, 42px 24px 0 .3px #d97757, 45px 21px 0 .3px #d97757, 45px 24px 0 .3px #d97757;
-  --clawd-f-squash:0px 42px 0 .3px #d97757, 0px 45px 0 .3px #d97757, 3px 42px 0 .3px #d97757, 3px 45px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 6px 42px 0 .3px #d97757, 6px 45px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 12px 42px 0 .3px var(--cl-clawd-eye), 12px 45px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px var(--cl-clawd-eye), 15px 45px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 18px 42px 0 .3px #d97757, 18px 45px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 21px 42px 0 .3px #d97757, 21px 45px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 24px 42px 0 .3px #d97757, 24px 45px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 27px 42px 0 .3px #d97757, 27px 45px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px var(--cl-clawd-eye), 30px 45px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 33px 42px 0 .3px var(--cl-clawd-eye), 33px 45px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 39px 42px 0 .3px #d97757, 39px 45px 0 .3px #d97757, 42px 42px 0 .3px #d97757, 42px 45px 0 .3px #d97757, 45px 42px 0 .3px #d97757, 45px 45px 0 .3px #d97757;
-  --clawd-f-squash2:0px 42px 0 .3px #d97757, 0px 45px 0 .3px #d97757, 3px 42px 0 .3px #d97757, 3px 45px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 6px 42px 0 .3px #d97757, 6px 45px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px var(--cl-clawd-eye), 12px 42px 0 .3px #d97757, 12px 45px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px var(--cl-clawd-eye), 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 18px 42px 0 .3px #d97757, 18px 45px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 21px 42px 0 .3px #d97757, 21px 45px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 24px 42px 0 .3px #d97757, 24px 45px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 27px 42px 0 .3px #d97757, 27px 45px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px var(--cl-clawd-eye), 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px var(--cl-clawd-eye), 33px 42px 0 .3px #d97757, 33px 45px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 39px 42px 0 .3px #d97757, 39px 45px 0 .3px #d97757, 42px 42px 0 .3px #d97757, 42px 45px 0 .3px #d97757, 45px 42px 0 .3px #d97757, 45px 45px 0 .3px #d97757;
-  --clawd-f-squint:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px var(--cl-clawd-eye), 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px var(--cl-clawd-eye), 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-stomp-arm:0px 27px 0 .3px #d97757, 0px 30px 0 .3px #d97757, 3px 27px 0 .3px #d97757, 3px 30px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 12px 30px 0 .3px var(--cl-clawd-eye), 12px 33px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 33px 30px 0 .3px var(--cl-clawd-eye), 33px 33px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 42px 39px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 45px 39px 0 .3px #d97757;
-  --clawd-f-low-look:6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 0px 33px 0 .3px #d97757, 3px 33px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px var(--cl-clawd-eye), 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px var(--cl-clawd-eye), 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 42px 33px 0 .3px #d97757, 45px 33px 0 .3px #d97757, 0px 36px 0 .3px #d97757, 3px 36px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px var(--cl-clawd-eye), 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px var(--cl-clawd-eye), 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 42px 36px 0 .3px #d97757, 45px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757;
-  --clawd-f-peek-mid:0px 27px 0 .3px #d97757, 0px 30px 0 .3px #d97757, 3px 27px 0 .3px #d97757, 3px 30px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 12px 33px 0 .3px var(--cl-clawd-eye), 12px 36px 0 .3px var(--cl-clawd-eye), 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 33px 33px 0 .3px var(--cl-clawd-eye), 33px 36px 0 .3px var(--cl-clawd-eye), 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 27px 0 .3px #d97757, 42px 30px 0 .3px #d97757, 45px 27px 0 .3px #d97757, 45px 30px 0 .3px #d97757;
-  --clawd-f-peek-grip:0px 24px 0 .3px #d97757, 0px 27px 0 .3px #d97757, 3px 24px 0 .3px #d97757, 3px 27px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 12px 24px 0 .3px #d97757, 12px 27px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 12px 33px 0 .3px var(--cl-clawd-eye), 12px 36px 0 .3px var(--cl-clawd-eye), 12px 39px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 15px 24px 0 .3px #d97757, 15px 27px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 33px 24px 0 .3px #d97757, 33px 27px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 33px 33px 0 .3px var(--cl-clawd-eye), 33px 36px 0 .3px var(--cl-clawd-eye), 33px 39px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 36px 24px 0 .3px #d97757, 36px 27px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 36px 45px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 42px 24px 0 .3px #d97757, 42px 27px 0 .3px #d97757, 45px 24px 0 .3px #d97757, 45px 27px 0 .3px #d97757;
-}
-@keyframes clawd-hop-v21 {
-  0%, 100% { transform:translateY(0) scale(1,1); }
-  14%  { transform:translateY(1px) scale(1.035,.965); animation-timing-function:cubic-bezier(.2,.7,.24,1); }
-  38%  { transform:translateY(-7px) scale(.985,1.018); animation-timing-function:cubic-bezier(.38,0,.62,1); }
-  55%  { transform:translateY(-8px) scale(1,1); animation-timing-function:cubic-bezier(.42,0,.76,.3); }
-  76%  { transform:translateY(0) scale(1.025,.975); animation-timing-function:cubic-bezier(.18,.76,.24,1); }
-  89%  { transform:translateY(-1px) scale(.998,1.008); }
-}
-@keyframes clawd-frames-v20 {
-  0.0% { box-shadow:var(--clawd-f-open); }
-  3.0% { box-shadow:var(--clawd-f-tucked); }
-  10.33% { box-shadow:var(--clawd-f-open); }
-  16.67% { box-shadow:var(--clawd-f-open); }
-  19.67% { box-shadow:var(--clawd-f-tucked); }
-  27.0% { box-shadow:var(--clawd-f-open); }
-  33.33% { box-shadow:var(--clawd-f-open); }
-  36.33% { box-shadow:var(--clawd-f-tucked); }
-  43.66% { box-shadow:var(--clawd-f-open); }
-  50.0% { box-shadow:var(--clawd-f-open); }
-  53.0% { box-shadow:var(--clawd-f-tucked); }
-  60.33% { box-shadow:var(--clawd-f-open); }
-  66.67% { box-shadow:var(--clawd-f-open); }
-  69.67% { box-shadow:var(--clawd-f-tucked); }
-  77.0% { box-shadow:var(--clawd-f-open); }
-  78.67% { box-shadow:var(--clawd-f-blink); }
-  80.67% { box-shadow:var(--clawd-f-open); }
-  83.33% { box-shadow:var(--clawd-f-open); }
-  86.33% { box-shadow:var(--clawd-f-tucked); }
-  93.66% { box-shadow:var(--clawd-f-open); }
-  100.0% { box-shadow:var(--clawd-f-open); }
-}
-.typing_indicator::before {
-  rotate:0deg;
-  translate:0 0;
-  scale:1;
-  animation:clawd-hop-v21 1.32s linear infinite, clawd-frames-v20 7.92s step-end infinite !important;
-}
-.typing_indicator::after {
-  animation:var(--cl-typing-float-animation) !important;
-}
-/* 持续跳跃只占 transform；偶发动作改用独立的 rotate/translate 通道。
-   这样举钳、摇晃和歪头都不会再覆盖跳跃，也不会在 class 摘掉时从
-   后台随机进度突然跳回。 */
-.typing_indicator.clawd-wobble-sway::before {
-  animation:clawd-hop-v21 1.32s linear infinite, clawd-frames-v20 7.92s step-end infinite, clawd-head-sway-v21 820ms cubic-bezier(.25,.72,.28,1) 1 !important;
-}
-@keyframes clawd-head-sway-v21 {
-  0%, 100% { rotate:0deg; }
-  24% { rotate:-7deg; }
-  52% { rotate:6deg; }
-  76% { rotate:-2deg; }
-}
-.typing_indicator.clawd-wobble-tilt::before {
-  animation:clawd-hop-v21 1.32s linear infinite, clawd-frames-v20 7.92s step-end infinite, clawd-head-tilt-pause-v21 1.08s cubic-bezier(.25,.72,.28,1) 1 !important;
-}
-@keyframes clawd-head-tilt-pause-v21 {
-  0%, 100% { rotate:0deg; translate:0 0; }
-  34%, 70% { rotate:9deg; translate:0 -1px; }
-  86% { rotate:-1deg; translate:0 0; }
-}
-@media (prefers-reduced-motion:reduce) {
-  .typing_indicator.clawd-wobble-sway::before, .typing_indicator.clawd-wobble-tilt::before {
-    animation:none !important;
-  }
-}
-/* click: pixel squash with spring return.
-   原来用 :active 触发；触屏上 :active 容易粘住不清，还会跟松手后 JS 加的
-   反应 class 抢同一个 transform，把后面的反应动画盖掉。现在换成 JS 用
-   pointerdown/up 手动控制的 .clawd-button-press，选择器换了，效果不变。 */
+/* Clawd 按钮自己的位移过渡。A2 落定后把位置写回原处时靠它走缓动（index.js 里 a2Ballistic 那段注释）；
+   拖动期间 A2 用内联 important 把它关掉。 */
 button.clawd-signoff-button { transition:transform 240ms cubic-bezier(.34,1.6,.64,1) !important; }
-button.clawd-signoff-button.clawd-button-press {
-  transform:scale(1.25,.65) translateY(5px) !important;
-  transition-duration:70ms !important;
-}
 
 /* ===== v1.2 desktop column + type scale ===== */
 @media (min-width:701px) {
@@ -3090,7 +2904,6 @@ button.clawd-signoff-button.clawd-button-press {
 .mes_reasoning { font-size:13px !important; }
 /* motion accessibility: must stay last */
 @media (prefers-reduced-motion:reduce) {
-  .typing_indicator::before, .typing_indicator::after { animation:none !important; }
   button.clawd-signoff-button { transition:none !important; }
 }
 
@@ -3098,165 +2911,8 @@ button.clawd-signoff-button.clawd-button-press {
 @media (min-width:701px) {
   html body #send_textarea { font-size:15px !important; }
 }
-:root { --clawd-f-cheer:3px 18px 0 .3px #d97757, 42px 18px 0 .3px #d97757, 0px 12px 0 .3px #d97757, 3px 12px 0 .3px #d97757, 42px 12px 0 .3px #d97757, 45px 12px 0 .3px #d97757, 0px 15px 0 .3px #d97757, 3px 15px 0 .3px #d97757, 42px 15px 0 .3px #d97757, 45px 15px 0 .3px #d97757, 6px 18px 0 .3px #d97757, 9px 18px 0 .3px #d97757, 12px 18px 0 .3px #d97757, 15px 18px 0 .3px #d97757, 18px 18px 0 .3px #d97757, 21px 18px 0 .3px #d97757, 24px 18px 0 .3px #d97757, 27px 18px 0 .3px #d97757, 30px 18px 0 .3px #d97757, 33px 18px 0 .3px #d97757, 36px 18px 0 .3px #d97757, 39px 18px 0 .3px #d97757, 6px 21px 0 .3px #d97757, 9px 21px 0 .3px #d97757, 12px 21px 0 .3px #d97757, 15px 21px 0 .3px #d97757, 18px 21px 0 .3px #d97757, 21px 21px 0 .3px #d97757, 24px 21px 0 .3px #d97757, 27px 21px 0 .3px #d97757, 30px 21px 0 .3px #d97757, 33px 21px 0 .3px #d97757, 36px 21px 0 .3px #d97757, 39px 21px 0 .3px #d97757, 6px 24px 0 .3px #d97757, 9px 24px 0 .3px #d97757, 12px 24px 0 .3px var(--cl-clawd-eye), 15px 24px 0 .3px #d97757, 18px 24px 0 .3px #d97757, 21px 24px 0 .3px #d97757, 24px 24px 0 .3px #d97757, 27px 24px 0 .3px #d97757, 30px 24px 0 .3px #d97757, 33px 24px 0 .3px var(--cl-clawd-eye), 36px 24px 0 .3px #d97757, 39px 24px 0 .3px #d97757, 6px 27px 0 .3px #d97757, 9px 27px 0 .3px #d97757, 12px 27px 0 .3px var(--cl-clawd-eye), 15px 27px 0 .3px #d97757, 18px 27px 0 .3px #d97757, 21px 27px 0 .3px #d97757, 24px 27px 0 .3px #d97757, 27px 27px 0 .3px #d97757, 30px 27px 0 .3px #d97757, 33px 27px 0 .3px var(--cl-clawd-eye), 36px 27px 0 .3px #d97757, 39px 27px 0 .3px #d97757, 6px 30px 0 .3px #d97757, 9px 30px 0 .3px #d97757, 12px 30px 0 .3px #d97757, 15px 30px 0 .3px #d97757, 18px 30px 0 .3px #d97757, 21px 30px 0 .3px #d97757, 24px 30px 0 .3px #d97757, 27px 30px 0 .3px #d97757, 30px 30px 0 .3px #d97757, 33px 30px 0 .3px #d97757, 36px 30px 0 .3px #d97757, 39px 30px 0 .3px #d97757, 6px 33px 0 .3px #d97757, 9px 33px 0 .3px #d97757, 12px 33px 0 .3px #d97757, 15px 33px 0 .3px #d97757, 18px 33px 0 .3px #d97757, 21px 33px 0 .3px #d97757, 24px 33px 0 .3px #d97757, 27px 33px 0 .3px #d97757, 30px 33px 0 .3px #d97757, 33px 33px 0 .3px #d97757, 36px 33px 0 .3px #d97757, 39px 33px 0 .3px #d97757, 6px 36px 0 .3px #d97757, 9px 36px 0 .3px #d97757, 12px 36px 0 .3px #d97757, 15px 36px 0 .3px #d97757, 18px 36px 0 .3px #d97757, 21px 36px 0 .3px #d97757, 24px 36px 0 .3px #d97757, 27px 36px 0 .3px #d97757, 30px 36px 0 .3px #d97757, 33px 36px 0 .3px #d97757, 36px 36px 0 .3px #d97757, 39px 36px 0 .3px #d97757, 6px 39px 0 .3px #d97757, 9px 39px 0 .3px #d97757, 12px 39px 0 .3px #d97757, 15px 39px 0 .3px #d97757, 18px 39px 0 .3px #d97757, 21px 39px 0 .3px #d97757, 24px 39px 0 .3px #d97757, 27px 39px 0 .3px #d97757, 30px 39px 0 .3px #d97757, 33px 39px 0 .3px #d97757, 36px 39px 0 .3px #d97757, 39px 39px 0 .3px #d97757, 9px 42px 0 .3px #d97757, 15px 42px 0 .3px #d97757, 30px 42px 0 .3px #d97757, 36px 42px 0 .3px #d97757, 9px 45px 0 .3px #d97757, 15px 45px 0 .3px #d97757, 30px 45px 0 .3px #d97757, 36px 45px 0 .3px #d97757; }
-button.clawd-signoff-button::before {
-  content:''; position:absolute; left:-4px; top:-14px;
-  width:3px; height:3px; background:transparent;
-  box-shadow:var(--clawd-f-open);
-  transform:scale(.85); transform-origin:24px 48px;
-  animation:clawd-idle-breath 4.2s ease-in-out infinite, clawd-idle-frames 3s step-end infinite;
-  pointer-events:none;
-}
-@keyframes clawd-idle-breath {
-  0%, 100% { transform:scale(.85,.85); }
-  50% { transform:scale(.862,.838); }
-}
-@keyframes clawd-idle-frames {
-  0%, 90% { box-shadow:var(--clawd-f-open); }
-  91%, 95% { box-shadow:var(--clawd-f-blink); }
-  96%, 100% { box-shadow:var(--clawd-f-open); }
-}
-button.clawd-signoff-button.clawd-cheer::before { box-shadow:var(--clawd-f-cheer) !important; }
-/* 睡觉：闭眼 + 慢深呼吸 + 整只往下沉一点，另外飘一个 z */
-button.clawd-signoff-button.clawd-sleeping::before {
-  box-shadow:var(--clawd-f-shut) !important;
-  animation:clawd-sleep-breath 5.2s ease-in-out infinite !important;
-}
-button.clawd-signoff-button.clawd-sleeping::after {
-  content:'z';
-  position:absolute;
-  left:34px;
-  top:-2px;
-  font-family:var(--cl-sans);
-  font-size:11px;
-  font-weight:500;
-  color:var(--cw-mark);
-  opacity:0;
-  pointer-events:none;
-  animation:clawd-sleep-z 2.6s ease-in-out infinite;
-}
 
-/* ===== 2.0.40 状态符号 =====
-   为什么用符号而不是继续做表情：Clawd 是 16×16 点阵（3px 一格、48px 见方），
-   眼睛只占 4 个像素。现有 15 套精灵里 14 套都在改脸，睁眼和半闭眼的差别是
-   两个像素换颜色 —— 在侧栏边缘用余光看，分辨不出来是必然的，不是画得不够
-   用力。脸上的表达空间已经用尽了。
 
-   符号挂在 ::after 上，好处是：不受点阵分辨率限制；不用 JS 定位；class 一
-   移除就消失，不需要任何清理代码（睡觉那个 z 本来就是这么做的，这里只是把
-   同一套办法铺到其余状态）。
-
-   四个状态在代码里是互斥的（sleeping 压过一切，害羞优先于冷落），所以同一
-   时刻最多只有一个符号，不会堆在一起。
-
-   除睡觉外一律静态：常驻状态用常驻符号。持久的动画在余光里会变成噪音 ——
-   这个教训在 ccMaybeCheer 的注释里吃过一次，2.0.40 删掉踱步是第二次。
-   位置全部对齐睡觉那个 z（left:34px），四个符号共用同一个"槽"，读起来是
-   同一件事的不同取值，而不是四个各自为政的装饰。 */
-
-/* 快睡着了：比 z 弱一档，不飘。 */
-button.clawd-signoff-button.clawd-idle-drowsy:not(.clawd-sleeping)::after,
-button.clawd-mobile-clawd-button.clawd-idle-drowsy:not(.clawd-sleeping)::after {
-  content:'z';
-  position:absolute;
-  left:34px;
-  top:1px;
-  font-family:var(--cl-sans);
-  font-size:9px;
-  font-weight:500;
-  color:var(--cw-mark);
-  opacity:.4;
-  pointer-events:none;
-}
-
-/* 害羞：沿用点击彩蛋里已经在用的"心"这个语汇，不另造符号。 */
-button.clawd-signoff-button.clawd-shy-ambient:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after,
-button.clawd-mobile-clawd-button.clawd-shy-ambient:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after {
-  content:'\2665';
-  position:absolute;
-  left:34px;
-  top:-1px;
-  font-size:9px;
-  line-height:1;
-  color:var(--cw-mark);
-  opacity:.62;
-  pointer-events:none;
-}
-
-/* 被冷落：一直没人戳它。muted 色，比强调色更"没被看见"。 */
-button.clawd-signoff-button.clawd-neglected:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after,
-button.clawd-mobile-clawd-button.clawd-neglected:not(.clawd-sleeping):not(.clawd-idle-drowsy)::after {
-  content:'?';
-  position:absolute;
-  left:34px;
-  top:-2px;
-  font-family:var(--cl-sans);
-  font-size:11px;
-  font-weight:500;
-  color:var(--cw-text-muted);
-  opacity:.55;
-  pointer-events:none;
-}
-
-/* 手机端睡觉也要有 z —— 之前只有 PC 那只有。 */
-button.clawd-mobile-clawd-button.clawd-sleeping::after {
-  content:'z';
-  position:absolute;
-  left:34px;
-  top:-2px;
-  font-family:var(--cl-sans);
-  font-size:11px;
-  font-weight:500;
-  color:var(--cw-mark);
-  opacity:0;
-  pointer-events:none;
-  animation:clawd-sleep-z 2.6s ease-in-out infinite;
-}
-
-/* 生成中整体让位：人这时候在看回复，别在侧栏边上放符号抢注意力。 */
-body.claude-generation-active button.clawd-signoff-button::after,
-body.claude-generation-active button.clawd-mobile-clawd-button::after {
-  content:none !important;
-}
-@keyframes clawd-sleep-breath {
-  0%, 100% { transform:scale(.85,.828) translateY(1.5px); }
-  50%      { transform:scale(.862,.812) translateY(2.4px); }
-}
-@keyframes clawd-sleep-z {
-  0%   { opacity:0; transform:translate(0,4px) scale(.75); }
-  22%  { opacity:.9; }
-  62%  { opacity:.55; }
-  100% { opacity:0; transform:translate(7px,-13px) scale(1.15); }
-}
-/* 呼吸和睡觉两档之间原来是空的：入睡前最后一段安静时间加一档「东张西望」，
-   用摆动代替原来纯粹的呼吸缩放，读起来像在左右瞅一眼，不需要新画像素帧。 */
-button.clawd-signoff-button.clawd-idle-drowsy::before {
-  animation:clawd-drowsy-sway 6s ease-in-out infinite, clawd-idle-frames 3s step-end infinite !important;
-}
-@keyframes clawd-drowsy-sway {
-  0%, 100% { transform:scale(.85,.85) rotate(0deg); }
-  22%      { transform:scale(.856,.842) rotate(-7deg); }
-  50%      { transform:scale(.85,.85) rotate(0deg); }
-  78%      { transform:scale(.856,.842) rotate(7deg); }
-}
-/* 真正睡着前打个哈欠：先拉长再压扁回弹，跟呼吸动画错开时间播（JS 里等
-   这段播完 900ms 才切 clawd-sleeping），不会两段 transform 叠在一起抢镜。 */
-button.clawd-signoff-button.clawd-sleep-transition::before {
-  animation:clawd-yawn-stretch 900ms cubic-bezier(.34,.4,.24,1) 1 !important;
-}
-@keyframes clawd-yawn-stretch {
-  0%   { transform:scale(.85,.85); }
-  35%  { transform:scale(.78,.98) translateY(-3px); }
-  62%  { transform:scale(.92,.78) translateY(1px); }
-  100% { transform:scale(.85,.85); }
-}
-@media (prefers-reduced-motion:reduce) {
-  button.clawd-signoff-button.clawd-sleeping::before { animation:none !important; }
-  button.clawd-signoff-button.clawd-sleeping::after,
-  button.clawd-mobile-clawd-button.clawd-sleeping::after { animation:none !important; opacity:.55 !important; }
-  button.clawd-signoff-button.clawd-idle-drowsy::before { animation:none !important; }
-  button.clawd-signoff-button.clawd-sleep-transition::before { animation:none !important; }
-}
 button.clawd-signoff-button {
   display:block !important;
   position:relative !important;
@@ -3270,116 +2926,7 @@ button.clawd-signoff-button {
   flex:0 0 auto !important;
 }
 html body #chat > .mes .mes_text { overflow:visible !important; position:relative !important; }
-.clawd-cc-toast {
-  position:absolute; transform:translateY(-50%);
-  white-space:nowrap; width:max-content; max-width:min(340px, 62%); padding:4px 10px;
-  font-family:var(--cl-font-ui); font-size:var(--cl-fs-micro); letter-spacing:.02em;
-  color:var(--cw-text-body); background:var(--cw-surface-raised);
-  border:1px solid var(--cw-rule-hairline); border-radius:var(--cw-radius-8);
-  box-shadow:0 6px 18px rgba(0,0,0,.18);
-  pointer-events:none; z-index:30; opacity:0;
-  animation:clawd-toast 2.4s ease forwards;
-}
-.clawd-cc-toast .asterisk { color:var(--cw-mark); }
-.clawd-hi-toast {
-  position:absolute; transform:translateY(-50%);
-  white-space:nowrap; width:max-content; max-width:min(44ch, 62%);
-  font-family:var(--cl-font-reading); font-size:var(--cl-fs-lg); line-height:1.35;
-  letter-spacing:.005em; color:var(--cw-text-body);
-  background:transparent; border:0; padding:0;
-  pointer-events:none; z-index:30; opacity:0;
-  animation:clawd-hi 3s ease forwards;
-}
-.clawd-hi-toast .asterisk {
-  color:var(--cw-mark); font-family:var(--cl-sans);
-  margin-right:.34em; font-size:.86em; vertical-align:.06em;
-}
-@keyframes clawd-hi {
-  0% { opacity:0; transform:translateY(-50%) translateX(-6px); }
-  16%, 76% { opacity:1; transform:translateY(-50%) translateX(0); }
-  100% { opacity:0; transform:translateY(-50%) translateX(4px); }
-}
-@media (max-width:700px) {
-  .clawd-hi-toast { font-size:14px; white-space:normal; max-width:58vw; }
-}
-@keyframes clawd-toast {
-  0% { opacity:0; transform:translateY(-50%) translateX(-5px); }
-  14%, 78% { opacity:1; transform:translateY(-50%) translateX(0); }
-  100% { opacity:0; transform:translateY(-50%) translateX(5px); }
-}
-@media (max-width:700px) {
-  .clawd-cc-toast { white-space:normal; max-width:56vw; font-size:10px; }
-}
-@media (prefers-reduced-motion:reduce) {
-  button.clawd-signoff-button::before { animation:none !important; }
-}
 
-
-/* ===== v1.7 ===== */
-
-/* 1. 举钳：三帧序列 + 上跳。原来是加个 class 换一次 box-shadow，360ms 一闪而过 */
-button.clawd-signoff-button.clawd-cheer::before {
-  animation:clawd-cheer-seq 900ms step-end 1, clawd-cheer-bob 900ms cubic-bezier(.34,1.2,.64,1) 1 !important;
-}
-.typing_indicator.clawd-cheer::before {
-  animation:clawd-hop-v21 1.32s linear infinite, clawd-cheer-seq 900ms step-end 1, clawd-cheer-lift-v21 900ms cubic-bezier(.25,.72,.28,1) 1 !important;
-}
-@keyframes clawd-cheer-lift-v21 {
-  0%, 100% { translate:0 0; scale:1; }
-  22% { translate:0 -2px; scale:.99 1.02; }
-  50% { translate:0 0; scale:1.01 .995; }
-  68% { translate:0 -1px; scale:.995 1.01; }
-}
-@keyframes clawd-cheer-seq {
-  0%       { box-shadow:var(--clawd-f-open); }
-  10%      { box-shadow:var(--clawd-f-cheer-mid); }
-  22%, 66% { box-shadow:var(--clawd-f-cheer); }
-  80%      { box-shadow:var(--clawd-f-cheer-mid); }
-  92%,100% { box-shadow:var(--clawd-f-open); }
-}
-/* 举钳的上跳。
-   基准缩放【必须】跟着元素走，不能写死。
-   这套关键帧同时用在两个地方：签名按钮上的 Clawd 常态是 scale(.85)，
-   输入指示器上的 Clawd 常态是 scale(1)。原来这里硬写 .85，
-   于是一举钳，输入指示器里的 Clawd 当场缩到 85% —— 看着就是「举手比平时小一圈」。
-   现在基准由各自的元素通过 --clawd-cheer-base 给出。 */
-@keyframes clawd-cheer-bob {
-  0%   { transform:scale(var(--clawd-cheer-base,1)) translateY(0); }
-  22%  { transform:scale(calc(var(--clawd-cheer-base,1) * .988), calc(var(--clawd-cheer-base,1) * 1.024)) translateY(-2.5px); }
-  46%  { transform:scale(calc(var(--clawd-cheer-base,1) * 1.012), calc(var(--clawd-cheer-base,1) * .994)) translateY(0); }
-  66%  { transform:scale(calc(var(--clawd-cheer-base,1) * .994), calc(var(--clawd-cheer-base,1) * 1.014)) translateY(-1.2px); }
-  100% { transform:scale(var(--clawd-cheer-base,1)) translateY(0); }
-}
-button.clawd-signoff-button.clawd-cheer::before { --clawd-cheer-base:.85; }
-.typing_indicator.clawd-cheer::before { --clawd-cheer-base:1; }
-
-/* 酒馆会先把原生 typing 节点显示一帧，下一帧脚本才收到刷新。未进入我们
-   的 ready/enter 两态（或被 ghost 压制）前，先从 CSS 层封住精灵与粒子，
-   消除遗留帧。 */
-body.clawd-interactive-ready #chat .typing_indicator:not(.clawd-typing-ready):not(.clawd-typing-enter)::before,
-body.clawd-interactive-ready #chat .typing_indicator:not(.clawd-typing-ready):not(.clawd-typing-enter)::after {
-  opacity:0 !important;
-  animation:none !important;
-}
-
-/* 生成提示首次出现时，文字留在原位，只有 Clawd 从区域底边钻上来。
-   入场占独立的 translate/scale 通道，结束点与持续跳跃完全一致。
-   v25 起不再用 opacity 渐显：typing 节点已经 overflow:hidden，
-   起始帧整只位于区域底边之下（被裁掉），钻出过程是纯物理位移。 */
-.typing_indicator.clawd-typing-enter::before {
-  animation:clawd-hop-v21 1.32s linear infinite, clawd-frames-v20 7.92s step-end infinite, clawd-typing-burrow-v25 720ms cubic-bezier(.16,.86,.28,1) 1 !important;
-}
-@keyframes clawd-typing-burrow-v25 {
-  0% { translate:0 42px; scale:.9 .8; }
-  55% { translate:0 -2.5px; scale:.985 1.02; }
-  74% { translate:0 1px; scale:1.01 .99; }
-  88% { translate:0 -.5px; scale:.998 1.002; }
-  100% { translate:0 0; scale:1; }
-}
-.typing_indicator.clawd-typing-enter::after {
-  opacity:0 !important;
-  animation:none !important;
-}
 
 /* 入场/常驻期间锁住原生节点的横向 transition，酒馆的位移不会露出来。
    （退场不再依赖原生节点 —— 见下面的 ghost。） */
@@ -3396,11 +2943,6 @@ body.clawd-interactive-ready #chat .typing_indicator {
 body.clawd-interactive-ready #chat .typing_indicator.clawd-typing-native-suppressed {
   color:transparent !important;
   pointer-events:none !important;
-}
-body.clawd-interactive-ready #chat .typing_indicator.clawd-typing-native-suppressed::before,
-body.clawd-interactive-ready #chat .typing_indicator.clawd-typing-native-suppressed::after {
-  opacity:0 !important;
-  animation:none !important;
 }
 body.clawd-interactive-ready #chat .typing_indicator.clawd-typing-native-suppressed > :not(.clawd-typing-hit) {
   opacity:0 !important;
@@ -3476,57 +3018,6 @@ body.clawd-interactive-ready #chat .typing_indicator.clawd-typing-native-suppres
   .clawd-typing-hit { left:0 !important; }
 }
 
-/* pointerdown 只做短促压感；click 随后换帧并弹回。两者都用独立的
-   scale/translate 通道，因此底层持续跳跃不会被重置。 */
-.typing_indicator.clawd-typing-press::before {
-  scale:1.055 .84;
-  translate:0 3px;
-  transition:scale 55ms ease-out, translate 55ms ease-out;
-}
-.typing_indicator.clawd-typing-click::before {
-  animation:clawd-hop-v21 1.32s linear infinite, clawd-typing-click-frames-v21 560ms step-end 1, clawd-typing-click-pop-v21 560ms cubic-bezier(.2,.82,.22,1) 1 !important;
-}
-@keyframes clawd-typing-click-frames-v21 {
-  0%, 18% { box-shadow:var(--clawd-f-blink); }
-  19%, 66% { box-shadow:var(--clawd-f-cheer-mid); }
-  67%, 100% { box-shadow:var(--clawd-f-open); }
-}
-@keyframes clawd-typing-click-pop-v21 {
-  0%, 100% { translate:0 0; scale:1; rotate:0deg; }
-  18% { translate:0 3px; scale:1.06 .82; rotate:-2deg; }
-  42% { translate:0 -3px; scale:.98 1.04; rotate:2deg; }
-  72% { translate:0 0; scale:1.015 .985; rotate:-1deg; }
-}
-
-/* 2. 眼睛跟鼠标。只在有精确指针的设备上开，触屏没有光标可跟。
-   每个方向配一套自己的眨眼关键帧，否则挂上 look 类就不眨眼了 */
-@media (hover:hover) and (pointer:fine) {
-  button.clawd-signoff-button.clawd-look-l::before {
-    animation:clawd-idle-breath 4.2s ease-in-out infinite, clawd-idle-frames-l 3s step-end infinite;
-  }
-  button.clawd-signoff-button.clawd-look-r::before {
-    animation:clawd-idle-breath 4.2s ease-in-out infinite, clawd-idle-frames-r 3s step-end infinite;
-  }
-}
-@keyframes clawd-idle-frames-l {
-  0%, 90%   { box-shadow:var(--clawd-f-look-l); }
-  91%, 95%  { box-shadow:var(--clawd-f-blink-l); }
-  96%, 100% { box-shadow:var(--clawd-f-look-l); }
-}
-@keyframes clawd-idle-frames-r {
-  0%, 90%   { box-shadow:var(--clawd-f-look-r); }
-  91%, 95%  { box-shadow:var(--clawd-f-blink-r); }
-  96%, 100% { box-shadow:var(--clawd-f-look-r); }
-}
-
-/* 3. 输入框聚焦时抬头。按钮上已有弹性 transition，直接给个位移就行 */
-button.clawd-signoff-button.clawd-perk { transform:translateY(-4px) !important; }
-
-/* 4. 姿势跟内容 */
-/* 每个状态都得配自己的眨眼关键帧。
-   animation 是简写属性，只写 breath 会把 clawd-idle-frames 一起替换掉，
-   结果就是姿势对了但不眨眼。 */
-
 
 /* 6. 消息按钮 hover 才出现。触屏和窄屏保持常驻，否则没法点 */
 @media (hover:hover) and (pointer:fine) and (min-width:701px) {
@@ -3558,41 +3049,6 @@ html body #chat .mes .mes_text pre:has(> .clawd-code-bar) { padding-top:0 !impor
 }
 .clawd-code-copy:hover { color:var(--cw-text-body); }
 
-@media (prefers-reduced-motion:reduce) {
-  button.clawd-signoff-button.clawd-cheer::before,
-  .typing_indicator.clawd-cheer::before { animation:none !important; }
-  .typing_indicator.clawd-typing-enter::before { animation:none !important; }
-  .typing_indicator.clawd-typing-press::before {
-    scale:1;
-    translate:0 0;
-    transition:none !important;
-  }
-  .typing_indicator.clawd-typing-click::before {
-    animation:none !important;
-    box-shadow:var(--clawd-f-cheer-mid) !important;
-  }
-}
-
-
-/* ===== 上下看 ===== */
-@media (hover:hover) and (pointer:fine) {
-  button.clawd-signoff-button.clawd-look-u::before {
-    animation:clawd-idle-breath 4.2s ease-in-out infinite, clawd-idle-frames-u 3s step-end infinite;
-  }
-  button.clawd-signoff-button.clawd-look-d::before {
-    animation:clawd-idle-breath 4.2s ease-in-out infinite, clawd-idle-frames-d 3s step-end infinite;
-  }
-}
-@keyframes clawd-idle-frames-u {
-  0%, 90%   { box-shadow:var(--clawd-f-look-u); }
-  91%, 95%  { box-shadow:var(--clawd-f-blink-u); }
-  96%, 100% { box-shadow:var(--clawd-f-look-u); }
-}
-@keyframes clawd-idle-frames-d {
-  0%, 90%   { box-shadow:var(--clawd-f-look-d); }
-  91%, 95%  { box-shadow:var(--clawd-f-blink-d); }
-  96%, 100% { box-shadow:var(--clawd-f-look-d); }
-}
 
 /* 左侧竖栏模块 —— 由 tools/gen-modules.js 生成，不要直接改这个文件。
    要改就改生成器，重新跑一次。直接改输出的话，下次生成就没了。
@@ -5824,7 +5280,7 @@ html[data-claude-structure="linear"]{
 html[data-claude-avatars="off"] #chat .mesAvatarWrapper .avatar{ display:none !important; }
 
 /* ===================== Clawd 开关（独立于皮，2.0.50）=====================
- * 那只是 button.clawd-signoff-button::before 用几十个 box-shadow 点画的像素精灵。
+ * Clawd 画在 button.clawd-signoff-button 里的骨架（clawd-rig.js）上，关掉按钮就整只关掉。
  * 跟 --cw-shadow-* 三个令牌无关，归零阴影杀不掉它，只能单独关。 */
 html[data-claude-clawd="off"] .clawd-signoff-button,
 html[data-claude-clawd="off"] [class*="clawd-idle"],
@@ -6615,7 +6071,7 @@ html[data-claude-structure="linear"] #clawd-aside .cw-r > b{
 
 /* ---------------------------------------------------------------------------
    Clawd 在这套主题下永远不出现 —— 剧场的前提是台上只有演员。
-   它是 button.clawd-signoff-button::before 用几十个 box-shadow 点画的像素精灵，
+   它画在 button.clawd-signoff-button 里的骨架（clawd-rig.js）上，
    跟 --cw-shadow-* 无关，归零阴影杀不掉，只能显式关。
    --------------------------------------------------------------------------- */
 html[data-claude-structure="linear"] .clawd-signoff-button,

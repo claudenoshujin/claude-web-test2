@@ -177,31 +177,25 @@ function scrollTo(top) {
 scrollTo(0);
 await wait(60);
 for (let i = 1; i <= 10; i += 1) { scrollTo(i * 180); await wait(28); }
-assert.ok(clawd.classList.contains('clawd-scroll-hold'),
-  '滚动开始时 Clawd 要扒住输入框');
-assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peek', 'C1b：扒着输入框由骨架的 peek 画');
+const clip = () => (clawd.dataset.clawdClip || '').replace(/-m$/, '');
+assert.equal(clip(), 'peek', '滚动开始时 Clawd 要扒住输入框（骨架的 peek）');
 assert.equal(clawd.style.rotate || '', '',
-  '一次滚动只做两次 class 变化，中间不许逐帧写样式');
+  '滚动中间不许逐帧写样式');
 /* 鼠标滚轮一格一格拨：两格之间隔 400ms，中间不能松手又重扒（Lulu 2026-09-25：下去一下又上来，很鬼畜） */
 for (let notch = 0; notch < 3; notch += 1) {
   await wait(400);
-  assert.ok(clawd.classList.contains('clawd-scroll-hold'), `滚轮两格之间（第 ${notch + 1} 次停顿）不能松手`);
-  assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peek', `滚轮两格之间骨架要一直扒着（当前 ${clawd.dataset.clawdClip}）`);
+  assert.equal(clip(), 'peek', `滚轮两格之间（第 ${notch + 1} 次停顿）不能松手（当前 ${clawd.dataset.clawdClip}）`);
   for (let i = 1; i <= 5; i += 1) { scrollTo(1800 + notch * 900 + i * 180); await wait(28); }
 }
 await wait(1000);
-assert.equal(clawd.classList.contains('clawd-scroll-hold'), false,
-  '停下之后要松手');
-assert.ok(clawd.classList.contains('clawd-scroll-release'),
-  '松手时要播一次探回来的收尾');
-assert.equal((clawd.dataset.clawdClip || '').replace(/-m$/, ''), 'peekOut', 'C1b：松手时骨架播「从输入框里出来」');
+assert.equal(clip(), 'peekOut', '停下之后要松手：骨架播「从输入框里出来」');
 await wait(600);
-assert.equal(clawd.classList.contains('clawd-scroll-release'), false,
-  '收尾播完要把 class 撤干净');
+assert.ok(!clawd.classList.contains('clawd-scroll-hold') && !clawd.classList.contains('clawd-scroll-release'),
+  '旧画法的 clawd-scroll-* class 已经删掉，不许再挂');
 
 /* 慢滚必须落在死区里，一点开销都不该产生 */
 for (let i = 1; i <= 8; i += 1) { scrollTo(4500 + i); await wait(70); }   // 接着上面滚轮停下的位置（1800 + 2×900 + 5×180）
-assert.equal(clawd.classList.contains('clawd-scroll-hold'), false,
+assert.notEqual(clip(), 'peek',
   '慢速滚动必须落在死区里不触发，否则长聊天里每一次滚动都要付代价');
 /* 进对话时酒馆会把光标放进输入框：输入框空着、有焦点时滚动，照样要扒住，不能被刷新成空闲（Lulu 2026-09-25） */
 {
@@ -336,22 +330,13 @@ box.focus();
 box.value = '在打字';
 box.dispatchEvent(new window.Event('input', { bubbles: true }));
 await wait(300);
-assert.ok(clawd.classList.contains('clawd-input-has-text'),
-  '框里有字时要挂上输入态的 class');
 assert.equal(clawd.dataset.clawdB, 'compose',
   '普通输入保持 compose，不该误触发表情姿势');
-assert.match(interactionCss, /@keyframes clawd-compose-nod\b/,
-  '点头动作必须存在。原来那个 bob 幅度只有 1px，等于没有输入态');
-assert.match(interactionCss, /clawd-compose-nod-frames/,
-  '换帧要单独一条 step-end 动画，跟位移合成一条的话像素画会插值糊掉');
-assert.match(interactionCss, /\[data-clawd-owner="B"\][^{]*clawd-input-active/,
-  '输入态必须限定在 B 轨占画面时——生成和被抓被丢都比「我在看你打字」优先');
-assert.match(interactionCss, /\[data-clawd-owner="B"\][^{]*clawd-scroll-hold/,
-  '滚动态同样只在 B 轨占画面时表演');
-assert.match(interactionCss, /@keyframes clawd-peek-in-frames/,
-  '扒住输入框的换帧动画必须在（原型里的 p-peek）');
-assert.match(interactionCss, /--clawd-f-peek-grip/,
-  '扒住输入框要用 peek-grip 这张钳子搭在上沿的帧');
+
+/* 旧画法（按钮 ::before 上的像素精灵）整套删掉了：交互样式里不许再有 Clawd 按钮的 ::before / ::after 规则和精灵帧 */
+assert.doesNotMatch(interactionCss, /button\.clawd-signoff-button[^{},]*::(before|after)/,
+  '交互样式里不许再给 Clawd 按钮画 ::before / ::after');
+assert.doesNotMatch(interactionCss, /--clawd-f-/, '交互样式里不许再引用旧精灵帧 --clawd-f-*');
 
 /* ---------- 10. 原型第一批 B 轨姿势 ---------- */
 box.value = '你觉得呢？';
@@ -369,27 +354,11 @@ box.dispatchEvent(new window.Event('input', { bubbles: true }));
 assert.equal(clawd.dataset.clawdB, 'wow',
   '较长输入也要触发 wow，保留原型的内容长度反馈');
 
-assert.match(interactionCss,
-  /clawd-composer-clawd\[data-clawd-owner="B"\]\[data-clawd-b="tilt"\]/,
-  '新 B 姿势只能挂在输入框上方的大 Clawd，不能改掉消息末尾小 Clawd 的落款职责');
-for (const pose of ['wow', 'hide', 'ledge', 'tramp', 'shake', 'around', 'spin', 'dhop', 'lean', 'wake']) {
-  assert.match(interactionCss, new RegExp(`data-clawd-b="${pose}"`),
-    `${pose} 必须有 B 轨选择器`);
+/* 这些姿势以前是按钮 ::before 上的精灵 + 选择器，现在都由骨架画：B 轨状态要能查到对应的骨架动作 */
+for (const pose of ['tilt', 'wow', 'hide', 'tramp', 'around', 'spin', 'lean', 'wake']) {
+  assert.match(src, new RegExp(`\\b${pose}: '${pose}'`), `${pose} 必须在 CLAWD_RIG_B 里对上骨架动作`);
 }
-assert.match(interactionCss,
-  /clawd-composer-clawd\[data-clawd-owner="A"\]\[data-clawd-a="sit"\]/,
-  '长生成的 sit 必须属于 A 轨，不能混进空闲 B 轨');
-assert.match(interactionCss, /@keyframes clawd-b-wowP\b/,
-  'wow 的位移动画必须从原型移植');
-assert.match(interactionCss, /@keyframes clawd-b-hideP\b/,
-  'hide 的下沉动画必须从原型移植');
-assert.match(interactionCss, /@keyframes clawd-b-ledgeP\b/,
-  'ledge 的吊边动画必须从原型移植');
-for (const animation of ['trampP', 'shakeP', 'aroundP', 'aroundF', 'spinP', 'spinF',
-  'dhopP', 'dhopF', 'leanP', 'leanF', 'wakeP', 'wakeF']) {
-  assert.match(interactionCss, new RegExp(`@keyframes clawd-b-${animation}\\b`),
-    `${animation} 必须从原型移植，位移和换帧要各走自己的动画`);
-}
+assert.match(src, /sit: 'sitWrite'/, '长生成的 sit 属于 A 轨，骨架播坐着写');
 assert.match(src, /CLAWD_B_AMBIENT_POSES/,
   '空闲姿势不能只留在样式表里，必须接入低频 B 轨在场调度');
 /* 2026-09-24 Lulu 定：双跳（像「完成」）、扒边（和滚动时扒住输入框重复）、甩身子 移出闲置池 */
@@ -607,7 +576,7 @@ sleepBtn.click();
 await wait(150);
 for (let i = 1; i <= 10; i += 1) { scrollTo(6000 + i * 180); await wait(28); }
 assert.equal(api.clawdState().B, 'rig:sleep', `睡着时滚动不扒输入框（当前 ${JSON.stringify(api.clawdState())}）`);
-assert.equal(clawd.classList.contains('clawd-scroll-hold'), false, '睡着时滚动不扒输入框');
+assert.notEqual(clip(), 'peek', '睡着时滚动不扒输入框');
 await wait(1000);
 menu.querySelector('[data-cdm="stop"]').click();
 await wait(150);

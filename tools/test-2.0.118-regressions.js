@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.161');
-assert.equal(manifest.js, 'loader-2.0.161.js');
+assert.equal(manifest.version, '2.0.162');
+assert.equal(manifest.js, 'loader-2.0.162.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -105,7 +105,8 @@ assert.doesNotMatch(index, /data-claude-decorations="off"[^\n]*COMPOSER_CLAWD_CL
 assert.match(index, /const clawdEnabled = hostDocument\.documentElement\.dataset\.claudeClawd !== 'off'/, 'the Clawd switch must own final node visibility');
 assert.match(index, /COMPOSER_CLAWD_CLASS[\s\S]{0,900}?touch-action: none !important/, 'draggable Clawd must reject Android panning before pointerdown');
 assert.match(index, /function a2Down[\s\S]*setClawdC\(A2\.fy < 0 \? 'grab' : 'press', 0\)/, 'pointerdown must give feedback immediately (pressed on the ground, grabbed in mid-air)');
-assert.match(index, /a2Place\(button\);\s*if \(dragStarted\) a2DeferGrabFeedback\(button\);/, 'the first drag position must be written before layout-reading feedback');
+assert.match(index, /function a2Move[\s\S]*?a2Place\(button\);/, 'the first drag writes the position straight away');
+assert.doesNotMatch(index, /a2DeferGrabFeedback|createParticle|showCcToast/, 'old ::before-era bubbles and particles are gone; dragging must not read layout for them');
 
 /* 2.0.160：主题里「按 class 子串匹配的祖先 + 后代」会让任何元素改 class 时整棵子树重算样式
    （body 上一改就是全页约 2 万个元素），点输入框弹键盘时明显卡顿。 */
@@ -113,5 +114,15 @@ for (const theme of ['day-pc', 'day-mobile', 'night-pc', 'night-mobile']) {
   const css = fs.readFileSync(path.join(root, 'styles', theme + '.css'), 'utf8');
   assert.doesNotMatch(css, /\[class\*=[^\]]+\]\)\s*\*/, theme + '.css: [class*=…] in an ancestor with a * subject invalidates whole subtrees on any class change');
 }
+
+/* 2.0.162：根节点 :has(弹层.openDrawer) 让聊天每次追加都重算整页样式，改由 index.js 在 <html> 上同步状态 class。 */
+for (const theme of ['day-pc', 'day-mobile', 'night-pc', 'night-mobile', 'compat-day', 'compat-night', 'compat-mobile-day', 'compat-mobile-night']) {
+  const css = fs.readFileSync(path.join(root, 'styles', theme + '.css'), 'utf8');
+  assert.doesNotMatch(css, /:has\(\s*#(completion_prompt_manager_popup|top-settings-holder)\b/, theme + '.css: root :has() on popup/drawer state must stay replaced by claude-pm-open / claude-top-drawer-open');
+}
+assert.match(index, /root\.classList\.toggle\('claude-pm-open'/, 'index.js must keep html.claude-pm-open in sync');
+assert.match(index, /root\.classList\.toggle\('claude-top-drawer-open'/, 'index.js must keep html.claude-top-drawer-open in sync');
+const officialLayout = fs.readFileSync(path.join(root, 'official-layout.js'), 'utf8');
+assert.doesNotMatch(officialLayout, /send_textarea'\) syncChat\(\)/, 'typing must not run the full-chat syncChat() on every keystroke');
 
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

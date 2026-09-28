@@ -13,7 +13,8 @@ const dom = new JSDOM(`<!doctype html><html><head></head><body>
     <li class="completion_prompt_manager_prompt" id="tt-prompt-row"><span class="completion_prompt_manager_prompt_name">TT row</span></li>
     <li class="completion_prompt_manager_prompt" id="st-prompt-row"><span class="drag-handle">☰</span><span class="completion_prompt_manager_prompt_name">ST row</span></li>
   </ul></div>
-  <div id="top-bar"><div id="top-settings-holder"></div></div>
+  <div id="top-bar"><div id="top-settings-holder"><div class="drawer" id="tt-drawer"><div class="drawer-toggle"></div><div class="drawer-content closedDrawer" id="tt-drawer-content"></div></div></div></div>
+  <div id="completion_prompt_manager_popup" class="drawer-content" style="display:none;"></div>
   <div id="sheld">
     <div id="chat">
       <div class="mes" is_user="true" mesid="0"><div class="mes_block">
@@ -273,6 +274,27 @@ assert.notEqual(themeStyle.getAttribute('media'), 'not all', 'closing Character 
 assert.notEqual(context.powerUserSettings.theme, 'Original', 'full mode must apply the Claude theme during the session');
 const cachedPageHide = new window.Event('pagehide');
 Object.defineProperty(cachedPageHide, 'persisted', { value: true });
+/* 2.0.162：主题不再用根节点 :has() 判断弹层，改由 index.js 在 <html> 上同步状态 class。 */
+{
+  const html = window.document.documentElement;
+  const pm = window.document.getElementById('completion_prompt_manager_popup');
+  const drawer = window.document.getElementById('tt-drawer-content');
+  assert.equal(html.classList.contains('claude-pm-open'), false, 'prompt editor closed: no claude-pm-open');
+  pm.classList.add('openDrawer');
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  assert.equal(html.classList.contains('claude-pm-open'), true, 'opening the prompt editor must mark <html>');
+  pm.classList.remove('openDrawer');
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  assert.equal(html.classList.contains('claude-pm-open'), false, 'closing the prompt editor must clear the mark');
+  if (drawer.parentElement?.parentElement?.id === 'top-settings-holder') {
+    drawer.classList.replace('closedDrawer', 'openDrawer');
+    await new Promise(resolve => window.setTimeout(resolve, 0));
+    assert.equal(html.classList.contains('claude-top-drawer-open'), true, 'opening a top drawer must mark <html>');
+    drawer.classList.replace('openDrawer', 'closedDrawer');
+    await new Promise(resolve => window.setTimeout(resolve, 0));
+    assert.equal(html.classList.contains('claude-top-drawer-open'), false, 'closing the top drawer must clear the mark');
+  } else throw new Error('fixture drawer was moved out of #top-settings-holder');
+}
 window.dispatchEvent(cachedPageHide);
 assert.notEqual(context.powerUserSettings.theme, 'Original', 'bfcache pagehide must keep the live theme intact');
 const cachedPageShow = new window.Event('pageshow');

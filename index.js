@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260928d";
+import { installOfficialLayout } from "./official-layout.js?v=20260928e";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -422,7 +422,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.161-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.162-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -561,6 +561,37 @@ if (new URLSearchParams(location.search).has('shellcheck')) {
 /* 总开关。关掉之后除了设置面板什么都不跑 ——
    面板必须留着，不然没有地方把它开回来。 */
 if (CLAUDE_ENABLED) {
+
+/* 2.0.162：弹层状态标记。主题里原先用 html:has(#completion_prompt_manager_popup.openDrawer)、
+   body:has(#top-settings-holder > .drawer > .drawer-content.openDrawer) 判断弹层是否打开，
+   根节点 :has() 让聊天区每次追加内容都要重新判断整页（见 diagnostics/手机卡顿排查-20260928.md，
+   桌面 4× 降速模拟里样式重算约 6 s → 0.05 s）。改成这里在 <html> 上挂两个 class：
+     claude-pm-open          Prompt 编辑弹层打开
+     claude-top-drawer-open  顶栏任一抽屉打开
+   只监听这两处元素自己的 class 变化，不看聊天区；状态真的变了 classList.toggle 才会改根节点。 */
+(() => {
+  'use strict';
+  const root = document.documentElement;
+  const sync = () => {
+    const pm = document.getElementById('completion_prompt_manager_popup');
+    const holder = document.getElementById('top-settings-holder');
+    root.classList.toggle('claude-pm-open', !!pm?.classList.contains('openDrawer'));
+    root.classList.toggle('claude-top-drawer-open',
+      !!holder?.querySelector(':scope > .drawer > .drawer-content.openDrawer'));
+  };
+  const install = () => {
+    const observer = new MutationObserver(sync);
+    const pm = document.getElementById('completion_prompt_manager_popup');
+    const holder = document.getElementById('top-settings-holder');
+    if (pm) observer.observe(pm, { attributes: true, attributeFilter: ['class'] });
+    /* 抽屉是 holder 的孙辈，后来插进来的抽屉也要算，所以用 subtree；只收 class 属性，
+       抽屉里面板内容的增删不会触发。 */
+    if (holder) observer.observe(holder, { attributes: true, attributeFilter: ['class'], subtree: true });
+    sync();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
+  else install();
+})();
 
 /* 配色预设。只在扩展形态里打包。
  *
@@ -1162,7 +1193,6 @@ if (CLAUDE_ENABLED) {
     setCustomColor,
   };
 })();
-
 
 (() => {
   'use strict';
@@ -1971,7 +2001,6 @@ if (CLAUDE_ENABLED) {
   $(window).on('pagehide', handleRunnerPageHide);
 })();
 
-
 (() => {
   'use strict';
 
@@ -1999,20 +2028,6 @@ if (CLAUDE_ENABLED) {
   const BUTTON_CLASS = 'clawd-signoff-button';
   const COMPOSER_CLAWD_CLASS = 'clawd-composer-clawd';
   const SIGNOFF_CLAWD_CLASS = 'clawd-message-signoff-clawd';
-  const CLAWD_STATE_CLASSES = [
-    'clawd-state-think',
-    'clawd-state-stream',
-    'clawd-state-done',
-    'clawd-state-stopped',
-    'clawd-state-error',
-    'clawd-state-touch',
-  ];
-  const INPUT_ACTIVE_CLASS = 'clawd-input-active';
-  const INPUT_TEXT_CLASS = 'clawd-input-has-text';
-  /* D2：害羞（环境触发）与被冷落。两个都是常驻状态的 class，不是
-     一次性反应，所以单独命名，不进 BUTTON_REACTIONS 的洗牌袋。 */
-  const SHY_AMBIENT_CLASS = 'clawd-shy-ambient';
-  const NEGLECTED_CLASS = 'clawd-neglected';
   const LEFT_SWIPE_PROXY_CLASS = 'claude-swipe-left-proxy';
   const SWIPE_PROXY_CLASS = 'claude-swipe-right-proxy';
   const REROLL_CLASS = 'claude-reroll-button';
@@ -2064,21 +2079,6 @@ if (CLAUDE_ENABLED) {
   const EMBED_ATTRIBUTE = 'data-claude-transparent-surface';
   const EMBED_SRCDOC_MARKER = '<!-- claude-transparent-surface -->';
   const REGEX_SURFACE_CLASS = 'claude-transparent-regex-surface';
-  const PARTICLES = [
-    { text: '\u2726', className: 'clawd-particle-star' },
-    { text: '\u2727', className: 'clawd-particle-star' },
-    { text: '?', className: 'clawd-particle-question' },
-    { text: '\u2665', className: 'clawd-particle-heart' },
-    { text: '\u00b7', className: 'clawd-particle-dot' },
-  ];
-  const BUTTON_REACTIONS = [
-    'clawd-react-hop',
-    'clawd-react-wiggle',
-    'clawd-react-nod',
-    'clawd-react-peek',
-    'clawd-react-shy',
-    'clawd-react-nudge',
-  ];
   const TYPING_MOTION_CLASSES = [
     'clawd-cheer',
     'clawd-wobble-sway',
@@ -2101,7 +2101,6 @@ if (CLAUDE_ENABLED) {
   let previousTypingActive = false;
   let generationEventActive = false;
   const generationSubscriptions = [];
-  let lastGenerationDoneAt = 0;
   /* A0：Clawd 只保留一份三轨状态。三轨互不清空，画面归属固定为 C > A > B。
      A2 的原子序列和锁会接在 setClawdC 这个单一入口上；这里先把入口和轮次围栏立住。 */
   const clawdTracks = {
@@ -2167,13 +2166,6 @@ if (CLAUDE_ENABLED) {
      调用执行。 */
   const A2_TIER = ['t1', 't2', 't3', 't4', 't5'];
   const A2_TMS = [600, 700, 700, 1100, 0];        // 跟骨架动作「戳 1–4」的时长一致；t5 的 0 表示时长交给序列管
-  const A2_LINES = [
-    ['嗯？', '在呢'],
-    ['别', '躲了'],
-    ['痒！', '哎呀'],
-    ['喂——', '够了啊'],
-    ['……', '哼'],
-  ];
   /* 第 1 档仍然走 A1 那套丰富反应（连点彩蛋、上下文台词、随机反应动画）。
      只有被连着戳、烦躁爬上去之后才换成 A2 的短台词。
      改成 0 就是全程用 A2 的台词，改成 2 就是前两档都留给 A1。 */
@@ -2199,7 +2191,6 @@ if (CLAUDE_ENABLED) {
     irr: 0, throws: 0, lastThrow: 0, lastDec: 0,
     lockUntil: 0, lockName: '', seqRun: 0, seqOwned: false,
     flying: 0, dragging: false, moved: false, held: false, pointerId: null,
-    dragFeedbackRun: 0,
     bndReady: false, bndRaf: 0,
     sx: 0, sy: 0, ox: 0, oy: 0, vx: 0, vy: 0, lx: 0, ly: 0, lt: 0,
     rot: 0, sqx: 1, sqy: 1,
@@ -2211,7 +2202,6 @@ if (CLAUDE_ENABLED) {
 
   let clawdRuntimeTimer = 0;
   let clawdLastIdleTickAt = 0;
-  let settlePending = false;
   let typingRunId = 0;
   const typingMotionTimers = new Map();
   const typingEntryTimers = new Map();
@@ -2453,618 +2443,8 @@ if (CLAUDE_ENABLED) {
         display: none !important;
       }
 
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-think::before {
-        animation: clawd-drowsy-sway 2.4s ease-in-out infinite, clawd-idle-frames 3s step-end infinite !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-stream::before {
-        animation: clawd-compose-bob 780ms ease-in-out infinite !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-stopped::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-blink) !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-error::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-tucked) !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-touch {
-        animation: clawd-react-hop 560ms cubic-bezier(.2,.82,.22,1) both !important;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}.clawd-state-touch {
-          animation: none !important;
-        }
-      }
-
       button.${BUTTON_CLASS}:hover {
         filter: saturate(1.08);
-        transform: translateY(-1px);
-      }
-
-      /* 触屏上 :active 容易粘住不清，还会跟点击后 JS 加的反应 class
-         抢同一个 transform 属性，把 clawd-react-* 那几个动画盖掉，
-         看起来像"只有压扁"。换成 JS 用 pointerdown/up 控制的
-         .clawd-button-press，这份样式和 theme-shared.css 里另一份
-         squash 规则统一用同一个触发方式，两处都不再依赖 :active。 */
-      button.${BUTTON_CLASS}.clawd-button-press {
-        transform: translateY(2px) scaleX(1.1) scaleY(.76) rotate(-2deg);
-        transition-duration: 55ms !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-button-pop {
-        animation: clawd-button-pop 480ms cubic-bezier(.2,.82,.22,1) both !important;
-      }
-
-
-      /* ===== A2 的 12 个姿势 =====
-         位置、旋转、落地压扁由 JS 写在 button 本体上；这里只管 ::before 上的
-         姿势本身。两者在不同节点，transform 各写各的，不会互相覆盖。
-
-         选择器挂在 data-clawd-c 上——那是 renderClawdTracks 本来就在写的属性，
-         所以不用给它加一张新的映射表。
-
-         原型里这些姿势靠 7 个 @property 注册过的自定义属性合成 transform。
-         扩展一个 @property 都没用，所以每个关键帧都写成完整的 transform。
-         原型里「某个属性在这一帧没写」意味着它在前后两帧之间插值，这里已经
-         把插值算出来写死了；缓动曲线仍是原来的，所以观感接近但不逐帧相同。
-         最外层那个 scale(.85) 是 ::before 的基准缩放，必须留着，否则姿势一
-         开始整只会突然变大。
-
-         原型的落地还有一层地面影子（landSh 驱动 .shadow 节点）。扩展没有那个
-         节点，这一轮没做，落地的冲击感会比原型弱一点。 */
-
-      button.${BUTTON_CLASS}[data-clawd-c="grab"]::before {
-        animation: clawd-a2-grabP 340ms cubic-bezier(.3,1.2,.4,1) forwards,
-                   clawd-a2-grabF 340ms step-end forwards !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="drag"]::before {
-        animation: clawd-a2-dangleP 1100ms ease-in-out infinite,
-                   clawd-a2-flailX 190ms step-end infinite !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="fly"]::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-look-u) !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="land"]::before {
-        animation: clawd-a2-landP 820ms cubic-bezier(.25,1.05,.35,1) forwards,
-                   clawd-a2-landF 820ms step-end forwards !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="stomp"]::before {
-        animation: clawd-a2-stompP 520ms cubic-bezier(.3,0,.2,1),
-                   clawd-a2-stompF 520ms step-end !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="turn"]::before {
-        animation: clawd-a2-turnA 380ms ease-in-out forwards,
-                   clawd-a2-turnAF 380ms step-end forwards !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="face"]::before {
-        animation: clawd-a2-faceB 380ms ease-in-out forwards,
-                   clawd-a2-faceBF 380ms step-end forwards !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="t1"]::before {
-        box-shadow: var(--clawd-f-eye-v) !important;
-        animation: clawd-a2-t1 500ms cubic-bezier(.2,1.2,.4,1) !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="t2"]::before {
-        box-shadow: var(--clawd-f-look-l) !important;
-        animation: clawd-a2-t2 520ms ease-in-out !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="t3"]::before {
-        box-shadow: var(--clawd-f-blink) !important;
-        animation: clawd-a2-t3 620ms ease-in-out !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-c="t4"]::before {
-        animation: clawd-a2-t4 1000ms ease-in-out,
-                   clawd-a2-t4F 1000ms step-end !important;
-      }
-
-      /* 生气：背对着你轻轻晃。锁期间这个姿势会一直挂着，直到序列播完。 */
-      button.${BUTTON_CLASS}[data-clawd-c="t5"]::before {
-        box-shadow: var(--clawd-f-back) !important;
-        animation: clawd-a2-sulkP 2.8s ease-in-out infinite !important;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        button.${BUTTON_CLASS}[data-clawd-c]::before { animation: none !important; }
-      }
-
-      @keyframes clawd-a2-grabP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        22% { transform: scale(.85) translate(0px, 3px) rotate(-1.2deg) scale(1.14, 0.84); }
-        55% { transform: scale(.85) translate(0px, -5px) rotate(-3deg) scale(0.8, 1.26); }
-        78% { transform: scale(.85) translate(0px, 1px) rotate(2deg) scale(1.06, 0.95); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-dangleP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(-5deg) scale(1, 1); }
-        50% { transform: scale(.85) translate(0px, 0px) rotate(5deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(-5deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-landP {
-        0% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.08, 1); }
-        26% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.01, 1.037); }
-        40% { transform: scale(.85) translate(0px, 1px) rotate(0deg) scale(0.973, 1.057); }
-        56% { transform: scale(.85) translate(0px, -7px) rotate(0deg) scale(0.93, 1.08); }
-        76% { transform: scale(.85) translate(0px, 1px) rotate(0deg) scale(1.04, 0.96); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-stompP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        22% { transform: scale(.85) translate(0px, -7px) rotate(0deg) scale(0.94, 1.08); }
-        34% { transform: scale(.85) translate(0px, 3px) rotate(0deg) scale(1.24, 0.74); }
-        46% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.196, 0.787); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-turnA {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        18% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1.02); }
-        46% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
-        56% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-faceB {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        44% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
-        56% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(0.1, 1.05); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-sulkP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(-1.5deg) scale(1, 1); }
-        50% { transform: scale(.85) translate(0px, 0px) rotate(1.5deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(-1.5deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-t1 {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        35% { transform: scale(.85) translate(0px, -10px) rotate(0deg) scale(1, 1); }
-        70% { transform: scale(.85) translate(0px, 1px) rotate(0deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-t2 {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        45% { transform: scale(.85) translate(-7px, 0px) rotate(-8deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-t3 {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        12% { transform: scale(.85) translate(4px, 0px) rotate(9deg) scale(1, 1); }
-        28% { transform: scale(.85) translate(-4px, 0px) rotate(-9deg) scale(1, 1); }
-        44% { transform: scale(.85) translate(3px, 0px) rotate(7deg) scale(1, 1); }
-        60% { transform: scale(.85) translate(-3px, 0px) rotate(-6deg) scale(1, 1); }
-        80% { transform: scale(.85) translate(1px, 0px) rotate(2deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-      @keyframes clawd-a2-t4 {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        8% { transform: scale(.85) translate(5px, -2px) rotate(12deg) scale(1, 1); }
-        18% { transform: scale(.85) translate(-5px, -1.783px) rotate(-12deg) scale(1, 1); }
-        28% { transform: scale(.85) translate(5px, -1.565px) rotate(11deg) scale(1, 1); }
-        38% { transform: scale(.85) translate(-5px, -1.348px) rotate(-10deg) scale(1, 1); }
-        50% { transform: scale(.85) translate(3px, -1.087px) rotate(7deg) scale(1, 1); }
-        64% { transform: scale(.85) translate(-3px, -0.783px) rotate(-5deg) scale(1, 1); }
-        82% { transform: scale(.85) translate(1px, -0.391px) rotate(2deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-a2-grabF {
-        0% { box-shadow: var(--clawd-f-open); }
-        18% { box-shadow: var(--clawd-f-blink); }
-        30% { box-shadow: var(--clawd-f-squint); }
-        100% { box-shadow: var(--clawd-f-squint); }
-      }
-      @keyframes clawd-a2-flailX {
-        0% { box-shadow: var(--clawd-f-flail-a); }
-        33% { box-shadow: var(--clawd-f-flail-b); }
-        66% { box-shadow: var(--clawd-f-flail-c); }
-        100% { box-shadow: var(--clawd-f-flail-a); }
-      }
-      @keyframes clawd-a2-landF {
-        0% { box-shadow: var(--clawd-f-squash); }
-        26% { box-shadow: var(--clawd-f-squash); }
-        40% { box-shadow: var(--clawd-f-squash2); }
-        52% { box-shadow: var(--clawd-f-arm-b-3); }
-        62% { box-shadow: var(--clawd-f-arm-b-mid); }
-        78% { box-shadow: var(--clawd-f-arm-b-1); }
-        100% { box-shadow: var(--clawd-f-open); }
-      }
-      @keyframes clawd-a2-stompF {
-        0% { box-shadow: var(--clawd-f-arm-b-mid); }
-        22% { box-shadow: var(--clawd-f-arm-b-mid); }
-        34% { box-shadow: var(--clawd-f-stomp-arm); }
-        60% { box-shadow: var(--clawd-f-blink-d); }
-        100% { box-shadow: var(--clawd-f-open); }
-      }
-      @keyframes clawd-a2-turnAF {
-        0% { box-shadow: var(--clawd-f-blink); }
-        18%, 46% { box-shadow: var(--clawd-f-look-r); }
-        56% { box-shadow: var(--clawd-f-back); }
-        100% { box-shadow: var(--clawd-f-back); }
-      }
-      @keyframes clawd-a2-faceBF {
-        0%, 44% { box-shadow: var(--clawd-f-back); }
-        56% { box-shadow: var(--clawd-f-look-l); }
-        100% { box-shadow: var(--clawd-f-open); }
-      }
-      @keyframes clawd-a2-t4F {
-        0% { box-shadow: var(--clawd-f-flail-l); }
-        9% { box-shadow: var(--clawd-f-flail-r); }
-        18% { box-shadow: var(--clawd-f-flail-l); }
-        27% { box-shadow: var(--clawd-f-flail-r); }
-        37% { box-shadow: var(--clawd-f-flail-l); }
-        47% { box-shadow: var(--clawd-f-flail-r); }
-        57% { box-shadow: var(--clawd-f-flail-l); }
-        67% { box-shadow: var(--clawd-f-flail-r); }
-        80% { box-shadow: var(--clawd-f-squint); }
-        100% { box-shadow: var(--clawd-f-squint); }
-      }
-
-      button.${BUTTON_CLASS}.clawd-button-settle {
-        animation: clawd-button-settle 520ms cubic-bezier(.2,.78,.18,1) both !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-react-hop {
-        animation: clawd-react-hop 560ms cubic-bezier(.2,.82,.22,1) both !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-react-wiggle {
-        animation: clawd-react-wiggle 620ms cubic-bezier(.2,.8,.25,1.15) both !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-react-nod {
-        animation: clawd-react-nod 520ms cubic-bezier(.2,.8,.25,1.15) both !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-react-peek {
-        animation: clawd-react-peek 680ms cubic-bezier(.2,.82,.22,1) both !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-react-shy {
-        animation: clawd-react-shy 720ms cubic-bezier(.2,.76,.22,1) both !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-react-nudge {
-        animation: clawd-react-nudge 480ms cubic-bezier(.3,.7,.3,1.2) both !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-poke-blink::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-blink) !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-poke-look::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-look-l) !important;
-      }
-
-      button.${BUTTON_CLASS}.clawd-poke-tucked::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-tucked) !important;
-      }
-
-      button.${BUTTON_CLASS}.${INPUT_ACTIVE_CLASS}:not(.clawd-sleeping),
-      button.clawd-mobile-clawd-button.${INPUT_ACTIVE_CLASS} {
-        translate: 0 -3px;
-      }
-
-      button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}:not(.clawd-sleeping)::before,
-      button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before {
-        animation: clawd-compose-bob 900ms ease-in-out infinite !important;
-      }
-
-      /* ===== 输入态 =====
-         原来只有「整只抬 3px」加一个幅度 1px 的 bob，两个都在可见阈值以下，
-         看起来就是完全没有输入态。现在分两级：
-
-           聚焦输入框        → 低头看着你（look-d）
-           框里已经有字      → 一边看一边点头
-
-         都限定 data-clawd-owner="B"：生成（A 轨）和被抓被丢（C 轨）都比
-         「我在看你打字」更该占画面，这条也顺带保证它压不过 A2 的姿势。 */
-      button.${BUTTON_CLASS}[data-clawd-owner="B"].${INPUT_ACTIVE_CLASS}:not(.clawd-sleeping)::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-look-d) !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-owner="B"].${INPUT_TEXT_CLASS}:not(.clawd-sleeping)::before {
-        animation: clawd-compose-nod 820ms cubic-bezier(.3,.7,.4,1) infinite,
-                   clawd-compose-nod-frames 820ms step-end infinite !important;
-      }
-
-      /* 点头拆成两条：位移走缓动，换帧走 step-end。
-         合成一条的话 box-shadow 会在两帧之间插值，像素画会糊成一团。 */
-      @keyframes clawd-compose-nod {
-        0%, 100% { translate: 0 0; }
-        44% { translate: 0 3px; }
-        70% { translate: 0 0; }
-      }
-
-      @keyframes clawd-compose-nod-frames {
-        0% { box-shadow: var(--clawd-f-look-d); }
-        44% { box-shadow: var(--clawd-f-blink-d); }
-        70% { box-shadow: var(--clawd-f-look-d); }
-      }
-
-      /* ===== 原型里不需要新增像素帧的 12 个姿势 =====
-         只让输入框上方的大 Clawd 消费它们；消息末尾的小 Clawd 虽然读取
-         同一份 A/B/C 状态，仍保持落款职责，不套这些大动作。
-
-         sit 属于 A 轨的长生成疲劳；tilt / wow 由输入内容触发；wake 只在
-         真正睡醒时触发；其余八个进入低频 B 轨在场轮换。所有 B 轨选择器
-         都限定 owner=B，所以生成的 A 轨和抓取、抛掷的 C 轨会自然盖过。 */
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="A"][data-clawd-a="sit"]::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-tucked) !important;
-        transform: scale(.85) translate(0px, 5px) rotate(0deg) scale(1.1, .84);
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tilt"]::before {
-        animation: none !important;
-        box-shadow: var(--clawd-f-look-u) !important;
-        transform: scale(.85) translate(0px, 0px) rotate(-13deg) scale(1, 1);
-        transition: transform 400ms cubic-bezier(.3,1.2,.4,1);
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wow"]::before {
-        box-shadow: var(--clawd-f-low-look) !important;
-        animation: clawd-b-wowP 620ms cubic-bezier(.2,1.3,.4,1) both !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="hide"]::before {
-        box-shadow: var(--clawd-f-look-u) !important;
-        animation: clawd-b-hideP 620ms cubic-bezier(.4,0,.2,1) forwards !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="ledge"]::before {
-        box-shadow: var(--clawd-f-look-d) !important;
-        animation: clawd-b-ledgeP 900ms ease-out forwards !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tramp"]::before {
-        box-shadow: var(--clawd-f-eye-v) !important;
-        animation: clawd-b-trampP 1100ms cubic-bezier(.3,0,.3,1) both !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="shake"]::before {
-        box-shadow: var(--clawd-f-shut) !important;
-        animation: clawd-b-shakeP 720ms cubic-bezier(.3,.7,.4,1) both !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="around"]::before {
-        animation: clawd-b-aroundP 1700ms cubic-bezier(.7,0,.2,1) both,
-                   clawd-b-aroundF 1700ms step-end both !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="spin"]::before {
-        animation: clawd-b-spinP 1050ms cubic-bezier(.35,0,.3,1) both,
-                   clawd-b-spinF 1050ms step-end both !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="dhop"]::before {
-        animation: clawd-b-dhopP 900ms cubic-bezier(.3,.1,.4,1) both,
-                   clawd-b-dhopF 900ms step-end both !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="lean"]::before {
-        animation: clawd-b-leanP 1400ms cubic-bezier(.4,0,.3,1) both,
-                   clawd-b-leanF 1400ms step-end both !important;
-      }
-
-      button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wake"]::before {
-        animation: clawd-b-wakeP 500ms cubic-bezier(.2,1.3,.4,1) both,
-                   clawd-b-wakeF 500ms step-end both !important;
-      }
-
-      @keyframes clawd-b-wowP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        30% { transform: scale(.85) translate(0px, -5px) rotate(0deg) scale(.86, 1.2); }
-        60% { transform: scale(.85) translate(0px, -2.857px) rotate(0deg) scale(1.1, .92); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-hideP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 21px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-ledgeP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        20% { transform: scale(.85) translate(4px, 5px) rotate(-24deg) scale(1, 1); }
-        55% { transform: scale(.85) translate(5px, 9px) rotate(-30deg) scale(1, 1); }
-        70% { transform: scale(.85) translate(3.333px, 7px) rotate(-26deg) scale(1, 1); }
-        85% { transform: scale(.85) translate(1.667px, 9px) rotate(-30deg) scale(1, 1); }
-        100% { transform: scale(.85) translate(0px, 8px) rotate(-28deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-trampP {
-        0% { transform: scale(.85) translate(0px, -40px) rotate(0deg) scale(.94, 1.06); }
-        30% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.3, .68); }
-        52% { transform: scale(.85) translate(0px, -22px) rotate(0deg) scale(.94, 1.08); }
-        72% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.16, .82); }
-        86% { transform: scale(.85) translate(0px, -8px) rotate(0deg) scale(1.08, .91); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-shakeP {
-        0%, 100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        8% { transform: scale(.85) translate(0px, 0px) rotate(11deg) scale(1, 1); }
-        20% { transform: scale(.85) translate(0px, 0px) rotate(-10deg) scale(1, 1); }
-        32% { transform: scale(.85) translate(0px, 0px) rotate(8deg) scale(1, 1); }
-        44% { transform: scale(.85) translate(0px, 0px) rotate(-7deg) scale(1, 1); }
-        56% { transform: scale(.85) translate(0px, 0px) rotate(5deg) scale(1, 1); }
-        68% { transform: scale(.85) translate(0px, 0px) rotate(-3deg) scale(1, 1); }
-        82% { transform: scale(.85) translate(0px, 0px) rotate(2deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-aroundP {
-        0%, 18% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        22%, 46% { transform: scale(.85) translate(0px, 0px) rotate(-6deg) scale(1, 1); }
-        52%, 84% { transform: scale(.85) translate(0px, 0px) rotate(6deg) scale(1, 1); }
-        90%, 100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-aroundF {
-        0% { box-shadow: var(--clawd-f-open); }
-        18% { box-shadow: var(--clawd-f-blink); }
-        22%, 46% { box-shadow: var(--clawd-f-look-l); }
-        48% { box-shadow: var(--clawd-f-blink); }
-        52%, 84% { box-shadow: var(--clawd-f-look-r); }
-        90%, 100% { box-shadow: var(--clawd-f-open); }
-      }
-
-      @keyframes clawd-b-spinP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        14% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.1, .9); }
-        30%, 40% { transform: scale(.85) translate(0px, -7px) rotate(0deg) scale(.1, 1.06); }
-        56% { transform: scale(.85) translate(0px, -3px) rotate(0deg) scale(1, 1); }
-        72%, 82% { transform: scale(.85) translate(0px, -5px) rotate(0deg) scale(.1, 1.04); }
-        92% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.12, .88); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-spinF {
-        0% { box-shadow: var(--clawd-f-open); }
-        14% { box-shadow: var(--clawd-f-look-r); }
-        30%, 72% { box-shadow: var(--clawd-f-back); }
-        82% { box-shadow: var(--clawd-f-look-l); }
-        100% { box-shadow: var(--clawd-f-open); }
-      }
-
-      @keyframes clawd-b-dhopP {
-        0% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.1, .9); }
-        14% { transform: scale(.85) translate(0px, -14px) rotate(0deg) scale(.94, 1.06); }
-        30% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.14, .86); }
-        44% { transform: scale(.85) translate(0px, -8px) rotate(0deg) scale(.97, 1.03); }
-        60% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1.08, .92); }
-        74% { transform: scale(.85) translate(0px, -3px) rotate(0deg) scale(1.052, .948); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-dhopF {
-        0% { box-shadow: var(--clawd-f-eye-v); }
-        14%, 30% { box-shadow: var(--clawd-f-arm-b-mid); }
-        44%, 60%, 100% { box-shadow: var(--clawd-f-eye-v); }
-      }
-
-      @keyframes clawd-b-leanP {
-        0%, 100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-        30%, 70% { transform: scale(.85) translate(7px, 0px) rotate(-4deg) scale(.62, 1.04); }
-      }
-
-      @keyframes clawd-b-leanF {
-        0% { box-shadow: var(--clawd-f-open); }
-        30% { box-shadow: var(--clawd-f-look-r); }
-        100% { box-shadow: var(--clawd-f-open); }
-      }
-
-      @keyframes clawd-b-wakeP {
-        0% { transform: scale(.85) translate(0px, 2px) rotate(0deg) scale(1.1, .9); }
-        40% { transform: scale(.85) translate(0px, -6px) rotate(0deg) scale(.94, 1.06); }
-        100% { transform: scale(.85) translate(0px, 0px) rotate(0deg) scale(1, 1); }
-      }
-
-      @keyframes clawd-b-wakeF {
-        0% { box-shadow: var(--clawd-f-tucked-blink); }
-        30% { box-shadow: var(--clawd-f-shut); }
-        55% { box-shadow: var(--clawd-f-blink); }
-        100% { box-shadow: var(--clawd-f-open); }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tilt"]::before {
-          transition: none !important;
-        }
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wow"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="hide"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="ledge"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="tramp"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="shake"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="around"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="spin"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="dhop"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="lean"]::before,
-        button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}[data-clawd-owner="B"][data-clawd-b="wake"]::before {
-          animation: none !important;
-        }
-      }
-
-      /* ===== 滚动态：扒住输入框 =====
-         原型里叫 p-peek（按钮标签「扒着输入框看」）：整只沉下去，
-         只剩脑袋和两只钳子搭在输入框上沿。
-
-         滚动开始扒住、滚动停止探回来，中间不跟——一次滚动只有两次
-         class 变化，没有逐帧写样式。原型那版是全程跟着倾斜，在长聊天里
-         每一个滚动事件都要写一次样式，这边不用。
-
-         沉下去写在 translate 上：transform 被 A2 的位置占着，
-         rotate 留给以后可能的倾斜，三条通道各管各的。 */
-      @keyframes clawd-peek-in {
-        0% { translate: 0 0; }
-        100% { translate: 0 8px; }
-      }
-
-      @keyframes clawd-peek-in-frames {
-        0% { box-shadow: var(--clawd-f-low-look); }
-        22% { box-shadow: var(--clawd-f-peek-mid); }
-        40%, 100% { box-shadow: var(--clawd-f-peek-grip); }
-      }
-
-      @keyframes clawd-peek-out {
-        0% { translate: 0 8px; }
-        100% { translate: 0 0; }
-      }
-
-      @keyframes clawd-peek-out-frames {
-        0% { box-shadow: var(--clawd-f-peek-mid); }
-        45%, 100% { box-shadow: var(--clawd-f-look-u); }
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-owner="B"].clawd-scroll-hold:not(.clawd-sleeping)::before {
-        animation: clawd-peek-in 520ms cubic-bezier(.3,0,.2,1) forwards,
-                   clawd-peek-in-frames 520ms step-end forwards !important;
-      }
-
-      button.${BUTTON_CLASS}[data-clawd-owner="B"].clawd-scroll-release:not(.clawd-sleeping)::before {
-        animation: clawd-peek-out 420ms cubic-bezier(.2,.8,.35,1) forwards,
-                   clawd-peek-out-frames 420ms step-end forwards !important;
-      }
-
-      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before {
-        animation: none !important;
-      }
-
-      /* D2 被冷落 / 害羞（环境触发）。只占 translate/rotate 通道，不碰
-         transform（呼吸/打盹/入睡都在那条通道上），并用 :not(.clawd-sleeping)
-         让入睡压过它们——「不在」比「没被搭理」更该被表达。
-         生成中（GENERATING_CLASS）也整体让位，避免跟专属动作抢注意力。
-         （原来这里还要让位给三击踱步，踱步已在 2.0.40 删除。） */
-      button.${BUTTON_CLASS}.${NEGLECTED_CLASS}:not(.clawd-sleeping)::before,
-      button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}::before {
-        animation: clawd-neglected-droop 3.4s ease-in-out infinite !important;
-      }
-
-      button.${BUTTON_CLASS}.${SHY_AMBIENT_CLASS}:not(.clawd-sleeping)::before,
-      button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}::before {
-        animation: clawd-shy-ambient-tilt 2.2s ease-in-out infinite !important;
-      }
-
-      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}::before,
-      body.${GENERATING_CLASS} button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}::before {
-        animation: none !important;
       }
 
       /* 生成计时器：固定在输入区上方的小徽标，跟 clawd-cc-toast 同一套
@@ -3367,44 +2747,12 @@ if (CLAUDE_ENABLED) {
       }
 
       html[data-claude-motion="off"] button.${BUTTON_CLASS},
-      html[data-claude-motion="off"] button.${BUTTON_CLASS}::before,
-      html[data-claude-motion="off"] button.clawd-mobile-clawd-button,
-      html[data-claude-motion="off"] button.clawd-mobile-clawd-button::before,
       html[data-claude-motion="off"] #chat .typing_indicator::before,
       html[data-claude-motion="off"] .clawd-typing-exit-ghost::before {
         animation: none !important;
         transition: none !important;
         translate: 0 0 !important;
       }
-
-      html[data-claude-decorations="off"] :is(
-        .clawd-click-particle,
-        .clawd-cc-toast,
-        .clawd-hi-toast
-      ) {
-        display: none !important;
-      }
-
-      .clawd-click-particle {
-        position: fixed !important;
-        z-index: 10020 !important;
-        display: block !important;
-        width: max-content !important;
-        color: var(--cw-mark, #d97757) !important;
-        font-family: var(--cl-sans, ui-sans-serif, sans-serif) !important;
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        font-style: normal !important;
-        line-height: 1 !important;
-        text-shadow: none !important;
-        pointer-events: none !important;
-        animation: clawd-particle-out 680ms cubic-bezier(.16,.76,.2,1) both !important;
-      }
-
-      .clawd-click-particle.clawd-particle-question { color: var(--cw-text-muted, #8b8780) !important; }
-      .clawd-click-particle.clawd-particle-heart { color: var(--cw-mark, #d97757) !important; }
-      .clawd-click-particle.clawd-particle-star { color: #d9a45f !important; }
-      .clawd-click-particle.clawd-particle-dot { color: var(--cw-text-muted, #8b8780) !important; }
 
       #chat > .mes[is_user="false"] {
         position: relative !important;
@@ -4092,104 +3440,6 @@ if (CLAUDE_ENABLED) {
         transform: rotate(-24deg) scale(.88) !important;
       }
 
-      @keyframes clawd-button-pop {
-        0% { transform: translate3d(0,0,0) scale(1) rotate(0); }
-        10% { transform: translate3d(0,calc(2px * var(--cl-clawd-motion-strength,1)),0) scaleX(1.07) scaleY(.82) rotate(-1deg); }
-        22% { transform: translate3d(0,calc(1px * var(--cl-clawd-motion-strength,1)),0) scaleX(1.04) scaleY(.9) rotate(-1deg); }
-        36% { transform: translate3d(0,calc(-3px * var(--cl-clawd-motion-strength,1)),0) scaleX(.99) scaleY(1.03) rotate(1deg); }
-        48% { transform: translate3d(0,calc(-5px * var(--cl-clawd-motion-strength,1)),0) scaleX(.98) scaleY(1.04) rotate(2deg); }
-        60% { transform: translate3d(0,calc(-3px * var(--cl-clawd-motion-strength,1)),0) scale(1.01) rotate(1deg); }
-        72% { transform: translate3d(0,calc(1px * var(--cl-clawd-motion-strength,1)),0) scaleX(1.035) scaleY(.94) rotate(-1deg); }
-        84% { transform: translate3d(0,calc(-1px * var(--cl-clawd-motion-strength,1)),0) scaleX(.995) scaleY(1.015) rotate(0); }
-        93% { transform: translate3d(0,0,0) scale(1.005) rotate(0); }
-        100% { transform: translateY(0) scale(1) rotate(0); }
-      }
-
-      @keyframes clawd-button-settle {
-        0% { opacity:0; transform:translate3d(calc(-4px * var(--cl-clawd-motion-strength,1)),calc(-9px * var(--cl-clawd-motion-strength,1)),0) scale(.88); }
-        48% { opacity:1; transform:translate3d(calc(1px * var(--cl-clawd-motion-strength,1)),calc(1px * var(--cl-clawd-motion-strength,1)),0) scale(1.025); }
-        72% { transform:translate3d(0,calc(-1px * var(--cl-clawd-motion-strength,1)),0) scale(.995); }
-        100% { opacity:1; transform:translate3d(0,0,0) scale(1); }
-      }
-
-      @keyframes clawd-react-hop {
-        0%,100% { transform:translateY(0) scale(1) rotate(0); }
-        18% { transform:translateY(2px) scale(1.08,.82) rotate(-1deg); }
-        42% { transform:translateY(-8px) scale(.96,1.08) rotate(2deg); }
-        67% { transform:translateY(0) scale(1.06,.9) rotate(-1deg); }
-        84% { transform:translateY(-2px) scale(.99,1.02); }
-      }
-
-      @keyframes clawd-react-wiggle {
-        0%,100% { transform:translateX(0) rotate(0); }
-        18% { transform:translateX(-4px) rotate(-7deg); }
-        36% { transform:translateX(4px) rotate(7deg); }
-        54% { transform:translateX(-3px) rotate(-5deg); }
-        72% { transform:translateX(2px) rotate(3deg); }
-        88% { transform:translateX(-1px) rotate(-1deg); }
-      }
-
-      @keyframes clawd-react-nod {
-        0%,100% { transform:translateY(0) scale(1); }
-        26% { transform:translateY(3px) scale(1.03,.9); }
-        48% { transform:translateY(-2px) scale(.99,1.04); }
-        68% { transform:translateY(2px) scale(1.02,.94); }
-        84% { transform:translateY(-1px) scale(1,1.02); }
-      }
-
-      @keyframes clawd-react-peek {
-        0%,100% { transform:translateX(0) translateY(0) rotate(0); }
-        22% { transform:translateX(4px) translateY(-2px) rotate(5deg); }
-        56% { transform:translateX(5px) translateY(-3px) rotate(6deg); }
-        78% { transform:translateX(-1px) translateY(1px) rotate(-2deg); }
-      }
-
-      @keyframes clawd-react-shy {
-        0%,100% { transform:translateY(0) scale(1) rotate(0); }
-        22% { transform:translateY(2px) scale(1.06,.82) rotate(-4deg); }
-        52% { transform:translateY(3px) scale(1.08,.78) rotate(3deg); }
-        76% { transform:translateY(-1px) scale(.98,1.04) rotate(-1deg); }
-      }
-
-      /* 蹭一下：不缩壳、不跳，整只小幅往一侧蹭再弹回，比 shy 俏皮、比 wiggle 沉一点 */
-      @keyframes clawd-react-nudge {
-        0%,100% { transform:translateX(0) translateY(0) rotate(0); }
-        30% { transform:translateX(-5px) translateY(1px) rotate(-3deg); }
-        62% { transform:translateX(3px) translateY(0) rotate(2deg); }
-        84% { transform:translateX(-1px) translateY(0) rotate(-1deg); }
-      }
-
-      @keyframes clawd-particle-out {
-        0% { opacity: 0; transform: translate(-50%, 3px) scale(.38) rotate(0); }
-        18% { opacity: 1; transform: translate(-50%, -2px) scale(1.08) rotate(0); }
-        100% {
-          opacity: 0;
-          transform: translate(calc(-50% + var(--clawd-dx)), var(--clawd-dy)) scale(.78) rotate(var(--clawd-rotate));
-        }
-      }
-
-      @keyframes clawd-compose-bob {
-        0%, 100% { translate: 0 0; }
-        50% { translate: 0 -1px; }
-      }
-
-      /* D2 被冷落：慢、低幅度的下垂，读成「蔫了」，跟打盹的深呼吸区分开——
-         打盹是完全没人在，冷落是人在但没搭理它，所以幅度更小、节奏更快，
-         不该跟打盹看起来是同一件事。 */
-      @keyframes clawd-neglected-droop {
-        0%, 100% { rotate: 0deg; translate: 0 0; }
-        50% { rotate: -3deg; translate: 0 1px; }
-      }
-
-      /* D2 害羞（环境触发）：小幅左右扭动 + 轻微缩向一侧，比点击彩蛋的
-         clawd-react-shy 更收敛——那个是一次性大动作，这个是常驻小动作，
-         叠在一起会太吵。 */
-      @keyframes clawd-shy-ambient-tilt {
-        0%, 100% { translate: 0 0; rotate: 0deg; }
-        30% { translate: -1px 1px; rotate: -4deg; }
-        60% { translate: 1px 1px; rotate: 3deg; }
-      }
-
       @media (max-width: 700px) {
         button.${BUTTON_CLASS} {
           width: 38px !important;
@@ -4238,35 +3488,12 @@ if (CLAUDE_ENABLED) {
         }
       }
 
+      /* 以前这里还有 transform: none !important——那是给旧画法按钮整体弹跳用的，
+         现在按钮的 transform 是 A2 写的位置（拖动、走路、落点），一并清掉会让 Clawd 在「减少动态」下拖不动。 */
       @media (prefers-reduced-motion: reduce) {
-        button.${BUTTON_CLASS}.clawd-react-hop,
-        button.${BUTTON_CLASS}.clawd-react-wiggle,
-        button.${BUTTON_CLASS}.clawd-react-nod,
-        button.${BUTTON_CLASS}.clawd-react-peek,
-        button.${BUTTON_CLASS}.clawd-react-shy,
-        button.${BUTTON_CLASS}.clawd-react-nudge { animation: none !important; }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        button.${BUTTON_CLASS},
-        button.${BUTTON_CLASS}:hover,
-        button.${BUTTON_CLASS}.clawd-button-press {
+        button.${BUTTON_CLASS} {
           animation: none !important;
           transition: none !important;
-          transform: none !important;
-        }
-        .clawd-click-particle { animation-duration: 1ms !important; }
-        button.${BUTTON_CLASS}.${INPUT_TEXT_CLASS}::before,
-        button.clawd-mobile-clawd-button.${INPUT_TEXT_CLASS}::before,
-        button.${BUTTON_CLASS}.${NEGLECTED_CLASS}::before,
-        button.clawd-mobile-clawd-button.${NEGLECTED_CLASS}::before,
-        button.${BUTTON_CLASS}.${SHY_AMBIENT_CLASS}::before,
-        button.clawd-mobile-clawd-button.${SHY_AMBIENT_CLASS}::before {
-          animation: none !important;
-        }
-        button.${BUTTON_CLASS}.${INPUT_ACTIVE_CLASS},
-        button.clawd-mobile-clawd-button.${INPUT_ACTIVE_CLASS} {
-          translate: 0 0;
         }
       }
     `);
@@ -4329,7 +3556,6 @@ if (CLAUDE_ENABLED) {
       button.dataset.clawdState = visible;
       button.dataset.clawdOwner = owner;
       button.dataset.clawdRole = isComposer ? 'composer' : 'signoff';
-      CLAWD_STATE_CLASSES.forEach(name => button.classList.remove(name));
 
       /* 旧主题的 Clawd 开关和 welcome 规则都带 !important。最终显隐由真实
          开关和节点职责写在节点上，避免样式加载顺序误杀大 Clawd；粒子/气泡
@@ -4340,28 +3566,8 @@ if (CLAUDE_ENABLED) {
         'important',
       );
 
-      if (isComposer) {
-        const stateClass = {
-          think: 'clawd-state-think',
-          stream: 'clawd-state-stream',
-          done: 'clawd-state-done',
-          stopped: 'clawd-state-stopped',
-          error: 'clawd-state-error',
-          touch: 'clawd-state-touch',
-        }[visible];
-        if (stateClass) button.classList.add(stateClass);
-        button.classList.toggle('clawd-cheer', visible === 'done');
-      } else {
-        /* 小 Clawd 保留 2.0.135 的落地/点击动画，不套大 Clawd 的 A/C 姿势。 */
-        button.classList.remove('clawd-cheer');
-      }
-
-      /* 大 Clawd 按 C > A > B 切画面；小 Clawd 始终保留 B 轨的旧在场行为，
-         这样睡着时戳它仍会按 2.0.135 回梦话，而不是先被 C 轨清掉睡姿。 */
-      const useBState = isComposer ? owner === 'B' : !generationInFlight;
-      button.classList.toggle('clawd-sleeping', useBState && clawdTracks.B === 'sleep');
-      button.classList.toggle('clawd-idle-drowsy', useBState && clawdTracks.B === 'drowsy');
-      button.classList.toggle(NEGLECTED_CLASS, useBState && clawdTracks.B === 'neglected');
+      /* 画面全部由骨架（clawd-rig.js）画；以前这里还给按钮挂 clawd-state-* / clawd-cheer /
+         clawd-sleeping / clawd-idle-drowsy / clawd-neglected 这些 class，驱动旧的 ::before 精灵，已随旧画法一起删掉 */
       if (isComposer) syncClawdRig(button, owner);
     });
   }
@@ -4377,13 +3583,6 @@ if (CLAUDE_ENABLED) {
       ${RB} > .clawd-rig { display: none; position: absolute; left: -4px; top: -14px; width: 3px; height: 3px;
         transform: scale(.85); transform-origin: 24px 48px; pointer-events: none; }
       ${RB}[data-clawd-rig="on"] > .clawd-rig { display: block; }
-      ${RB}[data-clawd-rig="on"]::before { opacity: 0 !important; animation: none !important; }
-      /* 旧画法里直接动整个按钮的效果，输入框这只一律关掉，动作全交给骨架：
-         C 轨期间整只弹一下（clawd-state-touch）、输入框聚焦时整只抬高 3px（连影子一起飘起来）、点击反应动画 */
-      ${RB}[data-clawd-rig="on"].clawd-state-touch,
-      ${RB}[data-clawd-rig="on"].clawd-button-pop,
-      ${RB}[data-clawd-rig="on"][class*="clawd-react-"] { animation: none !important; }
-      ${RB}[data-clawd-rig="on"].${INPUT_ACTIVE_CLASS} { translate: none !important; }
       ${RB} .clr-root { position: absolute; left: 0; top: 0; }
       ${RB} .clr-p { position: absolute; left: 0; top: 0; width: 3px; height: 3px; }
       /* 待机时眼睛照旧跟着鼠标看（沿用现网的 clawd-look-* 四个方向），播动作时由动作自己管眼睛 */
@@ -4715,7 +3914,6 @@ if (CLAUDE_ENABLED) {
   function clawdDebugStop() {
     clawdDebugTimers.forEach(id => hostWindow.clearTimeout(id));
     clawdDebugTimers = [];
-    composerClawd()?.classList.remove(INPUT_TEXT_CLASS);
     /* 没在生成时，A 轨上残留的完成 / 出错也一起收掉，不然它会盖住要看的动作 */
     clawdDebugA = false;
     if (clawdTracks.A && !generationEventActive) setClawdA(null);
@@ -5080,11 +4278,10 @@ if (CLAUDE_ENABLED) {
     if (!form) return null;
     let button = composerClawd();
     if (!button) {
-      button = createButton(false, 'composer');
+      button = createButton('composer');
       form.append(button);
       scheduleA2BoundsWarm(button);
     }
-    applyCcComposerState(button);
     syncClawdBState();
     renderClawdTracks();
     return button;
@@ -5725,71 +4922,6 @@ if (CLAUDE_ENABLED) {
     hostDocument.querySelectorAll('button.clawd-mobile-clawd-button').forEach(button => button.remove());
   }
 
-  function createParticle(button, preferredClass = '') {
-    const choices = preferredClass
-      ? PARTICLES.filter(item => item.className === preferredClass)
-      : PARTICLES;
-    const picked = choices[Math.floor(Math.random() * choices.length)] || PARTICLES[0];
-    const particle = hostDocument.createElement('span');
-    particle.className = `clawd-click-particle ${picked.className}`;
-    particle.textContent = picked.text;
-    const rect = button.getBoundingClientRect();
-    const configuredStrength = Number.parseFloat(
-      hostWindow.getComputedStyle(hostDocument.documentElement)
-        .getPropertyValue('--cl-clawd-motion-strength'),
-    );
-    const motionStrength = Number.isFinite(configuredStrength)
-      ? Math.min(2, Math.max(0, configuredStrength))
-      : 1;
-    const dx = (-9 + Math.random() * 24) * motionStrength;
-    const dy = (-28 - Math.random() * 16) * motionStrength;
-    const rotate = (-24 + Math.random() * 48) * motionStrength;
-    particle.style.left = `${Math.round(rect.left + rect.width / 2)}px`;
-    particle.style.top = `${Math.round(rect.top + 4)}px`;
-    particle.style.setProperty('--clawd-dx', `${Math.round(dx)}px`);
-    particle.style.setProperty('--clawd-dy', `${Math.round(dy)}px`);
-    particle.style.setProperty('--clawd-rotate', `${Math.round(rotate)}deg`);
-    particle.addEventListener('animationend', () => particle.remove(), { once: true });
-    hostDocument.body.append(particle);
-  }
-
-  let buttonReactionBag = [];
-  function takeButtonReaction() {
-    if (!buttonReactionBag.length) {
-      buttonReactionBag = [...BUTTON_REACTIONS];
-      for (let i = buttonReactionBag.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [buttonReactionBag[i], buttonReactionBag[j]] = [buttonReactionBag[j], buttonReactionBag[i]];
-      }
-    }
-    return buttonReactionBag.pop();
-  }
-
-  function animateButton(button) {
-    const reaction = takeButtonReaction();
-    button.classList.remove('clawd-button-pop', ...BUTTON_REACTIONS);
-    void button.offsetWidth;
-    button.classList.add(reaction);
-    button.addEventListener('animationend', () => button.classList.remove(reaction), { once: true });
-    return reaction;
-  }
-
-  /* 手机上按下时的挤压效果原来靠 CSS :active。触屏上 :active 有名的会「粘住」——
-     松手之后不清干净，也可能跟随后 JS 加的反应 class 抢同一个 transform，
-     后加的反应播不出来，看起来就是「只有压扁」。
-     改成 pointerdown/pointerup/pointercancel/pointerleave 手动控制一个 class，
-     不依赖浏览器自己何时清 :active；桌面鼠标走同一套事件，效果不变。 */
-  function bindPressState(button) {
-    /* A2 接管期间不加这个 class：它写的是 !important 的 transform，
-       会跟 A2 写在同一个节点上的位置抢同一个属性。松手回到原位之后照常。 */
-    const press = () => { if (!A2.held) button.classList.add('clawd-button-press'); };
-    const release = () => button.classList.remove('clawd-button-press');
-    button.addEventListener('pointerdown', press);
-    button.addEventListener('pointerup', release);
-    button.addEventListener('pointercancel', release);
-    button.addEventListener('pointerleave', release);
-  }
-
   /* ===== A2：抓起 / 拖动 / 抛掷 / 戳的 5 档 / 生气序列 =====
      参考实现是 diagnostics/clawd-合并原型.html 里的 walls / mv / up / ballistic /
      phys / poke / playSeq / cancelSeq / locked / sulkSeq / place。原型是独立页面，
@@ -5803,8 +4935,7 @@ if (CLAUDE_ENABLED) {
 
      2) 布局读取。空气墙在按钮挂载或输入框尺寸变化后的空闲帧预热；正常的
         pointerdown / pointermove 都只写不读。只有页面刚启动、预热尚未完成时，
-        pointerdown 才回退读一次。第一次拖动先写位置并交出当前任务；粒子和
-        气泡等首帧提交后再读布局、再创建。
+        pointerdown 才回退读一次。
 
      3) touch-action。可拖 Clawd 静止时就固定为 none，因为 Android 在 pointerdown
         监听执行前已经决定当前手势能否滚动；等按下后再切对这次手势无效。
@@ -5813,14 +4944,7 @@ if (CLAUDE_ENABLED) {
 
      4) 判定归 pointerup：拖过就是抛，没拖过才是戳。click 监听保留，但会跳过
         指针路径已经处理过的那一次——留着它是为了键盘 Enter 激活，那条路径
-        不产生 pointer 事件。
-
-     一个有意的取舍：A1 的随机反应动画（clawd-react-*）在 button 上写的是
-     !important 的 transform。A2 把位置也写成 button 上的 !important transform，
-     所以 Clawd 被挪开之后那几个反应动画不会再改变它的位置——气泡、粒子、
-     ::before 上的姿势照常。要让两者完全共存，得给那几条 @keyframes 的每个
-     transform 前面都补一段 translate3d(var(--clawd-ax,0px),var(--clawd-ay,0px),0)，
-     那会动到 A1 已经验收过的动画，这一轮没做。 */
+        不产生 pointer 事件。 */
 
   /* ===== A2 诊断埋点 =====
      默认关闭；关闭时每个埋点只是一次布尔判断，不进数组、不读时钟。
@@ -5899,31 +5023,9 @@ if (CLAUDE_ENABLED) {
   /* 只写，不读。旋转和压扁必须跟位移写进同一条 transform——transform 是单一
      属性，分两次写的话后一次会把前一次整条覆盖掉。
      回到原位时把内联样式整个撤掉，让 A1 的动画恢复原样。 */
-  /* 气泡跟着 Clawd 走。
-     气泡挂在 #send_form 上、用 left/top 定位，所以 Clawd 被拖走之后它会留在
-     原地，看着像话是从输入框里飘出来的。
-
-     试过给它套一个跟随用的容器，但走不通：往 #send_form 里加任何未知子节点，
-     computed display 都是 none（拿一个什么都没有的 <span> 也一样）。
-
-     所以改成直接推气泡本身，而且用的是独立的 `translate` 属性，不是 transform：
-     气泡的 CSS 里 transform 已经被 translateY(-50%) 和入场动画占着，写 transform
-     会把入场动画顶掉。translate / rotate / scale 这三个独立属性在 transform
-     之前生效，两边互不干扰。它跟 transform 一样只走合成，不触发布局。 */
-  let a2ActiveToast = null;
-
-  function a2MoveToast() {
-    const toast = a2ActiveToast;
-    if (!toast) return;
-    if (!toast.isConnected) { a2ActiveToast = null; return; }
-    if (!A2.x && !A2.fy) toast.style.removeProperty('translate');
-    else toast.style.setProperty('translate', `${A2.x.toFixed(1)}px ${A2.fy.toFixed(1)}px`);
-  }
-
   function a2Place(button) {
     const move = `translate3d(${A2.x.toFixed(1)}px, ${A2.fy.toFixed(1)}px, 0)`;
     const home = !A2.x && !A2.fy;
-    a2MoveToast();
     if (home && !A2.rot && A2.sqx === 1 && A2.sqy === 1) {
       button.style.removeProperty('transform');
       return;
@@ -5934,20 +5036,6 @@ if (CLAUDE_ENABLED) {
       value += ` scale(${A2.sqx.toFixed(3)}, ${A2.sqy.toFixed(3)})`;
     }
     button.style.setProperty('transform', value, 'important');
-  }
-
-  function a2Say(button, text) {
-    if (!text) return;
-    showCcToast(button, ccEscapeHtml(text), 'hi');
-  }
-
-  function a2Parts(button, count) {
-    /* 同上：输入框这只不再冒旧的文字粒子，情绪由骨架动作自己的符号表现（「！」、青筋、心） */
-    if (button.classList.contains(COMPOSER_CLAWD_CLASS)) return;
-    for (let i = 0; i < count; i += 1) {
-      if (i === 0) createParticle(button);
-      else hostWindow.setTimeout(() => createParticle(button), i * 70);
-    }
   }
 
   /* ===== 原子序列与锁 =====
@@ -6115,11 +5203,9 @@ if (CLAUDE_ENABLED) {
       /* 生气期间抓不起来 */
       event.preventDefault();
       A2.tookPointer = true;
-      if (Math.random() < .4) a2Say(button, '别碰我');
       return;
     }
     event.preventDefault();
-    A2.dragFeedbackRun += 1;
     A2.held = true;
     /* 必须递增，不能清零。清零会让代次令牌被复用：抓一次之后计数归 0，
        下一次抛掷又拿到 my=1，于是上一轮那个还在排队的 840ms 回调（my 也是 1）
@@ -6161,17 +5247,6 @@ if (CLAUDE_ENABLED) {
     }, CLAWD_PET_HOLD_MS);
   }
 
-  function a2DeferGrabFeedback(button) {
-    const run = (A2.dragFeedbackRun += 1);
-    /* rAF 内再排任务：当前位置先提交一帧，之后才创建会读取布局的气泡和粒子。
-       直接放在首次 pointermove 里，长聊天会先同步回流、最后才移动 Clawd。 */
-    hostWindow.requestAnimationFrame(() => hostWindow.setTimeout(() => {
-      if (run !== A2.dragFeedbackRun || !A2.dragging) return;
-      a2Say(button, '放我下来');
-      a2Parts(button, 2);
-    }, 0));
-  }
-
   function a2Move(button, event) {
     if (!A2.held || event.pointerId !== A2.pointerId) return;
     const dx = event.clientX - A2.sx;
@@ -6199,14 +5274,12 @@ if (CLAUDE_ENABLED) {
     A2.lt = now;
     A2.rot = Math.max(-14, Math.min(14, -A2.vx * 0.7 / A2.feel));
     a2Place(button);
-    if (dragStarted) a2DeferGrabFeedback(button);
   }
 
   function a2Up(button, event) {
     if (!A2.held || (event && event.pointerId !== A2.pointerId)) return;
     A2.held = false;
     A2.tookPointer = true;
-    A2.dragFeedbackRun += 1;
     hostWindow.clearTimeout(A2.petTimer);
     if (A2.petting && !A2.moved) {
       /* 轻抚之后松手：不算戳，轻抚那段自己播完 */
@@ -6331,25 +5404,15 @@ if (CLAUDE_ENABLED) {
           }
           /* 落定之后顺手重量一次，下一次抓取大概率还能走快路径。 */
           scheduleA2BoundsWarm(button);
-          const settled = A2.throws;
-          if (drop) return;                    // 只是掉回去，不演落地台词、不接后续
-          /* 粒子和气泡都要读布局，从 rAF 回调里挪出去 */
-          hostWindow.setTimeout(() => {
-            if (my !== A2.flying) return;
-            a2Parts(button, 1);
-            if (settled < 3) a2Say(button, ['呼', '稳了', '站住了'][settled % 3]);
-          }, 0);
+          if (drop) return;                    // 只是掉回去，不接后续
           hostWindow.setTimeout(() => {
             /* 原型这里没有代次令牌：840ms 内又被抓起来的话，旧的这条回调照样
                会烧到底，把跺脚或生气序列砸到新的一次互动上。 */
             if (my !== A2.flying) return;
             if (A2.throws >= 5) {
-              a2Say(button, '不理你了');
               a2SulkSeq();
             } else if (A2.throws >= 3) {
               setClawdC('stomp', CLAWD_RIG.clips[clawdRigPickVariant('stomp')].dur);
-              a2Say(button, '你够了');
-              a2Parts(button, 3);
             } else {
               setClawdC(null);
             }
@@ -6383,27 +5446,23 @@ if (CLAUDE_ENABLED) {
 
   function a2Poke(button) {
     if (a2Locked()) {
-      /* 生气期间戳它没用 */
-      if (Math.random() < .3) a2Say(button, '哼');
-      return;
+      return;                                  // 生气期间戳它没用
     }
     A2.lastDec = Date.now();
     a2NoteInteraction();
     if (clawdTracks.A) {
       /* 生成中不加烦躁，只随机播一个戳的动作 */
       a2RandomPoke(1);
-      clawdPokeReaction(button);
+      clawdPokeReaction();
       return;
     }
     A2.irr = Math.min(5, A2.irr + 1);
     const tier = A2.irr;
     if (tier <= A2_RICH_TIER) {
       a2RandomPoke(tier);
-      clawdPokeReaction(button);
+      clawdPokeReaction();
       return;
     }
-    a2Say(button, A2_LINES[tier - 1][Math.random() * 2 | 0]);
-    a2Parts(button, tier >= 4 ? 3 : 1);
     if (tier >= 5) a2SulkSeq();
     else a2RandomPoke(tier);
   }
@@ -6456,7 +5515,6 @@ if (CLAUDE_ENABLED) {
     A2.petting = false;
     A2.held = false;
     A2.tookPointer = true;
-    A2.dragFeedbackRun += 1;
     A2.dragging = false;
     A2.rot = 0;
     if (A2.moved || A2.fy < 0) {
@@ -6468,45 +5526,23 @@ if (CLAUDE_ENABLED) {
     }
   }
 
-  /* A1 的点击反应：连点彩蛋、随机反应动画、粒子、视线/姿势脉冲。
-     A2 之后它变成戳的第一档——轻轻戳一下还是原来那只 Clawd，
-     只有被连着戳、烦躁爬上去之后才换成 A2 的短台词。 */
-  function clawdPokeReaction(button) {
+  /* 戳一下：算有人在搭理 Clawd（被冷落立刻解除）。画面由骨架的戳 1–4 表现（a2RandomPoke）；
+     以前这里还有连点彩蛋的台词气泡、按钮整体弹跳、文字粒子和 ::before 姿势脉冲，都是旧画法，已删。 */
+  function clawdPokeReaction() {
     lastPokeAt = Date.now();
     if (neglected) setNeglected(false);
-    if (handleCcCombo(button)) return;
-    /* C1b：输入框这只的戳反应全部由骨架动作（戳 1–4）表现。旧的按钮整体弹跳（clawd-react-*）、
-       文字粒子（✦ ✧ ? ♥ ·）、::before 姿势脉冲都是旧画法，叠在新动作上会打架——
-       Lulu 真机看到头顶右上角多一个灰色小问号（2026-09-24）。台词气泡照旧。 */
-    if (button.classList.contains(COMPOSER_CLAWD_CLASS)) return;
-    const reaction = animateButton(button);
-    createParticle(button, reaction === 'clawd-react-shy' ? 'clawd-particle-heart' : '');
-    if (reaction === 'clawd-react-hop' && Math.random() < .42) {
-      hostWindow.setTimeout(() => createParticle(button, 'clawd-particle-star'), 90);
-    }
-    if (reaction === 'clawd-react-peek') pulseCcPose(button, 'clawd-poke-look', 680);
-    else if (reaction === 'clawd-react-shy') pulseCcPose(button, 'clawd-poke-tucked', 720);
-    else if (reaction === 'clawd-react-nod') pulseCcPose(button, 'clawd-poke-blink', 360);
   }
 
   /* role 默认给 composer：A1 之后只剩输入框上方这一只会被创建。
      留着参数是为了让 SIGNOFF_CLAWD_CLASS 这条路径显式可查，不是还在用。 */
-  function createButton(settle = false, role = 'composer') {
+  function createButton(role = 'composer') {
     const button = hostDocument.createElement('button');
     button.type = 'button';
     button.className = BUTTON_CLASS;
     button.classList.add(role === 'composer' ? COMPOSER_CLAWD_CLASS : SIGNOFF_CLAWD_CLASS);
     button.setAttribute('aria-label', 'Clawd');
     button.title = 'Clawd';
-    applyCcComposerState(button);
-    if (settle) {
-      button.classList.add('clawd-button-settle');
-      button.addEventListener('animationend', () => button.classList.remove('clawd-button-settle'), { once: true });
-    }
-    /* 顺序有意义：a2Bind 必须在 bindPressState 之前注册，pointerdown 的监听
-       按注册顺序跑，A2 要先把 held 立起来，bindPressState 才知道该让开。 */
     a2Bind(button);
-    bindPressState(button);
     button.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
@@ -6521,7 +5557,6 @@ if (CLAUDE_ENABLED) {
     return button;
   }
 
-
   /* ===== v1.3 CC easter eggs ===== */
   const CC_VERBS_EN = {
     morning: ['brewing', 'stretching', 'warming up'],
@@ -6533,152 +5568,9 @@ if (CLAUDE_ENABLED) {
     afternoon: ['琢磨', '炖着', '思索'],
     evening: ['冥想', '放空', '看星星'],
   };
-  /* 戳一下的短反应。只读界面状态，不读取任何聊天内容。 */
-  const CC_LINES_EN = {
-    first: ['oh, hi', 'mm, here', 'there you are', 'hello, you', 'found me', 'tiny crab online'],
-    generating: ['busy', 'hold on', 'writing', 'one sec', 'Clawdifying…', 'stirring the tokens', 'almost', 'thinking very small thoughts'],
-    justDone: ['done', 'there', "how's that", 'phew', '⎿  ok', 'ta-da', 'delivered', 'I made this'],
-    idle: ['still there?', 'awake', '…you there?', 'hey', 'I can wait', 'quiet in here', 'tap tap'],
-    returned: ['back?', "where'd you go", 'oh, hi again', 'welcome back', 'you returned', 'I kept your spot'],
-    late: ['still up', 'what time is it', 'tomorrow?', 'go to bed', 'context left: 3%', 'night owl', 'one last thing?'],
-    default: ['yes?', 'mm?', 'here', 'listening', 'hm', 'what', '…?', 'Thinking…', '/compact', 'need a claw?', 'at your service', 'you rang?', 'small but capable'],
-    sleeping: ['zzz…', 'five more minutes', 'mmnh…', 'not now…', '…', 'shhh', 'mm, tomorrow…', 'dreaming in tokens', 'crab is offline'],
-    third: ['again?', 'still poking?', 'that tickles', 'persistent, huh?'],
-    fourth: ['stop', 'hands off', 'my shell!', 'personal space'],
-  };
-  const CC_LINES_CN = {
-    first: ['哦，你来了', '嗯，在', '早', '来了', '你好呀', '找到我了', '小螃蟹上线'],
-    generating: ['忙着', '等等', '在写了', '别催', '手上有活', '稍等', 'Clawdifying…', '正在搅拌 token', '快了', '小脑袋在转'],
-    justDone: ['好了', '写完了', '怎么样', '看看？', '呼', '⎿  ok', '锵锵', '送达', '我做的'],
-    idle: ['还在？', '醒着呢', '你还在吗', '…睡着了？', '喂', '我可以等', '好安静', '敲敲'],
-    returned: ['回来了', '去哪了', '哦，回来了', '欢迎回来', '你回来啦', '位置给你留着'],
-    late: ['还不睡', '几点了', '明天再说吧', '熬着呢', '早点睡', 'context left: 3%', '夜猫子', '最后一件事？'],
-    default: ['在的', '嗯？', '听着呢', '干嘛', '在', '？', '…嗯', '唔', '欸', '咔', 'Thinking…', '/compact', '要搭把钳吗', '随叫随到', '你叫我？', '小但能干'],
-    sleeping: ['zzz…', '再睡五分钟', '唔…', '别吵…', '…', '嘘', '明天…', '梦见 token 了', '螃蟹离线'],
-    third: ['又？', '还来', '痒', '很执着嘛'],
-    fourth: ['别戳了', '停', '我的壳！', '保持距离'],
-  };
-
-  const CC_HI_EN = {
-    morning: ['Coffee and Claude time?', 'Morning. Where do we start?', 'Fresh page. What goes on it?'],
-    afternoon: ['What&#39;s on your mind?', 'Back at it?', 'Ready when you are.'],
-    evening: ['Winding down, or just starting?', 'Evening. What are we making?', 'One more round?'],
-    late: ['Still up?', 'Late night session?'],
-  };
-  const CC_HI_CN = {
-    morning: ['喝杯咖啡，聊会儿？', '早。今天从哪儿开始？', '新的一页，写点什么？'],
-    afternoon: ['在想什么？', '接着来？', '随时可以开始。'],
-    evening: ['是收工，还是刚开始？', '晚上好。今天做点什么？', '再来一轮？'],
-    late: ['还没睡？', '又是通宵？'],
-  };
-
-  let ccComboCount = 0;
-  let ccComboTimer = null;
   let ccSleeping = false;
-  let ccHasBeenPoked = false;
-  let ccReturnedAt = 0;
-  let ccHiddenAt = 0;
-  /* D2 害羞（环境触发）：短时间内被连续轻戳，读成「被摸得有点不好意思」。
-     窗口内记录每一次软戳的时间戳，超过阈值就触发一次有限时长的害羞姿势
-     ——跟点击彩蛋里那个一次性的 clawd-react-shy 是两套 class，互不覆盖。 */
-  const SHY_TRIGGER_WINDOW_MS = 8000;
-  const SHY_TRIGGER_COUNT = 4;
-  const SHY_POSE_MS = 2600;
-  let shyPokeTimestamps = [];
-  const shyPoseTimers = new WeakMap();
-  /* 每个 Clawd 按钮各自的姿势计时器。以前是单个全局变量：多个 Clawd（每条
-     AI 消息一个）同时存在时，后一个 Clawd 眨眼会 clearTimeout 掉前一个的
-     计时器，但不会摘掉前一个已经加上的 class —— 前一个就永久卡在眨眼/
-     看/缩起来的姿势，直到下次凑巧轮到它自己被摸一下。改成按钮各管各的。 */
-  const ccPoseTimers = new WeakMap();
-  const ccBags = new Map();
-  const CC_SILENT_RATE = 0.10;
-
-  function ccLines() {
-    return ccPrefersChinese() ? CC_LINES_CN : CC_LINES_EN;
-  }
-
-  function takeCcLine(slot) {
-    const language = ccPrefersChinese() ? 'cn' : 'en';
-    const key = `${language}:${slot}`;
-    let bag = ccBags.get(key);
-    if (!bag?.length) {
-      bag = [...(ccLines()[slot] || ccLines().default)];
-      for (let i = bag.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [bag[i], bag[j]] = [bag[j], bag[i]];
-      }
-      ccBags.set(key, bag);
-    }
-    return bag.pop();
-  }
-
-  function pulseCcPose(button, className, duration = 520) {
-    if (!button) return;
-    const existing = ccPoseTimers.get(button);
-    if (existing) hostWindow.clearTimeout(existing);
-    button.classList.remove('clawd-poke-blink', 'clawd-poke-look', 'clawd-poke-tucked');
-    void button.offsetWidth;
-    button.classList.add(className);
-    const timer = hostWindow.setTimeout(() => {
-      button.classList.remove(className);
-      if (ccPoseTimers.get(button) === timer) ccPoseTimers.delete(button);
-    }, duration);
-    ccPoseTimers.set(button, timer);
-  }
-
-  /* D2 害羞（环境触发），有限时长的常驻姿势，走独立的按钮各自计时器
-     （跟本轮修的眨眼计时器同一个写法），避免共享计时器互相取消。
-     跟被冷落互斥：害羞期间直接压掉冷落状态，害羞退场后冷落会在下一次
-     refreshIdleSleep 里按最新条件重新判定，不会自动补回来。 */
-  function pulseShyAmbient(button) {
-    if (!button) return;
-    setNeglected(false);
-    // 只在真正「新进入」害羞时弹气泡——已经在害羞状态里被重新触发
-    // （计时器续期）不重复弹，否则连续戳的时候气泡会一直闪。
-    const wasActive = button.classList.contains(SHY_AMBIENT_CLASS);
-    const existing = shyPoseTimers.get(button);
-    if (existing) hostWindow.clearTimeout(existing);
-    button.classList.add(SHY_AMBIENT_CLASS);
-    if (!wasActive) {
-      showCcToast(button, ccEscapeHtml(ccPrefersChinese() ? '害羞了…别一直戳啦' : "shy… stop poking me"), 'hi');
-    }
-    const timer = hostWindow.setTimeout(() => {
-      button.classList.remove(SHY_AMBIENT_CLASS);
-      if (shyPoseTimers.get(button) === timer) shyPoseTimers.delete(button);
-    }, SHY_POSE_MS);
-    shyPoseTimers.set(button, timer);
-  }
-
-  function noteSoftPoke(button) {
-    const now = Date.now();
-    shyPokeTimestamps.push(now);
-    shyPokeTimestamps = shyPokeTimestamps.filter(t => now - t < SHY_TRIGGER_WINDOW_MS);
-    if (shyPokeTimestamps.length >= SHY_TRIGGER_COUNT && !isTypingActive()) {
-      shyPokeTimestamps = [];
-      pulseShyAmbient(button);
-    }
-  }
-
-  function ccContextSlot() {
-    const now = Date.now();
-    if (!ccHasBeenPoked) return 'first';
-    if (isTypingActive()) return 'generating';
-    if (now - ccReturnedAt < 12000) return 'returned';
-    if (now - lastGenerationDoneAt < 12000) return 'justDone';
-    /* 现有打盹是 60 秒；idle 只占入睡前的短窗口，避免与 sleeping 自相矛盾。 */
-    if (hasChatActivity && now - lastActivityAt > IDLE_SLEEP_MS * .75) return 'idle';
-    const hour = new Date().getHours();
-    if (hour < 5) return 'late';
-    return 'default';
-  }
-
   function noteCcVisibility() {
-    if (hostDocument.visibilityState !== 'visible') {
-      ccHiddenAt = Date.now();
-      return;
-    }
-    ccReturnedAt = Date.now();
+    if (hostDocument.visibilityState !== 'visible') return;
     /* C1b：离开期间来了回复 → 回来后读信（只在 B 轨空闲、没在生成、没被碰时） */
     if (clawdLetterPending) {
       clawdLetterPending = false;
@@ -6686,110 +5578,10 @@ if (CLAUDE_ENABLED) {
         if (destroyed || clawdTracks.A || clawdTracks.C || clawdTracks.B !== 'idle') return;
         setClawdB('rig:letter', CLAWD_RIG.clips.letter.dur);
       }, 800);
-      return;
     }
-    if (ccHiddenAt && ccReturnedAt - ccHiddenAt > 2000) {
-      const button = hostDocument.querySelector('button.' + BUTTON_CLASS);
-      if (button && !button.classList.contains('clawd-sleeping')) {
-        button.classList.remove(...BUTTON_REACTIONS);
-        void button.offsetWidth;
-        button.classList.add('clawd-react-peek');
-        pulseCcPose(button, 'clawd-poke-look', 680);
-        hostWindow.setTimeout(() => button.classList.remove('clawd-react-peek'), 700);
-      }
-    }
-    ccHiddenAt = 0;
-  }
-
-  function showCcToast(button, html, variant) {
-    /* C1b：输入框这只不再冒文字气泡（Lulu 2026-09-24：旧版的文字弹幕一起去掉），情绪全交给骨架动作和像素符号 */
-    if (button.classList?.contains(COMPOSER_CLAWD_CLASS)) return;
-    const host = button.parentElement;
-    if (!host) return;
-    // 挂在 clawd 的父节点上，这样按钮自己的挤压 transform 不会带着气泡一起变形
-    hostDocument.querySelectorAll('.clawd-cc-toast, .clawd-hi-toast').forEach(el => el.remove());
-    const toast = hostDocument.createElement('span');
-    toast.className = variant === 'hi' ? 'clawd-hi-toast' : 'clawd-cc-toast';
-    toast.innerHTML = html;
-    host.appendChild(toast);
-    const hostBox = host.getBoundingClientRect();
-    const crabBox = button.getBoundingClientRect();
-    /* left/top 按 Clawd 的「归位位置」算，位移交给 translate，
-       所以这里要把 A2 当前的位移减掉，否则会算两次。 */
-    toast.style.left = (crabBox.right - A2.x - hostBox.left + 8) + 'px';
-    /* 贴 Clawd 的右上角，不再是右侧居中：气泡自带 translateY(-50%)，
-       把 top 压在按钮上沿，气泡就整个浮在它头顶偏右。 */
-    toast.style.top = (crabBox.top - A2.fy - hostBox.top) + 'px';
-    a2ActiveToast = toast;
-    a2MoveToast();
-    hostWindow.setTimeout(() => {
-      if (a2ActiveToast === toast) a2ActiveToast = null;
-      toast.remove();
-    }, variant === 'hi' ? 3200 : 2600);
-  }
-
-  function ccEscapeHtml(text) {
-    return text.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-  }
-
-  function ccInteractiveTargets() {
-    return hostDocument.querySelectorAll(`button.${BUTTON_CLASS}`);
-  }
-
-  function clearCcTransientFeedback(button) {
-    button?.classList.remove(...BUTTON_REACTIONS, 'clawd-button-pop');
-    button?.classList.remove('clawd-poke-blink', 'clawd-poke-look', 'clawd-poke-tucked');
-    hostDocument.querySelectorAll('.clawd-click-particle, .clawd-cc-toast, .clawd-hi-toast')
-      .forEach(element => element.remove());
-  }
-
-  function handleCcCombo(button) {
-    // 睡着的时候戳它，回一句梦话就好，不进连点彩蛋的计数
-    if (!button) return true;
-    // 不管哪种戳法，都算「有人在搭理 Clawd」——冷落状态立即解除，
-    // 不用等下一次 refreshIdleSleep 的 5 秒轮询。
-    lastPokeAt = Date.now();
-    if (neglected) setNeglected(false);
-    if (button.classList.contains('clawd-sleeping') || ccSleeping) {
-      pulseCcPose(button, 'clawd-poke-blink', 620);
-      showCcToast(button, ccEscapeHtml(takeCcLine('sleeping')), 'hi');
-      return true;
-    }
-    ccComboCount += 1;
-    if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
-    ccComboTimer = hostWindow.setTimeout(() => { ccComboCount = 0; }, 1400);
-    if (ccComboCount <= 2) {
-      const slot = ccContextSlot();
-      ccHasBeenPoked = true;
-      noteSoftPoke(button);
-      if (Math.random() < CC_SILENT_RATE) {
-        hostDocument.querySelectorAll('.clawd-cc-toast, .clawd-hi-toast').forEach(el => el.remove());
-        pulseCcPose(button, 'clawd-poke-blink');
-      } else {
-        showCcToast(button, ccEscapeHtml(takeCcLine(slot)), 'hi');
-      }
-      return false;
-    }
-    /* 连点第三下：只眨一下眼，不弹气泡，然后把计数清零。
-       原来这里是「三击切换踱步」—— 一个可开关的持久摇摆。去掉了，两个原因：
-       一是它不表达任何状态，纯装饰，而持久高频的动静在余光里就是噪音
-       （同样的教训在 ccMaybeCheer 那里已经吃过一次，见那段注释）；
-       二是「三下」和「踱步」之间没有意义关联，记不住。
-       现在连点的语义是「它被戳烦了，懒得回话」。
-
-       清零这一步不能省。旧代码在这个分支里做过 ccComboCount = 0，
-       2.0.40 换掉整段时把它一起删了 —— 结果只要点击间隔小于 1400ms，
-       计数就一路往上加，永远进不了上面 <= 2 那条分支，Clawd 从第三下起
-       再也不说话。节奏应当是「说、说、静一下、再说」，不是「说两句就哑」。 */
-    ccComboCount = 0;
-    if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
-    ccComboTimer = null;
-    pulseCcPose(button, 'clawd-poke-blink', 320);
-    return true;
   }
 
   /* ===== v1.7 ===== */
-
 
   /* 4. 姿势跟内容走：超长回复蜷起来，含代码块眯眼 */
   // 曾经有个「回复超长就蜷缩」的姿势，去掉了。
@@ -6800,7 +5592,7 @@ if (CLAUDE_ENABLED) {
      只认键盘，不认鼠标移动和滚动 —— 读长回复的时候鼠标和滚轮一直在动，
      但人其实没在「操作」，把那些算进来它就永远睡不着。
      （曾经有个「连点 8 下睡 6 秒」的彩蛋，早已移除；ccSleeping 现在恒为
-     false，留着只是给 handleCcCombo 的梦话分支当哨兵。）
+     false，留着只是当哨兵。）
      阈值原来是 1 分钟，跟被冷落的窗口几乎重叠——冷落刚冒出来一小会儿
      就被入睡盖过去，等于白做。改成 3 分钟，给冷落留出 1~2:15 的
      显示窗口（drowsy 门槛是本值的 75%，会跟着一起挪，不用单独调）。 */
@@ -6847,13 +5639,6 @@ if (CLAUDE_ENABLED) {
      已经取消的入睡把睡觉样式硬套上去。 */
   const SLEEP_TRANSITION_MS = 900;
 
-  function playSleepTransition() {
-    hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(button => {
-      button.classList.add('clawd-sleep-transition');
-      button.addEventListener('animationend', () => button.classList.remove('clawd-sleep-transition'), { once: true });
-    });
-  }
-
   function refreshIdleSleep() {
     if (ccSleeping || !hasChatActivity) {
       if (neglected) setNeglected(false);
@@ -6872,7 +5657,6 @@ if (CLAUDE_ENABLED) {
        触发条件互斥，害羞优先，冷落让位。 */
     const shouldBeNeglected = elapsed < IDLE_SLEEP_MS * .75
       && !isTypingActive()
-      && ![...ccInteractiveTargets()].some(b => b.classList.contains(SHY_AMBIENT_CLASS))
       && Date.now() - lastPokeAt > NEGLECT_POKE_MS;
     /* 被冷落只演一段（两个来回，约 7 秒）就回待机，之后 4 分钟内不再演，除非又被戳过。
        以前一进冷落就一直循环，直到你戳它或者快睡着——正常聊天时每过一分钟就蔫在那里，
@@ -6896,7 +5680,6 @@ if (CLAUDE_ENABLED) {
     }
     setNeglected(false);
     setDrowsy(false);
-    playSleepTransition();
     hostWindow.setTimeout(() => {
       if (idleAsleep) setSleeping(true);
     }, SLEEP_TRANSITION_MS);
@@ -7026,18 +5809,11 @@ if (CLAUDE_ENABLED) {
   let clawdScrollLastAt = 0;
   let clawdScrollHolding = false;
   let clawdScrollRestTimer = 0;
-  let clawdScrollClearTimer = 0;
 
-  function clawdScrollRelease(button) {
+  /* 松手：骨架播「从输入框里出来」。以前还给按钮挂 clawd-scroll-hold / -release 两个 class 驱动旧的 ::before 精灵，已删 */
+  function clawdScrollRelease() {
     clawdScrollHolding = false;
     if (clawdTracks.B === 'peek') setClawdB('rig:peekOut', CLAWD_RIG.clips.peekOut.dur);
-    button.classList.remove('clawd-scroll-hold');
-    button.classList.add('clawd-scroll-release');
-    if (clawdScrollClearTimer) hostWindow.clearTimeout(clawdScrollClearTimer);
-    clawdScrollClearTimer = hostWindow.setTimeout(() => {
-      clawdScrollClearTimer = 0;
-      button.classList.remove('clawd-scroll-release');
-    }, 460);
   }
 
   function clawdScrollTilt() {
@@ -7061,13 +5837,9 @@ if (CLAUDE_ENABLED) {
     const button = composerClawd();
     if (!button) return;
 
-    /* 开始扒住：一次滚动只做这一次 class 变化，中间的滚动事件都走不到这里。 */
+    /* 开始扒住：一次滚动只切这一次，中间的滚动事件都走不到这里。 */
     if (!clawdScrollHolding) {
       clawdScrollHolding = true;
-      if (clawdScrollClearTimer) hostWindow.clearTimeout(clawdScrollClearTimer);
-      clawdScrollClearTimer = 0;
-      button.classList.remove('clawd-scroll-release');
-      button.classList.add('clawd-scroll-hold');
       /* C1b：扒着输入框由骨架画（peek：缩下去 4 格、两只钳子扒着边），停下后播「出来」 */
       setClawdB('peek', 60000);
     }
@@ -7080,7 +5852,7 @@ if (CLAUDE_ENABLED) {
     clawdScrollRestTimer = hostWindow.setTimeout(() => {
       clawdScrollRestTimer = 0;
       clawdScrollVel = 0;
-      clawdScrollRelease(button);
+      clawdScrollRelease();
     }, CLAWD_SCROLL_REST_MS);
   }
 
@@ -8735,7 +7507,6 @@ if (CLAUDE_ENABLED) {
     return { index: loose, loose: loose >= 0 };
   }
 
-
   async function confirmRecentDelete(popup) {
     const title = ccPrefersChinese() ? '删除这个对话文件？' : 'Delete the Chat File?';
     if (typeof popup?.callGenericPopup === 'function' && popup?.POPUP_TYPE?.CONFIRM !== undefined) {
@@ -9725,9 +8496,8 @@ if (CLAUDE_ENABLED) {
   function applyLook() {
     lookRaf = 0;
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(button => {
-      // 睡着的时候不跟随 —— 否则鼠标一动就会闪一帧站立姿势，
-      // 因为跟随用的四个方向精灵都是从「站立」派生的
-      if (button.classList.contains('clawd-sleeping')) return;
+      // 睡着的时候不跟随
+      if (clawdTracks.B === 'sleep') return;
       const box = button.getBoundingClientRect();
       if (!box.width) return;
       const dx = lookX - (box.left + box.width / 2);
@@ -9776,20 +8546,11 @@ if (CLAUDE_ENABLED) {
      避免收尾定时器把真实鼠标刚设好的朝向错误地扳回中间。 */
   const SCAN_IDLE_MS = 8000;
   const SCAN_HOLD_MS = 900;
-  // 眼神动作本身够轻，不用每次张望都弹气泡——太吵；每 20 秒最多提示一次，
-  // 主要是让人第一次注意到「这是在自主张望」，认出来之后就不用再提醒。
-  const SCAN_TOAST_COOLDOWN_MS = 20000;
-  let lastScanToastAt = 0;
   function playAmbientGlance(button) {
     if (!button || button.dataset.look) return; // 已经在看某个方向（真实或环境），不叠加
     const dir = Math.random() < 0.5 ? 'l' : 'r';
     button.dataset.look = dir;
     button.dataset.clawdAmbientLook = dir;
-    const now = Date.now();
-    if (now - lastScanToastAt > SCAN_TOAST_COOLDOWN_MS) {
-      lastScanToastAt = now;
-      showCcToast(button, ccEscapeHtml(ccPrefersChinese() ? '张望一下～' : 'just looking around~'), 'hi');
-    }
     button.classList.add('clawd-look-' + dir);
     hostWindow.setTimeout(() => {
       // 期间没被真实鼠标顶替，才收回去；顶替过的话真实鼠标系统自己会管。
@@ -9806,31 +8567,11 @@ if (CLAUDE_ENABLED) {
     if (isTypingActive() || ccSleeping) return;
     if (Math.random() > 0.18) return;
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(button => {
-      if (button.classList.contains('clawd-sleeping')
-        || button.classList.contains(NEGLECTED_CLASS)
-        || button.classList.contains(SHY_AMBIENT_CLASS)) return;
+      if (clawdTracks.B === 'sleep' || clawdTracks.B === 'neglected') return;
       playAmbientGlance(button);
     });
   }
-  /* 3. 输入框聚焦时抬头 */
-  function setPerk(on) {
-    hostDocument.querySelectorAll('button.' + BUTTON_CLASS)
-      .forEach(button => button.classList.toggle('clawd-perk', on));
-  }
-
-  function applyCcComposerState(button, focusedOverride) {
-    if (!button) return;
-    const box = hostDocument.querySelector('#send_textarea');
-    const focused = typeof focusedOverride === 'boolean'
-      ? focusedOverride
-      : Boolean(box && hostDocument.activeElement === box);
-    const hasText = Boolean(box?.value?.trim());
-    button.classList.toggle(INPUT_ACTIVE_CLASS, focused);
-    button.classList.toggle(INPUT_TEXT_CLASS, focused && hasText);
-  }
-
   function syncCcComposerState(focusedOverride) {
-    ccInteractiveTargets().forEach(button => applyCcComposerState(button, focusedOverride));
     syncClawdBState();
   }
 
@@ -9840,7 +8581,6 @@ if (CLAUDE_ENABLED) {
     syncCcComposerState(true);
   };
 
-  let lastFocusReactionAt = 0;
   const handleFocusIn = event => {
     if (isMobileLayout() && isSoftKeyboardTarget(event.target)) {
       if (!virtualKeyboardOverlayActive) ensureAndroidKeyboardPanAnchor(true);
@@ -9876,18 +8616,6 @@ if (CLAUDE_ENABLED) {
     /* 手机上聚焦输入框时不要触碰历史消息里的 Clawd 按钮。旧逻辑会给每一层
        按钮改 class，并逐个读取 offsetWidth 强制同步排版；重角色卡/长聊天因此
        正好在键盘弹出的关键帧冻结数秒。键盘避让不依赖这段装饰动画。 */
-    if (isMobileLayout()) return;
-    setPerk(true);
-    if (Date.now() - lastFocusReactionAt < 1800) return;
-    lastFocusReactionAt = Date.now();
-    hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(button => {
-      if (button.classList.contains('clawd-sleeping')) return;
-      button.classList.remove(...BUTTON_REACTIONS);
-      void button.offsetWidth;
-      button.classList.add('clawd-react-nod');
-      pulseCcPose(button, 'clawd-poke-blink', 320);
-      hostWindow.setTimeout(() => button.classList.remove('clawd-react-nod'), 540);
-    });
   };
   const handleFocusOut = event => {
     if (isMobileLayout() && isSoftKeyboardTarget(event.target)) scheduleMobileViewportSettle();
@@ -9904,9 +8632,7 @@ if (CLAUDE_ENABLED) {
       resetMobileComposerTranslate();
       return;
     }
-    setPerk(false);
   };
-
 
   /* 9. 代码块顶栏 */
   function refreshCodeBars() {
@@ -9938,7 +8664,6 @@ if (CLAUDE_ENABLED) {
       pre.prepend(bar);
     });
   }
-
 
   function clearTypingMotion(indicator) {
     const timer = typingMotionTimers.get(indicator);
@@ -10126,7 +8851,6 @@ if (CLAUDE_ENABLED) {
       indicator.classList.add('clawd-typing-ready');
       captureTypingSnapshot(indicator);
       playTypingMotion(indicator, 'clawd-typing-click', 560, true);
-      createParticle(hit, Math.random() < .34 ? 'clawd-particle-heart' : 'clawd-particle-star');
     });
     indicator.append(hit);
     return hit;
@@ -10223,7 +8947,6 @@ if (CLAUDE_ENABLED) {
     const lang = hostDocument.documentElement.getAttribute('lang') || hostWindow.navigator.language || '';
     return /^zh/i.test(lang);
   }
-
 
   function refreshComposerPhrase(active) {
     const box = hostDocument.querySelector('#send_textarea');
@@ -10493,16 +9216,6 @@ if (CLAUDE_ENABLED) {
     TAURITAVERN_HOST_CLASS,
     'clawd-welcome',
     'clawd-has-recents',
-    'clawd-sleeping',
-    'clawd-cheer',
-    'clawd-button-settle',
-    'clawd-button-press',
-    INPUT_ACTIVE_CLASS,
-    INPUT_TEXT_CLASS,
-    NEGLECTED_CLASS,
-    SHY_AMBIENT_CLASS,
-    'clawd-idle-drowsy',
-    'clawd-sleep-transition',
     'clawd-wobble-sway',
     'clawd-wobble-tilt',
     'clawd-typing-enter',
@@ -10510,7 +9223,6 @@ if (CLAUDE_ENABLED) {
     'clawd-typing-native-suppressed',
     'clawd-typing-click',
     'clawd-typing-press',
-    ...BUTTON_REACTIONS,
   ]);
 
   const OWNED_MUTATION_SELECTOR = [
@@ -10519,7 +9231,6 @@ if (CLAUDE_ENABLED) {
     `button.${SWIPE_PROXY_CLASS}`,
     `button.${REROLL_CLASS}`,
     `.${USER_ACTIONS_CLASS}`,
-    '.clawd-click-particle',
     '.clawd-typing-hit',
     '.clawd-typing-exit-ghost',
     '.clawd-mobile-chrome',
@@ -10896,10 +9607,6 @@ if (CLAUDE_ENABLED) {
       if (!clawdTracks.A) beginClawdGeneration();
     }
     if (generationJustEnded) {
-      /* 回复落地时播一次 settle。A1 之后播在迁到输入框上方的那只身上 ——
-         消息末尾已经没有 Clawd 了。 */
-      settlePending = true;
-      lastGenerationDoneAt = Date.now();
       settleClawdGeneration('done');
     }
     previousTypingActive = typingActive;
@@ -10958,12 +9665,6 @@ if (CLAUDE_ENABLED) {
        页面就会出现“标题消失、输入框沉底”或整体跳位。 */
     const messages = refreshMessageStates(typingActive);
     if (generationJustEnded) {
-      const assistants = [...hostDocument.querySelectorAll('#chat > .mes[is_user="false"]')];
-      const latestAssistant = assistants.at(-1);
-      /* An empty provider response is not a successful Clawd arrival. Avoid
-         replaying the settle/pop animation on the previous real answer; that
-         was the visible one-frame "tremble" reported for blank replies. */
-      if (!latestAssistant || !hasMessageContent(latestAssistant)) settlePending = false;
       /* 生成期间 trackSwipeArrows 是整个跳过的（见那里的注释），
          这里补排一次，让翻页箭头在回复落地的同一轮里归位。 */
       if (!isMobileLayout()) scheduleSwipeTrack();
@@ -11000,28 +9701,8 @@ if (CLAUDE_ENABLED) {
     trackSwipeArrows();
     const message = messages.slice().reverse().find(candidate => !isWelcomeSurfaceMessage(candidate)) ?? null;
     refreshReroll(message, typingActive);
-    /* A1：消息末尾不再创建 Clawd。整个角色（尺寸、点击、连点、气泡、粒子、
-       视线、打盹、落地）都在 #send_form 上方那只 composer 实例上，这里只清场。 */
+    /* A1：消息末尾不再创建 Clawd，整个角色都在 #send_form 上方那只 composer 实例上，这里只清场。 */
     removeStaleButtons();
-    /* 落地反馈跟着角色一起迁：原来是「新建消息末尾按钮时播一次」，
-       现在改成给常驻的 composer 实例补一次 settle class。
-       用 rAF 重挂而不是读 offsetWidth 重启动画 —— 那是一次同步布局读取，
-       这一层明令不许做（Via 键盘卡顿就是那么来的）。 */
-    if (settlePending) {
-      const settleTarget = composerClawd();
-      if (settleTarget) {
-        settleTarget.classList.remove('clawd-button-settle');
-        hostWindow.requestAnimationFrame(() => {
-          settleTarget.classList.add('clawd-button-settle');
-          settleTarget.addEventListener(
-            'animationend',
-            () => settleTarget.classList.remove('clawd-button-settle'),
-            { once: true },
-          );
-        });
-      }
-      settlePending = false;
-    }
     renderClawdTracks();
   }
 
@@ -11537,9 +10218,7 @@ if (CLAUDE_ENABLED) {
     if (A2.bndRaf) hostWindow.cancelAnimationFrame(A2.bndRaf);
     A2.bndRaf = 0;
     if (clawdScrollRestTimer) hostWindow.clearTimeout(clawdScrollRestTimer);
-    if (clawdScrollClearTimer) hostWindow.clearTimeout(clawdScrollClearTimer);
     clawdScrollRestTimer = 0;
-    clawdScrollClearTimer = 0;
     clawdScrollHolding = false;
     A2.bndReady = false;
     composerResizeObserver?.disconnect();
@@ -11579,9 +10258,6 @@ if (CLAUDE_ENABLED) {
       hostWindow.clearTimeout(throttleTimer);
       throttleTimer = 0;
     }
-    if (ccComboTimer) hostWindow.clearTimeout(ccComboTimer);
-    /* ccPoseTimers 是按钮各自持有的 WeakMap，按钮节点被上面的清理/卸载
-       带走后计时器引用也跟着失效，不需要（也没法）在这里统一遍历清除。 */
     typingMotionTimers.forEach(timer => hostWindow.clearTimeout(timer));
     typingMotionTimers.clear();
     typingEntryTimers.forEach(timer => hostWindow.clearTimeout(timer));
@@ -11608,8 +10284,6 @@ if (CLAUDE_ENABLED) {
     emptyTimers.clear();
     dirtyMessages.clear();
     previousTypingActive = false;
-    lastGenerationDoneAt = 0;
-    settlePending = false;
     embeddedFrameHandlers.forEach((handler, frame) => {
       frame.removeEventListener('load', handler);
       frame.removeAttribute(EMBED_ATTRIBUTE);
@@ -11628,7 +10302,7 @@ if (CLAUDE_ENABLED) {
     [...welcomeAvatarOriginals.keys()].forEach(restoreWelcomeAvatar);
     hostDocument.querySelectorAll(`.${WELCOME_PROMPT_CLASS}`).forEach(message => message.classList.remove(WELCOME_PROMPT_CLASS));
     hostDocument
-      .querySelectorAll(`.${BUTTON_CLASS}, .${LEFT_SWIPE_PROXY_CLASS}, .${SWIPE_PROXY_CLASS}, .${REROLL_CLASS}, .${USER_ACTIONS_CLASS}, .${PROMPT_DRAG_HANDLE_CLASS}, .clawd-click-particle, .clawd-typing-hit, .clawd-typing-exit-ghost`)
+      .querySelectorAll(`.${BUTTON_CLASS}, .${LEFT_SWIPE_PROXY_CLASS}, .${SWIPE_PROXY_CLASS}, .${REROLL_CLASS}, .${USER_ACTIONS_CLASS}, .${PROMPT_DRAG_HANDLE_CLASS}, .clawd-typing-hit, .clawd-typing-exit-ghost`)
       .forEach(element => element.remove());
     hostDocument.querySelectorAll('#chat .typing_indicator').forEach(indicator => {
       indicator.classList.remove('clawd-typing-enter', 'clawd-typing-ready', 'clawd-typing-native-suppressed', 'clawd-typing-click', 'clawd-typing-press', 'clawd-cheer', 'clawd-wobble-sway', 'clawd-wobble-tilt');
@@ -11747,7 +10421,6 @@ if (CLAUDE_ENABLED) {
   $(start);
   $(window).on('pagehide', destroy);
 })();
-
 
 } else {
   console.info('[Claude Web] 已在设置面板里关闭，只加载设置面板本身。');
@@ -13487,8 +12160,6 @@ if (CLAUDE_ENABLED) {
     }
     refreshTheatre();
   }
-
-
 
   const LAYOUTS = [
     { value: 'auto', label: '自动（跨 700px 自动切换）' },

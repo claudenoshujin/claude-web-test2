@@ -566,7 +566,9 @@ export function installOfficialLayout(win = window) {
     observe(root, schedule, {attributes:true,attributeFilter:['data-claude-structure','data-claude-skin']});
     observe(doc.body, schedule, {attributes:true,attributeFilter:['class']});
     const chat = doc.getElementById('chat'); if (chat) observe(chat, schedule, {childList:true,subtree:true});
-    on(doc,'input', e => { if (e.target.id === 'send_textarea') syncChat(); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
+    // Typing only changes the filled state. syncChat() walks every assistant message and
+    // reads layout, so it stays on the chat observer / schedule() path instead of every keystroke.
+    on(doc,'input', e => { if (e.target.id === 'send_textarea') doc.body.classList.toggle('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
     on(doc,'change', e => { if (e.target.id === 'ui_language_select') schedule(); });
     on(doc,'click', e => { const toggle=e.target.closest?.('.drawer-toggle'); const panel=toggle?.parentElement.querySelector(':scope > .drawer-content'); if(panel && panels.has(panel.id)) requestedPanel=panel.id; },true);
     on(doc,'keydown', e => { if (e.key === 'Escape' && current && !doc.querySelector('dialog[open]') && !e.defaultPrevented) { closeSettings(); e.preventDefault(); } });
