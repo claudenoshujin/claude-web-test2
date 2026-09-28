@@ -164,7 +164,7 @@ assert.equal(
   'native Android keyboard layout must clear a stale composer translation',
 );
 
-assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'on');
+assert.equal(window.document.documentElement.dataset.claudeQuoteBodyColor, 'off');
 assert.equal(window.document.querySelector('.third-party-action')?.isConnected, true, 'third-party action must survive refresh');
 const interactionStyle = window.document.getElementById('claude-clawd-interaction-style')?.textContent || '';
 const composerClawd = window.document.querySelector('#send_form > .clawd-composer-clawd');

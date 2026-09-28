@@ -14,6 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
+import { installOfficialLayout } from "./official-layout.js?v=20260927g";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -165,7 +166,7 @@ const CLAUDE_DECORATIONS_ENABLED = claudeReadSetting('decorations', ['on', 'off'
 const CLAUDE_GEN_TIMER_ENABLED = claudeReadSetting('genTimer', ['on', 'off'], 'off') !== 'off';
 const CLAUDE_BG_TRANSPARENT_ENABLED = claudeReadSetting('bgTransparent', ['on', 'off'], 'off') === 'on';
 const CLAUDE_BG_BLUR_ENABLED = claudeReadSetting('bgBlur', ['on', 'off'], 'off') === 'on';
-const CLAUDE_QUOTE_BODY_COLOR_ENABLED = claudeReadSetting('quoteBodyColor', ['on', 'off'], 'on') !== 'off';
+const CLAUDE_QUOTE_BODY_COLOR_ENABLED = claudeReadSetting('quoteBodyColor', ['on', 'off'], 'off') !== 'off';
 /* 毛玻璃浓度：8~60 之间的整数，表示 color-mix 里 --cw-surface-page 的占比。
    数字越大越"糊"（底色更浓、越不透）；越小越接近纯透明。允许字符串是
    开区间，这里手动做数值校验和夹取，claudeReadSetting 那套白名单机制
@@ -304,15 +305,31 @@ if (claudeReadSetting('theme-auto', ['manual', 'system', 'time'], 'manual') !== 
 
 const CLAUDE_LAYOUT_CHOICE = claudeReadSetting('layout', ['auto', 'pc', 'mobile'], 'auto');
 
-const CLAUDE_LAYOUT = (() => {
-  if (CLAUDE_LAYOUT_CHOICE !== 'auto') return CLAUDE_LAYOUT_CHOICE;
-  /* 和 CSS 里的主断点保持一致：700px 以下算手机。 */
+/* 自动布局：手机按设备判断，固定用手机版，横屏（宽度超过 700px）也不换、不刷新。
+   电脑仍按窗口宽度：700px 以下用手机版，跨过断点时刷新一次——桌面样式表没有为
+   700px 以下设计，半屏窗口（1366 屏约 683px）必须换到手机版。想强制某一版，用设置里的「布局」。 */
+function claudeDetectPhone() {
+  const ua = window.navigator?.userAgent || '';
+  if (/iPhone|iPod|Android.+Mobile|Windows Phone/i.test(ua)) return true;
+  const shortSide = Math.min(window.screen?.width || 0, window.screen?.height || 0);
+  /* 部分 Android WebView（如 Via）的 UA 不带 Mobile；按屏幕短边补判，读不到尺寸时按手机算。 */
+  if (/Android/i.test(ua)) return shortSide === 0 || shortSide <= 700;
   try {
-    return window.matchMedia('(max-width:700px)').matches ? 'mobile' : 'pc';
+    const touchFirst = window.matchMedia('(pointer:coarse)').matches && !window.matchMedia('(hover:hover)').matches;
+    return touchFirst && shortSide > 0 && shortSide <= 700;
   } catch {
-    return 'pc';
+    return false;
   }
-})();
+}
+
+const CLAUDE_IS_PHONE = claudeDetectPhone();
+function claudeNarrowWindow() {
+  try { return window.matchMedia('(max-width:700px)').matches; } catch { return false; }
+}
+const CLAUDE_LAYOUT = CLAUDE_LAYOUT_CHOICE !== 'auto'
+  ? CLAUDE_LAYOUT_CHOICE
+  : (CLAUDE_IS_PHONE || claudeNarrowWindow() ? 'mobile' : 'pc');
+document.documentElement.dataset.claudeLayout = CLAUDE_LAYOUT;
 
 /* 2.0.98 之前这里写的是 `CLAUDE_COMPAT_REQUESTED && CLAUDE_LAYOUT === 'pc'`，
    也就是窄屏一律回退到完整手机版 —— 兼容模式在手机上根本没生效过。
@@ -330,9 +347,50 @@ if (CLAUDE_COMPAT_MODE) {
   document.documentElement.dataset.claudeStructure = 'rail';
 }
 
-/* 自动布局不能只在启动时判断一次。跨过主断点时自动刷新，让 JS 功能分支和
-   对应的 PC / 手机样式表一起切换；只改 CSS 会留下半桌面半手机的状态。 */
-if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
+/* 手机版的样式表里有大量 (max-width:700px) / (min-width:701px) 分支。布局既然按设备
+   定了，手机横屏超过 700px 时这些分支也必须仍按手机走：把扩展自己样式表里的这两个
+   条件改写成恒真 / 恒假。只改本扩展的样式（链接在扩展目录下、或 id 以 claude / clawd
+   开头的 <style>），酒馆和其他扩展的样式不动。电脑版不改写，窄窗口照常按宽度排版。 */
+if (CLAUDE_ENABLED && CLAUDE_LAYOUT === 'mobile' && (CLAUDE_IS_PHONE || CLAUDE_LAYOUT_CHOICE === 'mobile')) {
+  const PHONE_WIDTH = /\(\s*max-width\s*:\s*700px\s*\)/g;
+  const WIDE_WIDTH = /\(\s*min-width\s*:\s*701px\s*\)/g;
+  const pinned = new WeakSet();
+  const ours = sheet => {
+    const node = sheet.ownerNode;
+    if (!node) return false;
+    if (node.tagName === 'LINK') return String(node.href || '').startsWith(CLAUDE_EXTENSION_BASE);
+    return /^(claude|clawd)/i.test(node.id || '');
+  };
+  const pinRules = list => {
+    for (const rule of list) {
+      const media = rule.media;
+      if (media && /70[01]px/.test(media.mediaText)) {
+        const next = media.mediaText.replace(PHONE_WIDTH, '(min-width: 0px)').replace(WIDE_WIDTH, '(min-width: 99999px)');
+        if (next !== media.mediaText) media.mediaText = next;
+      }
+      if (rule.cssRules) pinRules(rule.cssRules);
+    }
+  };
+  const pinPhoneMedia = () => {
+    for (const sheet of document.styleSheets) {
+      if (pinned.has(sheet) || !ours(sheet)) continue;
+      let rules;
+      try { rules = sheet.cssRules; } catch { continue; }
+      pinRules(rules);
+      pinned.add(sheet);
+    }
+  };
+  pinPhoneMedia();
+  // Linked sheets arrive on load; <style> text may be rewritten later (new sheet object).
+  document.addEventListener('load', event => { if (event.target?.tagName === 'LINK') pinPhoneMedia(); }, true);
+  new MutationObserver(pinPhoneMedia).observe(document.head, { childList: true, subtree: true, characterData: true });
+  if (document.body) new MutationObserver(pinPhoneMedia).observe(document.body, { childList: true });
+  else document.addEventListener('DOMContentLoaded', () => new MutationObserver(pinPhoneMedia).observe(document.body, { childList: true }), { once: true });
+}
+
+/* 电脑自动布局：跨过 700px 断点时刷新一次，让 JS 功能分支和 PC / 手机样式表一起切换。
+   手机不走这里（见上）。 */
+if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && !CLAUDE_IS_PHONE && window.matchMedia) {
   const layoutMedia = window.matchMedia('(max-width:700px)');
   let layoutReloadTimer = 0;
   const syncAutoLayout = () => {
@@ -342,11 +400,8 @@ if (CLAUDE_ENABLED && CLAUDE_LAYOUT_CHOICE === 'auto' && window.matchMedia) {
       if (nextLayout !== CLAUDE_LAYOUT) window.location.reload();
     }, 180);
   };
-  if (typeof layoutMedia.addEventListener === 'function') {
-    layoutMedia.addEventListener('change', syncAutoLayout);
-  } else if (typeof layoutMedia.addListener === 'function') {
-    layoutMedia.addListener(syncAutoLayout);
-  }
+  if (typeof layoutMedia.addEventListener === 'function') layoutMedia.addEventListener('change', syncAutoLayout);
+  else if (typeof layoutMedia.addListener === 'function') layoutMedia.addListener(syncAutoLayout);
 }
 
 /* 2.0.99：手机端的接管范围跟桌面对齐。
@@ -367,7 +422,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.156-playbill-align-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.157-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -395,6 +450,18 @@ const CLAUDE_STYLE_URL = new URL(
 );
 CLAUDE_STYLE_URL.searchParams.set('v', CLAUDE_KEYBOARD_BUILD.id);
 const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
+
+const officialStyle = document.createElement('link');
+officialStyle.rel = 'stylesheet';
+officialStyle.href = new URL('styles/official-layout.css?v=20260927g', import.meta.url).href;
+document.head.append(officialStyle);
+const startOfficialLayout = () => {
+  document.head.append(officialStyle);
+  window.__claudeOfficialLayout?.destroy();
+  window.__claudeOfficialLayout = installOfficialLayout(window);
+};
+if (document.readyState === 'complete') window.setTimeout(startOfficialLayout, 0);
+else window.addEventListener('load', startOfficialLayout, { once: true });
 
 console.info(
   '[Claude Web] 扩展形态启动：' + (CLAUDE_COMPAT_MODE ? '兼容框架' : CLAUDE_THEME_VARIANT)
@@ -7111,7 +7178,7 @@ if (CLAUDE_ENABLED) {
   const mobileEnabled = typeof CLAUDE_FEATURES !== 'undefined' && CLAUDE_FEATURES.mobile;
 
   function isMobileLayout() {
-    return Boolean(mobileEnabled && hostWindow.matchMedia?.('(max-width:700px)').matches);
+    return Boolean(mobileEnabled); // layout is chosen per device, not per width
   }
 
   function usesNativeAndroidKeyboardLayout() {
@@ -7838,7 +7905,7 @@ if (CLAUDE_ENABLED) {
     const holder = hostDocument.querySelector('#top-settings-holder');
     if (!holder) return;
     let existing = hostDocument.querySelector('.' + PC_TOP_ACTIONS_CLASS);
-    if (hostWindow.matchMedia('(max-width: 700px)').matches) {
+    if (mobileEnabled) {
       existing?.remove();
       return;
     }
@@ -9223,7 +9290,7 @@ if (CLAUDE_ENABLED) {
     staleMics.forEach(mic => mic.remove());
 
     let button = row.querySelector(':scope > .' + CHARACTER_SWITCHER_CLASS);
-    const showSwitcher = hostDocument.body.classList.contains(WELCOME_CLASS);
+    const showSwitcher = !mobileEnabled && hostDocument.body.classList.contains(WELCOME_CLASS);
     if (!showSwitcher) {
       closeCharacterMenu();
       button?.remove();
@@ -9337,7 +9404,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function refreshMobileNewChat() {
-    if (!mobileEnabled || !welcomeEnabled || !hostWindow.matchMedia?.('(max-width:700px)').matches) return;
+    if (!mobileEnabled || !welcomeEnabled) return;
     const holder = hostDocument.querySelector('#top-settings-holder');
     if (!holder || holder.querySelector(':scope > .clawd-mobile-new-chat')) return;
     const button = hostDocument.createElement('button');
@@ -9350,7 +9417,7 @@ if (CLAUDE_ENABLED) {
 
   function refreshMobileChrome() {
     if (!mobileEnabled || !welcomeEnabled) return;
-    const narrow = hostWindow.matchMedia?.('(max-width:700px)').matches;
+    const narrow = mobileEnabled;
     if (!narrow) {
       closeMobileMenu();
       mobileChrome?.root?.remove();
@@ -10589,6 +10656,8 @@ if (CLAUDE_ENABLED) {
 
   function isVisibleFullScreenExternalModal(element) {
     if (!(element instanceof hostWindow.HTMLElement)) return false;
+    // Our settings frame shares the native drawer layer; it is not an external modal.
+    if (element.id === 'cw-v4-settings') return false;
     const rail = hostDocument.querySelector('#top-settings-holder');
     if (rail && (rail === element || rail.contains(element) || element.contains(rail))) return false;
     const style = hostWindow.getComputedStyle(element);
@@ -13508,11 +13577,7 @@ if (CLAUDE_ENABLED) {
 
   function resolveLayout(choice) {
     if (choice !== 'auto') return choice;
-    try {
-      return window.matchMedia('(max-width:700px)').matches ? 'mobile' : 'pc';
-    } catch {
-      return 'pc';
-    }
+    return claudeDetectPhone() || window.matchMedia?.('(max-width:700px)').matches ? 'mobile' : 'pc';
   }
 
   /* 换日夜只是换一份样式表，能当场生效，不用刷新。
@@ -13754,9 +13819,9 @@ if (CLAUDE_ENABLED) {
 
                 <label class="checkbox_label claude-web-check claude-web-field">
                   <input id="claude-web-quote-body-color" type="checkbox">
-                  <span>引号文字跟随正文颜色</span>
+                  <span>引号内文字变色</span>
                 </label>
-                <div class="claude-web-help">关闭后恢复主题原本的引号强调色。</div>
+                <div class="claude-web-help">开启时使用主题引号色，关闭时跟随正文颜色。</div>
 
                 <details id="claude-web-colors" class="claude-web-field">
                   <summary style="cursor:pointer;user-select:none;opacity:.85">自定义配色</summary>
@@ -14517,15 +14582,15 @@ if (CLAUDE_ENABLED) {
     });
 
     const quoteBodyColorBox = panel.querySelector('#claude-web-quote-body-color');
-    quoteBodyColorBox.checked = read('quoteBodyColor', ['on', 'off'], 'on') !== 'off';
+    quoteBodyColorBox.checked = read('quoteBodyColor', ['on', 'off'], 'off') === 'off';
     quoteBodyColorBox.addEventListener('change', () => {
-      if (!write('quoteBodyColor', quoteBodyColorBox.checked ? 'on' : 'off')) return;
-      document.documentElement.dataset.claudeQuoteBodyColor = quoteBodyColorBox.checked ? 'on' : 'off';
+      if (!write('quoteBodyColor', quoteBodyColorBox.checked ? 'off' : 'on')) return;
+      document.documentElement.dataset.claudeQuoteBodyColor = quoteBodyColorBox.checked ? 'off' : 'on';
       const variant = document.documentElement.dataset.claudeIntegratedTheme;
       if (variant) window.__claudeIntegratedTheme?.applyVariant?.(variant);
       hint.textContent = quoteBodyColorBox.checked
-        ? '引号文字已固定为正文颜色。'
-        : '引号文字已恢复主题强调色。';
+        ? '引号文字已恢复主题强调色。'
+        : '引号文字已固定为正文颜色。';
     });
 
     layoutSelect.addEventListener('change', () => {
