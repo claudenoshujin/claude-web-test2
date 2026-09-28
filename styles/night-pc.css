@@ -1278,7 +1278,7 @@ body.claude-generation-active #chat > .mes.last_mes[is_user="false"] .mes_text::
   color:var(--cw-text-muted) !important;
   opacity:.82;
 }
-html body #chat .mes .mes_reasoning :is(code,kbd,samp,.inline-code,.inlineCode,[class*="inline-code"]), html body #chat .mes .mes_reasoning :is(code,kbd,samp,.inline-code,.inlineCode,[class*="inline-code"]) * {
+html body #chat .mes .mes_reasoning :is(code,kbd,samp,.inline-code,.inlineCode,[class*="inline-code"]), html body #chat .mes .mes_reasoning :is(code,kbd,samp,.inline-code,.inlineCode) * {
   display:inline !important;
   margin:0 !important;
   padding:0 .05em !important;
@@ -1312,7 +1312,7 @@ html body #chat .mes .mes_reasoning pre, html body #chat .mes .mes_reasoning pre
   font-size:.92em !important;
   font-weight:400 !important;
 }
-html body #chat .mes .mes_reasoning pre :is(code,kbd,samp,.inline-code,.inlineCode,[class*="inline-code"]), html body #chat .mes .mes_reasoning pre :is(code,kbd,samp,.inline-code,.inlineCode,[class*="inline-code"]) * {
+html body #chat .mes .mes_reasoning pre :is(code,kbd,samp,.inline-code,.inlineCode,[class*="inline-code"]), html body #chat .mes .mes_reasoning pre :is(code,kbd,samp,.inline-code,.inlineCode) * {
   display:inline !important;
   padding:0 !important;
   color:inherit !important;
