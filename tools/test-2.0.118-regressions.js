@@ -111,7 +111,7 @@ assert.match(index, /a2Place\(button\);\s*if \(dragStarted\) a2DeferGrabFeedback
    （body 上一改就是全页约 2 万个元素），点输入框弹键盘时明显卡顿。 */
 for (const theme of ['day-pc', 'day-mobile', 'night-pc', 'night-mobile']) {
   const css = fs.readFileSync(path.join(root, 'styles', theme + '.css'), 'utf8');
-  assert.doesNotMatch(css, /[class*=[^]]+])s**/, theme + '.css: [class*=…] in an ancestor with a * subject invalidates whole subtrees on any class change');
+  assert.doesNotMatch(css, /\[class\*=[^\]]+\]\)\s*\*/, theme + '.css: [class*=…] in an ancestor with a * subject invalidates whole subtrees on any class change');
 }
 
 console.log('✓ Claude Web 2.0.156 focused regressions passed');
