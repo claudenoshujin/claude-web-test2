@@ -253,7 +253,42 @@ html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manage
 .cw-v4-persona-use{margin-left:auto}
 .avatar-container:not(.selected) .cw-v4-persona-current,.avatar-container.selected .cw-v4-persona-switch{display:none}
 html[data-cw-v4] body #top-settings-holder :is(#rm_print_characters_pagination,#persona_pagination_container):has(.paginationjs-prev.disabled):has(.paginationjs-next.disabled){display:none!important}
-@media(max-width:700px){html[data-cw-v4] body #top-settings-holder>.clawd-mobile-new-chat{position:absolute!important;left:24px!important;right:24px!important;top:auto!important;bottom:78px!important;width:calc(100% - 48px)!important;border-radius:24px!important;background:var(--cw-v4-text)!important;color:var(--cw-v4-bg)!important;min-height:44px!important;border:0!important}html[data-cw-v4] body #top-settings-holder .clawd-rail-recents{padding-bottom:70px!important}}
+/* 手机侧栏底部（design v4 .screen.mobile .account）：一行里左边 44px 头像圆，右边 50px 高的 New chat 黑胶囊；
+   名字、Max plan 和 ▾ 不显示。行：上 12 / 下 26 内边距，左右 16，外扩 -8px；胶囊按同一行的中线绝对定位
+   （holder 下内边距 10 + 行下内边距 26 = bottom 36px；右 10 - 8 + 16 = 18px）。 */
+@media(max-width:700px){
+html[data-cw-v4] body #top-settings-holder>.clawd-mobile-new-chat{position:absolute!important;left:auto!important;right:18px!important;top:auto!important;bottom:36px!important;z-index:2;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px;width:auto!important;height:50px!important;min-height:50px!important;margin:0!important;padding:0 24px!important;border:0!important;border-radius:999px!important;background:var(--cw-v4-text)!important;color:var(--cw-v4-bg)!important;font:500 17px/1 var(--cw-v4-font)!important;box-shadow:none!important}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents{padding-bottom:0!important}
+html[data-cw-v4] body #top-settings-holder>.drawer#persona-management-button{margin:auto -8px 0!important;padding-top:0!important}
+html[data-cw-v4] body #top-settings-holder>#persona-management-button>.drawer-toggle{box-sizing:border-box!important;min-height:88px!important;padding:12px 16px 26px!important;gap:10px!important;align-items:center!important}
+html[data-cw-v4] body #persona-management-button .clawd-user-face{flex:0 0 44px!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;min-height:44px!important;max-height:44px!important}
+html[data-cw-v4] body #persona-management-button :is(.clawd-user-meta,.clawd-user-more){display:none!important}
+/* 入口行：design v4 行距 52px（48px 行高 + holder 原有的 4px 间隔）。
+   顶部只留 30px 的 Claude 字标：侧栏打开时不显示左上角 ≡（点侧栏外面即可收起），字标左移到 23px。 */
+html[data-cw-v4] body #top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{min-height:48px!important;height:48px!important;border-radius:12px!important}
+html[data-cw-v4] body #top-settings-holder>.clawd-rail-brand{font-size:30px!important}
+html[data-cw-v4] body.clawd-mobile-menu-open .clawd-mobile-menu-button{visibility:hidden!important}
+html[data-cw-v4] body.clawd-mobile-menu-open #top-settings-holder>.clawd-rail-brand{padding-left:13px!important}
+/* 抽屉页（design v4 .screen.mobile .dpage）：只有偏好设置页有搜索框，其余页面内容紧接 58px 顶栏，不再空出搜索框的位置；
+   全屏页不画外框；设置行之间不画分隔线，只在分区之间留线（design .row 无边框，.sec 才有 border-top）。 */
+html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder .cw-v4-panel:not(#user-settings-block):is(#left-nav-panel,#rm_api_block,#AdvancedFormatting,#WorldInfo,#Backgrounds,#rm_extensions_block,#right-nav-panel,#PersonaManagement).openDrawer:not(.closedDrawer){top:58px!important;height:calc(100dvh - 58px)!important}
+html[data-cw-v4] .cw-v4-shell:not([data-panel="user-settings-block"]).cw-v4-show-nav>.cw-v4-nav{top:58px}
+html[data-cw-v4] .cw-v4-shell:not([data-panel="user-settings-block"])::before{content:none!important}
+html[data-cw-v4] .cw-v4-shell{border:0!important}
+html[data-cw-v4] .cw-v4-shell>.cw-v4-head{border-radius:0!important}
+/* Prompts 标题下那一行（design v4 .wi-bar）：+ New prompt、插入已有提示词的下拉框（占剩余宽度）、Insert、⋯ 依次排，放不下时换行。
+   index.js 里另有一条 flex:0 0 32px 的手机规则，上面的 .cw-v4-as-btn 规则已用 flex:0 0 auto 压过它，按钮文字不再溢出。 */
+html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer{flex-wrap:wrap!important;gap:8px!important}
+html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>.fa-plus-square{order:0!important}
+html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>.cw-v4-more{order:3!important;margin-left:auto!important}
+html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>select{order:1!important;flex:1 1 0!important;min-width:0!important;width:auto!important}
+html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>.fa-chain{order:2!important}
+/* 提示词编辑弹层：桌面版按居中对话框排（left/top 50% + translate(-50%,-50%)），手机上别处把 left/top 归零却没清
+   transform，弹层就被推到左上、只剩半屏。手机一律铺满全宽，高度仍由手机键盘冻结高度的规则决定。 */
+html[data-cw-v4] body #completion_prompt_manager_popup.openDrawer{transform:none!important;left:0!important;top:0!important;inset:0 0 auto 0!important;width:100vw!important;max-width:100vw!important;border-radius:0!important}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer) :is(.cw-v4-setting-row,.cw-v4-row,.cw-v4-text-row,.cw-v4-api-inline-row,.range-block){border-top:0!important;border-bottom:0!important}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-section+.cw-v4-section{border-top:1px solid var(--cw-v4-line)!important;padding-top:22px!important}
+}
 .cw-v4-leftovers>.cw-v4-native-rest{display:none!important}
 .cw-v4-leftovers{display:flex;justify-content:flex-end;border:0!important;padding:0!important}
 html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .completion_prompt_manager_header_advanced{display:none}
@@ -366,9 +401,12 @@ html[data-cw-v4] body #chat>.mes[is_user="true"] .mes_text{background:#efeee9!im
 html[data-cw-v4][data-claude-integrated-theme="night"] body #chat>.mes[is_user="true"] .mes_text{background:#393937!important}
 html[data-cw-v4] body #chat>.mes[is_user="false"]{position:relative;padding-left:0!important;background:none!important;border:0!important}
 html[data-cw-v4] body #chat>.mes .mes_block{margin-left:0!important;padding-left:0!important}
-html[data-cw-v4] body #chat>.mes .mesAvatarWrapper .avatar,html[data-cw-v4] body #chat>.mes .mesAvatarWrapper .avatar img{width:28px!important;height:28px!important;border-radius:50%!important}
-html[data-cw-v4][data-claude-avatars="on"] body #chat>.mes[is_user="false"]>.mesAvatarWrapper{position:absolute!important;left:0!important;top:0!important;width:28px!important;height:28px!important;margin:0!important}
-html[data-cw-v4][data-claude-avatars="on"] body #chat>.mes[is_user="false"] .ch_name{padding-left:38px!important;min-height:28px;margin-bottom:6px}
+/* 头像 28px + 10px 间距再接名字，和名字同一条中线（design v4 手机对话页；top:12px 对齐 .mes 的上内边距）。day-mobile.css 里有一组
+   html body:not(.clawd-welcome) #chat > .mes[is_user] … 的 42px 头像规则（含 min-width），
+   这里带上同样的 :not(.clawd-welcome) 和 [is_user] 才压得过它，否则头像会盖住名字。 */
+html[data-cw-v4] body:not(.clawd-welcome) #chat>.mes[is_user] .mesAvatarWrapper .avatar,html[data-cw-v4] body:not(.clawd-welcome) #chat>.mes[is_user] .mesAvatarWrapper .avatar img{width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;left:0!important;top:0!important;border-radius:50%!important}
+html[data-cw-v4][data-claude-avatars="on"] body:not(.clawd-welcome) #chat>.mes[is_user="false"]>.mesAvatarWrapper{position:absolute!important;left:0!important;top:12px!important;width:28px!important;min-width:28px!important;height:28px!important;margin:0!important}
+html[data-cw-v4][data-claude-avatars="on"] body:not(.clawd-welcome) #chat>.mes[is_user="false"] .ch_name{padding-left:38px!important;min-height:28px!important;align-items:center!important;margin-bottom:6px}
 html[data-cw-v4] body.cw-v4-group-chat #chat>.mes[is_user="false"] .ch_name{display:flex!important}
 html[data-cw-v4] body #chat .mes_text table{border-collapse:collapse!important;border:0!important}
 html[data-cw-v4] body #chat .mes_text :is(th,td){border:0!important;border-bottom:1px solid var(--cw-v4-line)!important;background:none!important;padding:8px 14px 8px 0!important}
@@ -498,9 +536,11 @@ html[data-cw-v4] body #form_sheld #send_form #send_textarea::placeholder{text-al
   html[data-cw-v4] .cw-v4-panel :is([name="userSettingsRowOne"],[name="UserSettingsRowTwo"]){width:100%!important;flex-basis:100%!important}
   html[data-cw-v4] .cw-v4-editor{width:100vw;height:100dvh;margin:0;border:0;border-radius:0}
   html[data-cw-v4] body #send_form .clawd-character-switcher,html[data-cw-v4] body #send_form .clawd-fake-mic{display:none!important}
-  html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm{display:flex!important;width:auto!important;min-width:76px!important;max-width:none!important;gap:6px!important;flex:none!important}
-  html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #extensionsMenuButton{display:grid!important;place-items:center!important;order:0!important;width:34px!important;height:34px!important}
-  html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #options_button{order:1!important;width:34px!important;height:34px!important}
+  html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm{display:flex!important;width:auto!important;min-width:82px!important;max-width:none!important;gap:6px!important;flex:none!important}
+  /* design v4：+ 和 ≡ 是 38px 的浅底圆钮（--hover：日间 rgba(31,30,29,.05)，夜间 rgba(255,255,255,.05)）。 */
+  html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #extensionsMenuButton{display:grid!important;place-items:center!important;order:0!important;flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;margin:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important}
+  html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #options_button{display:grid!important;place-items:center!important;order:1!important;flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;margin:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form #nonQRFormItems #leftSendForm :is(#extensionsMenuButton,#options_button){background:rgba(255,255,255,.05)!important}
   html[data-cw-v4] .cw-v4-api-row{grid-template-columns:1fr;gap:10px}
   html[data-cw-v4] .clawd-welcome-hero{font-weight:420!important;font-size:32px!important}
   html[data-cw-v4] .clawd-mobile-menu-button>span:last-child{width:50%!important;align-self:flex-start}
@@ -806,7 +846,7 @@ html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-
 html[data-cw-v4] body #top-settings-holder #completion_prompt_manager #completion_prompt_manager_list>li.cw-v4-prompt-row.cw-v4-pm-no-tokens .prompt_manager_prompt_tokens{display:none!important}
 html[data-cw-v4] body #top-settings-holder #completion_prompt_manager #completion_prompt_manager_list>li.cw-v4-prompt-row:has(>.fa-toggle-off) :is(.completion_prompt_manager_prompt_name,.completion_prompt_manager_prompt_name *,.prompt_manager_prompt_tokens){opacity:.45}
 html[data-cw-v4] body #top-settings-holder #completion_prompt_manager #completion_prompt_manager_list>li.cw-v4-prompt-row:has(>.fa-toggle-off) .completion_prompt_manager_prompt_name *{opacity:1}
-html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>.cw-v4-as-btn{display:inline-flex!important;align-items:center;justify-content:center;height:34px!important;min-height:34px!important;width:auto!important;min-width:0!important;padding:0 13px!important;margin:0!important;border:1px solid var(--v4-ctl-line)!important;border-radius:8px!important;background:var(--v4-ctl)!important;color:var(--v4-text)!important;font-size:0!important;box-shadow:none!important;position:static!important;transform:none!important}
+html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>.cw-v4-as-btn{display:inline-flex!important;align-items:center;justify-content:center;height:34px!important;min-height:34px!important;flex:0 0 auto!important;width:auto!important;min-width:0!important;padding:0 13px!important;margin:0!important;border:1px solid var(--v4-ctl-line)!important;border-radius:8px!important;background:var(--v4-ctl)!important;color:var(--v4-text)!important;font-size:0!important;box-shadow:none!important;position:static!important;transform:none!important}
 html[data-cw-v4] body #top-settings-holder #completion_prompt_manager .cw-v4-pm-footer>.cw-v4-as-btn::before{display:none!important;content:none!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-as-btn.cw-v4-as-btn{font-size:0!important;letter-spacing:0!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-as-btn.cw-v4-as-btn>.cw-v4-action-label{font-size:14px!important}

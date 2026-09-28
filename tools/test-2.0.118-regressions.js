@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.162');
-assert.equal(manifest.js, 'loader-2.0.162.js');
+assert.equal(manifest.version, '2.0.163');
+assert.equal(manifest.js, 'loader-2.0.163.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -124,5 +124,12 @@ assert.match(index, /root\.classList\.toggle\('claude-pm-open'/, 'index.js must 
 assert.match(index, /root\.classList\.toggle\('claude-top-drawer-open'/, 'index.js must keep html.claude-top-drawer-open in sync');
 const officialLayout = fs.readFileSync(path.join(root, 'official-layout.js'), 'utf8');
 assert.doesNotMatch(officialLayout, /send_textarea'\) syncChat\(\)/, 'typing must not run the full-chat syncChat() on every keystroke');
+
+/* 2.0.163：手机界面对照 design v4 的几处修正。 */
+const officialCss = fs.readFileSync(path.join(root, 'styles', 'official-layout.css'), 'utf8');
+assert.match(officialCss, /body:not\(\.clawd-welcome\) #chat>\.mes\[is_user\] \.mesAvatarWrapper \.avatar[^{]*\{width:28px!important;height:28px!important;min-width:28px!important/, 'chat avatar must beat day-mobile.css 42px rule (it overlapped the name)');
+assert.match(officialCss, /#top-settings-holder>\.clawd-mobile-new-chat\{position:absolute!important;left:auto!important;right:18px!important/, 'mobile New chat is a right-aligned pill in the account row, not a full-width bar');
+assert.match(officialCss, /#completion_prompt_manager_popup\.openDrawer\{transform:none!important/, 'mobile prompt editor must clear the desktop translate(-50%,-50%)');
+assert.match(officialCss, /\.cw-v4-pm-footer>\.cw-v4-as-btn\{[^}]*flex:0 0 auto!important/, 'prompt footer buttons must beat the 32px flex-basis so their labels do not overflow');
 
 console.log('✓ Claude Web 2.0.156 focused regressions passed');
