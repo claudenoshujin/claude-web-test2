@@ -589,7 +589,16 @@ export function installOfficialLayout(win = window) {
     // reads layout, so it stays on the chat observer / schedule() path instead of every keystroke.
     on(doc,'input', e => { if (e.target.id === 'send_textarea') setBodyClass('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
     on(doc,'change', e => { if (e.target.id === 'ui_language_select') schedule(); });
-    on(doc,'click', e => { const toggle=e.target.closest?.('.drawer-toggle'); const panel=toggle?.parentElement.querySelector(':scope > .drawer-content'); if(panel && panels.has(panel.id)) requestedPanel=panel.id; },true);
+    // Switching pages from the Claude sidebar: SillyTavern closes the open drawer, waits animation_duration, then
+    // opens the new one, so for that wait the old page shows half-closed over the sidebar. Close it synchronously
+    // first (same as activate()), so SillyTavern opens the new page in the same click.
+    on(doc,'click', e => {
+      const toggle=e.target.closest?.('.drawer-toggle'); const panel=toggle?.parentElement.querySelector(':scope > .drawer-content');
+      if(!panel || !panels.has(panel.id)) return;
+      requestedPanel=panel.id;
+      if(!e.isTrusted || isOpen(panel)) return;
+      for (const old of panels.values()) if (old !== panel && isOpen(old) && !old.classList.contains('pinnedOpen')) nativeToggle(old)?.click();
+    },true);
     on(doc,'keydown', e => { if (e.key === 'Escape' && current && !doc.querySelector('dialog[open]') && !e.defaultPrevented) { closeSettings(); e.preventDefault(); } });
     on(win,'resize', () => { resetGeometry(); schedule(); });
     // Read-only keyboard flag for the short-screen (phone landscape) composer.
