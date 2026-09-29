@@ -176,9 +176,6 @@ export function buildClawdRig() {
       // 头箍压在头顶，两边耳罩，左耳罩伸出一根杆弯到嘴边，杆头灰色话筒
       // 着火熄灭后的一缕烟
       smoke: F(['.m.', 'mm.', '.mm', '.m.'], 6, -3),
-      // 着火：脚前的小火苗（压在腿前面）
-      fireFa: F(['.F...F....F...F.', 'fFf.fYf..fYf.fFf', 'fYfffYfffYfffYff'], 0, 7),
-      fireFb: F(['...F....F....F..', '.fYf..fFf..fYf..', 'ffYfffYfffYfffYf'], 0, 7),
     },
     sym: {
       bang:  F(['..r..', '..r..', '..r..', '.....', '..r..'], -2),
@@ -265,6 +262,7 @@ export function buildClawdRig() {
       for (let y = y0 - 1; y <= 10; y++) cells.push(Array.from({ length: W }, (_, i) => {
         const x = X0 + i;
         if (sil.has(x + ',' + y)) return '.';   // 被身体挡住，不画
+        if (y >= 8 && x >= 2 && x <= 13) return '.';   // 身体底下、两腿之间也不画：看着像火烧在身前（Lulu 2026-09-29）
         if (glow(x, y)) return 'V';
         if (embers.has(x + ',' + y)) return 'f';
         const e = y > 9 ? -1 : heat(x, y);
@@ -1634,16 +1632,15 @@ export function buildClawdRig() {
 
   /* ── 面无表情地着火 ─────────────────────────────────────
      笑点是反差：火从脚下烧上来盖过头顶，它一动不动、面无表情，最多慢慢眨一次眼。
-     火在身体后面（propA z 1，压在腿和身体下面），贴着轮廓有一圈白光；脚前另有一排小火苗（propB）。 */
+     火在身体后面（propA z 1，压在腿和身体下面），贴着轮廓有一圈白光。
+     身前不要火（Lulu 2026-09-29：脚前那排小火苗去掉，Clawd 整只露在火前面）。 */
   {
     const c = def(new Clip('onFire', '面无表情地着火', 3400, { pool: true, weight: .5, cool: 900000, smooth: ['propB'] }));
     c.beat(0, '站着').beat(100, '脚下冒火，身边一圈白光').beat(600, '烧到半身').beat(1100, '火盖过头顶，它面无表情').beat(1600, '慢慢眨一次眼').beat(2300, '火小下去').beat(3000, '熄灭，冒一缕烟');
     const lvl = t => (t < 600 ? 1 : t < 1100 ? 2 : t < 2300 ? 3 : t < 2700 ? 2 : 1);
     c.at(100, 'propA', { z: 1 });
-    // 背后的大火 200ms 换一个相位（4 个相位一轮，火舌尾巴此起彼伏地甩）；脚前小火苗 100ms 一闪
+    // 背后的大火 200ms 换一个相位（4 个相位一轮，火舌尾巴此起彼伏地甩）
     for (let t = 100, i = 0; t < 3000; t += 100, i++) c.at(t, 'propA', { f: 'fire' + lvl(t) + (Math.floor(i / 2) % 4) });
-    for (let t = 100, i = 0; t < 2900; t += 100, i++) c.at(t, 'propB', { f: i % 2 ? 'fireFb' : 'fireFa' });
-    c.at(2900, 'propB', { f: null });
     c.at(3000, 'propA', { f: null, z: 7 });
     // 小火花从火舌顶上蹦出来（符号层，6 帧一轮），火大的时候才有
     for (let t = 700, i = 0; t < 2600; t += 100, i++) c.at(t, 'sym', { f: 'spark' + (i % 6) });
