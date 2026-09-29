@@ -224,8 +224,9 @@ export function installOfficialLayout(win = window) {
       const b = button('', () => {search.value='';searchQuery='';selectPrefs(p.key);}, 'cw-v4-navitem cw-v4-pref-nav'); b.append(icon(p.icon),make('span','',L(p.title))); b.dataset.pref = p.key; nav.append(b);
     }
     const head = make('header', 'cw-v4-head');
-    // Phones: ≡ leaves the settings page for the Claude sidebar (design v4 dp page), not the desktop category list.
-    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } closeSettings(); win.requestAnimationFrame(() => { if (!doc.body.classList.contains('clawd-mobile-menu-open')) rail.click(); }); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
+    // Phones: ≡ opens the Claude sidebar over the settings page (design v4 dp page); tapping outside returns to it.
+    // Closing the page first cost a full-page restyle (~1.4 s frozen on phones), so the page stays open underneath.
+    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } rail.click(); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
     const title = make('h1', 'cw-v4-title');
     const close = button('', closeSettings, 'cw-v4-close'); close.append(icon('close')); close.setAttribute('aria-label', t('关闭设置', 'Close settings'));
     head.append(back, title, close);
