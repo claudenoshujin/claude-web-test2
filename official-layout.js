@@ -226,7 +226,7 @@ export function installOfficialLayout(win = window) {
     const head = make('header', 'cw-v4-head');
     // Phones: ≡ opens the Claude sidebar over the settings page (design v4 dp page); tapping outside returns to it.
     // Closing the page first cost a full-page restyle (~1.4 s frozen on phones), so the page stays open underneath.
-    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } railOver(true); win.requestAnimationFrame(() => win.requestAnimationFrame(() => { if (!doc.body.classList.contains('clawd-mobile-menu-open')) rail.click(); })); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
+    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } railOver(true); win.requestAnimationFrame(() => win.requestAnimationFrame(() => { if (!doc.body.hasAttribute('data-clawd-menu')) rail.click(); })); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
     const title = make('h1', 'cw-v4-title');
     const close = button('', closeSettings, 'cw-v4-close'); close.append(icon('close')); close.setAttribute('aria-label', t('关闭设置', 'Close settings'));
     head.append(back, title, close);
@@ -448,6 +448,9 @@ export function installOfficialLayout(win = window) {
       if (tag.title !== model) tag.title = model;
     });
   }
+  // classList.toggle rewrites the class attribute even when nothing changes; SillyTavern's keyboard.js then
+  // rescans the whole page for interactables. Only touch body classes on a real change.
+  const setBodyClass = (name, on) => { if (doc.body.classList.contains(name) !== Boolean(on)) doc.body.classList.toggle(name, Boolean(on)); };
   function syncChat() {
     const chat = doc.querySelector('#chat'); if (!chat) return;
     if (enabled()) syncModelNames(chat, win.SillyTavern?.getContext?.());
@@ -469,9 +472,9 @@ export function installOfficialLayout(win = window) {
     });
     const ctx = win.SillyTavern?.getContext?.();
     const group = ctx?.groupId != null && ctx.groupId !== '';
-    doc.body.classList.toggle('cw-v4-group-chat', group);
+    setBodyClass('cw-v4-group-chat', group);
     const input = doc.querySelector('#send_textarea');
-    doc.body.classList.toggle('cw-v4-filled', Boolean(input?.value.trim()));
+    setBodyClass('cw-v4-filled', Boolean(input?.value.trim()));
     syncChatHead(ctx);
     const chrome = doc.querySelector('.clawd-mobile-chrome');
     if (chrome && !chrome.querySelector('.cw-v4-temporary')) {
@@ -509,8 +512,8 @@ export function installOfficialLayout(win = window) {
   function syncRailOver(settingsOpen) {
     if (!root.classList.contains('cw-v4-rail-over')) return;
     if (!settingsOpen) { railOver(false); return; }
-    if (doc.body.classList.contains('clawd-mobile-menu-open')) { if (railOverTimer) { win.clearTimeout(railOverTimer); railOverTimer = 0; } return; }
-    if (!railOverTimer) railOverTimer = win.setTimeout(() => { railOverTimer = 0; if (!doc.body.classList.contains('clawd-mobile-menu-open')) root.classList.remove('cw-v4-rail-over'); }, 260);
+    if (doc.body.hasAttribute('data-clawd-menu')) { if (railOverTimer) { win.clearTimeout(railOverTimer); railOverTimer = 0; } return; }
+    if (!railOverTimer) railOverTimer = win.setTimeout(() => { railOverTimer = 0; if (!doc.body.hasAttribute('data-clawd-menu')) root.classList.remove('cw-v4-rail-over'); }, 260);
   }
   function sync() {
     raf = 0; if (destroyed) return;
@@ -580,11 +583,11 @@ export function installOfficialLayout(win = window) {
     observe(doc.head,keepStyleAfterTheme,{childList:true});
     sync();
     observe(root, schedule, {attributes:true,attributeFilter:['data-claude-structure','data-claude-skin']});
-    observe(doc.body, schedule, {attributes:true,attributeFilter:['class']});
+    observe(doc.body, schedule, {attributes:true,attributeFilter:['class','data-clawd-menu']});
     const chat = doc.getElementById('chat'); if (chat) observe(chat, schedule, {childList:true,subtree:true});
     // Typing only changes the filled state. syncChat() walks every assistant message and
     // reads layout, so it stays on the chat observer / schedule() path instead of every keystroke.
-    on(doc,'input', e => { if (e.target.id === 'send_textarea') doc.body.classList.toggle('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
+    on(doc,'input', e => { if (e.target.id === 'send_textarea') setBodyClass('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
     on(doc,'change', e => { if (e.target.id === 'ui_language_select') schedule(); });
     on(doc,'click', e => { const toggle=e.target.closest?.('.drawer-toggle'); const panel=toggle?.parentElement.querySelector(':scope > .drawer-content'); if(panel && panels.has(panel.id)) requestedPanel=panel.id; },true);
     on(doc,'keydown', e => { if (e.key === 'Escape' && current && !doc.querySelector('dialog[open]') && !e.defaultPrevented) { closeSettings(); e.preventDefault(); } });

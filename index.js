@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260928m";
+import { installOfficialLayout } from "./official-layout.js?v=20260929a";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.171-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.172-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -456,7 +456,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20260928m', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20260929a', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -1797,7 +1797,6 @@ if (CLAUDE_ENABLED) {
       'clawd-interactive-ready',
       'claude-generation-active',
       'clawd-mobile-layout',
-      'clawd-mobile-menu-open',
       'clawd-tauritavern-host',
       'clawd-welcome',
       'clawd-has-recents',
@@ -1856,7 +1855,7 @@ if (CLAUDE_ENABLED) {
             }
             doc.querySelectorAll('option.' + optionClass).forEach(function (node) { node.remove(); });
             doc.querySelectorAll('.clawd-mobile-chrome,.clawd-mobile-scrim,.clawd-mobile-new-chat,.clawd-android-keyboard-pan-anchor,.clawd-character-menu,.clawd-character-switcher,.clawd-rail-brand,.clawd-rail-grip,.claude-user-message-actions,.claude-swipe-left-proxy,.claude-swipe-right-proxy,.claude-reroll-button,.clawd-signoff-button').forEach(function (node) { node.remove(); });
-            if (body) body.classList.remove('clawd-interactive-ready','claude-generation-active','clawd-mobile-layout','clawd-mobile-menu-open','clawd-tauritavern-host','clawd-welcome','clawd-has-recents');
+            if (body) body.classList.remove('clawd-interactive-ready','claude-generation-active','clawd-mobile-layout','clawd-tauritavern-host','clawd-welcome','clawd-has-recents');
             if (root) {
               delete root.dataset.claudeIntegratedTheme;
               ['--cl-mobile-composer-height','--cl-mobile-viewport-height','--cl-mobile-viewport-top','--clawd-signoff-image'].forEach(function (name) { root.style.removeProperty(name); });
@@ -2058,7 +2057,22 @@ if (CLAUDE_ENABLED) {
   const FAKE_MIC_CLASS = 'clawd-fake-mic';
   const LAST_CHARACTER_KEY = 'clawd-last-character-name';
   const LAST_HERO_KEY = 'clawd-last-hero-line';
-  const MOBILE_MENU_OPEN_CLASS = 'clawd-mobile-menu-open';
+  /* 2.0.172：侧栏开关状态挂在 body 的 data-clawd-menu 属性上，不再用 class。酒馆原生 keyboard.js 监听 body 及其
+     后代的 class 变化，每变一次就在该元素子树里重新找全部可交互控件；body 的 class 一变就是全页约一万个元素。
+     它只看 class，换成 data-* 属性就不会触发。CSS 里对应写 body[data-clawd-menu]（优先级和 .class 相同）。 */
+  const MOBILE_MENU_ATTRIBUTE = 'data-clawd-menu';
+  /* 同一原因：classList.toggle / add 即使结果不变也会重写 class 属性、产生一条变动记录，照样触发酒馆那次全页扫描。
+     每次刷新都会调用的 body class 写入一律先比较，只在真的要变时才写。 */
+  const setBodyClass = (name, on) => {
+    const list = hostDocument.body?.classList;
+    if (list && list.contains(name) !== Boolean(on)) list.toggle(name, Boolean(on));
+  };
+  const isMobileMenuOpen = () => hostDocument.body.hasAttribute(MOBILE_MENU_ATTRIBUTE);
+  const setMobileMenuOpen = open => {
+    if (open === isMobileMenuOpen()) return;
+    if (open) hostDocument.body.setAttribute(MOBILE_MENU_ATTRIBUTE, 'open');
+    else hostDocument.body.removeAttribute(MOBILE_MENU_ATTRIBUTE);
+  };
   const MOBILE_LAYOUT_CLASS = 'clawd-mobile-layout';
   const VIRTUAL_KEYBOARD_OVERLAY_CLASS = 'clawd-virtual-keyboard-overlay';
   const ANDROID_KEYBOARD_PAN_ANCHOR_CLASS = 'clawd-android-keyboard-pan-anchor';
@@ -6024,7 +6038,7 @@ if (CLAUDE_ENABLED) {
         virtualKeyboardOverlayActive = false;
       }
     }
-    hostDocument.body?.classList.toggle(VIRTUAL_KEYBOARD_OVERLAY_CLASS, virtualKeyboardOverlayActive);
+    setBodyClass(VIRTUAL_KEYBOARD_OVERLAY_CLASS, virtualKeyboardOverlayActive);
     if (usesNativeAndroidKeyboardLayout()) {
       if (virtualKeyboardOverlayActive) {
         hostDocument.querySelector('.' + ANDROID_KEYBOARD_PAN_ANCHOR_CLASS)?.remove();
@@ -6633,7 +6647,7 @@ if (CLAUDE_ENABLED) {
       welcomeStage = 'welcome';
     }
     const isWelcome = welcomeStage === 'welcome';
-    hostDocument.body.classList.toggle(WELCOME_CLASS, isWelcome);
+    setBodyClass(WELCOME_CLASS, isWelcome);
     // 回到欢迎页 = 换对话了，打盹计时重新来过
     if (isWelcome && hasChatActivity) {
       hasChatActivity = false;
@@ -7175,7 +7189,7 @@ if (CLAUDE_ENABLED) {
       });
       list.append(row);
     }
-    hostDocument.body.classList.toggle('clawd-has-recents', entries.length > 0);
+    setBodyClass('clawd-has-recents', entries.length > 0);
   }
 
   /* 对外仍然叫 refreshRailRecents，因为每轮 refresh 都在调它。
@@ -8185,7 +8199,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function closeMobileMenu() {
-    hostDocument.body.classList.remove(MOBILE_MENU_OPEN_CLASS);
+    setMobileMenuOpen(false);
     mobileChrome?.menu?.setAttribute('aria-expanded', 'false');
   }
 
@@ -8244,8 +8258,8 @@ if (CLAUDE_ENABLED) {
     menu.setAttribute('aria-expanded', 'false');
     menu.innerHTML = '<span></span><span></span><span></span>';
     menu.addEventListener('click', () => {
-      const open = !hostDocument.body.classList.contains(MOBILE_MENU_OPEN_CLASS);
-      hostDocument.body.classList.toggle(MOBILE_MENU_OPEN_CLASS, open);
+      const open = !isMobileMenuOpen();
+      setMobileMenuOpen(open);
       menu.setAttribute('aria-expanded', String(open));
     });
 
@@ -9255,7 +9269,6 @@ if (CLAUDE_ENABLED) {
     WELCOME_ASSISTANT_CLASS,
     WELCOME_PROMPT_CLASS,
     MOBILE_LAYOUT_CLASS,
-    MOBILE_MENU_OPEN_CLASS,
     TAURITAVERN_HOST_CLASS,
     'clawd-welcome',
     'clawd-has-recents',
@@ -9425,7 +9438,7 @@ if (CLAUDE_ENABLED) {
 
   function syncExternalModalRailLayer() {
     const modalOpen = observeExternalModalCandidates().some(isVisibleFullScreenExternalModal);
-    hostDocument.body.classList.toggle(EXTERNAL_MODAL_OPEN_CLASS, modalOpen);
+    setBodyClass(EXTERNAL_MODAL_OPEN_CLASS, modalOpen);
     /* Claude 桌面左栏由两个同级 fixed 外壳共同组成：#top-settings-holder
        放设置按钮，#top-bar 负责整条侧栏底板。只降低前者时，视觉上似乎
        退让了，但命中测试仍会落到 #top-bar，第三方弹窗里的按钮依旧点不到。 */
@@ -9640,7 +9653,7 @@ if (CLAUDE_ENABLED) {
     lastRefreshAt = Date.now();
     if (destroyed) return;
     watchGenerationEvents();
-    hostDocument.body.classList.add(READY_CLASS);
+    setBodyClass(READY_CLASS, true);
     const typingActive = isTypingActive();
     const continuingGeneration = previousTypingActive && typingActive;
     const generationJustEnded = previousTypingActive && !typingActive;
@@ -9653,7 +9666,7 @@ if (CLAUDE_ENABLED) {
       settleClawdGeneration('done');
     }
     previousTypingActive = typingActive;
-    hostDocument.body.classList.toggle(GENERATING_CLASS, typingActive);
+    setBodyClass(GENERATING_CLASS, typingActive);
     ensureComposerClawd();
     refreshCompatibilitySurfaceBackings();
     /* A1：typing indicator 只保留酒馆自己的生成提示，不再承载第二只 Clawd。 */
@@ -10038,7 +10051,7 @@ if (CLAUDE_ENABLED) {
     installClawdRigStyle();
     mountClawdDebugMenu();
     hostWindow.console?.info?.('[Claude-Clawd] build:', KEYBOARD_BUILD.id);
-    hostDocument.body.classList.add(READY_CLASS);
+    setBodyClass(READY_CLASS, true);
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
     hostDocument.body.classList.toggle(TAURITAVERN_HOST_CLASS, isTauriTavernHost());
     externalModalObserver = new hostWindow.MutationObserver(scheduleExternalSurfaceIsolation);

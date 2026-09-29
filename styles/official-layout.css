@@ -267,8 +267,8 @@ html[data-cw-v4] body #persona-management-button :is(.clawd-user-meta,.clawd-use
    顶部只留 30px 的 Claude 字标：侧栏打开时不显示左上角 ≡（点侧栏外面即可收起），字标左移到 23px。 */
 html[data-cw-v4] body #top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{min-height:48px!important;height:48px!important;border-radius:12px!important}
 html[data-cw-v4] body #top-settings-holder>.clawd-rail-brand{font-size:30px!important}
-html[data-cw-v4] body.clawd-mobile-menu-open .clawd-mobile-menu-button{visibility:hidden!important}
-html[data-cw-v4] body.clawd-mobile-menu-open #top-settings-holder>.clawd-rail-brand{padding-left:13px!important}
+html[data-cw-v4] body[data-clawd-menu] .clawd-mobile-menu-button{visibility:hidden!important}
+html[data-cw-v4] body[data-clawd-menu] #top-settings-holder>.clawd-rail-brand{padding-left:13px!important}
 /* 抽屉页（design v4 .screen.mobile .dpage）：只有偏好设置页有搜索框，其余页面内容紧接 58px 顶栏，不再空出搜索框的位置；
    全屏页不画外框；设置行之间不画分隔线，只在分区之间留线（design .row 无边框，.sec 才有 border-top）。 */
 html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder .cw-v4-panel:not(#user-settings-block):is(#left-nav-panel,#rm_api_block,#AdvancedFormatting,#WorldInfo,#Backgrounds,#rm_extensions_block,#right-nav-panel,#PersonaManagement).openDrawer:not(.closedDrawer){top:58px!important;height:calc(100dvh - 58px)!important}
@@ -521,7 +521,7 @@ html[data-cw-v4] body #form_sheld #send_form #send_textarea::placeholder{text-al
   html[data-cw-v4] body #top-settings-holder>.clawd-rail-brand{font-size:28px!important;font-weight:500!important}
   html[data-cw-v4] body #top-settings-holder .chatPreview{display:block!important;white-space:nowrap!important;text-overflow:ellipsis!important;overflow:hidden!important;-webkit-line-clamp:1!important}
   html[data-cw-v4] body #top-settings-holder .clawd-rail-recents-count{display:none!important}
-  html[data-cw-v4] body.clawd-mobile-menu-open .clawd-mobile-menu-button{background:transparent!important;box-shadow:none!important}
+  html[data-cw-v4] body[data-clawd-menu] .clawd-mobile-menu-button{background:transparent!important;box-shadow:none!important}
   html[data-cw-v4] body .clawd-mobile-menu-button>span:last-child{width:50%!important;align-self:flex-start!important}
   html[data-cw-v4] body .clawd-welcome-hero{font-size:clamp(22px,6.8vw,28px)!important;font-weight:420!important;white-space:nowrap!important}
   html[data-cw-v4] .cw-v4-shell>.cw-v4-search{position:absolute;top:60px;left:16px;width:calc(100% - 32px);box-sizing:border-box;background:var(--cw-v4-bg);pointer-events:auto;z-index:3}
@@ -1092,13 +1092,13 @@ html[data-claude-mode="compat"][data-cw-v4-settings] .cw-v4-shell{z-index:10061!
 html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body .clawd-mobile-chrome{display:block!important}
 html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body .clawd-mobile-chrome>:not(.clawd-mobile-scrim){display:none!important}
 html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder{transition:left 210ms cubic-bezier(.22,.8,.3,1),z-index 0s linear 210ms!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder{z-index:4050!important;pointer-events:auto!important;transition:left 210ms cubic-bezier(.22,.8,.3,1),z-index 0s!important}
+html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body[data-clawd-menu] #top-settings-holder#top-settings-holder{z-index:4050!important;pointer-events:auto!important;transition:left 210ms cubic-bezier(.22,.8,.3,1),z-index 0s!important}
 html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){transition:filter 180ms ease,z-index 0s linear 210ms!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){transition:filter 180ms ease,z-index 0s!important;z-index:-1!important;filter:brightness(.8)!important;pointer-events:none!important}
+html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body[data-clawd-menu] #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){transition:filter 180ms ease,z-index 0s!important;z-index:-1!important;filter:brightness(.8)!important;pointer-events:none!important}
 html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder::after{content:""!important;display:block!important;position:absolute!important;inset:0!important;z-index:-1!important;background:var(--cw-surface-page)!important;pointer-events:none!important}
 /* 手机上设置页铺满全屏，桌面对话框用的 .cw-v4-backdrop 本来就被盖住；它在侧栏容器里，侧栏滑出时会盖在侧栏各行上，所以手机设置页里一直不显示。 */
 html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder>.cw-v4-backdrop{display:none!important}
-html.cw-v4-rail-over[data-claude-mode="compat"][data-cw-v4-settings] body.clawd-mobile-menu-open .cw-v4-shell{z-index:3002!important}
+html.cw-v4-rail-over[data-claude-mode="compat"][data-cw-v4-settings] body[data-clawd-menu] .cw-v4-shell{z-index:3002!important}
 /* 顶栏抽屉打开时主题会藏起字标 / Recents / New chat（claude-top-drawer-open 那条）。手机设置页里侧栏不打开时在屏幕外，
    一直放出来也看不到；只在打开时放出来的话，收起滑出的途中它们会突然消失。 */
 html[data-cw-v4][data-cw-v4-settings][data-claude-layout] body #top-settings-holder#top-settings-holder>:is(.clawd-rail-brand,.clawd-mobile-new-chat){display:flex!important}
