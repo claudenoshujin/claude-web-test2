@@ -1094,9 +1094,11 @@ html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-
 html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){transition:filter 180ms ease,z-index 0s linear 210ms!important}
 html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){transition:filter 180ms ease,z-index 0s!important;z-index:-1!important;filter:brightness(.8)!important;pointer-events:none!important}
 html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder::after{content:""!important;display:block!important;position:absolute!important;inset:0!important;z-index:-1!important;background:var(--cw-surface-page)!important;pointer-events:none!important}
-html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder>.cw-v4-backdrop{display:none!important}
+/* 手机上设置页铺满全屏，桌面对话框用的 .cw-v4-backdrop 本来就被盖住；它在侧栏容器里，侧栏滑出时会盖在侧栏各行上，所以手机设置页里一直不显示。 */
+html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder>.cw-v4-backdrop{display:none!important}
 html[data-claude-mode="compat"][data-cw-v4-settings] body.clawd-mobile-menu-open .cw-v4-shell{z-index:3002!important}
-/* 顶栏抽屉打开时主题会藏起字标 / Recents / New chat（claude-top-drawer-open 那条），侧栏盖在设置页上时要放回来。 */
-html[data-cw-v4][data-cw-v4-settings][data-claude-layout] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder>:is(.clawd-rail-brand,.clawd-mobile-new-chat){display:flex!important}
-html[data-cw-v4][data-cw-v4-settings][data-claude-layout] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder>.clawd-rail-recents{display:block!important}
+/* 顶栏抽屉打开时主题会藏起字标 / Recents / New chat（claude-top-drawer-open 那条）。手机设置页里侧栏不打开时在屏幕外，
+   一直放出来也看不到；只在打开时放出来的话，收起滑出的途中它们会突然消失。 */
+html[data-cw-v4][data-cw-v4-settings][data-claude-layout] body #top-settings-holder#top-settings-holder>:is(.clawd-rail-brand,.clawd-mobile-new-chat){display:flex!important}
+html[data-cw-v4][data-cw-v4-settings][data-claude-layout] body #top-settings-holder#top-settings-holder>.clawd-rail-recents{display:block!important}
 }
