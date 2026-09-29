@@ -261,8 +261,11 @@ for (let i = 1; i < seen.length; i += 1) assert.notEqual(seen[i], seen[i - 1], `
 
 /* ---------- 4. 第 5 档进生气序列，锁期间抓不起来 ---------- */
 await wait(760);
+const realRandom = Math.random;
+Math.random = () => 0;                // 第 5 档变体固定抽第一个：转身生气（sulk）
 press(100, 100);
 lift(100, 100);
+Math.random = realRandom;
 assert.equal(cTrack(), 'turn', '第 5 档要进生气序列，第一步是转身');
 
 await wait(200);
@@ -289,6 +292,25 @@ press(100, 100);
 lift(100, 100);
 assert.equal(irrNow(), 1, '生气播完烦躁要清零，下一次戳重新从 1 算');
 assert.ok(['t1', 't2', 't3', 't4'].includes(cTrack()), '生气播完再戳，照常随机播戳的动作');
+
+/* ---------- 6b. 第 5 档的另一种：愤怒颤抖（2026-09-29） ---------- */
+for (let i = 0; i < 3; i += 1) { await wait(760); press(100, 100); lift(100, 100); }
+assert.equal(irrNow(), 4, `再连戳 3 下烦躁回到 4，实际是 ${irrNow()}`);
+await wait(760);
+Math.random = () => .99;              // 第 5 档变体固定抽第二个：愤怒颤抖（rage）
+press(100, 100);
+lift(100, 100);
+Math.random = realRandom;
+assert.equal(cTrack(), 'rage', '第 5 档抽到 rage 要走 C 轨 rage');
+await wait(80);
+assert.equal(clawd.dataset.clawdClip, 'rage', '骨架要播愤怒颤抖');
+press(100, 100);
+move(140, 100);
+lift(140, 100);
+assert.equal(cTrack(), 'rage', '愤怒颤抖期间也抓不起来');
+await wait(1700);                     // rage 1500ms，留余量
+assert.equal(cTrack(), '', '愤怒颤抖播完要把 C 轨清干净');
+assert.equal(irrNow(), 0, '愤怒颤抖播完烦躁清零');
 
 /* ---------- 7. 输入框这只不再冒文字气泡（C1b，Lulu 2026-09-24：旧版文字弹幕去掉） ---------- */
 await wait(1500);
@@ -553,6 +575,18 @@ assert.equal(api.clawdState().B, 'rig:polish');
 menu.querySelector('[data-cdm="stop"]').click();
 await wait(150);
 assert.equal(api.clawdState().B, 'idle', '点「停」要回到空闲');
+/* 彩棒颜色每次播随机，双手版两根不一样（Lulu 2026-09-29） */
+const stickBtn = [...menu.querySelectorAll('[data-act]')].find(el => el.textContent === '甩彩棒（双手）');
+assert.ok(stickBtn, '菜单里要有双手甩彩棒');
+stickBtn.click();
+await wait(150);
+assert.equal(clawd.dataset.clawdClip.replace(/-m$/, ''), 'glowstick2', '点双手甩彩棒要真的播');
+const stickA = clawd.style.getPropertyValue('--stick-a'), stickB = clawd.style.getPropertyValue('--stick-b');
+assert.match(stickA, /^#[0-9a-f]{6}$/, '播彩棒前要在按钮上设 --stick-a');
+assert.match(stickB, /^#[0-9a-f]{6}$/, '播彩棒前要在按钮上设 --stick-b');
+assert.notEqual(stickA, stickB, '双手版两根彩棒颜色不一样');
+menu.querySelector('[data-cdm="stop"]').click();
+await wait(150);
 /* 被打断的动作作废，不许等打断结束又从头播（Lulu 2026-09-24） */
 polishBtn.click();
 await wait(150);

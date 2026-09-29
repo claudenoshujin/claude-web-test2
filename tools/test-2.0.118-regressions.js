@@ -152,4 +152,12 @@ assert.doesNotMatch(index, /hostDocument\.body\.classList\.toggle\((GENERATING_C
 assert.doesNotMatch(officialLayout, /doc\.body\.classList\.toggle\('cw-v4-(filled|group-chat)'/, 'per-keystroke / per-sync body class writes must go through setBodyClass');
 assert.match(officialLayout, /isOpen\(old\) && !old\.classList\.contains\('pinnedOpen'\)\) nativeToggle\(old\)\?\.click\(\);\s*\},true\);/, 'switching pages from the sidebar must close the old drawer synchronously (otherwise SillyTavern waits animation_duration and the half-closed page shows over the sidebar)');
 assert.match(officialCss, /\.drawer-content\.cw-v4-panel:not\(\.openDrawer\)\{visibility:hidden!important;transition:none!important\}/, 'closed v4 pages must hide at once instead of playing the 280ms drawer close animation');
+assert.match(index, /\{ id: 'onFire', weight: 0\.5, cool: 900000 \}/, 'deadpan-on-fire idle clip: weight 0.5, 15 min cooldown');
+assert.match(index, /\{ id: 'glowstick', weight: 0\.5, cool: 600000 \}/, 'one-hand glow stick idle clip: weight 0.5, 10 min cooldown');
+assert.match(index, /\{ id: 'glowstick2', weight: 0\.5, cool: 600000 \}/, 'two-hand glow stick idle clip: weight 0.5, 10 min cooldown');
+assert.match(index, /\{ id: 'rickroll', weight: 0\.3, cool: 300000 \}/, 'rickroll idle clip: weight 0.3, 5 min cooldown (Lulu)');
+assert.match(index, /\{ id: 'siren', weight: 0\.25, cool: 900000 \}/, 'red siren idle clip: weight 0.25, 15 min cooldown');
+assert.match(index, /\{ id: 'sirenBlue', weight: 0\.25, cool: 900000 \}/, 'blue siren idle clip: weight 0.25, 15 min cooldown');
+assert.match(index, /sulk: \['sulk', 'rage'\]/, 'poke level 5 picks sulk or rage');
+assert.match(index, /onFire: 'fade', siren: 'fade', sirenBlue: 'fade'/, 'fire and sirens fade out when interrupted');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

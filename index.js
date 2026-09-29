@@ -2152,6 +2152,13 @@ if (CLAUDE_ENABLED) {
     { id: 'butterfly', weight: 1, cool: 600000 },
     { id: 'plant', weight: 1, cool: 600000 },
     { id: 'eat', weight: 0.3, mealWeight: 3, cool: 1800000 },
+    /* 2026-09-29 新增（docs/Clawd新增动作-五项-设计-20260929.md） */
+    { id: 'onFire', weight: 0.5, cool: 900000 },
+    { id: 'glowstick', weight: 0.5, cool: 600000 },
+    { id: 'glowstick2', weight: 0.5, cool: 600000 },
+    { id: 'rickroll', weight: 0.3, cool: 300000 },   // Lulu：冷却 5 分钟
+    { id: 'siren', weight: 0.25, cool: 900000 },
+    { id: 'sirenBlue', weight: 0.25, cool: 900000 },
   ]);
   const clawdRigLastPlayed = {};
   /* 三轨状态 → 骨架动作。「思考」去掉了（Lulu 2026-09-24）：一按发送就进写字，写字自带「拿出纸笔」的进场 */
@@ -2165,13 +2172,13 @@ if (CLAUDE_ENABLED) {
   /* 戳第 5 档是 turn → t5 → face 三步序列，三步都对着同一段「转身生气」，中间不重播 */
   const CLAWD_RIG_C = Object.freeze({
     press: 'press', grab: 'grab', drag: 'drag', fly: 'fly', land: 'land', stomp: 'stomp', pet: 'pet',
-    t2: 'poke2', t3: 'poke3', t4: 'poke4', turn: 'sulk', t5: 'sulk', face: 'sulk',
+    t2: 'poke2', t3: 'poke3', t4: 'poke4', turn: 'sulk', t5: 'sulk', face: 'sulk', rage: 'rage',
   });
   let clawdRigPokeT1 = 'poke1';        // 第 1 档：蹦一下 / 害羞捂眼，每次戳随机一个
   /* 被拎着、被丢烦了跺脚：新版和旧版各一半，每次拎起 / 每次跺脚抽一次（Lulu 2026-09-25：旧版的也可爱，拿回来随机）
      旧版吊着 = 钟摆似的晃 + 四条腿轮流岔开；旧版跺脚 = 跳起来落地时低头、一只钳子往地上一拍 */
-  const CLAWD_RIG_VARIANTS = Object.freeze({ drag: ['drag', 'dragSwing'], stomp: ['stomp', 'stompSlap'] });
-  const clawdRigVariant = { drag: 'drag', stomp: 'stomp' };
+  const CLAWD_RIG_VARIANTS = Object.freeze({ drag: ['drag', 'dragSwing'], stomp: ['stomp', 'stompSlap'], sulk: ['sulk', 'rage'] });
+  const clawdRigVariant = { drag: 'drag', stomp: 'stomp', sulk: 'sulk' };
   function clawdRigPickVariant(key) {
     const pool = CLAWD_RIG_VARIANTS[key].filter(id => CLAWD_RIG.clips[id]);
     clawdRigVariant[key] = pool[Math.floor(Math.random() * pool.length)] || key;
@@ -3633,7 +3640,7 @@ if (CLAUDE_ENABLED) {
      按需生成时，每往样式表里追加一段，酒馆那一万多个节点都要重算一遍样式（真机约 60ms 一次），
      按下 → 拎起 → 吊着连着三段就是两百来毫秒卡在手指落下那一刻，
      打断收场的道具也跟着卡住不动（Lulu 2026-09-25：拿起来时杯子过一会儿才掉）。 */
-  const CLAWD_RIG_PREWARM = ['press', 'grab', 'drag', 'dragSwing', 'fly', 'land', 'stomp', 'stompSlap', 'pet', 'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4'];
+  const CLAWD_RIG_PREWARM = ['press', 'grab', 'drag', 'dragSwing', 'fly', 'land', 'stomp', 'stompSlap', 'pet', 'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4', 'rage'];
   let clawdRigPrewarmTimer = 0;
   function clawdRigSchedulePrewarm() {
     if (clawdRigPrewarmTimer) return;
@@ -3733,7 +3740,8 @@ if (CLAUDE_ENABLED) {
      - 追蝴蝶的蝴蝶：往外侧斜上方飞走
      - 其余（杯子、碗、信、笔、纸……）：先往上一弹，再往 Clawd 外侧翻着掉下去
      第三版（Lulu 2026-09-24）：掉落的幅度和距离加大；树和蝴蝶不再跟着别的道具一起「掉」 */
-  const CLAWD_RIG_INTERRUPT = Object.freeze({ plant: 'wither', plantWilt: 'wither', butterfly: 'fly' });
+  /* 着火、警笛被打断：火和警笛直接淡掉（fade），不往下掉（2026-09-29） */
+  const CLAWD_RIG_INTERRUPT = Object.freeze({ plant: 'wither', plantWilt: 'wither', butterfly: 'fly', onFire: 'fade', siren: 'fade', sirenBlue: 'fade' });
   /* 收场的复制品不能挂在 Clawd 身上：被拎起来的时候它会跟着一起飞上去（Lulu 2026-09-24：种子跟着 Clawd 一起起来了）。
      挂在 body 下一个常驻的 position:fixed 容器里，按打断那一刻骨架在屏幕上的位置和缩放摆好。
      （第一版挂在 #send_form 里，欢迎页那条「#send_form > 除 #nonQRFormItems 外全部隐藏」把它一起藏了。）
@@ -3829,7 +3837,10 @@ if (CLAUDE_ENABLED) {
       inner.append(ghost);
       /* 缓动写在每一段上，整体 linear。以前整体 ease-in：前 30% 的时间几乎不动，
          杯子、信在原地僵半秒才往下掉。现在一打断就动：掉落先快速往上一弹（减速），再加速掉下去；枯萎一开始就往下缩 */
-      const frames = kind === 'wither' ? [
+      const frames = kind === 'fade' ? [
+        { opacity: o, easing: 'ease-out' },
+        { opacity: 0 },
+      ] : kind === 'wither' ? [
         { scale: '1 1', filter: 'none', opacity: o, easing: 'ease-out' },
         { scale: '1 .7', filter: 'grayscale(1)', opacity: o * .7, offset: .35, easing: 'ease-in' },
         { scale: '1 .15', filter: 'grayscale(1)', opacity: 0 },
@@ -3887,12 +3898,24 @@ if (CLAUDE_ENABLED) {
     if (current && !continues) clawdRigDropProps(button, curBase);
     button.removeAttribute('data-clawd-clip');
     if (clip) {
+      if (base.startsWith('glowstick')) clawdRigPickStickColors(button);
       ensureClawdRigClipCss(clip);
       /* 以前这里无条件 void button.offsetWidth 强制重排，想让同一个动作连播时从头开始。
          但走到这里时 clip 一定和 current 不同（相同的上面已经 return 了），属性值一变动画本来就会重播；
          在酒馆这么大的页面上这一下要 90ms 左右，按下拎起时全卡在这里（Lulu 2026-09-25） */
       button.dataset.clawdClip = clip;
     }
+  }
+
+  /* 彩棒颜色：每次播随机（Lulu 2026-09-29），双手版两根各抽一个、不重复。
+     骨架里彩棒的颜色走 CSS 变量 --stick-a（右手）/ --stick-b（双手版左手），设在按钮上，骨架各层继承 */
+  const CLAWD_STICK_COLORS = Object.freeze(['#7dff9b', '#ff6bd6', '#6be4ff', '#fff36b', '#ff9b4a', '#b18cff', '#ff5c6c']);
+  function clawdRigPickStickColors(button) {
+    const n = CLAWD_STICK_COLORS.length;
+    const a = Math.floor(Math.random() * n);
+    const b = (a + 1 + Math.floor(Math.random() * (n - 1))) % n;
+    button.style.setProperty('--stick-a', CLAWD_STICK_COLORS[a]);
+    button.style.setProperty('--stick-b', CLAWD_STICK_COLORS[b]);
   }
 
   function clawdMealTime(now = new Date()) {
@@ -5118,7 +5141,9 @@ if (CLAUDE_ENABLED) {
 
   function a2SulkSeq() {
     A2.throws = 0;
-    a2PlaySeq([['turn', 400], ['t5', 2600], ['face', 400]], '生气');
+    /* 第 5 档：转身生气（三步序列）和愤怒颤抖（一段）各一半（Lulu 2026-09-29） */
+    if (clawdRigPickVariant('sulk') === 'rage') a2PlaySeq([['rage', CLAWD_RIG.clips.rage.dur]], '生气');
+    else a2PlaySeq([['turn', 400], ['t5', 2600], ['face', 400]], '生气');
   }
 
   /* 空气墙。
