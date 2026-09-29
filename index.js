@@ -2949,7 +2949,7 @@ if (CLAUDE_ENABLED) {
 
       html:not([data-claude-mode="compat"]) body.${READY_CLASS}.expandMessageActions
         #chat > .mes .mes_buttons > .extraMesButtonsHint,
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+      html:not([data-claude-mode="compat"]):not([data-cw-v4]) body.${READY_CLASS}
         #chat > .mes .mes_buttons:has(> .extraMesButtons.visible)
         > .extraMesButtonsHint {
         display: none !important;
@@ -2964,17 +2964,19 @@ if (CLAUDE_ENABLED) {
 
       /* 主题源曾只白名单显示复制和朗读，所以点省略号后看起来只有两个功能。
          展开区改成独立浮层：只恢复酒馆没有显式隐藏的真实按钮，并允许换行，
-         不再把十几个动作硬塞进消息底部的一条 26px 横线。 */
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+         不再把十几个动作硬塞进消息底部的一条 26px 横线。
+         v4（classic + rail）不用这张卡片：styles/official-layout.css 里是 design-v4 的单行灰条，
+         position:fixed 定位，不用改消息的 overflow（2026-09-29），所以下面几条都排除 v4。 */
+      html:not([data-claude-mode="compat"]):not([data-cw-v4]) body.${READY_CLASS}
         #chat > .mes[is_user="false"]:has(.extraMesButtons.visible),
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+      html:not([data-claude-mode="compat"]):not([data-cw-v4]) body.${READY_CLASS}
         #chat > .mes[is_user="false"]:has(.extraMesButtons.visible) .mes_block,
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+      html:not([data-claude-mode="compat"]):not([data-cw-v4]) body.${READY_CLASS}
         #chat > .mes[is_user="false"] .mes_buttons:has(> .extraMesButtons.visible) {
         overflow: visible !important;
       }
 
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+      html:not([data-claude-mode="compat"]):not([data-cw-v4]) body.${READY_CLASS}
         #chat > .mes[is_user="false"] .mes_buttons > .extraMesButtons.visible {
         position: absolute !important;
         inset: auto auto 32px 0 !important;
@@ -3003,7 +3005,7 @@ if (CLAUDE_ENABLED) {
         scrollbar-width: thin !important;
       }
 
-      html:not([data-claude-mode="compat"]) body.${READY_CLASS}
+      html:not([data-claude-mode="compat"]):not([data-cw-v4]) body.${READY_CLASS}
         #chat > .mes[is_user="false"] .extraMesButtons.visible
         > .mes_button:not(.displayNone):not([hidden]):not([style*="display: none"]):not([style*="display:none"]) {
         display: inline-flex !important;

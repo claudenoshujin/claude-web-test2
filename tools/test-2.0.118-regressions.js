@@ -162,4 +162,9 @@ assert.match(index, /sulk: \['sulk', 'rage'\]/, 'poke level 5 picks sulk or rage
 assert.match(index, /onFire: 'fade', siren: 'fade', sirenBlue: 'fade'/, 'fire and sirens fade out when interrupted');
 assert.match(index, /glowstick: \['glowstick', 'glowstickPump'\],\s*glowstick2: \['glowstick2', 'glowstick2Pump', 'glowstick2Alt'\]/, 'glow stick picks a random cheering form each time');
 assert.match(index, /const forms = CLAWD_RIG_FORMS\[id\];/, 'idle pool swaps the picked glow stick for a random form');
+/* 消息「…」浮层（2026-09-29）：v4 下旧的白底多行卡片不再生效，由 official-layout.css 的单行灰条接管 */
+assert.match(index, /html:not\(\[data-claude-mode="compat"\]\):not\(\[data-cw-v4\]\) body\.\$\{READY_CLASS\}\s*#chat > \.mes\[is_user="false"\] \.mes_buttons > \.extraMesButtons\.visible \{\s*position: absolute !important;/, 'the old floating card must be switched off under v4');
+assert.match(officialCss, /\.extraMesButtons\.visible\{position:fixed!important;left:var\(--cw-more-x/, 'v4 popup is fixed and positioned from the … button');
+assert.match(officialCss, /#chat>\.mes:not\(\[data-media-display="gallery"\]\) \.mes_buttons>\.extraMesButtons\.visible>\.mes_media_gallery/, 'v4 popup re-applies ST\'s own gallery/list hiding');
+assert.doesNotMatch(officialCss, /#chat[^{]*\{[^}]*overflow:visible/, 'the popup must not change overflow on the chat area or messages');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

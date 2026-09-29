@@ -636,6 +636,62 @@ export function installOfficialLayout(win = window) {
     on(doc, 'focusin', () => win.setTimeout(queueKeyboard, 350));
     on(doc, 'focusout', () => win.setTimeout(queueKeyboard, 50));
     disposers.push(() => root.removeAttribute('data-cw-v4-kb'));
+    // Message "…" popup (design-v4, 2026-09-29). ST fades the … out and shows
+    // .extraMesButtons.visible; any click elsewhere closes it. Here the … stays
+    // (pressed) and a second click on it closes the popup through ST's own
+    // outside-click handler. The popup is position:fixed and placed from the …
+    // button's rect, so no container's overflow has to change. #chat carries a
+    // transform, which makes it the containing block of fixed descendants, so
+    // the block's origin is measured instead of assuming the viewport.
+    const moreOpen = new Map();   // menu -> {since, x, y, max} while opening / open
+    let moreFrame = 0;
+    const moreClear = menu => { moreOpen.delete(menu); for (const v of ['--cw-more-x','--cw-more-y','--cw-more-max']) menu.style.removeProperty(v); delete menu.dataset.cwMore; };
+    const morePlace = () => {
+      moreFrame = 0;
+      if (destroyed) return;
+      const chat = doc.getElementById('chat')?.getBoundingClientRect();
+      const minX = (chat?.left || 0) + 8, maxX = (chat ? chat.right : win.innerWidth) - 8, minY = (chat?.top || 0) + 2;
+      const phone = doc.body.classList.contains('clawd-mobile-layout') || root.dataset.claudeLayout === 'mobile';
+      for (const [menu, st] of moreOpen) {
+        const hint = menu.parentElement?.querySelector(':scope > .extraMesButtonsHint');
+        if (!menu.isConnected || !hint || !enabled()) { moreClear(menu); continue; }
+        if (!menu.classList.contains('visible')) {
+          // ST adds .visible only after the …'s fade; give it a moment, then drop the entry.
+          if (st.placed || win.performance.now() - st.since > 1500) moreClear(menu);
+          continue;
+        }
+        const max = Math.max(0, Math.round(maxX - minX));
+        if (st.max !== max) { st.max = max; menu.style.setProperty('--cw-more-max', max + 'px'); }
+        const h = hint.getBoundingClientRect(), m = menu.getBoundingClientRect();
+        // Where the containing block starts on screen: current rect minus the offsets we set.
+        const ox = m.left - st.x, oy = m.top - st.y;
+        let x = phone ? h.right - m.width : h.left + h.width / 2 - m.width / 2;
+        x = Math.min(Math.max(x, minX), Math.max(minX, maxX - m.width));
+        let y = h.top - 6 - m.height;
+        if (y < minY) y = h.bottom + 6;                   // no room above: open below the …
+        const nx = Math.round(x - ox), ny = Math.round(y - oy);
+        if (nx !== st.x || !st.placed) { st.x = nx; menu.style.setProperty('--cw-more-x', nx + 'px'); }
+        if (ny !== st.y || !st.placed) { st.y = ny; menu.style.setProperty('--cw-more-y', ny + 'px'); }
+        if (!st.placed) { st.placed = true; menu.dataset.cwMore = 'placed'; }
+      }
+      // Keep following the … (chat scroll, keyboard, resize) only while something is open.
+      if (moreOpen.size) moreFrame = win.requestAnimationFrame(morePlace);
+    };
+    on(doc, 'click', e => {
+      if (!enabled() || doc.body.classList.contains('expandMessageActions')) return;
+      const hint = e.target.closest?.('.extraMesButtonsHint');
+      if (!hint || !hint.closest('#chat')) return;
+      const menu = hint.parentElement?.querySelector(':scope > .extraMesButtons');
+      if (!menu) return;
+      if (menu.classList.contains('visible')) {
+        e.stopPropagation(); e.preventDefault();
+        doc.body.click();                                 // ST: a click outside closes every open menu
+        return;
+      }
+      moreOpen.set(menu, { since: win.performance.now(), x: 0, y: 0, max: -1, placed: false });
+      if (!moreFrame) moreFrame = win.requestAnimationFrame(morePlace);
+    }, true);
+    disposers.push(() => { if (moreFrame) win.cancelAnimationFrame(moreFrame); for (const menu of [...moreOpen.keys()]) moreClear(menu); });
     const ctx = win.SillyTavern?.getContext?.();
     for (const key of ['CHAT_CHANGED','CHARACTER_MESSAGE_RENDERED','USER_MESSAGE_RENDERED','MESSAGE_SWIPED','SETTINGS_LOADED','APP_READY']) {
       const event = ctx?.eventTypes?.[key]; if (event && ctx.eventSource?.on) { ctx.eventSource.on(event,schedule); disposers.push(() => ctx.eventSource.removeListener?.(event,schedule)); }

@@ -151,6 +151,26 @@ assert.ok(!worldEntry.querySelector('.cw-v4-wi-edit'),'editor box is removed aft
 worldEntry.querySelector('.cw-v4-entry-edit').click();
 assert.equal(lazyLoads,1,'reopening must reuse the native editor');
 worldEntry.querySelector('dialog[open]').close();
+// Message "…" popup (2026-09-29): a second click on … closes it through ST's own outside-click path,
+// and the open popup is positioned from the … button (fixed, so no container overflow has to change).
+{
+  const mes=d.querySelector('#message_template .mes').cloneNode(true);
+  mes.setAttribute('is_user','false');d.getElementById('chat').append(mes);
+  const hint=mes.querySelector('.extraMesButtonsHint'),extra=mes.querySelector('.extraMesButtons');
+  let toST=0,bodyClicks=0;
+  const spy=e=>{if(e.target.closest?.('.extraMesButtonsHint'))toST++;if(e.target===d.body)bodyClicks++;};
+  d.addEventListener('click',spy);
+  hint.click();
+  assert.equal(toST,1,'first click on … still reaches ST, which opens the menu');
+  extra.classList.add('visible');                      // what ST does once its fade finishes
+  await new Promise(r=>setTimeout(r,150));
+  assert.match(extra.style.getPropertyValue('--cw-more-x'),/^-?\d+(\.\d+)?px$/,'open popup gets its x from the … button');
+  assert.match(extra.style.getPropertyValue('--cw-more-y'),/^-?\d+(\.\d+)?px$/,'open popup gets its y from the … button');
+  hint.click();
+  assert.equal(toST,1,'second click on … must not reach ST (it would try to open again)');
+  assert.equal(bodyClicks,1,'second click closes through a body click, i.e. ST\'s own outside-click handler');
+  d.removeEventListener('click',spy);mes.remove();
+}
 d.documentElement.dataset.claudeStructure='linear';app.refresh();
 for(const control of controls)assert.ok(control.isConnected,`reflow restore lost ${control.id}`);
 assert.equal(d.querySelector('.cw-v4-drawer-page'),null,'all semantic pages return to native layout');
