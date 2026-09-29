@@ -72,6 +72,7 @@ const context = {
     GENERATION_ENDED: 'generation_ended',
     GENERATION_STOPPED: 'generation_stopped',
     GENERATION_FAILED: 'generation_failed',
+    PERSONA_CHANGED: 'persona_changed',
   },
 };
 
@@ -294,6 +295,33 @@ Object.defineProperty(cachedPageHide, 'persisted', { value: true });
     await new Promise(resolve => window.setTimeout(resolve, 0));
     assert.equal(html.classList.contains('claude-top-drawer-open'), false, 'closing the top drawer must clear the mark');
   } else throw new Error('fixture drawer was moved out of #top-settings-holder');
+}
+/* 欢迎语跟着当前用户名走（2026-09-29 反馈：换了 User 名字，标题还是旧名字 Dr. Misy）。
+   换人 / 改名只换名字那几个字：同一句、同一个节点，不重抽、不重建。 */
+{
+  const doc = window.document;
+  context.chat = [];
+  doc.querySelectorAll('#chat > .mes').forEach(m => m.remove());
+  const realRandom = Math.random;
+  Math.random = () => 0;                               // 第一句是「早安 / Good morning，<名字>」，一定带名字
+  window.sessionStorage.removeItem('clawd-last-hero-line');
+  context.name1 = 'Alpha';
+  emitRuntimeEvent('persona_changed');
+  await new Promise(resolve => window.setTimeout(resolve, 120));
+  Math.random = realRandom;
+  const hero = doc.querySelector('.clawd-welcome-hero');
+  assert.ok(hero, 'an empty, unselected chat shows the welcome greeting');
+  const first = hero.textContent;
+  assert.match(first, /Alpha/, 'the greeting uses the current user name');
+  context.name1 = 'Beta';
+  emitRuntimeEvent('persona_changed');
+  await new Promise(resolve => window.setTimeout(resolve, 120));
+  assert.equal(doc.querySelector('.clawd-welcome-hero'), hero, 'switching persona must not rebuild the greeting');
+  assert.equal(hero.textContent, first.replace('Alpha', 'Beta'), 'same greeting, new name');
+  context.name1 = '';
+  emitRuntimeEvent('persona_changed');
+  await new Promise(resolve => window.setTimeout(resolve, 120));
+  assert.doesNotMatch(doc.querySelector('.clawd-welcome-hero').textContent, /Beta|,\s*$|，\s*$/, 'no name: the name-free version of the same greeting, no dangling comma');
 }
 window.dispatchEvent(cachedPageHide);
 assert.notEqual(context.powerUserSettings.theme, 'Original', 'bfcache pagehide must keep the live theme intact');

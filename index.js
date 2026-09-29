@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.182-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.183-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -5960,7 +5960,7 @@ if (CLAUDE_ENABLED) {
     leavingSince = Date.now();
     hostDocument.body.classList.remove(WELCOME_CLASS);
     hostDocument.querySelectorAll('.' + HERO_CLASS).forEach(el => el.remove());
-    heroLine = null;
+    heroPick = -1;
     scheduleRefresh();
   }
 
@@ -6005,6 +6005,9 @@ if (CLAUDE_ENABLED) {
     const types = getContext()?.eventTypes || getContext()?.event_types || {};
     for (const [key, value] of Object.entries(types)) {
       if (key === 'MESSAGE_SENT' || key === 'USER_MESSAGE_RENDERED') source?.on?.(value, enterLeaving);
+      // 换 persona：欢迎语里的名字跟着换（只换名字，不重抽句子）。单纯改名酒馆不发事件，
+      // 由 refreshWelcomeMode 每次刷新比较当前名字兜底
+      if (key === 'PERSONA_CHANGED') source?.on?.(value, () => scheduleRefresh());
       // 首次发送会创建新对话，也走 CHAT_CHANGED —— 那时不能退回欢迎页
       if (key === 'CHAT_CHANGED') source?.on?.(value, () => {
         /* CHAT_CHANGED 同时表示“选中角色”和“关闭对话”，不能一律当成回首页。
@@ -6604,18 +6607,25 @@ if (CLAUDE_ENABLED) {
     ];
   }
 
-  function takeHeroLine(who, cn) {
-    const candidates = heroCandidates(who, cn);
-    let last = '';
-    try { last = hostWindow.sessionStorage?.getItem(LAST_HERO_KEY) || ''; } catch {}
-    const available = candidates.filter(line => line !== last);
-    const pool = available.length ? available : candidates;
-    const line = pool[Math.floor(Math.random() * pool.length)];
-    try { hostWindow.sessionStorage?.setItem(LAST_HERO_KEY, line); } catch {}
-    return line;
+  /* 抽的是「第几句」，不是写死名字的整句（2026-09-29 反馈：换了 User 名字标题还是旧名字）。
+     显示时再按当前名字、当前语言拼出来：换人 / 改名 / 换语言只换字，不重抽。
+     sessionStorage 里记上次那句的序号，下次回首页不抽同一句。 */
+  function takeHeroPick() {
+    const count = heroCandidates('', false).length;
+    let last = -1;
+    try { last = Number(hostWindow.sessionStorage?.getItem(LAST_HERO_KEY) ?? -1); } catch {}
+    const pool = [...Array(count).keys()].filter(i => i !== last);
+    const pick = pool[Math.floor(Math.random() * pool.length)] ?? 0;
+    try { hostWindow.sessionStorage?.setItem(LAST_HERO_KEY, String(pick)); } catch {}
+    return pick;
   }
 
-  let heroLine = null;
+  function heroText() {
+    const list = heroCandidates((getContext()?.name1 || '').trim(), ccPrefersChinese());
+    return list[heroPick] ?? list[0];
+  }
+
+  let heroPick = -1;
 
   /* 思维链默认折叠。
      关掉酒馆的 reasoning_auto_expand 只管新渲染的，已经展开的那些还得自己收。
@@ -6699,27 +6709,30 @@ if (CLAUDE_ENABLED) {
 
     if (!isWelcome || !chat) {
       for (const el of strays) el.remove();
-      heroLine = null;
+      heroPick = -1;
       return;
     }
+    // 每次进入欢迎态才重抽一句，刷新循环里不重抽，否则会一直闪
+    if (heroPick < 0) heroPick = takeHeroPick();
+    const line = heroText();
     /* 正好一个、位置对、而且问候语文字还在（不是只剩图标），才算没事不用动。
        之前只检查"数量对不对 + 挂对地方"：如果那句文字在别处被清空过
        （怀疑跟 1.18.0 欢迎页改版有关——目前没能在那个版本上复现，只能先按
        "文字丢了就重建"这条防线兜底），图标会一直立在那儿，问候语永远补不回来，
        因为这条判断一直觉得"数量对、位置对，没必要动"。 */
-    if (strays.length === 1 && strays[0].parentElement === chat && strays[0].textContent.trim()) return;
+    if (strays.length === 1 && strays[0].parentElement === chat && strays[0].textContent.trim()) {
+      // 名字 / 语言变了：只换那段文字（同一句、同一个节点），不重建整块
+      if (strays[0].textContent !== line) {
+        const text = [...strays[0].childNodes].find(n => n.nodeType === 3);
+        if (text) { text.data = line; return; }
+      } else return;
+    }
     for (const el of strays) el.remove();
 
-    // 每次进入欢迎态才重抽一句，刷新循环里不重抽，否则会一直闪
-    if (heroLine === null) {
-      const who = (getContext()?.name1 || '').trim();
-      const cn = ccPrefersChinese();
-      heroLine = takeHeroLine(who, cn);
-    }
     const hero = hostDocument.createElement('div');
     hero.className = HERO_CLASS;
     hero.innerHTML = '<span class="asterisk"></span>';
-    hero.append(hostDocument.createTextNode(heroLine));
+    hero.append(hostDocument.createTextNode(line));
     chat.prepend(hero);
     /* 欢迎态下 #chat 是 flex:0 1 auto + overflow-y:auto，而酒馆载入时会把
        聊天区滚到底。容器被压得比问候语矮时，滚到底的结果就是「顶部被切掉一截」。
