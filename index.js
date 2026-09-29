@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.165-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.166-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -8236,6 +8236,11 @@ if (CLAUDE_ENABLED) {
     scrim.className = 'clawd-mobile-scrim';
     scrim.setAttribute('aria-label', ccPrefersChinese() ? '关闭导航' : 'Close navigation');
     scrim.addEventListener('click', closeMobileMenu);
+    /* 酒馆在 html 上监听 touchstart / mousedown：点在任何打开的抽屉外面就关掉所有抽屉。
+       侧栏盖在设置页上时点外面只该收起侧栏、设置页原样保留，所以这两个事件不从 scrim 往上传。 */
+    const keepDrawers = event => event.stopPropagation();
+    scrim.addEventListener('touchstart', keepDrawers, { passive: true });
+    scrim.addEventListener('mousedown', keepDrawers);
 
     root.append(menu, scrim);
     hostDocument.body.append(root);
