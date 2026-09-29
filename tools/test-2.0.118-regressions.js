@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.173');
-assert.equal(manifest.js, 'loader-2.0.173.js');
+assert.equal(manifest.version, '2.0.174');
+assert.equal(manifest.js, 'loader-2.0.174.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -151,4 +151,5 @@ assert.doesNotMatch(index + officialLayout, /clawd-mobile-menu-open|MOBILE_MENU_
 assert.doesNotMatch(index, /hostDocument\.body\.classList\.toggle\((GENERATING_CLASS|WELCOME_CLASS|EXTERNAL_MODAL_OPEN_CLASS)/, 'per-refresh body class writes must go through setBodyClass');
 assert.doesNotMatch(officialLayout, /doc\.body\.classList\.toggle\('cw-v4-(filled|group-chat)'/, 'per-keystroke / per-sync body class writes must go through setBodyClass');
 assert.match(officialLayout, /isOpen\(old\) && !old\.classList\.contains\('pinnedOpen'\)\) nativeToggle\(old\)\?\.click\(\);\s*\},true\);/, 'switching pages from the sidebar must close the old drawer synchronously (otherwise SillyTavern waits animation_duration and the half-closed page shows over the sidebar)');
+assert.match(officialCss, /\.drawer-content\.cw-v4-panel:not\(\.openDrawer\)\{visibility:hidden!important;transition:none!important\}/, 'closed v4 pages must hide at once instead of playing the 280ms drawer close animation');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

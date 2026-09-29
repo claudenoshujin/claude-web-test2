@@ -1112,3 +1112,7 @@ html[data-cw-v4][data-cw-v4-settings][data-claude-layout] body #top-settings-hol
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-section{content-visibility:auto;contain-intrinsic-size:auto 480px}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.cw-v4-row,.cw-v4-setting-row,.cw-v4-prompt-row,.cw-v4-world-row,.cw-v4-extension-item,.character_select,.avatar-container){content-visibility:auto;contain-intrinsic-size:auto 64px}
 }
+/* v4 设置页关掉就立即隐藏，不播手机主题的抽屉收起动画。day-mobile.css 让关上的抽屉继续 display:block 280ms、
+   clip-path 收起后才 visibility:hidden；v4 页面关上时会先塌成约 100px 高的一块，侧栏盖在设置页上切换入口时，
+   这块会作为一张小卡片浮在侧栏上（Via 录屏约 4～7 帧）。 */
+@media(max-width:700px){html[data-cw-v4] body #top-settings-holder>.drawer>.drawer-content.cw-v4-panel:not(.openDrawer){visibility:hidden!important;transition:none!important}}
