@@ -166,6 +166,13 @@ worldEntry.querySelector('dialog[open]').close();
   await new Promise(r=>setTimeout(r,150));
   assert.match(extra.style.getPropertyValue('--cw-more-x'),/^-?\d+(\.\d+)?px$/,'open popup gets its x from the … button');
   assert.match(extra.style.getPropertyValue('--cw-more-y'),/^-?\d+(\.\d+)?px$/,'open popup gets its y from the … button');
+  // Some pages carry a second, empty #chat (seen after toggling the extension). Bounds must come from the
+  // #chat that holds the message, or --cw-more-max collapses to 0 and the popup shrinks to nothing.
+  const ghost=d.createElement('div');ghost.id='chat';d.getElementById('sheld').prepend(ghost);
+  const realChat=mes.closest('#chat');realChat.getBoundingClientRect=()=>({left:100,top:0,right:900,bottom:600,width:800,height:600});
+  await new Promise(r=>setTimeout(r,80));
+  assert.equal(extra.style.getPropertyValue('--cw-more-max'),'784px','max width comes from the #chat that holds the message');
+  ghost.remove();delete realChat.getBoundingClientRect;
   hint.click();
   assert.equal(toST,1,'second click on … must not reach ST (it would try to open again)');
   assert.equal(bodyClicks,1,'second click closes through a body click, i.e. ST\'s own outside-click handler');

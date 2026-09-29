@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.181');
-assert.equal(manifest.js, 'loader-2.0.181.js');
+assert.equal(manifest.version, '2.0.182');
+assert.equal(manifest.js, 'loader-2.0.182.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -166,6 +166,9 @@ assert.match(index, /const forms = CLAWD_RIG_FORMS\[id\];/, 'idle pool swaps the
 assert.match(index, /html:not\(\[data-claude-mode="compat"\]\):not\(\[data-cw-v4\]\) body\.\$\{READY_CLASS\}\s*#chat > \.mes\[is_user="false"\] \.mes_buttons > \.extraMesButtons\.visible \{\s*position: absolute !important;/, 'the old floating card must be switched off under v4');
 assert.match(officialCss, /\.extraMesButtons\.visible\{position:fixed!important;left:var\(--cw-more-x/, 'v4 popup is fixed and positioned from the … button');
 assert.match(officialCss, /\.extraMesButtons\.visible\{position:fixed[^}]*opacity:1!important\}/, 'v4 popup is fully opaque (index.js dims every .mes_buttons child to .72)');
+assert.match(officialCss, /\.extraMesButtons\.visible>\.mes_create_bookmark::before\{content:"\\f11e"!important\}/, 'v4 popup shows the real checkpoint icon (the old theme turned it into a thumbs-up)');
+assert.match(officialCss, /\.extraMesButtons\.visible>\.mes_create_branch::before\{content:"\\f126"!important\}/, 'v4 popup shows the real branch icon (the old theme turned it into a thumbs-down)');
+assert.match(officialCss, /\.extraMesButtons\.visible>\*\{[^}]*order:0!important;[^}]*animation:none!important;/, 'v4 popup keeps ST\'s own button order and no theme nod animation');
 assert.match(officialCss, /#chat>\.mes:not\(\[data-media-display="gallery"\]\) \.mes_buttons>\.extraMesButtons\.visible>\.mes_media_gallery/, 'v4 popup re-applies ST\'s own gallery/list hiding');
 assert.doesNotMatch(officialCss, /#chat[^{]*\{[^}]*overflow:visible/, 'the popup must not change overflow on the chat area or messages');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

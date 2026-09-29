@@ -649,12 +649,14 @@ export function installOfficialLayout(win = window) {
     const morePlace = () => {
       moreFrame = 0;
       if (destroyed) return;
-      const chat = doc.getElementById('chat')?.getBoundingClientRect();
-      const minX = (chat?.left || 0) + 8, maxX = (chat ? chat.right : win.innerWidth) - 8, minY = (chat?.top || 0) + 2;
       const phone = doc.body.classList.contains('clawd-mobile-layout') || root.dataset.claudeLayout === 'mobile';
       for (const [menu, st] of moreOpen) {
         const hint = menu.parentElement?.querySelector(':scope > .extraMesButtonsHint');
         if (!menu.isConnected || !hint || !enabled()) { moreClear(menu); continue; }
+        // The #chat that holds this message: a page can carry a second, empty #chat (seen after
+        // toggling the extension), and measuring that one collapses the popup to zero width.
+        const chat = menu.closest('#chat')?.getBoundingClientRect();
+        const minX = (chat?.left || 0) + 8, maxX = (chat?.width ? chat.right : win.innerWidth) - 8, minY = (chat?.top || 0) + 2;
         if (!menu.classList.contains('visible')) {
           // ST adds .visible only after the …'s fade; give it a moment, then drop the entry.
           if (st.placed || win.performance.now() - st.since > 1500) moreClear(menu);
