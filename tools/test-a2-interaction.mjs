@@ -496,7 +496,8 @@ assert.ok(!clawd.dataset.clawdClip, `空闲待机不播任何复合动作（当�
 for (const id of ['polish', 'eat', 'letter', 'plant', 'butterfly', 'stretch', 'walk', 'write', 'done', 'stopped', 'error', 'sitWrite',
   'compose', 'tilt', 'untilt', 'wow', 'around', 'spin', 'lean', 'hide', 'tramp', 'neglected', 'drowsy', 'sleep', 'wake',
   'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4', 'sulk', 'grab', 'drag', 'dragSwing', 'fly', 'land', 'stomp', 'stompSlap',
-  'press', 'pet', 'walkLoop', 'peek', 'peekOut', 'scratch', 'crouch', 'heart', 'point', 'facepalm', 'nudge']) {
+  'press', 'pet', 'walkLoop', 'peek', 'peekOut', 'scratch', 'crouch', 'heart', 'point', 'facepalm', 'nudge',
+  'onFire', 'glowstick', 'glowstick2', 'rickroll', 'siren', 'sirenBlue', 'rage']) {
   assert.ok(rigBuilt.clips[id], `复合动作 ${id} 要生成出来`);
   assert.match(rigBuilt.cssFor(id), new RegExp(`data-clawd-clip="${id}"`), `${id} 的 CSS 要挂在按钮的 data-clawd-clip 上`);
 }

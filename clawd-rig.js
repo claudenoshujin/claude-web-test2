@@ -1,5 +1,5 @@
 /* Clawd 分件骨架 · 复合动作（C1b）
-   由 diagnostics 原型的源码自动生成（make-rig.py），不要手改：改动作先改原型、看过，再重新生成。
+   由 diagnostics 原型的源码自动生成（make-rig.js），不要手改：改动作先改原型、看过，再重新生成。
    和原型的区别只有：
    - 坐标原点对齐现网 ::before（BOX = [0, 6]），静止时 9 层拼出来和 --clawd-f-open 逐像素一致；
    - 选择器挂在输入框那只 Clawd 按钮上（data-clawd-clip），层用 clr- 前缀，免得和酒馆撞名；
@@ -29,6 +29,17 @@ export function buildClawdRig() {
     // 道具描边：不用深墨色。一格描边在输入框那个尺寸下约 2.5 屏幕像素，深色就成了一圈粗黑边（Lulu 2026-09-24 真机）。
     // 改成比道具本色深两三档的同色系中间调：纸、信封用暖灰，杯子、碗用灰蓝。日夜两套底色上都看得清。
     'd': '#9a8e80', 'D': '#6f8ca6',
+    // 2026-09-29 新增五个动作
+    'F': '#9e3324', 'f': '#c9642a', 'Y': '#e0a23c',   // 火：外焰暗红 / 橙 / 焰心黄——都比 Clawd 暗一档，Clawd 才跳得出来（Lulu 2026-09-29）
+    'V': '#fff1dc',                                   // 着火时 Clawd 身边一圈白光（参考图的做法）
+    'm': 'rgba(120,112,104,.55)',                     // 烟
+    // 彩棒：颜色每次播随机（Lulu 2026-09-29），走 CSS 变量，播放时在骨架上设 --stick-a（右手）/ --stick-b（双手版左手）；W 是亮头，t / u 是拖影
+    'G': 'var(--stick-a, #7dff9b)', 't': 'color-mix(in srgb, var(--stick-a, #7dff9b) 35%, transparent)',
+    'N': 'var(--stick-b, #ff6bd6)', 'u': 'color-mix(in srgb, var(--stick-b, #ff6bd6) 35%, transparent)',
+    'W': '#effff3',
+    'Z': '#1f1d1b', 'z': '#6b6560',                  // Rickroll 的黑色立式麦克风 / 话筒网罩上的一点反光
+    'A': '#3d8bff', 'E': '#d6e8ff', 'C': '#2753a8', 'i': 'rgba(80,150,255,.75)', 'I': 'rgba(80,150,255,.3)',   // 蓝色警笛：亮 / 高光 / 暗 / 光线
+    'L': '#ff3b30', 'H': '#ffd6d2', 'x': '#b3312a', 'j': 'rgba(255,80,60,.75)', 'J': 'rgba(255,80,60,.3)',   // 警笛：亮 / 高光 / 暗 / 光束近处亮、远处淡
   };
 
   /* ════════════════════════════════════════════════════════════════════
@@ -93,6 +104,9 @@ export function buildClawdRig() {
     },
     shadow: {
       w12: F(['hhhhhhhhhhhh']),
+      // Rickroll：影子 + 身前一支黑色立式麦克风（话筒在嘴的高度，杆立在两腿中间，底座贴地）。
+      // 画在影子层是因为影子层不在弹性层里，Clawd 果冻、歪的时候它不跟着动
+      micStand: F(['.....ZZ.....', '.....Zz.....', '.....ZZ.....', '.....Z......', '.....Z......', '....ZZZZ....', 'hhhhhhhhhhhh'], 0, -6),   // 话筒在眼睛下面、嘴的高度（放在两眼中间像一道黑杠）
       w14: F(['hhhhhhhhhhhhhh'], -1),
       w10: F(['hhhhhhhhhh'], 1),
       w8:  F(['hhhhhhhh'], 2),
@@ -140,6 +154,27 @@ export function buildClawdRig() {
       quill: F(['...BB', '..BB.', '.k...', 'k....'], 0, -3),
       quillFly: F(['BB.', '.BB', '..k'], 0, -2),
       sheetFly: F(['cccc', 'cecc', 'cccc'], 0, -2),
+      // 甩彩棒：挂在右钳（举起的 up 帧）上，握点在 (14..15, -3)；带 T 的是拖影版
+      stickUp: F(['WW', 'GG', 'GG', 'GG', 'GG', 'GG', 'GG'], 14, -9),
+      stickLT: F(['.....tt', 'WG...tt', '.GG..tt', '..GG.tt', '...GGtt', '....GGt', '.....GG'], 9, -9),
+      stickRT: F(['tt.....', 'tt...GW', 'tt..GG.', 'tt.GG..', 'ttGG...', 'tGG....', 'GG.....'], 14, -9),
+      // 头顶警笛：挂在上半身，罩子 6 格宽、坐在头顶正中
+      sirenDim: F(['..LL..', '.xxxx.', '.xxxx.', 'llllll'], 5, -4),   // 不亮时也是红罩子，只是暗一档（全暗像顶了个棕帽子）
+      // 旋转灯（Lulu 2026-09-29）：灯罩里的反光板转一圈——亮面朝左 → 朝前 → 朝右 → 朝后（暗），光束跟着扫过去
+      sirenL:   F(['..Lx..', '.HLxx.', '.LLxx.', 'llllll'], 5, -4),
+      sirenF:   F(['..HH..', '.LHHL.', '.LLLL.', 'llllll'], 5, -4),
+      sirenR:   F(['..xL..', '.xxLH.', '.xxLL.', 'llllll'], 5, -4),
+      // 光线：像素画里常见的「 — /」闪光线，跟着亮面转到左 / 前 / 右（一整块楔形光束在这个尺寸下像喇叭，Lulu 2026-09-29 看过）
+      beamL:    F(['J.....', '.j....', '..j...', '......', 'Jjjj..', '......', '.Jjj..'], -1, -7),
+      beamF:    F(['J..JJ..J', '.j.jj.j.'], 4, -7),
+      // Rickroll：立在 Clawd 右边地上的老式麦克风架（Lulu 2026-09-29）
+      // Rickroll：黑色头戴麦克风（Lulu 2026-09-29：原来的麦克风架立在地上，却在弹性层里跟着 Clawd 一起歪）。
+      // 头箍压在头顶，两边耳罩，左耳罩伸出一根杆弯到嘴边，杆头灰色话筒
+      // 着火熄灭后的一缕烟
+      smoke: F(['.m.', 'mm.', '.mm', '.m.'], 6, -3),
+      // 着火：脚前的小火苗（压在腿前面）
+      fireFa: F(['.F...F....F...F.', 'fFf.fYf..fYf.fFf', 'fYfffYfffYfffYff'], 0, 7),
+      fireFb: F(['...F....F....F..', '.fYf..fFf..fYf..', 'ffYfffYfffYfffYf'], 0, 7),
     },
     sym: {
       bang:  F(['..r..', '..r..', '..r..', '.....', '..r..'], -2),
@@ -157,6 +192,12 @@ export function buildClawdRig() {
     },
   };
   // 左钳 = 右钳镜像
+  // 双手甩彩棒：左钳拿的那根 = 右钳那根以 Clawd 框中线左右翻
+  const recolor = (fr, map) => ({ ...fr, rows: fr.rows.map(r => r.replace(/./g, ch => map[ch] || ch)) });
+  ['stickUp', 'stickLT', 'stickRT'].forEach(k => (SPR.prop[k + 'M'] = recolor(mirrorFrame(SPR.prop[k], 16), { G: 'N', t: 'u' })));
+  SPR.prop.beamR = mirrorFrame(SPR.prop.beamL, 16);   // 警笛往右的光束 = 往左那道镜像
+  // 蓝色警笛（Lulu 2026-09-29）：红色那套逐个换色号，帧名后面加 B
+  ['sirenDim', 'sirenL', 'sirenF', 'sirenR', 'beamL', 'beamR', 'beamF'].forEach(k => (SPR.prop[k + 'B'] = recolor(SPR.prop[k], { L: 'A', H: 'E', x: 'C', j: 'i', J: 'I' })));
   SPR.clawL = Object.fromEntries(Object.entries(SPR.clawR).map(([k, fr]) => [k, mirrorFrame(fr, 2)]));
   // 写字的墨迹：一条往右长的波浪线，每 300ms 多两格
   (() => {
@@ -170,6 +211,69 @@ export function buildClawdRig() {
       const r0 = ('c' + top.slice(0, n).replace(/\./g, 'c')).padEnd(W, 'c');
       const r1 = ('c' + bot.slice(0, n).replace(/\./g, 'c')).padEnd(W, 'c');
       SPR.prop['sheet' + i] = F([r0, r1, 'g'.repeat(W)], 0, -2);
+    }
+  })();
+  // 着火：背后的火（放在身体后面，只从轮廓外、头顶上露出来）。Lulu 2026-09-29 按参考改：
+  //   - 贴着 Clawd 轮廓一圈白光（V），把 Clawd 从火里勾出来；
+  //   - 火是一根根分开的火舌（两格宽、中间留缝），外缘暗红、中间橙、焰心黄只在火舌中间偏下；
+  //   - 火比 Clawd 暗。
+  // 三档高度（脚踝 / 半身 / 盖过头顶），每档两种火舌交替。
+  (() => {
+    // Clawd 待机时的轮廓（框内坐标）：身体、两只钳子、四条腿
+    const sil = new Set();
+    for (let y = 0; y <= 7; y++) for (let x = 2; x <= 13; x++) sil.add(x + ',' + y);
+    for (let y = 5; y <= 6; y++) [0, 1, 14, 15].forEach(x => sil.add(x + ',' + y));
+    for (let y = 8; y <= 9; y++) [3, 5, 10, 12].forEach(x => sil.add(x + ',' + y));
+    // 白光只围身体和钳子（y ≤ 7）；脚底、两腿之间不要（Lulu 2026-09-29）
+    const glow = (x, y) => y <= 7 && !sil.has(x + ',' + y) && [-1, 0, 1].some(dx => [-1, 0, 1].some(dy => sil.has((x + dx) + ',' + (y + dy))));
+    const X0 = -3, W = 22;   // 框左右各多出 3 格
+    // 火舌：一根根三角形，尖在上、越往下越宽。第三版（Lulu 2026-09-29：太齐整了，要像参考那样不规整）：
+    //   每根 [中心列, 高度, 左坡, 右坡]，坡 1 = 胖、2 = 瘦，左右坡不一样火舌就是歪的；高矮、间距都乱排；
+    //   高的火舌尖上方再飘一两颗脱出去的火星。两套交替就是在跳。
+    // 离火舌边越远越热：边缘暗红 → 橙 → 最里面黄焰心。
+    const TONGUES = [
+      [[-2, 3, 1, 2], [0, 6, 2, 1], [3, 8, 1, 2], [5, 12, 2, 1], [7, 7, 1, 1], [9, 13, 1, 2], [11, 9, 2, 1], [13, 6, 1, 2], [15, 10, 2, 1], [17, 4, 1, 1], [19, 2, 1, 1]],
+      [[-1, 5, 2, 1], [1, 3, 1, 2], [3, 10, 2, 1], [6, 9, 1, 2], [8, 14, 2, 1], [10, 8, 1, 1], [12, 11, 1, 2], [14, 5, 2, 1], [16, 8, 1, 2], [18, 3, 2, 1]],
+    ];
+    const base = x => (x >= 2 && x <= 13 ? 0 : x >= 0 && x <= 15 ? 5 : 8);   // 这一列 Clawd 的顶（火从这里往上窜）
+    const mk = (k, v) => {
+      const tips = TONGUES[v].map(([cx, h, sl, sr]) => [cx, base(cx) - Math.round(h * k), sl, sr, h]);
+      const heat = (x, y) => Math.max(-1, ...tips.map(([cx, ty, sl, sr]) => (y - ty) - (x < cx ? sl : sr) * Math.abs(x - cx)));
+      const embers = new Set();
+      tips.forEach(([cx, ty, , , h], i) => { if (i % 3 === v && h * k >= 4) embers.add((cx + (i % 2 ? 1 : -1)) + ',' + (ty - 2)); });
+      const cells = [];
+      let y0 = 0;
+      for (let y = -20; y <= 9; y++) for (let i = 0; i < W; i++) if (heat(X0 + i, y) >= 0 || embers.has((X0 + i) + ',' + y)) y0 = Math.min(y0, y);
+      for (let y = y0 - 1; y <= 10; y++) cells.push(Array.from({ length: W }, (_, i) => {
+        const x = X0 + i;
+        if (glow(x, y)) return 'V';
+        if (embers.has(x + ',' + y)) return 'f';
+        const e = y > 9 ? -1 : heat(x, y);
+        return e < 0 ? '.' : e < 1 ? 'F' : e < 4 ? 'f' : 'Y';
+      }).join(''));
+      return F(cells, X0, y0 - 1);
+    };
+    [[1, .35], [2, .7], [3, 1.1]].forEach(([lv, k]) => {
+      SPR.prop['fire' + lv + 'a'] = mk(k, 0);
+      SPR.prop['fire' + lv + 'b'] = mk(k, 1);
+    });
+  })();
+  // 着火的小火花（Lulu 2026-09-29：要有小火花弹出来）：挂在符号层（原点 ORIGIN.sym = [7, -9]），6 帧一轮。
+  // 每颗火花 [起点 x, 起点 y, 每帧横移, 相位]：出现后每帧往上 2 格、往外挪，黄 → 橙 → 暗红，3 帧灭。
+  (() => {
+    const ORIGIN_SYM = [7, -9];   // = 下面 ORIGIN.sym（那边定义在后面，这里先抄一份）
+    const SPARKS = [[-1, -4, -1, 0], [4, -9, -1, 2], [9, -12, 0, 4], [12, -8, 1, 1], [16, -4, 1, 3], [1, -2, -1, 5]];
+    for (let f = 0; f < 6; f++) {
+      const px = [];
+      SPARKS.forEach(([sx, sy, vx, ph]) => {
+        const p = (f - ph + 6) % 6;
+        if (p < 3) px.push([sx + vx * p, sy - 2 * p, p === 0 ? 'Y' : p === 1 ? 'f' : 'F']);
+      });
+      const minX = Math.min(...px.map(q => q[0])), minY = Math.min(...px.map(q => q[1]));
+      const w = Math.max(...px.map(q => q[0])) - minX + 1, h = Math.max(...px.map(q => q[1])) - minY + 1;
+      const rows = Array.from({ length: h }, () => Array(w).fill('.'));
+      px.forEach(([x, y, ch]) => (rows[y - minY][x - minX] = ch));
+      SPR.sym['spark' + f] = F(rows.map(r => r.join('')), minX - ORIGIN_SYM[0], minY - ORIGIN_SYM[1]);
     }
   })();
 
@@ -1504,6 +1608,138 @@ export function buildClawdRig() {
     c.at(600, 'root', { x: 1 }, 'io').at(600, 'clawR', { f: 'reach1' }).at(600, 'eyes', { f: 'open' });
     c.at(700, 'root', { x: 0 }, 'io').at(700, 'clawR', { f: 'stub' });
     c.at(900, 'eyes', { x: 0 });
+  }
+
+  /* ════ 2026-09-29 新增五个动作（docs/Clawd新增动作-五项-设计-20260929.md）════
+     第二版（Lulu 同日看完改）：彩棒分单手 / 双手；警笛改旋转灯；Rickroll 旁边立麦克风；
+     着火改成一圈白光 + 一根根火舌、火比 Clawd 暗；愤怒颤抖不做表情，只原地鬼畜地抖。 */
+
+  /* ── 面无表情地着火 ─────────────────────────────────────
+     笑点是反差：火从脚下烧上来盖过头顶，它一动不动、面无表情，最多慢慢眨一次眼。
+     火在身体后面（propA z 1，压在腿和身体下面），贴着轮廓有一圈白光；脚前另有一排小火苗（propB）。 */
+  {
+    const c = def(new Clip('onFire', '面无表情地着火', 3400, { pool: true, weight: .5, cool: 900000, smooth: ['propB'] }));
+    c.beat(0, '站着').beat(100, '脚下冒火，身边一圈白光').beat(600, '烧到半身').beat(1100, '火盖过头顶，它面无表情').beat(1600, '慢慢眨一次眼').beat(2300, '火小下去').beat(3000, '熄灭，冒一缕烟');
+    const lvl = t => (t < 600 ? 1 : t < 1100 ? 2 : t < 2300 ? 3 : t < 2700 ? 2 : 1);
+    c.at(100, 'propA', { z: 1 });
+    // 背后的大火 500ms 换一次火舌（每换一次整串 box-shadow 都要重写一遍，100ms 一换 CSS 有 200KB 以上）；脚前小火苗照旧 100ms 一闪，看着还是在跳
+    for (let t = 100, i = 0; t < 3000; t += 100, i++) c.at(t, 'propA', { f: 'fire' + lvl(t) + (Math.floor(i / 5) % 2 ? 'b' : 'a') });
+    for (let t = 100, i = 0; t < 2900; t += 100, i++) c.at(t, 'propB', { f: i % 2 ? 'fireFb' : 'fireFa' });
+    c.at(2900, 'propB', { f: null });
+    c.at(3000, 'propA', { f: null, z: 7 });
+    // 小火花从火舌顶上蹦出来（符号层，6 帧一轮），火大的时候才有
+    for (let t = 700, i = 0; t < 2600; t += 100, i++) c.at(t, 'sym', { f: 'spark' + (i % 6) });
+    c.at(2600, 'sym', { f: null });
+    // 慢眨眼：比平常的眨眼慢一倍
+    c.at(1600, 'eyes', { f: 'half' }).at(1700, 'eyes', { f: 'shut' }).at(2000, 'eyes', { f: 'half' }).at(2100, 'eyes', { f: 'open' });
+    // 烟：往上飘、淡掉
+    c.at(3000, 'propB', { f: 'smoke', x: 0, y: 0 });
+    c.to(3000, 3300, 'propB', { y: -4 }, 'out');
+    fadeOut(c, 'propB', 3100, 3300);
+    c.at(3400, 'propB', { x: 0, y: 0 });
+  }
+
+  /* ── 甩彩棒：单手 / 双手两个版本（Lulu 2026-09-29）────────────
+     举钳掏出荧光彩棒，左—中—右来回甩，上半身跟着晃；甩完收起来。
+     彩棒挂在钳子上（att），带 T 的帧画着上一个位置的拖影；左钳那根是右钳那根的镜像（…M）。
+     双手版两根往同一边甩（右手往左倒的时候，左手那根也往左倒 = 右手往右倒那一帧的镜像）。 */
+  const STICK_WAVE = [['stickLT', 'stickRTM', -1], ['stickUp', 'stickUpM', 0], ['stickRT', 'stickLTM', 1], ['stickUp', 'stickUpM', 0]];
+  function glowstickBody(c, both) {
+    c.at(100, 'eyes', { x: both ? 0 : 1 });
+    raise(c, 300, 'clawR');
+    if (both) raise(c, 300, 'clawL');
+    c.at(300, 'propA', { f: 'stickUp', x: 0, y: 0, att: 'clawR', z: 8 });
+    if (both) c.at(300, 'propB', { f: 'stickUpM', x: 0, y: 0, att: 'clawL', z: 8 });
+    c.at(400, 'eyes', { f: 'happy', x: 0 });
+    for (let i = 0; i < 9; i++) {
+      const [r, l, x] = STICK_WAVE[i % 4];
+      c.at(500 + i * 200, 'propA', { f: r }).at(500 + i * 200, 'upper', { x });
+      if (both) c.at(500 + i * 200, 'propB', { f: l });
+    }
+    c.at(2300, 'propA', { f: 'stickUp' }).at(2300, 'upper', { x: 0 });
+    if (both) c.at(2300, 'propB', { f: 'stickUpM' });
+    c.at(2400, 'propA', { f: null, x: 0, y: 0, att: null, z: 7 });
+    if (both) c.at(2400, 'propB', { f: null, x: 0, y: 0, att: null, z: 8 });
+    lower(c, 2400, 'clawR');
+    if (both) lower(c, 2400, 'clawL');
+    c.at(2600, 'eyes', { f: 'open' });
+    blink(c, 2600);
+  }
+  {
+    const c = def(new Clip('glowstick', '甩彩棒（单手）', 3000, { pool: true, weight: .5, cool: 600000 }));
+    c.beat(0, '看向右钳').beat(200, '举起右钳，掏出彩棒').beat(500, '左右来回甩，身子跟着晃，笑眼').beat(2300, '停住').beat(2400, '收起来，放下钳子');
+    glowstickBody(c, false);
+  }
+  {
+    const c = def(new Clip('glowstick2', '甩彩棒（双手）', 3000, { pool: true, weight: .5, cool: 600000 }));
+    c.beat(0, '站着').beat(200, '两只钳子都举起来，各拿一根彩棒').beat(500, '两根一起往同一边甩，身子跟着晃，笑眼').beat(2300, '停住').beat(2400, '收起来，放下钳子');
+    glowstickBody(c, true);
+  }
+
+  /* ── Rickroll ───────────────────────────────────────────
+     Clawd 自己跳经典那段：每拍 500ms，左右踏步、上半身跟着摆、两只钳子轮流甩，眼睛半眯着很酷；最后停下、笑眼。
+     不用参考片段的画面（不搬外部素材）。Lulu 2026-09-29：
+     - 身前立一支黑色立式麦克风（像 Rick 站在麦克风架后面）。麦克风画在影子层上：影子层在弹性层外面，
+       Clawd 怎么晃、怎么果冻它都不动（以前画在道具层里，会跟着弹性层一起歪）；这段时间影子层 z 抬到 3，压在 Clawd 前面。
+     - 果冻效果：每一拍踩下去先压扁、再弹高、再小回弹，最后回正，看着 Q。 */
+  {
+    const c = def(new Clip('rickroll', 'Rickroll', 4500, { pool: true, weight: .3, cool: 300000 }));
+    c.beat(100, '眯起眼，身前立起麦克风').beat(200, '左右踏步，钳子轮流甩，每拍果冻一下（8 拍）').beat(4000, '停下，笑眼').beat(4300, '麦克风收走');
+    c.at(100, 'eyes', { f: 'half' }).at(100, 'shadow', { f: 'micStand', z: 3 });
+    for (let i = 0; i < 8; i++) {
+      const t = 200 + i * 500, L = i % 2 === 0, s = L ? -1 : 1;
+      c.at(t, 'upper', { x: s }).at(t, 'legs', { f: L ? 'walkA' : 'walkB' })
+       .at(t, 'clawL', { y: L ? -2 : 0 }).at(t, 'clawR', { y: L ? 0 : -2 });
+      // 果冻：踩下去压扁 → 弹高 → 小回弹 → 回正
+      c.flex(t, { sx: 1.12, sy: .88, r: 3 * s }).flex(t + 100, { sx: .92, sy: 1.1, r: 2 * s }).flex(t + 200, { sx: 1.04, sy: .96, r: s });
+      c.at(t + 300, 'upper', { x: 0 }).at(t + 300, 'legs', { f: 'stand' })
+       .at(t + 300, 'clawL', { y: -1 }).at(t + 300, 'clawR', { y: -1 });
+      c.flex(t + 300, {});
+    }
+    sym(c, 400, 'note', { x: 4, y: 1, dur: 1200 });
+    sym(c, 2400, 'note', { x: 4, y: 1, dur: 1200 });
+    // 结尾不再往外指（Lulu 2026-09-29：手莫名伸出去一下），两只钳子放下、笑眼
+    c.at(4000, 'clawL', { y: 0 }).at(4000, 'clawR', { y: 0 }).at(4000, 'eyes', { f: 'happy' });
+    c.at(4300, 'eyes', { f: 'open' }).at(4300, 'shadow', { f: 'w12', z: 1 });
+  }
+
+  /* ── 头顶警笛 ───────────────────────────────────────────
+     一个警笛掉到头上（被砸得一沉），转 3 圈：灯罩里亮面从左转到前面再到右边、再转到背面（暗），
+     光束跟着从左扫到右（Lulu 2026-09-29：要旋转的光效）。Clawd 不动声色；眨一下眼，警笛淡掉。没有声音。 */
+  function sirenBody(c, B) {
+    c.beat(0, '站着').beat(100, '警笛从上面掉下来').beat(300, '落在头顶，身子一沉').beat(500, '灯转 3 圈，光线左右扫，面无表情').beat(1800, '眨一下眼').beat(2000, '警笛淡掉');
+    c.at(100, 'propA', { f: 'sirenDim' + B, x: 0, y: -3, att: 'upper' }).at(200, 'propA', { y: -1 }).at(300, 'propA', { y: 0 });
+    c.at(300, 'upper', { y: 1 }).at(400, 'upper', { y: 0 });
+    c.at(300, 'legs', { f: 'crouch' }).at(400, 'legs', { f: 'stand' });
+    const spin = [['sirenL', 'beamL'], ['sirenF', 'beamF'], ['sirenR', 'beamR'], ['sirenDim', null]];
+    for (let i = 0; i < 12; i++) {
+      const t = 500 + i * 100, [dome, beam] = spin[i % 4];
+      c.at(t, 'propA', { f: dome + B }).at(t, 'propB', beam ? { f: beam + B, x: 0, y: 0, att: 'upper' } : { f: null });
+    }
+    c.at(1700, 'propA', { f: 'sirenDim' + B }).at(1700, 'propB', { f: null, att: null });
+    blink(c, 1800);
+    fadeOut(c, 'propA', 2000, 2300);
+    c.at(2400, 'propA', { x: 0, y: 0, att: null });
+  }
+  sirenBody(def(new Clip('siren', '头顶警笛（红）', 2500, { pool: true, weight: .25, cool: 900000 })), '');
+  // 蓝色版（Lulu 2026-09-29）：同一段，换一套蓝色的灯
+  sirenBody(def(new Clip('sirenBlue', '头顶警笛（蓝）', 2500, { pool: true, weight: .25, cool: 900000 })), 'B');
+
+  /* ── 戳 5 的另一种：愤怒颤抖（和转身生气各一半）────────────
+     Lulu 2026-09-29：不变色、不做怒眼，像参考表情那样无厘头地原地狂颤。第二轮：颤得更大、闭上眼、旁边冒生气符号。
+     只动弹性层：每 100ms 一个乱位置（左右 / 上下 / 歪 / 挤扁拉长都乱来），影子在弹性层外面，不跟着抖。 */
+  {
+    const c = def(new Clip('rage', '戳 5：愤怒颤抖', 1500, { track: 'C', group: 'touch' }));
+    c.beat(0, '闭眼，原地鬼畜地狂颤').beat(100, '旁边冒生气符号').beat(1300, '停，睁眼');
+    c.at(0, 'eyes', { f: 'shut' }).at(1300, 'eyes', { f: 'open' });
+    sym(c, 100, 'vein', { x: 6, y: 3, dur: 1200 });
+    const JIT = [
+      { tx: 2.5, ty: -1, r: 11 }, { tx: -2.5, ty: 1, r: -12 }, { tx: 1.5, ty: -2, r: 7, sx: 1.12, sy: .88 }, { tx: -3, r: -9 },
+      { tx: 2.5, ty: 1, r: 12, sx: .88, sy: 1.12 }, { tx: -1.5, ty: -1.5, r: -11 }, { tx: 3, r: 5 }, { tx: -2.5, ty: -2, r: -7, sx: 1.12, sy: .88 },
+      { tx: 1.5, ty: 1, r: 12 }, { tx: -3, ty: -1, r: -12, sx: .88, sy: 1.12 }, { tx: 2.5, r: 9 }, { tx: -1.5, ty: 1, r: -5 }, { tx: 1, r: 3 },
+    ];
+    JIT.forEach((v, i) => c.flex(i * 100, v));
+    c.flex(1300, {});
   }
 
   const pool = {};
