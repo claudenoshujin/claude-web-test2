@@ -1080,13 +1080,14 @@ html.claude-rail-reordered body #top-settings-holder>.drawer#user-settings-butto
    顶栏（标题、≡、×）看不见，只剩一条灰带。完整模式里外壳本来就在 holder 之上（3002 > 3001），这里按同样的关系抬到 holder 之上。 */
 html[data-claude-mode="compat"][data-cw-v4-settings] .cw-v4-shell{z-index:10061!important}
 /* 设置页开着时点左上角 ≡：侧栏直接盖在设置页上（design v4：点侧栏外面收回，页面还在），不先关页——关页会触发整页样式重算，
-   手机上侧栏要卡 1 秒多才出来。设置页是侧栏容器的子孙、又铺满整屏，没法排到侧栏各行下面，所以侧栏打开期间只把它设成不可见（页面仍保持打开，只重算这一块）、
+   手机上侧栏要卡 1 秒多才出来。设置页是侧栏容器的子孙、又铺满整屏，没法排到侧栏各行下面，所以侧栏打开期间把它被侧栏盖住的部分裁掉（宽度同侧栏 min(92vw,420px)），右边露出的那条压暗、点击穿透到 scrim、
    侧栏容器回到平时的 4050 并恢复可点（设置页打开时它是 pointer-events:none；另一条带 :has() 的规则优先级更高，这里重复 id 压过它）、
-   把平时收起侧栏用的 scrim 放出来（它在 4045，盖住设置外壳 3002，点外面就收起侧栏）。 */
+   把平时收起侧栏用的 scrim 放出来（它在 4045，盖住设置外壳 3002，点外面就收起侧栏）；scrim 所在容器里的 ≡ 和临时聊天按钮不放出来。 */
 @media(max-width:700px){
 html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open .clawd-mobile-chrome{display:block!important}
+html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open .clawd-mobile-chrome>:not(.clawd-mobile-scrim){display:none!important}
 html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder{z-index:4050!important;pointer-events:auto!important}
-html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){visibility:hidden!important}
+html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){clip-path:inset(0 0 0 min(92vw,420px))!important;filter:brightness(.8)!important;pointer-events:none!important}
 html[data-cw-v4][data-cw-v4-settings] body.clawd-mobile-menu-open #top-settings-holder>.cw-v4-backdrop{display:none!important}
 html[data-claude-mode="compat"][data-cw-v4-settings] body.clawd-mobile-menu-open .cw-v4-shell{z-index:3002!important}
 /* 顶栏抽屉打开时主题会藏起字标 / Recents / New chat（claude-top-drawer-open 那条），侧栏盖在设置页上时要放回来。 */
