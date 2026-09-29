@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260928h";
+import { installOfficialLayout } from "./official-layout.js?v=20260928m";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.170-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.171-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -456,7 +456,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20260928l', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20260928m', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -2249,6 +2249,11 @@ if (CLAUDE_ENABLED) {
   let lastViewportWidth = Math.round(hostWindow.visualViewport?.width || hostWindow.innerWidth || 0);
   let mobileViewportSettleTimers = [];
   let mobileKeyboardSettlingUntil = 0;
+  /* 2.0.171：根视口变量只在视口真的变了之后才重读。读 visualViewport / innerHeight 会强制当场做完积压的
+     样式重算和排版；它原来挂在每次 refreshClawd 上，打开设置页这种会让整页重算的操作时，重算被提前、
+     还被拆成好几次（4× 降速模拟：点侧栏入口到出画面 1.5 s，其中 1.47 s 记在这个函数头上）。 */
+  let mobileViewportMetricsDirty = true;
+  let mobileViewportMetricsRaf = 0;
   let virtualKeyboardOverlayActive = false;
   let virtualKeyboardOverlayOriginal = false;
   let virtualKeyboardOverlayCaptured = false;
@@ -6138,6 +6143,14 @@ if (CLAUDE_ENABLED) {
     }, 500);
   }
 
+  function scheduleMobileViewportMetrics() {
+    if (mobileViewportMetricsRaf || destroyed) return;
+    mobileViewportMetricsRaf = hostWindow.requestAnimationFrame(() => {
+      mobileViewportMetricsRaf = 0;
+      if (!destroyed && mobileViewportMetricsDirty) applyMobileViewportMetrics();
+    });
+  }
+
   function applyMobileViewportMetrics() {
     const root = hostDocument.documentElement;
     if (!isMobileLayout()) {
@@ -6172,6 +6185,7 @@ if (CLAUDE_ENABLED) {
        定时器或下一轮刷新一次性写入最终值，消费方（抽屉/面板高度）在过渡期间
        用稳定旧值没有视觉影响。 */
     if (Date.now() < mobileKeyboardSettlingUntil) return;
+    mobileViewportMetricsDirty = false;
     const viewport = hostWindow.visualViewport;
     const height = Math.max(1, Math.round(viewport?.height || hostWindow.innerHeight || 1));
     const popupHeight = Math.max(
@@ -6287,6 +6301,8 @@ if (CLAUDE_ENABLED) {
 
   function handleViewportChange() {
     if (destroyed) return;
+    mobileViewportMetricsDirty = true;
+    scheduleMobileViewportMetrics();
     scheduleMobileComposerTranslate();
 
     /* Android 键盘动画有时连 visualViewport.width 也会抖 1~数 px。旧逻辑把它
@@ -7255,9 +7271,11 @@ if (CLAUDE_ENABLED) {
        用户实测就是"聊天时左边历史列表明明在眼前，却一直不更新"。
        改成直接问列表本身可不可见。getClientRects().length 对 display:none、
        祖先隐藏、position:fixed 都判得准，比 offsetParent 可靠。 */
+    /* 2.0.171：先比时间再问可见性。getClientRects 会强制当场做完积压的样式重算和排版，
+       它挂在每次 refreshClawd 上，打开设置页时就把整页重算提前拆了出来。TTL 内根本不会拉取，不用问。 */
+    if (now - recentFetchedAt <= RECENT_FETCH_TTL) return false;
     const slot = hostDocument.querySelector('.' + RAIL_RECENTS_CLASS);
-    if (!slot || !slot.getClientRects().length) return false;
-    return now - recentFetchedAt > RECENT_FETCH_TTL;
+    return !!slot && slot.getClientRects().length > 0;
   }
 
   function refreshRailRecents({ force = false } = {}) {
@@ -9639,7 +9657,7 @@ if (CLAUDE_ENABLED) {
     ensureComposerClawd();
     refreshCompatibilitySurfaceBackings();
     /* A1：typing indicator 只保留酒馆自己的生成提示，不再承载第二只 Clawd。 */
-    applyMobileViewportMetrics();
+    if (mobileViewportMetricsDirty) applyMobileViewportMetrics();
     refreshMobileComposerInset();
     if (!frameworkCompatibilityMode) preserveStreamingReasoning(typingActive);
     if (continuingGeneration) {

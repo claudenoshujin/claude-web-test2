@@ -226,7 +226,7 @@ export function installOfficialLayout(win = window) {
     const head = make('header', 'cw-v4-head');
     // Phones: ≡ opens the Claude sidebar over the settings page (design v4 dp page); tapping outside returns to it.
     // Closing the page first cost a full-page restyle (~1.4 s frozen on phones), so the page stays open underneath.
-    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } rail.click(); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
+    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } railOver(true); win.requestAnimationFrame(() => win.requestAnimationFrame(() => { if (!doc.body.classList.contains('clawd-mobile-menu-open')) rail.click(); })); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
     const title = make('h1', 'cw-v4-title');
     const close = button('', closeSettings, 'cw-v4-close'); close.append(icon('close')); close.setAttribute('aria-label', t('关闭设置', 'Close settings'));
     head.append(back, title, close);
@@ -499,6 +499,19 @@ export function installOfficialLayout(win = window) {
     const inset=`${offset}px`;if(disclaimer.style.marginLeft!==inset)disclaimer.style.marginLeft=inset;
     if (input) { const placeholder = t(`回复 ${name}`,`Reply to ${name}`); if (input.placeholder !== placeholder) input.placeholder = placeholder; }
   }
+  // Marks "Claude sidebar opened over a settings page" (see official-layout.css). Set two frames before the
+  // sidebar opens so the scrim can fade in; cleared once the sidebar has slid back out (210 ms).
+  let railOverTimer = 0;
+  function railOver(on) {
+    if (railOverTimer) { win.clearTimeout(railOverTimer); railOverTimer = 0; }
+    root.classList.toggle('cw-v4-rail-over', on);
+  }
+  function syncRailOver(settingsOpen) {
+    if (!root.classList.contains('cw-v4-rail-over')) return;
+    if (!settingsOpen) { railOver(false); return; }
+    if (doc.body.classList.contains('clawd-mobile-menu-open')) { if (railOverTimer) { win.clearTimeout(railOverTimer); railOverTimer = 0; } return; }
+    if (!railOverTimer) railOverTimer = win.setTimeout(() => { railOverTimer = 0; if (!doc.body.classList.contains('clawd-mobile-menu-open')) root.classList.remove('cw-v4-rail-over'); }, 260);
+  }
   function sync() {
     raf = 0; if (destroyed) return;
     root.toggleAttribute('data-cw-v4', enabled());
@@ -550,6 +563,7 @@ export function installOfficialLayout(win = window) {
       if (current) { current = null; previousFocus?.isConnected && previousFocus.focus(); }
       shell.hidden = true; root.removeAttribute('data-cw-v4-settings');
     }
+    syncRailOver(!!current);
     syncChat();
   }
   // Sliders draw the travelled part with --fill (design native.css).
@@ -602,6 +616,7 @@ export function installOfficialLayout(win = window) {
     disposers.push(() => { if (kbFrame) win.cancelAnimationFrame(kbFrame); });
     if (win.screen?.orientation?.addEventListener) on(win.screen.orientation, 'change', queueKeyboard);
     disposers.push(() => root.removeAttribute('data-cw-v4-landscape'));
+    disposers.push(() => railOver(false));
     syncKeyboard();
     on(win, 'resize', queueKeyboard);
     if (win.visualViewport) on(win.visualViewport, 'resize', queueKeyboard);

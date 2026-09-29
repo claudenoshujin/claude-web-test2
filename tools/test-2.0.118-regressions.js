@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.170');
-assert.equal(manifest.js, 'loader-2.0.170.js');
+assert.equal(manifest.version, '2.0.171');
+assert.equal(manifest.js, 'loader-2.0.171.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -138,8 +138,11 @@ assert.match(officialCss, /#top-settings-holder>\.drawer#persona-management-butt
 assert.match(index, /root\.classList\.toggle\('claude-rail-reordered'/, 'index.js must detect inline order on rail items');
 assert.match(index, /frame\.style\.setProperty\('color-scheme', scheme, 'important'\)/, 'iframe element and injected document must share one color-scheme, or Chrome paints the frame opaque white');
 assert.match(index, /data-claude-side-swipe="off"\] body button\.\$\{LEFT_SWIPE_PROXY_CLASS\}/, 'side swipe arrows must be switchable off');
-assert.match(officialLayout, /if \(!rail\) \{ shell\.classList\.toggle\('cw-v4-show-nav'\); return; \} rail\.click\(\);/, 'phone settings ≡ must open the Claude sidebar (not the desktop category list) without closing the page first');
+assert.match(officialLayout, /if \(!rail\) \{ shell\.classList\.toggle\('cw-v4-show-nav'\); return; \} railOver\(true\);/, 'phone settings ≡ must open the Claude sidebar (not the desktop category list) without closing the page first');
 assert.match(officialCss, /body\.clawd-mobile-menu-open #top-settings-holder#top-settings-holder \.cw-v4-panel\.openDrawer:not\(\.closedDrawer\)\{transition:filter 180ms ease,z-index 0s!important;z-index:-1!important;filter:brightness\(\.8\)!important/, 'sidebar over an open settings page must slide over the page, not close it (closing restyles the whole page)');
 assert.match(officialCss, /html\[data-claude-mode="compat"\]\[data-cw-v4-settings\] \.cw-v4-shell\{z-index:10061!important\}/, 'compat settings header must sit above the raised holder');
 
+assert.match(officialCss, /html\.cw-v4-rail-over\[data-cw-v4\]\[data-cw-v4-settings\] body #top-settings-holder#top-settings-holder\{transition:left/, 'delayed rail z-index must only apply when the rail was opened over a settings page (otherwise a white strip is left on the settings header)');
+assert.match(index, /if \(mobileViewportMetricsDirty\) applyMobileViewportMetrics\(\);/, 'refreshClawd must not force a layout read of the viewport on every DOM change');
+assert.match(index, /if \(now - recentFetchedAt <= RECENT_FETCH_TTL\) return false;\s*const slot/, 'recents must check the TTL before forcing layout with getClientRects');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');
