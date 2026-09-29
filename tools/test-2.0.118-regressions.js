@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.167');
-assert.equal(manifest.js, 'loader-2.0.167.js');
+assert.equal(manifest.version, '2.0.168');
+assert.equal(manifest.js, 'loader-2.0.168.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -139,7 +139,7 @@ assert.match(index, /root\.classList\.toggle\('claude-rail-reordered'/, 'index.j
 assert.match(index, /frame\.style\.setProperty\('color-scheme', scheme, 'important'\)/, 'iframe element and injected document must share one color-scheme, or Chrome paints the frame opaque white');
 assert.match(index, /data-claude-side-swipe="off"\] body button\.\$\{LEFT_SWIPE_PROXY_CLASS\}/, 'side swipe arrows must be switchable off');
 assert.match(officialLayout, /if \(!rail\) \{ shell\.classList\.toggle\('cw-v4-show-nav'\); return; \} rail\.click\(\);/, 'phone settings ≡ must open the Claude sidebar (not the desktop category list) without closing the page first');
-assert.match(officialCss, /body\.clawd-mobile-menu-open #top-settings-holder#top-settings-holder \.cw-v4-panel\.openDrawer:not\(\.closedDrawer\)\{clip-path:inset\(0 0 0 min\(92vw,420px\)\)!important/, 'sidebar over an open settings page must clip the page, not close it (closing restyles the whole page)');
+assert.match(officialCss, /body\.clawd-mobile-menu-open #top-settings-holder#top-settings-holder \.cw-v4-panel\.openDrawer:not\(\.closedDrawer\)\{transition:filter 180ms ease,z-index 0s!important;z-index:-1!important;filter:brightness\(\.8\)!important/, 'sidebar over an open settings page must slide over the page, not close it (closing restyles the whole page)');
 assert.match(officialCss, /html\[data-claude-mode="compat"\]\[data-cw-v4-settings\] \.cw-v4-shell\{z-index:10061!important\}/, 'compat settings header must sit above the raised holder');
 
 console.log('✓ Claude Web 2.0.156 focused regressions passed');
