@@ -262,7 +262,6 @@ export function buildClawdRig() {
       for (let y = y0 - 1; y <= 10; y++) cells.push(Array.from({ length: W }, (_, i) => {
         const x = X0 + i;
         if (sil.has(x + ',' + y)) return '.';   // 被身体挡住，不画
-        if (y >= 8 && x >= 2 && x <= 13) return '.';   // 身体底下、两腿之间也不画：看着像火烧在身前（Lulu 2026-09-29）
         if (glow(x, y)) return 'V';
         if (embers.has(x + ',' + y)) return 'f';
         const e = y > 9 ? -1 : heat(x, y);
