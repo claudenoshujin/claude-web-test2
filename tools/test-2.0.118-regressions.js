@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.175');
-assert.equal(manifest.js, 'loader-2.0.175.js');
+assert.equal(manifest.version, '2.0.176');
+assert.equal(manifest.js, 'loader-2.0.176.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -160,4 +160,6 @@ assert.match(index, /\{ id: 'siren', weight: 0\.25, cool: 900000 \}/, 'red siren
 assert.match(index, /\{ id: 'sirenBlue', weight: 0\.25, cool: 900000 \}/, 'blue siren idle clip: weight 0.25, 15 min cooldown');
 assert.match(index, /sulk: \['sulk', 'rage'\]/, 'poke level 5 picks sulk or rage');
 assert.match(index, /onFire: 'fade', siren: 'fade', sirenBlue: 'fade'/, 'fire and sirens fade out when interrupted');
+assert.match(index, /glowstick: \['glowstick', 'glowstickPump'\],\s*glowstick2: \['glowstick2', 'glowstick2Pump', 'glowstick2Alt'\]/, 'glow stick picks a random cheering form each time');
+assert.match(index, /const forms = CLAWD_RIG_FORMS\[id\];/, 'idle pool swaps the picked glow stick for a random form');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

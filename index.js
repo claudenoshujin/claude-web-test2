@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.175-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.176-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2161,6 +2161,11 @@ if (CLAUDE_ENABLED) {
     { id: 'sirenBlue', weight: 0.25, cool: 900000 },
   ]);
   const clawdRigLastPlayed = {};
+  /* 闲置池抽中以后再随机换成哪一种形态（冷却按池里的 id 算）。和原型 clips.js 的 STICK_FORMS 一致 */
+  const CLAWD_RIG_FORMS = Object.freeze({
+    glowstick: ['glowstick', 'glowstickPump'],
+    glowstick2: ['glowstick2', 'glowstick2Pump', 'glowstick2Alt'],
+  });
   /* 三轨状态 → 骨架动作。「思考」去掉了（Lulu 2026-09-24）：一按发送就进写字，写字自带「拿出纸笔」的进场 */
   const CLAWD_RIG_A = Object.freeze({ think: 'write', stream: 'write', sit: 'sitWrite', done: 'done', stopped: 'stopped', error: 'error' });
   const CLAWD_RIG_B = Object.freeze({
@@ -4269,7 +4274,10 @@ if (CLAUDE_ENABLED) {
       } else if (id) {
         clawdRigLastPlayed[id] = now;
         /* 种节点有两种结尾，随机一个：节点散成点飘走 / 原地枯萎（Lulu 2026-09-24） */
-        const play = id === 'plant' && Math.random() < .5 ? 'plantWilt' : id;
+        /* 彩棒每次随机一种应援形态：左右甩 / 一起上下 / 一上一下（Lulu 2026-09-29），冷却记在池里的 id 上 */
+        const forms = CLAWD_RIG_FORMS[id];
+        const play = forms ? forms[Math.floor(Math.random() * forms.length)]
+          : id === 'plant' && Math.random() < .5 ? 'plantWilt' : id;
         clawdBLastAmbient = 'rig:' + play;
         setClawdB('rig:' + play, CLAWD_RIG.clips[play].dur);
         scheduleClawdBAmbient(now + CLAWD_RIG.clips[play].dur);

@@ -519,7 +519,7 @@ for (const id of ['polish', 'eat', 'letter', 'plant', 'butterfly', 'stretch', 'w
   'compose', 'tilt', 'untilt', 'wow', 'around', 'spin', 'lean', 'hide', 'tramp', 'neglected', 'drowsy', 'sleep', 'wake',
   'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4', 'sulk', 'grab', 'drag', 'dragSwing', 'fly', 'land', 'stomp', 'stompSlap',
   'press', 'pet', 'walkLoop', 'peek', 'peekOut', 'scratch', 'crouch', 'heart', 'point', 'facepalm', 'nudge',
-  'onFire', 'glowstick', 'glowstick2', 'rickroll', 'siren', 'sirenBlue', 'rage']) {
+  'onFire', 'glowstick', 'glowstickPump', 'glowstick2', 'glowstick2Pump', 'glowstick2Alt', 'rickroll', 'siren', 'sirenBlue', 'rage']) {
   assert.ok(rigBuilt.clips[id], `复合动作 ${id} 要生成出来`);
   assert.match(rigBuilt.cssFor(id), new RegExp(`data-clawd-clip="${id}"`), `${id} 的 CSS 要挂在按钮的 data-clawd-clip 上`);
 }
@@ -576,7 +576,7 @@ menu.querySelector('[data-cdm="stop"]').click();
 await wait(150);
 assert.equal(api.clawdState().B, 'idle', '点「停」要回到空闲');
 /* 彩棒颜色每次播随机，双手版两根不一样（Lulu 2026-09-29） */
-const stickBtn = [...menu.querySelectorAll('[data-act]')].find(el => el.textContent === '甩彩棒（双手）');
+const stickBtn = [...menu.querySelectorAll('[data-act]')].find(el => el.textContent === '甩彩棒（双手 · 左右甩）');
 assert.ok(stickBtn, '菜单里要有双手甩彩棒');
 stickBtn.click();
 await wait(150);
