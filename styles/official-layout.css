@@ -253,15 +253,15 @@ html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manage
 .cw-v4-persona-use{margin-left:auto}
 .avatar-container:not(.selected) .cw-v4-persona-current,.avatar-container.selected .cw-v4-persona-switch{display:none}
 html[data-cw-v4] body #top-settings-holder :is(#rm_print_characters_pagination,#persona_pagination_container):has(.paginationjs-prev.disabled):has(.paginationjs-next.disabled){display:none!important}
-/* 手机侧栏底部（design v4 .screen.mobile .account）：一行里左边 44px 头像圆，右边 50px 高的 New chat 黑胶囊；
-   名字、Max plan 和 ▾ 不显示。行：上 12 / 下 26 内边距，左右 16，外扩 -8px；胶囊按同一行的中线绝对定位
-   （holder 下内边距 10 + 行下内边距 26 = bottom 36px；右 10 - 8 + 16 = 18px）。 */
+/* 手机侧栏底部（design v4 .screen.mobile .account，Lulu 2026-09-29 要紧凑一点）：一行里左边 36px 头像圆，右边 40px 高的 New chat 黑胶囊；
+   名字、Max plan 和 ▾ 不显示。行：上 8 / 下 12 内边距，左右 16，外扩 -8px，约 60px 高（设计稿是 88px，给近期对话多让出将近一行）；
+   胶囊按同一行的中线绝对定位（holder 下内边距 10 + 行下内边距 12 = bottom 22px；右 10 - 8 + 16 = 18px）。 */
 @media(max-width:700px){
-html[data-cw-v4] body #top-settings-holder>.clawd-mobile-new-chat{position:absolute!important;left:auto!important;right:18px!important;top:auto!important;bottom:36px!important;z-index:2;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px;width:auto!important;height:50px!important;min-height:50px!important;margin:0!important;padding:0 24px!important;border:0!important;border-radius:999px!important;background:var(--cw-v4-text)!important;color:var(--cw-v4-bg)!important;font:500 17px/1 var(--cw-v4-font)!important;box-shadow:none!important}
+html[data-cw-v4] body #top-settings-holder>.clawd-mobile-new-chat{position:absolute!important;left:auto!important;right:18px!important;top:auto!important;bottom:22px!important;z-index:2;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px;width:auto!important;height:40px!important;min-height:40px!important;margin:0!important;padding:0 18px!important;border:0!important;border-radius:999px!important;background:var(--cw-v4-text)!important;color:var(--cw-v4-bg)!important;font:500 15px/1 var(--cw-v4-font)!important;box-shadow:none!important}
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents{padding-bottom:0!important}
 html[data-cw-v4] body #top-settings-holder>.drawer#persona-management-button{margin:auto -8px 0!important;padding-top:0!important}
-html[data-cw-v4] body #top-settings-holder>#persona-management-button>.drawer-toggle{box-sizing:border-box!important;min-height:88px!important;padding:12px 16px 26px!important;gap:10px!important;align-items:center!important}
-html[data-cw-v4] body #persona-management-button .clawd-user-face{flex:0 0 44px!important;width:44px!important;min-width:44px!important;max-width:44px!important;height:44px!important;min-height:44px!important;max-height:44px!important}
+html[data-cw-v4] body #top-settings-holder>#persona-management-button>.drawer-toggle{box-sizing:border-box!important;min-height:60px!important;padding:8px 16px 12px!important;gap:10px!important;align-items:center!important}
+html[data-cw-v4] body #persona-management-button .clawd-user-face{flex:0 0 36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important}
 html[data-cw-v4] body #persona-management-button :is(.clawd-user-meta,.clawd-user-more){display:none!important}
 /* 入口行：design v4 行距 52px（48px 行高 + holder 原有的 4px 间隔）。
    顶部只留 30px 的 Claude 字标：侧栏打开时不显示左上角 ≡（点侧栏外面即可收起），字标左移到 23px。 */
