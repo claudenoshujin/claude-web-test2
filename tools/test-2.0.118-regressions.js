@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.193');
-assert.equal(manifest.js, 'loader-2.0.193.js');
+assert.equal(manifest.version, '2.0.194');
+assert.equal(manifest.js, 'loader-2.0.194.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -190,4 +190,7 @@ assert.match(index, /target\.closest\('\.deleteChat, \.deleteChatButton, \.chatA
 /* 手机侧栏点设置入口（2026-09-29）：侧栏先留在上面，等页面在底下画好再滑走，不再先闪一下首页 */
 assert.match(index, /classList\.add\('cw-v4-rail-over'\);\s*closeMobileMenuAfterPanel\(panel\);/, 'phone: a settings entry keeps the sidebar over the page until it has painted');
 assert.match(officialLayout, /if \(!settingsOpen\) \{ if \(!doc\.body\.hasAttribute\('data-clawd-menu'\)\) railOver\(false\); return; \}/, 'rail-over mark survives the frames before the page opens');
+assert.match(index, /root\.classList\.add\('cw-v4-rail-snap'\);\s*closeMobileMenu\(\);/, 'phone: once the page is ready the sidebar goes without sliding (a slide over the page build twitched)');
+assert.match(index, /if \(destroyed \|\| token !== mobileMenuCloseToken\) return;/, 'a newer tap or reopening the sidebar cancels an older pending close');
+assert.match(officialCss, /html\.cw-v4-rail-snap\.cw-v4-rail-snap\.cw-v4-rail-snap\[data-cw-v4\] body #top-settings-holder#top-settings-holder,/, 'the snap rule outranks the rail-over transition rules');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

@@ -1230,3 +1230,11 @@ html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.cw-v4-row,.cw-v4-se
    clip-path 收起后才 visibility:hidden；v4 页面关上时会先塌成约 100px 高的一块，侧栏盖在设置页上切换入口时，
    这块会作为一张小卡片浮在侧栏上（Via 录屏约 4～7 帧）。 */
 @media(max-width:700px){html[data-cw-v4] body #top-settings-holder>.drawer>.drawer-content.cw-v4-panel:not(.openDrawer){visibility:hidden!important;transition:none!important}}
+/* 手机侧栏点设置入口：页面在侧栏底下画好以后直接切过去，不滑（index.js closeMobileMenuAfterPanel 挂 cw-v4-rail-snap 两帧）。
+   2.0.193 滑着揭开页面，滑动撞上页面加载的阻塞，前约 125ms 不动、然后一下跳完，看着抽一下。
+   类名重复几遍是为了压过上面 cw-v4-rail-over 那几条带过渡的规则。普通点 ≡ / 点遮罩开关侧栏不受影响。 */
+@media(max-width:700px){
+html.cw-v4-rail-snap.cw-v4-rail-snap.cw-v4-rail-snap[data-cw-v4] body #top-settings-holder#top-settings-holder,
+html.cw-v4-rail-snap.cw-v4-rail-snap.cw-v4-rail-snap[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel,
+html.cw-v4-rail-snap.cw-v4-rail-snap.cw-v4-rail-snap[data-cw-v4] body .clawd-mobile-scrim{transition:none!important}
+}

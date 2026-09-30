@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.193-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.194-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2068,7 +2068,11 @@ if (CLAUDE_ENABLED) {
     if (list && list.contains(name) !== Boolean(on)) list.toggle(name, Boolean(on));
   };
   const isMobileMenuOpen = () => hostDocument.body.hasAttribute(MOBILE_MENU_ATTRIBUTE);
+  /* 「等设置页画好再收侧栏」的任务号（closeMobileMenuAfterPanel）。每次打开侧栏、每次点新的入口都换号，
+     旧任务看到号不对就作废，免得连续切换时旧任务把刚重新打开的侧栏收掉。 */
+  let mobileMenuCloseToken = 0;
   const setMobileMenuOpen = open => {
+    if (open) mobileMenuCloseToken += 1;
     if (open === isMobileMenuOpen()) return;
     if (open) hostDocument.body.setAttribute(MOBILE_MENU_ATTRIBUTE, 'open');
     else hostDocument.body.removeAttribute(MOBILE_MENU_ATTRIBUTE);
@@ -8455,16 +8459,28 @@ if (CLAUDE_ENABLED) {
     mobileChrome?.menu?.setAttribute('aria-expanded', 'false');
   }
 
-  /* 等 v4 设置页在侧栏底下打开、画完，再收侧栏（见 mobileNavCloseHandler）。
-     「打开」= 抽屉有 openDrawer 且 official-layout 已经挂上 data-cw-v4-settings；之后再等两帧让它真的画出来。 */
+  /* 等 v4 设置页在侧栏底下打开、画完，再**直接**切过去（见 mobileNavCloseHandler）。
+     「打开」= 抽屉有 openDrawer 且 official-layout 已经挂上 data-cw-v4-settings；之后再等两帧让它真的画出来。
+     2.0.193 在这里让侧栏滑走揭开页面，结果滑动撞上页面加载的阻塞：前约 125ms 不动，然后 387px 的行程一下跳掉 370px，
+     看着像抽一下（2026-09-29 采样）。所以这一步不滑：加 cw-v4-rail-snap 关掉侧栏的过渡，收起、过两帧再摘掉。
+     普通的打开 / 收起侧栏（点 ≡、点遮罩）动画照旧。任务号不对就作废（见 mobileMenuCloseToken）。 */
   function closeMobileMenuAfterPanel(panel) {
+    const token = ++mobileMenuCloseToken;
     const started = Date.now();
+    const root = hostDocument.documentElement;
+    const snapClose = () => {
+      if (destroyed || token !== mobileMenuCloseToken || !isMobileMenuOpen()) return;
+      root.classList.add('cw-v4-rail-snap');
+      closeMobileMenu();
+      // 不管任务号：这个类只管这一次收起，留着会让之后所有侧栏动画都没了
+      hostWindow.requestAnimationFrame(() => hostWindow.requestAnimationFrame(() => root.classList.remove('cw-v4-rail-snap')));
+    };
     const tick = () => {
-      if (destroyed) return;
+      if (destroyed || token !== mobileMenuCloseToken) return;
       const ready = panel.classList.contains('openDrawer')
-        && hostDocument.documentElement.getAttribute('data-cw-v4-settings') === 'open';
+        && root.getAttribute('data-cw-v4-settings') === 'open';
       if (ready || Date.now() - started > 900) {
-        hostWindow.requestAnimationFrame(() => hostWindow.requestAnimationFrame(closeMobileMenu));
+        hostWindow.requestAnimationFrame(() => hostWindow.requestAnimationFrame(snapClose));
         return;
       }
       hostWindow.requestAnimationFrame(tick);
