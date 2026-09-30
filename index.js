@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260929j";
+import { installOfficialLayout } from "./official-layout.js?v=20260929k";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.192-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.193-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -8455,6 +8455,23 @@ if (CLAUDE_ENABLED) {
     mobileChrome?.menu?.setAttribute('aria-expanded', 'false');
   }
 
+  /* 等 v4 设置页在侧栏底下打开、画完，再收侧栏（见 mobileNavCloseHandler）。
+     「打开」= 抽屉有 openDrawer 且 official-layout 已经挂上 data-cw-v4-settings；之后再等两帧让它真的画出来。 */
+  function closeMobileMenuAfterPanel(panel) {
+    const started = Date.now();
+    const tick = () => {
+      if (destroyed) return;
+      const ready = panel.classList.contains('openDrawer')
+        && hostDocument.documentElement.getAttribute('data-cw-v4-settings') === 'open';
+      if (ready || Date.now() - started > 900) {
+        hostWindow.requestAnimationFrame(() => hostWindow.requestAnimationFrame(closeMobileMenu));
+        return;
+      }
+      hostWindow.requestAnimationFrame(tick);
+    };
+    hostWindow.requestAnimationFrame(tick);
+  }
+
   async function startMobileNewChat() {
     closeMobileMenu();
     const native = hostDocument.querySelector(
@@ -8544,6 +8561,15 @@ if (CLAUDE_ENABLED) {
         const drawerToggle = target.closest('.drawer-toggle');
         if (drawerToggle && isTauriTavernHost()) return;
         if (!drawerToggle && !target.closest('.recentChat, .clawd-mobile-new-chat, .character_select')) return;
+        /* v4 设置页（Lulu 2026-09-29：切换抽屉时先闪一下首页再出页面，很卡）：以前一点入口侧栏就立刻滑走，
+           设置页却还要几帧才建好，中间露出的是首页。现在侧栏先留在上面（cw-v4-rail-over：页面画在侧栏底下），
+           等页面真的打开并画出来（再过两帧），侧栏才滑走、把页面露出来。最多等 0.9 秒兜底。 */
+        const panel = drawerToggle?.parentElement?.querySelector(':scope > .drawer-content');
+        if (panel && hostDocument.documentElement.hasAttribute('data-cw-v4')) {
+          hostDocument.documentElement.classList.add('cw-v4-rail-over');
+          closeMobileMenuAfterPanel(panel);
+          return;
+        }
         closeMobileMenu();
       };
       holder.addEventListener('click', mobileNavCloseHandler, true);

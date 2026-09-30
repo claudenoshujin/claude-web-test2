@@ -511,7 +511,9 @@ export function installOfficialLayout(win = window) {
   }
   function syncRailOver(settingsOpen) {
     if (!root.classList.contains('cw-v4-rail-over')) return;
-    if (!settingsOpen) { railOver(false); return; }
+    // Sidebar still open with no page yet: a page was just tapped in the phone sidebar and is on its way
+    // (index.js keeps the sidebar over it until it has painted). Only drop the mark once the sidebar is gone.
+    if (!settingsOpen) { if (!doc.body.hasAttribute('data-clawd-menu')) railOver(false); return; }
     if (doc.body.hasAttribute('data-clawd-menu')) { if (railOverTimer) { win.clearTimeout(railOverTimer); railOverTimer = 0; } return; }
     if (!railOverTimer) railOverTimer = win.setTimeout(() => { railOverTimer = 0; if (!doc.body.hasAttribute('data-clawd-menu')) root.classList.remove('cw-v4-rail-over'); }, 260);
   }
