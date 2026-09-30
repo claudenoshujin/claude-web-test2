@@ -178,6 +178,24 @@ worldEntry.querySelector('dialog[open]').close();
   assert.equal(bodyClicks,1,'second click closes through a body click, i.e. ST\'s own outside-click handler');
   d.removeEventListener('click',spy);mes.remove();
 }
+// Input menus (2026-09-29): + menu and ≡ menu open from the same left edge with the same width.
+// ST pins each one to its own button with Popper (top-start) and sizes it to its own text.
+{
+  const optBtn=d.getElementById('options_button'),opts=d.getElementById('options');
+  const extBtn=d.createElement('div');extBtn.id='extensionsMenuButton';optBtn.before(extBtn);   // extensions.js adds these at runtime
+  const extMenu=d.createElement('div');extMenu.id='extensionsMenu';extMenu.style.display='none';d.body.append(extMenu);
+  const rect=(l,w)=>()=>({left:l,right:l+w,top:0,bottom:0,width:w,height:0});
+  extBtn.getBoundingClientRect=rect(341,32);optBtn.getBoundingClientRect=rect(381,32);
+  extMenu.getBoundingClientRect=rect(0,170);opts.getBoundingClientRect=rect(0,181);
+  optBtn.click();
+  assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-shift'),'-40px','≡ menu shifts onto the + button\'s left edge');
+  assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-w'),'200px','both menus take the wider natural width (at least 200px)');
+  opts.getBoundingClientRect=rect(0,236);extBtn.click();
+  assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-w'),'236px','width follows the wider menu, including a closed one');
+  assert.equal(extMenu.style.display,'none','measuring a closed menu must leave it closed');
+  assert.equal(opts.style.display,'none','measuring a closed menu must leave it closed');
+  extBtn.remove();extMenu.remove();
+}
 d.documentElement.dataset.claudeStructure='linear';app.refresh();
 for(const control of controls)assert.ok(control.isConnected,`reflow restore lost ${control.id}`);
 assert.equal(d.querySelector('.cw-v4-drawer-page'),null,'all semantic pages return to native layout');

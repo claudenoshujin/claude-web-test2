@@ -931,6 +931,12 @@ html[data-cw-v4] body #chat .mes .mes_buttons>.claude-reroll-button{order:4;--cw
 html[data-cw-v4] body #chat .mes .mes_buttons>.extraMesButtonsHint{order:5;--cw-v4-mask:var(--cw-v4-icon-dots)}
 html[data-cw-v4] body #chat .mes .mes_buttons>.extraMesButtons{order:6}
 html[data-cw-v4] body #chat .mes .mes_buttons>.cw-v4-swipes{order:0}
+/* 输入框左边两个菜单（+ 扩展菜单、≡ 选项菜单，2026-09-29 Lulu：大小长度不对齐）：同一个左边沿（+ 按钮左边）、同一个宽度、同一个底边，高度按各自内容。
+   酒馆用 Popper（top-start）把各自钉在自己的按钮左上，宽度按各自文字。official-layout.js 点按钮时量两个菜单的自然宽度取大的写 --cw-v4-menu-w，
+   ≡ 菜单用 translate（和 Popper 写的 transform 叠加，不冲突）挪到 + 按钮左边沿。量的时候（data-cw-v4-menu-measure）先不套共用宽度。 */
+html[data-cw-v4]:not([data-cw-v4-menu-measure]) body :is(#options,#extensionsMenu){width:var(--cw-v4-menu-w,auto)!important;min-width:0!important;max-width:calc(100vw - 16px)!important;box-sizing:border-box!important}
+html[data-cw-v4] body #options{translate:var(--cw-v4-menu-shift,0px) 0!important}
+html[data-cw-v4]:not([data-cw-v4-menu-measure]) body #options>.options-content{width:100%!important;box-sizing:border-box!important}
 /* 消息「…」更多操作（design-v4 .extraMesButtons-menu，2026-09-29）：
    单行图标、高 28px、和按下的「…」同一种灰，无边框无阴影，浮在按钮栏上方 6px。
    position:fixed + official-layout.js 按「…」的位置写 --cw-more-x / -y / -max：不动 #chat、消息、输入区的 overflow。

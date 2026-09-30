@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260929d";
+import { installOfficialLayout } from "./official-layout.js?v=20260929e";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.183-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.184-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -3594,21 +3594,21 @@ if (CLAUDE_ENABLED) {
       /* 两个节点消费同一份三轨数据，但视觉职责不同：输入框大 Clawd 表演
          C > A > B 的当前状态；消息末尾的小 Clawd 只做落款、B 轨在场反馈
          和它原有的直接点击反应。生成中小 Clawd 依照 2.0.135 让位。 */
-      button.dataset.clawdA = clawdTracks.A || '';
-      button.dataset.clawdB = clawdTracks.B || '';
-      button.dataset.clawdC = clawdTracks.C || '';
-      button.dataset.clawdState = visible;
-      button.dataset.clawdOwner = owner;
-      button.dataset.clawdRole = isComposer ? 'composer' : 'signoff';
+      const state = { clawdA: clawdTracks.A || '', clawdB: clawdTracks.B || '',
+        clawdC: clawdTracks.C || '', clawdState: visible, clawdOwner: owner,
+        clawdRole: isComposer ? 'composer' : 'signoff' };
+      for (const [key, value] of Object.entries(state)) {
+        if (button.dataset[key] !== value) button.dataset[key] = value;
+      }
 
       /* 旧主题的 Clawd 开关和 welcome 规则都带 !important。最终显隐由真实
          开关和节点职责写在节点上，避免样式加载顺序误杀大 Clawd；粒子/气泡
          开关不参与本体显隐。 */
-      button.style.setProperty(
-        'display',
-        clawdEnabled && (isComposer || !generationInFlight) ? 'block' : 'none',
-        'important',
-      );
+      const display = clawdEnabled && (isComposer || !generationInFlight) ? 'block' : 'none';
+      if (button.style.getPropertyValue('display') !== display
+        || button.style.getPropertyPriority('display') !== 'important') {
+        button.style.setProperty('display', display, 'important');
+      }
 
       /* 画面全部由骨架（clawd-rig.js）画；以前这里还给按钮挂 clawd-state-* / clawd-cheer /
          clawd-sleeping / clawd-idle-drowsy / clawd-neglected 这些 class，驱动旧的 ::before 精灵，已随旧画法一起删掉 */
@@ -3649,6 +3649,7 @@ if (CLAUDE_ENABLED) {
      打断收场的道具也跟着卡住不动（Lulu 2026-09-25：拿起来时杯子过一会儿才掉）。 */
   const CLAWD_RIG_PREWARM = ['press', 'grab', 'drag', 'dragSwing', 'fly', 'land', 'stomp', 'stompSlap', 'pet', 'poke1', 'poke1Shy', 'poke2', 'poke3', 'poke4', 'rage'];
   let clawdRigPrewarmTimer = 0;
+  let clawdRigPrewarmIsIdle = false;
   function clawdRigSchedulePrewarm() {
     if (clawdRigPrewarmTimer) return;
     const run = () => {
@@ -3665,7 +3666,8 @@ if (CLAUDE_ENABLED) {
       style.append(hostDocument.createTextNode(ids.map(id => CLAWD_RIG.cssFor(id)).join('\n')));
       ids.forEach(id => clawdRigInjected.add(id));
     };
-    clawdRigPrewarmTimer = typeof hostWindow.requestIdleCallback === 'function'
+    clawdRigPrewarmIsIdle = typeof hostWindow.requestIdleCallback === 'function';
+    clawdRigPrewarmTimer = clawdRigPrewarmIsIdle
       ? hostWindow.requestIdleCallback(run, { timeout: 4000 })
       : hostWindow.setTimeout(run, 1500);
   }
@@ -3758,6 +3760,28 @@ if (CLAUDE_ENABLED) {
      约 50ms。以前每个道具「读样式 → 往 body 里插一层 → 再读下一个道具 → animate」，按下那一下要重算三四遍、卡 150ms 左右。
      现在先把要读的一次读完，再一次性插进常驻容器（容器早就在 body 里，往它里面加东西不牵动整页），最后才开始动画。 */
   let clawdRigGhostHost = null;
+  const clawdRigGhostJobs = new Map();
+  function removeClawdRigGhost(layer) {
+    const job = clawdRigGhostJobs.get(layer);
+    if (job) {
+      hostWindow.clearTimeout(job.timer);
+      job.animations.forEach(animation => animation.cancel());
+      clawdRigGhostJobs.delete(layer);
+    }
+    layer.remove();
+  }
+
+  function cleanupClawdRigEffects() {
+    if (clawdRigPrewarmTimer) {
+      if (clawdRigPrewarmIsIdle) hostWindow.cancelIdleCallback?.(clawdRigPrewarmTimer);
+      else hostWindow.clearTimeout(clawdRigPrewarmTimer);
+      clawdRigPrewarmTimer = 0;
+    }
+    for (const layer of clawdRigGhostJobs.keys()) removeClawdRigGhost(layer);
+    clawdRigGhostHost?.remove();
+    clawdRigGhostHost = null;
+    clawdRigSnap = null;
+  }
   function clawdRigGhostHostFor(button) {
     if (!clawdRigGhostHost || !clawdRigGhostHost.isConnected) {
       clawdRigGhostHost = hostDocument.createElement('span');
@@ -3863,18 +3887,19 @@ if (CLAUDE_ENABLED) {
       return [ghost, frames];
     });
     host.append(layer);
-    hostWindow.setTimeout(() => layer.remove(), 1200);
+    const job = { timer: hostWindow.setTimeout(() => removeClawdRigGhost(layer), 1200), animations: [] };
+    clawdRigGhostJobs.set(layer, job);
     // ③ 最后开始动
     for (const [ghost, frames] of jobs) {
       try {
-        ghost.animate(frames, { duration: kind === 'drop' ? 800 : 900, easing: 'linear', fill: 'forwards' });
+        job.animations.push(ghost.animate(frames, { duration: kind === 'drop' ? 800 : 900, easing: 'linear', fill: 'forwards' }));
       } catch (error) { ghost.remove(); }
     }
   }
 
   function syncClawdRig(button, owner) {
     ensureClawdRig(button);
-    button.dataset.clawdRig = 'on';
+    if (button.dataset.clawdRig !== 'on') button.dataset.clawdRig = 'on';
     const current = button.dataset.clawdClip || '';
     const curBase = current.replace(/-m$/, '');
     if (owner === 'C' && clawdTracks.C === 't1' && curBase !== 'poke1' && curBase !== 'poke1Shy') {
@@ -4346,7 +4371,6 @@ if (CLAUDE_ENABLED) {
       scheduleA2BoundsWarm(button);
     }
     syncClawdBState();
-    renderClawdTracks();
     return button;
   }
 
@@ -9360,6 +9384,7 @@ if (CLAUDE_ENABLED) {
        3.0 那条源码线上这个元素已经改叫 clawd-stream-timer 并进了名单，
        2.0 这条线漏掉了，补上。 */
     '.clawd-gen-timer',
+    '.clr-ghost-host',
   ].join(',');
 
   function classMutationIsCosmetic(record, target) {
@@ -10261,6 +10286,7 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    cleanupClawdRigEffects();
     externalModalObserver?.disconnect();
     externalModalObserver = null;
     hostDocument.body.classList.remove(EXTERNAL_MODAL_OPEN_CLASS);

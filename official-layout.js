@@ -694,6 +694,31 @@ export function installOfficialLayout(win = window) {
       if (!moreFrame) moreFrame = win.requestAnimationFrame(morePlace);
     }, true);
     disposers.push(() => { if (moreFrame) win.cancelAnimationFrame(moreFrame); for (const menu of [...moreOpen.keys()]) moreClear(menu); });
+    // Input menus (+ and ≡, 2026-09-29): ST pins each to its own button with Popper
+    // (top-start) and sizes it to its own text, so they open 40px apart with different
+    // widths. On either button click (before ST shows the menu), measure both menus'
+    // natural widths and share the wider one, and shift ≡ onto the + button's left edge.
+    // The shift uses the CSS `translate` property, which stacks on Popper's own transform.
+    const menuWidth = el => {
+      if (!el) return 0;
+      const prev = [el.style.display, el.style.visibility];
+      const closed = win.getComputedStyle(el).display === 'none';
+      if (closed) { el.style.visibility = 'hidden'; el.style.display = 'flex'; }
+      const w = el.getBoundingClientRect().width;
+      if (closed) { el.style.display = prev[0]; el.style.visibility = prev[1]; }
+      return w;
+    };
+    on(doc, 'click', e => {
+      if (!enabled() || !e.target.closest?.('#extensionsMenuButton, #options_button')) return;
+      const extBtn = doc.getElementById('extensionsMenuButton'), optBtn = doc.getElementById('options_button');
+      if (!extBtn || !optBtn) return;
+      root.setAttribute('data-cw-v4-menu-measure', '');   // natural widths: switch the shared width off while measuring
+      const w = Math.max(200, Math.ceil(menuWidth(doc.getElementById('extensionsMenu'))), Math.ceil(menuWidth(doc.getElementById('options'))));
+      root.removeAttribute('data-cw-v4-menu-measure');
+      root.style.setProperty('--cw-v4-menu-w', w + 'px');
+      root.style.setProperty('--cw-v4-menu-shift', Math.round(extBtn.getBoundingClientRect().left - optBtn.getBoundingClientRect().left) + 'px');
+    }, true);
+    disposers.push(() => { root.style.removeProperty('--cw-v4-menu-w'); root.style.removeProperty('--cw-v4-menu-shift'); });
     const ctx = win.SillyTavern?.getContext?.();
     for (const key of ['CHAT_CHANGED','CHARACTER_MESSAGE_RENDERED','USER_MESSAGE_RENDERED','MESSAGE_SWIPED','SETTINGS_LOADED','APP_READY']) {
       const event = ctx?.eventTypes?.[key]; if (event && ctx.eventSource?.on) { ctx.eventSource.on(event,schedule); disposers.push(() => ctx.eventSource.removeListener?.(event,schedule)); }
