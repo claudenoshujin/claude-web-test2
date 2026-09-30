@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.194-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.195-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -6231,6 +6231,31 @@ if (CLAUDE_ENABLED) {
     });
   }
 
+  /* 可视高度比冻结值矮这么多，就当键盘还没收完（普通地址栏伸缩在 60px 以内）。 */
+  const MOBILE_KEYBOARD_SHRINK_PX = 80;
+  let mobileViewportRecheckTimer = 0;
+  let mobileViewportRecheckCount = 0;
+  /* 缩小之前的高度；复查时跟它比，而不是跟刚写进去的小值比。 */
+  let mobileViewportShrinkFrom = 0;
+
+  function mobileViewportStillShrunk() {
+    const frozen = parseFloat(hostDocument.documentElement.style.getPropertyValue(MOBILE_VIEWPORT_HEIGHT_PROPERTY)) || 0;
+    const current = Math.round(hostWindow.visualViewport?.height || hostWindow.innerHeight || 0);
+    return frozen > 0 && current > 0 && current < frozen - MOBILE_KEYBOARD_SHRINK_PX;
+  }
+
+  function scheduleMobileViewportRecheck() {
+    if (mobileViewportRecheckTimer || destroyed) return;
+    /* 最多再看 8 次（约 12 秒）；之后仍然矮就是真实高度（分屏等），交给下一次视口事件。 */
+    if (mobileViewportRecheckCount >= 8) return;
+    mobileViewportRecheckCount += 1;
+    mobileViewportRecheckTimer = hostWindow.setTimeout(() => {
+      mobileViewportRecheckTimer = 0;
+      if (destroyed || !mobileViewportMetricsDirty) return;
+      applyMobileViewportMetrics();
+    }, 1500);
+  }
+
   function applyMobileViewportMetrics() {
     const root = hostDocument.documentElement;
     if (!isMobileLayout()) {
@@ -6268,6 +6293,22 @@ if (CLAUDE_ENABLED) {
     mobileViewportMetricsDirty = false;
     const viewport = hostWindow.visualViewport;
     const height = Math.max(1, Math.round(viewport?.height || hostWindow.innerHeight || 1));
+    /* 2.0.195：Via 收键盘后可视高度可能还要几秒才恢复，而且会漏掉恢复时那次 resize。
+       这时写进来的是「键盘还占着」的小值，#chat 和侧栏都跟着变矮，聊天和输入框之间
+       空出一大截，而且没有事件能把它改回来。所以变量一次缩了一个键盘量级时，
+       保持 dirty 并隔一会儿自己再读一次，直到高度回来或确实就是这么高。 */
+    const previousHeight = parseFloat(root.style.getPropertyValue(MOBILE_VIEWPORT_HEIGHT_PROPERTY)) || 0;
+    if (previousHeight && height < previousHeight - MOBILE_KEYBOARD_SHRINK_PX) {
+      mobileViewportShrinkFrom = Math.max(mobileViewportShrinkFrom, previousHeight);
+      mobileViewportRecheckCount = 0;
+    }
+    if (mobileViewportShrinkFrom && height < mobileViewportShrinkFrom - MOBILE_KEYBOARD_SHRINK_PX) {
+      mobileViewportMetricsDirty = true;
+      scheduleMobileViewportRecheck();
+    } else {
+      mobileViewportShrinkFrom = 0;
+      mobileViewportRecheckCount = 0;
+    }
     const popupHeight = Math.max(
       height,
       Math.round(hostWindow.innerHeight || hostDocument.documentElement.clientHeight || height),
@@ -6480,7 +6521,10 @@ if (CLAUDE_ENABLED) {
       if (destroyed) return;
       if (Date.now() >= mobileKeyboardSettlingUntil) { endMobileKeyboardSettling(); return; }
       const signature = mobileViewportSignature();
-      if (signature === mobileSettleSignature && !mobileKeyboardRecoveryActive) {
+      /* 几何「两次读数一样」不等于键盘收好了：Via 收键盘时可视高度会停在小值几秒。
+         焦点已经离开输入框、可视高度却还矮一个键盘量级，就继续等，由后面的定时器或 8000ms 兜底收尾。 */
+      if (signature === mobileSettleSignature && !mobileKeyboardRecoveryActive
+        && (isSoftKeyboardTarget(hostDocument.activeElement) || !mobileViewportStillShrunk())) {
         endMobileKeyboardSettling();
         return;
       }
