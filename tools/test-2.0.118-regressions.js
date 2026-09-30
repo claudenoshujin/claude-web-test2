@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.189');
-assert.equal(manifest.js, 'loader-2.0.189.js');
+assert.equal(manifest.version, '2.0.190');
+assert.equal(manifest.js, 'loader-2.0.190.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -179,5 +179,7 @@ assert.match(index, /more\.className = 'cw-recent-more';/, 'each recent row gets
 assert.match(index, /item\('pin', pinned \?/, 'the ⋯ menu offers pin / unpin');
 assert.match(index, /main\.renameGroupOrCharacterChat\(\{ characterId: String\(index\), oldFileName: oldName, newFileName: newName, loader: false \}\)/, 'rename goes through ST\'s own renameGroupOrCharacterChat');
 assert.match(index, /writeAccountStorage\(PINNED_CHATS_KEY, state\)/, 'pin writes ST\'s own pinnedChats account storage key');
-assert.match(officialCss, /body\.clawd-mobile-layout #top-settings-holder \.clawd-rail-recents \.recentChat:is\(\.cw-current,\.cw-recent-menu-open\) \.cw-recent-more/, 'phone: ⋯ shows on the current chat (others long-press)');
+assert.match(officialCss, /body\.clawd-mobile-layout #top-settings-holder \.clawd-rail-recents \.recentChat \.cw-recent-more\{opacity:1;pointer-events:auto\}/, 'phone: ⋯ shows on every recent row');
+assert.match(officialCss, /:is\(#options,#extensionsMenu\) :is\(\.fa-note-sticky\)\{--cw-fa-line:var\(--cw-v4-icon-note\)\}/, 'input menus map Font Awesome solid icons to design-v4 line icons');
+assert.match(officialCss, /#persona-management-button \.clawd-user-meta\{display:flex!important/, 'phone bottom row keeps the user name and plan');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');
