@@ -259,6 +259,9 @@ html[data-cw-v4] body #top-settings-holder :is(#rm_print_characters_pagination,#
 @media(max-width:700px){
 html[data-cw-v4] body #top-settings-holder>.clawd-mobile-new-chat{position:absolute!important;left:auto!important;right:18px!important;top:auto!important;bottom:22px!important;z-index:2;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px;width:auto!important;height:40px!important;min-height:40px!important;margin:0!important;padding:0 18px!important;border:0!important;border-radius:999px!important;background:var(--cw-v4-text)!important;color:var(--cw-v4-bg)!important;font:500 15px/1 var(--cw-v4-font)!important;box-shadow:none!important}
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents{padding-bottom:0!important}
+/* 近期对话吃剩下的高度、在自己里面滚。手机主题给它的 min-height:min(36dvh,300px) 在 812 高的屏上是 292px，
+   比入口行之后剩下的地方还高，把底部账号行挤出屏幕下沿约 20px（Lulu 2026-09-29：底部异常占地）。 */
+html[data-cw-v4] body #top-settings-holder>.clawd-rail-recents{min-height:0!important}
 html[data-cw-v4] body #top-settings-holder>.drawer#persona-management-button{margin:auto -8px 0!important;padding-top:0!important}
 html[data-cw-v4] body #top-settings-holder>#persona-management-button>.drawer-toggle{box-sizing:border-box!important;min-height:60px!important;padding:8px 16px 12px!important;gap:10px!important;align-items:center!important}
 html[data-cw-v4] body #persona-management-button .clawd-user-face{flex:0 0 36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important}
