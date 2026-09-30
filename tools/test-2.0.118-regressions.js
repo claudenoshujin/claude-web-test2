@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.191');
-assert.equal(manifest.js, 'loader-2.0.191.js');
+assert.equal(manifest.version, '2.0.192');
+assert.equal(manifest.js, 'loader-2.0.192.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -182,4 +182,9 @@ assert.match(index, /writeAccountStorage\(PINNED_CHATS_KEY, state\)/, 'pin write
 assert.match(officialCss, /body\.clawd-mobile-layout #top-settings-holder \.clawd-rail-recents \.recentChat \.cw-recent-more\{opacity:1;pointer-events:auto\}/, 'phone: ⋯ shows on every recent row');
 assert.match(officialCss, /:is\(#options,#extensionsMenu\) :is\(\.fa-note-sticky\)\{--cw-fa-line:var\(--cw-v4-icon-note\)\}/, 'input menus map Font Awesome solid icons to design-v4 line icons');
 assert.match(officialCss, /#persona-management-button \.clawd-user-meta\{display:flex!important/, 'phone bottom row keeps the user name and plan');
+/* 2.0.190 把一条两段选择器的规则改坏过：第一段后面剩个逗号，粘到了下一条规则上，电脑端悬停时日期不隐藏、被「⋯」盖住 */
+assert.doesNotMatch(officialCss, /,\s*\n\s*\/\*/, 'no selector list may end in a dangling comma before a comment');
+assert.match(officialCss, /\.recentChat:is\(:hover,:focus-within,\.cw-recent-menu-open\) \.chatDate\{visibility:hidden!important\}/, 'desktop: the date hides while ⋯ shows');
+assert.match(index, /b\.title = label;\s*b\.setAttribute\('aria-label', label\);/, 'recent-chat actions are an icon-only strip (label in title)');
+assert.match(index, /target\.closest\('\.deleteChat, \.deleteChatButton, \.chatActions'\)/, 'phone: tapping ⋯ must not close the sidebar');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');

@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.191-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.192-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -6903,8 +6903,8 @@ if (CLAUDE_ENABLED) {
     else hostWindow.localStorage.setItem(key, raw);
   }
 
-  /* ===== 近期对话「⋯」菜单：置顶 / 重命名 / 删除（v4，Lulu 2026-09-29，照 claude.ai）=====
-     一个共用的小菜单挂在 body 上，position:fixed 贴着「⋯」按钮（下方放不下就翻到上方）。
+  /* ===== 近期对话「⋯」操作条：置顶 / 重命名 / 删除（v4，Lulu 2026-09-29）=====
+     一条只有图标的横条（第二轮改：不要下拉的一整列、不要文字），挂在 body 上，position:fixed 放在「⋯」左边同一行。
      三个动作都走酒馆自己的数据：置顶写同一个 accountStorage 键（key 拼法同 PinnedChatsManager），
      重命名用酒馆的输入弹窗和 renameGroupOrCharacterChat / updateRemoteChatName，删除沿用下面的删除链路。
      注意：酒馆的 PinnedChatsManager 有内存缓存，它自己的欢迎页要刷新后才看得到这里改的置顶。 */
@@ -6932,7 +6932,9 @@ if (CLAUDE_ENABLED) {
       b.className = 'cw-recent-menu-item' + (danger ? ' danger' : '');
       b.setAttribute('role', 'menuitem');
       b.dataset.icon = icon;
-      b.textContent = label;
+      // 只放图标（Lulu 2026-09-29：不要拉下来一整列，做成一条、不要文字）；名字进 title / aria-label
+      b.title = label;
+      b.setAttribute('aria-label', label);
       b.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
@@ -6951,10 +6953,15 @@ if (CLAUDE_ENABLED) {
     );
     hostDocument.body.append(menu);
     row.classList.add('cw-recent-menu-open');
+    /* 一条横的操作条，放在「⋯」左边、和它同一行居中，不盖住下面几行；左边放不下才放到「⋯」下方 */
     const a = anchor.getBoundingClientRect(), m = menu.getBoundingClientRect();
-    const left = Math.max(8, Math.min(a.right - m.width, hostWindow.innerWidth - m.width - 8));
-    let top = a.bottom + 4;
-    if (top + m.height > hostWindow.innerHeight - 8) top = Math.max(8, a.top - m.height - 4);
+    let left = a.left - m.width - 4;
+    let top = a.top + (a.height - m.height) / 2;
+    if (left < 8) {
+      left = Math.max(8, Math.min(a.right - m.width, hostWindow.innerWidth - m.width - 8));
+      top = a.bottom + 4;
+      if (top + m.height > hostWindow.innerHeight - 8) top = Math.max(8, a.top - m.height - 4);
+    }
     menu.style.left = Math.round(left) + 'px';
     menu.style.top = Math.round(top) + 'px';
     const outside = event => { if (!menu.contains(event.target) && !anchor.contains(event.target)) closeRecentMenu(); };
@@ -8531,7 +8538,9 @@ if (CLAUDE_ENABLED) {
       mobileNavHolder = holder;
       mobileNavCloseHandler = event => {
         const target = event.target instanceof hostWindow.Element ? event.target : null;
-        if (!target || target.closest('.deleteChat, .deleteChatButton')) return;
+        // 近期对话的操作区（「⋯」和它的操作条）、长按刚打开操作条后补发的那次 click：都不收侧栏（Lulu 2026-09-29：点「⋯」侧栏就收回了）
+        if (!target || target.closest('.deleteChat, .deleteChatButton, .chatActions')) return;
+        if (Date.now() < recentLongPressUntil) return;
         const drawerToggle = target.closest('.drawer-toggle');
         if (drawerToggle && isTauriTavernHost()) return;
         if (!drawerToggle && !target.closest('.recentChat, .clawd-mobile-new-chat, .character_select')) return;
