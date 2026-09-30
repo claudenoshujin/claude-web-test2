@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.195-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.196-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -6244,15 +6244,22 @@ if (CLAUDE_ENABLED) {
     return frozen > 0 && current > 0 && current < frozen - MOBILE_KEYBOARD_SHRINK_PX;
   }
 
+  function clearMobileViewportRecheck() {
+    if (mobileViewportRecheckTimer) hostWindow.clearTimeout(mobileViewportRecheckTimer);
+    mobileViewportRecheckTimer = 0;
+    mobileViewportRecheckCount = 0;
+    mobileViewportShrinkFrom = 0;
+  }
+
+  /* 复查链只在 mobileViewportShrinkFrom 有值时存在。apply 因为焦点/收尾窗口提前返回
+     不算一次读取，也不断链：这里接着排下一次。真正读到的次数由 apply 计。 */
   function scheduleMobileViewportRecheck() {
     if (mobileViewportRecheckTimer || destroyed) return;
-    /* 最多再看 8 次（约 12 秒）；之后仍然矮就是真实高度（分屏等），交给下一次视口事件。 */
-    if (mobileViewportRecheckCount >= 8) return;
-    mobileViewportRecheckCount += 1;
     mobileViewportRecheckTimer = hostWindow.setTimeout(() => {
       mobileViewportRecheckTimer = 0;
-      if (destroyed || !mobileViewportMetricsDirty) return;
+      if (destroyed || !mobileViewportShrinkFrom) return;
       applyMobileViewportMetrics();
+      if (mobileViewportShrinkFrom) scheduleMobileViewportRecheck();
     }, 1500);
   }
 
@@ -6280,7 +6287,13 @@ if (CLAUDE_ENABLED) {
     // 判据换成「当前焦点是不是一个会唤起软键盘的可输入元素」。不含 button /
     // checkbox / range 这类：它们不弹键盘，焦点落上去时冻结指标反而会让
     // 真实的旋转、分屏之类的视口变化更新不及时。
-    if (isSoftKeyboardTarget(hostDocument.activeElement)) return;
+    //
+    // 例外：变量之前被写小了（mobileViewportShrinkFrom），现在可视高度已经回到缩小前，
+    // 说明键盘并没有盖着（Via 按返回键收键盘时焦点还留在输入框里），此时把高度改回来是安全的。
+    const keyboardClearedWhileFocused = mobileViewportShrinkFrom > 0
+      && Math.round(hostWindow.visualViewport?.height || hostWindow.innerHeight || 0)
+        >= mobileViewportShrinkFrom - MOBILE_KEYBOARD_SHRINK_PX;
+    if (isSoftKeyboardTarget(hostDocument.activeElement) && !keyboardClearedWhileFocused) return;
     /* 收键盘的收尾窗口内同样一个字也不写。根节点自定义属性继承到整篇 DOM，
        写一次就是一次全文档 style 失效重算；兜底定时器（300/900/2000/5000ms）
        若在键盘动画中途写入中间值，重卡上每次全文档 recalc 都是数百毫秒起，
@@ -6302,12 +6315,15 @@ if (CLAUDE_ENABLED) {
       mobileViewportShrinkFrom = Math.max(mobileViewportShrinkFrom, previousHeight);
       mobileViewportRecheckCount = 0;
     }
-    if (mobileViewportShrinkFrom && height < mobileViewportShrinkFrom - MOBILE_KEYBOARD_SHRINK_PX) {
+    /* 最多读 8 次（约 12 秒）。之后仍然矮就认定是真实高度（分屏等）：整条复查链收掉，
+       dirty 也清掉，不再让每次普通刷新都重读视口（2.0.171 的性能约束）。 */
+    if (mobileViewportShrinkFrom && height < mobileViewportShrinkFrom - MOBILE_KEYBOARD_SHRINK_PX
+      && mobileViewportRecheckCount < 8) {
+      mobileViewportRecheckCount += 1;
       mobileViewportMetricsDirty = true;
       scheduleMobileViewportRecheck();
-    } else {
-      mobileViewportShrinkFrom = 0;
-      mobileViewportRecheckCount = 0;
+    } else if (mobileViewportShrinkFrom) {
+      clearMobileViewportRecheck();
     }
     const popupHeight = Math.max(
       height,
@@ -10629,6 +10645,7 @@ if (CLAUDE_ENABLED) {
     if (composerBottomRaf) hostWindow.cancelAnimationFrame(composerBottomRaf);
     composerBottomRaf = 0;
     clearMobileViewportSettleTimers();
+    clearMobileViewportRecheck();
     mobileKeyboardSettlingUntil = 0;
     mobileKeyboardRecoveryActive = false;
     stopMobileKeyboardPoll();
