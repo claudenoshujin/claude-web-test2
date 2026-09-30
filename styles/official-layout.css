@@ -937,6 +937,16 @@ html[data-cw-v4] body #chat .mes .mes_buttons>.cw-v4-swipes{order:0}
 html[data-cw-v4]:not([data-cw-v4-menu-measure]) body :is(#options,#extensionsMenu){width:var(--cw-v4-menu-w,auto)!important;min-width:0!important;max-width:calc(100vw - 16px)!important;box-sizing:border-box!important}
 html[data-cw-v4] body #options{translate:var(--cw-v4-menu-shift,0px) 0!important}
 html[data-cw-v4]:not([data-cw-v4-menu-measure]) body #options>.options-content{width:100%!important;box-sizing:border-box!important}
+/* 外观照 design-v4 的 .more-pop / .more-item（Lulu 2026-09-29：这两个菜单还是酒馆样子）：白底、1px 细线、10px 圆角、柔和阴影、5px 内边距；
+   每项 14px 深色字、8px 10px、7px 圆角的悬停底；图标淡灰；分隔线是一条细线。 */
+html[data-cw-v4] body :is(#options,#extensionsMenu){background:var(--v4-panel)!important;border:1px solid var(--v4-line)!important;border-radius:10px!important;box-shadow:0 8px 28px rgba(0,0,0,.14)!important;padding:5px!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-cw-v4] body #options>.options-content,html[data-cw-v4] body #extensionsMenu :is(.list-group,.extension_container){background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;margin:0!important}
+html[data-cw-v4] body #options>.options-content>a,html[data-cw-v4] body #extensionsMenu .list-group-item,html[data-cw-v4] body #extensionsMenu>.extension_container>div,html[data-cw-v4] body #extensionsMenu>div:not(.extension_container){display:flex!important;align-items:center!important;gap:10px!important;padding:8px 10px!important;margin:0!important;border:0!important;border-radius:7px!important;background:none!important;font:400 14px/1.3 var(--cw-v4-font)!important;color:var(--v4-text)!important;opacity:1!important;white-space:nowrap!important;cursor:pointer!important}
+html[data-cw-v4] body #options>.options-content>a:hover,html[data-cw-v4] body #extensionsMenu .list-group-item:hover,html[data-cw-v4] body #extensionsMenu>.extension_container>div:hover,html[data-cw-v4] body #extensionsMenu>div:not(.extension_container):hover{background:var(--v4-hover)!important;color:var(--v4-text)!important}
+html[data-cw-v4] body :is(#options,#extensionsMenu) :is(.fa-solid,.fa-regular,.fa-brands,.extensionsMenuExtensionButton){color:var(--v4-muted)!important;width:16px!important;min-width:16px!important;font-size:14px!important;opacity:1!important;display:inline-flex!important;justify-content:center!important}
+html[data-cw-v4] body #options>.options-content>hr{border:0!important;border-top:1px solid var(--v4-line)!important;margin:4px 6px!important;opacity:1!important}
+/* 高度不超过按钮上方的空间（首页输入框在屏幕中间，长菜单会顶出窗口上沿，Lulu 2026-09-29 P1）；超出就在菜单里滚 */
+html[data-cw-v4] body :is(#extensionsMenu,#options>.options-content){max-height:var(--cw-v4-menu-maxh,calc(100dvh - 24px))!important;overflow-y:auto!important;overscroll-behavior:contain}
 /* 消息「…」更多操作（design-v4 .extraMesButtons-menu，2026-09-29）：
    单行图标、高 28px、和按下的「…」同一种灰，无边框无阴影，浮在按钮栏上方 6px。
    position:fixed + official-layout.js 按「…」的位置写 --cw-more-x / -y / -max：不动 #chat、消息、输入区的 overflow。
@@ -946,9 +956,19 @@ html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraM
 html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible::-webkit-scrollbar{display:none}
 html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible:not([data-cw-more]){visibility:hidden!important}
 html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>*{display:grid!important;place-items:center!important;flex:0 0 34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:26px!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:5px!important;background:none!important;color:var(--v4-muted)!important;font-size:15px!important;line-height:1!important;opacity:1!important;visibility:visible!important;filter:none!important;overflow:hidden!important;white-space:nowrap!important;cursor:pointer!important;pointer-events:auto!important;order:0!important;animation:none!important;transform:none!important}
-/* 旧主题把「建检查点 / 建分支」改画成 👍 / 👎 装饰（还关了点击、加了点头动画、改了顺序）：浮层里还原成酒馆原本的图标和功能 */
-html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_create_bookmark::before{content:"\f11e"!important}
-html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_create_branch::before{content:"\f126"!important}
+/* 图标：酒馆自带的这几个换成 design-v4 的线条图标（和主按钮栏同一套，official-icons.js），Lulu 2026-09-29：Font Awesome 实心图标加灰色太重。
+   旧主题把「建检查点 / 建分支」画成 👍 / 👎 装饰（还关了点击、加了点头动画、改了顺序），这里一并还原成检查点 / 分支。
+   插件自己加的按钮不认识，保留它自己的图标，只调小、调浅。 */
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>:is(.mes_translate,.sd_message_gen,.mes_hide,.mes_unhide,.mes_embed,.mes_swipe_picker,.mes_create_bookmark,.mes_create_branch)::before{content:""!important;display:block!important;width:17px!important;height:17px!important;background:currentColor!important;-webkit-mask:var(--cw-v4-mask) center/contain no-repeat!important;mask:var(--cw-v4-mask) center/contain no-repeat!important;font-size:0!important}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_translate{--cw-v4-mask:var(--cw-v4-icon-translate)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.sd_message_gen{--cw-v4-mask:var(--cw-v4-icon-image)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_hide{--cw-v4-mask:var(--cw-v4-icon-eye)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_unhide{--cw-v4-mask:var(--cw-v4-icon-eyeoff)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_embed{--cw-v4-mask:var(--cw-v4-icon-clip)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_swipe_picker{--cw-v4-mask:var(--cw-v4-icon-bookmark)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_create_bookmark{--cw-v4-mask:var(--cw-v4-icon-flag)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>.mes_create_branch{--cw-v4-mask:var(--cw-v4-icon-branch)}
+html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>*::before{font-size:13px!important;opacity:.9}
 html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>*:hover{background:var(--v4-hover)!important;color:var(--v4-text)!important}
 /* 酒馆自己按状态藏的按钮（style.css / css/toggle-dependent.css）照样藏：上面那条把主题的「全部隐藏」盖掉了，这里再把原生规则补回来 */
 html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraMesButtons.visible>:is(.displayNone,[hidden],[style*="display: none"],[style*="display:none"]),

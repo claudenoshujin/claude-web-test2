@@ -185,11 +185,12 @@ worldEntry.querySelector('dialog[open]').close();
   const extBtn=d.createElement('div');extBtn.id='extensionsMenuButton';optBtn.before(extBtn);   // extensions.js adds these at runtime
   const extMenu=d.createElement('div');extMenu.id='extensionsMenu';extMenu.style.display='none';d.body.append(extMenu);
   const rect=(l,w)=>()=>({left:l,right:l+w,top:0,bottom:0,width:w,height:0});
-  extBtn.getBoundingClientRect=rect(341,32);optBtn.getBoundingClientRect=rect(381,32);
+  extBtn.getBoundingClientRect=()=>({left:341,right:373,top:411,bottom:443,width:32,height:32});optBtn.getBoundingClientRect=rect(381,32);
   extMenu.getBoundingClientRect=rect(0,170);opts.getBoundingClientRect=rect(0,181);
   optBtn.click();
   assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-shift'),'-40px','≡ menu shifts onto the + button\'s left edge');
   assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-w'),'200px','both menus take the wider natural width (at least 200px)');
+  assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-maxh'),'399px','menus are capped at the room above the buttons (welcome page: composer mid-screen)');
   opts.getBoundingClientRect=rect(0,236);extBtn.click();
   assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-w'),'236px','width follows the wider menu, including a closed one');
   assert.equal(extMenu.style.display,'none','measuring a closed menu must leave it closed');

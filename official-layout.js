@@ -1,4 +1,4 @@
-import { officialIcons } from './official-icons.js?v=20260928d';
+import { officialIcons } from './official-icons.js?v=20260929a';
 import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928d';
 import { tr } from './official-i18n.js?v=20260928d';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
@@ -717,8 +717,12 @@ export function installOfficialLayout(win = window) {
       root.removeAttribute('data-cw-v4-menu-measure');
       root.style.setProperty('--cw-v4-menu-w', w + 'px');
       root.style.setProperty('--cw-v4-menu-shift', Math.round(extBtn.getBoundingClientRect().left - optBtn.getBoundingClientRect().left) + 'px');
+      // Both open upward (Popper top-start) and ST caps them at the window height, not at the
+      // room above the button. On the welcome page the composer sits mid-screen, so a long menu
+      // ran off the top. Cap the height at the room above the button; the list scrolls inside.
+      root.style.setProperty('--cw-v4-menu-maxh', Math.max(160, Math.floor(extBtn.getBoundingClientRect().top - 12)) + 'px');
     }, true);
-    disposers.push(() => { root.style.removeProperty('--cw-v4-menu-w'); root.style.removeProperty('--cw-v4-menu-shift'); });
+    disposers.push(() => { root.style.removeProperty('--cw-v4-menu-w'); root.style.removeProperty('--cw-v4-menu-shift'); root.style.removeProperty('--cw-v4-menu-maxh'); });
     const ctx = win.SillyTavern?.getContext?.();
     for (const key of ['CHAT_CHANGED','CHARACTER_MESSAGE_RENDERED','USER_MESSAGE_RENDERED','MESSAGE_SWIPED','SETTINGS_LOADED','APP_READY']) {
       const event = ctx?.eventTypes?.[key]; if (event && ctx.eventSource?.on) { ctx.eventSource.on(event,schedule); disposers.push(() => ctx.eventSource.removeListener?.(event,schedule)); }
