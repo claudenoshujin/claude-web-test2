@@ -1,4 +1,4 @@
-import { officialIcons } from './official-icons.js?v=20260929a';
+import { officialIcons } from './official-icons.js?v=20260929b';
 import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928d';
 import { tr } from './official-i18n.js?v=20260928d';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:

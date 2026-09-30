@@ -14,7 +14,7 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260929g";
+import { installOfficialLayout } from "./official-layout.js?v=20260929h";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -425,7 +425,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.186-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.187-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -6896,6 +6896,156 @@ if (CLAUDE_ENABLED) {
     return `${group}${avatar}_${record?.file_name ?? ''}`;
   }
 
+  function writeAccountStorage(key, value) {
+    const store = getContext()?.accountStorage;
+    const raw = JSON.stringify(value);
+    if (typeof store?.setItem === 'function') store.setItem(key, raw);
+    else hostWindow.localStorage.setItem(key, raw);
+  }
+
+  /* ===== 近期对话「⋯」菜单：置顶 / 重命名 / 删除（v4，Lulu 2026-09-29，照 claude.ai）=====
+     一个共用的小菜单挂在 body 上，position:fixed 贴着「⋯」按钮（下方放不下就翻到上方）。
+     三个动作都走酒馆自己的数据：置顶写同一个 accountStorage 键（key 拼法同 PinnedChatsManager），
+     重命名用酒馆的输入弹窗和 renameGroupOrCharacterChat / updateRemoteChatName，删除沿用下面的删除链路。
+     注意：酒馆的 PinnedChatsManager 有内存缓存，它自己的欢迎页要刷新后才看得到这里改的置顶。 */
+  let recentMenu = null;               // { el, row, cleanup }
+  let recentLongPressUntil = 0;
+
+  function closeRecentMenu() {
+    if (!recentMenu) return;
+    recentMenu.cleanup();
+    recentMenu.el.remove();
+    recentMenu.row.classList.remove('cw-recent-menu-open');
+    recentMenu = null;
+  }
+
+  function openRecentMenu(entry, row, anchor) {
+    closeRecentMenu();
+    const cn = ccPrefersChinese();
+    const pinned = Object.prototype.hasOwnProperty.call(readPinnedChats(), pinnedKeyFor(entry.record));
+    const menu = hostDocument.createElement('div');
+    menu.className = 'cw-recent-menu';
+    menu.setAttribute('role', 'menu');
+    const item = (icon, label, run, danger = false) => {
+      const b = hostDocument.createElement('button');
+      b.type = 'button';
+      b.className = 'cw-recent-menu-item' + (danger ? ' danger' : '');
+      b.setAttribute('role', 'menuitem');
+      b.dataset.icon = icon;
+      b.textContent = label;
+      b.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeRecentMenu();
+        void run().catch(error => {
+          console.error('[Claude-Clawd] 近期对话操作失败：', error);
+          hostWindow.toastr?.error?.(String(error?.message || error || '').slice(0, 180));
+        });
+      });
+      return b;
+    };
+    menu.append(
+      item('pin', pinned ? (cn ? '取消置顶' : 'Unpin') : (cn ? '置顶' : 'Pin'), () => toggleRecentPin(entry)),
+      item('pencil', cn ? '重命名' : 'Rename', () => renameRecent(entry)),
+      item('trash', cn ? '删除' : 'Delete', async () => deleteRecentRow(row), true),
+    );
+    hostDocument.body.append(menu);
+    row.classList.add('cw-recent-menu-open');
+    const a = anchor.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    const left = Math.max(8, Math.min(a.right - m.width, hostWindow.innerWidth - m.width - 8));
+    let top = a.bottom + 4;
+    if (top + m.height > hostWindow.innerHeight - 8) top = Math.max(8, a.top - m.height - 4);
+    menu.style.left = Math.round(left) + 'px';
+    menu.style.top = Math.round(top) + 'px';
+    const outside = event => { if (!menu.contains(event.target) && !anchor.contains(event.target)) closeRecentMenu(); };
+    const key = event => { if (event.key === 'Escape') { closeRecentMenu(); event.stopPropagation(); } };
+    const away = () => closeRecentMenu();
+    hostDocument.addEventListener('pointerdown', outside, true);
+    hostDocument.addEventListener('keydown', key, true);
+    hostWindow.addEventListener('resize', away);
+    const list = row.closest('.recentChatList');
+    list?.addEventListener('scroll', away, { passive: true });
+    recentMenu = {
+      el: menu, row,
+      cleanup() {
+        hostDocument.removeEventListener('pointerdown', outside, true);
+        hostDocument.removeEventListener('keydown', key, true);
+        hostWindow.removeEventListener('resize', away);
+        list?.removeEventListener('scroll', away);
+      },
+    };
+  }
+
+  async function toggleRecentPin(entry) {
+    const state = { ...readPinnedChats() };
+    const key = pinnedKeyFor(entry.record);
+    if (Object.prototype.hasOwnProperty.call(state, key)) delete state[key];
+    else state[key] = { group: entry.record?.group, avatar: entry.record?.avatar, file_name: entry.record?.file_name };
+    writeAccountStorage(PINNED_CHATS_KEY, state);
+    recentDataVersion += 1;
+    refreshRailRecents({ force: true });
+  }
+
+  async function renameRecent(entry) {
+    const { main, popup } = await loadDeleteModules();
+    const cn = ccPrefersChinese();
+    const oldName = entry.fileName;
+    const title = cn ? '新的对话名' : 'New chat name';
+    const answer = typeof popup?.callGenericPopup === 'function' && popup?.POPUP_TYPE?.INPUT !== undefined
+      ? await popup.callGenericPopup(title, popup.POPUP_TYPE.INPUT, oldName)
+      : hostWindow.prompt(title, oldName);
+    const newName = typeof answer === 'string' ? answer.trim() : '';
+    if (!newName || newName === oldName) return;
+    if (typeof main?.renameGroupOrCharacterChat !== 'function') {
+      throw new Error(cn ? '拿不到酒馆的重命名接口' : 'SillyTavern rename API unavailable');
+    }
+    if (entry.isGroup) {
+      await main.renameGroupOrCharacterChat({ groupId: entry.group, oldFileName: oldName, newFileName: newName, loader: false });
+    } else {
+      const { index } = resolveCharacterIndex(main, entry.avatar);
+      if (index < 0) throw new Error((cn ? '找不到角色：' : 'Character not found: ') + entry.avatar);
+      await main.renameGroupOrCharacterChat({ characterId: String(index), oldFileName: oldName, newFileName: newName, loader: false });
+      if (typeof main.updateRemoteChatName === 'function') await main.updateRemoteChatName(index, newName);
+    }
+    // 置顶跟着改名走（同 PinnedChatsManager.rename）
+    const state = { ...readPinnedChats() };
+    const oldKey = pinnedKeyFor(entry.record);
+    if (Object.prototype.hasOwnProperty.call(state, oldKey)) {
+      const ext = /\.jsonl$/i.test(String(entry.record?.file_name ?? '')) ? '.jsonl' : '';
+      const renamed = { ...entry.record, file_name: newName + ext };
+      delete state[oldKey];
+      state[pinnedKeyFor(renamed)] = { group: renamed.group, avatar: renamed.avatar, file_name: renamed.file_name };
+      writeAccountStorage(PINNED_CHATS_KEY, state);
+    }
+    hostWindow.toastr?.success?.(cn ? '已重命名' : 'Chat renamed');
+    recentDataVersion += 1;
+    refreshRailRecents({ force: true });
+  }
+
+  function deleteRecentRow(row) {
+    if (recentDeleteBusy) return;
+    recentDeleteBusy = true;
+    void deleteRecentWithoutOpening(row).catch(error => {
+      console.error('[Claude-Clawd] 删除近期对话失败：', error);
+      const detail = String(error?.message || error || '').slice(0, 180);
+      hostWindow.toastr?.error?.(
+        ccPrefersChinese() ? `删除失败：${detail}` : `Chat deletion failed: ${detail}`,
+      );
+    }).finally(() => {
+      recentDeleteBusy = false;
+      refreshRailRecents({ force: true });
+    });
+  }
+
+  /* 当前对话那一行挂 cw-current：手机上「⋯」只在这一行常显（其余行长按） */
+  function markCurrentRecent() {
+    const chatId = String(getContext()?.getCurrentChatId?.() ?? '');
+    for (const row of hostDocument.querySelectorAll('.clawd-rail-recents .recentChat')) {
+      const on = Boolean(chatId) && normalizeChatKey(row.dataset.file) === normalizeChatKey(chatId);
+      if (row.classList.contains('cw-current') !== on) row.classList.toggle('cw-current', on);
+    }
+  }
+
   /* 拉取 + 补齐 + 排序。补齐和排序规则照抄 1.18 getRecentChats 的尾巴，
      否则侧栏顺序会和欢迎页对不上。 */
   async function buildRecentEntries() {
@@ -7140,7 +7290,15 @@ if (CLAUDE_ENABLED) {
     del.className = 'menu_button menu_button_icon deleteChat';
     del.title = ccPrefersChinese() ? '删除对话' : 'Delete chat';
     del.innerHTML = '<i class="fa-solid fa-trash fa-fw"></i>';
-    actions.append(del);
+    /* v4（classic + rail）：「⋯」打开一个小菜单：置顶 / 重命名 / 删除（Lulu 2026-09-29，照 claude.ai）。
+       垃圾桶留给其他结构 / 皮肤；v4 里藏掉垃圾桶、显示「⋯」，别处反过来（official-layout.css）。 */
+    const more = hostDocument.createElement('button');
+    more.type = 'button';
+    more.className = 'cw-recent-more';
+    more.title = ccPrefersChinese() ? '更多' : 'More';
+    more.setAttribute('aria-label', more.title);
+    more.setAttribute('aria-haspopup', 'menu');
+    actions.append(del, more);
 
     nameContainer.append(nameLine, date, actions, meta);
     if (preview) nameContainer.append(preview);
@@ -7234,7 +7392,9 @@ if (CLAUDE_ENABLED) {
          行整体点击 = 打开；删除键单独处理并阻止冒泡，免得删完顺手把它打开。 */
       row.addEventListener('click', event => {
         if (event.target instanceof hostWindow.Element
-          && event.target.closest('.deleteChat')) return;
+          && event.target.closest('.chatActions')) return;
+        // 长按刚打开了菜单：抬手时浏览器补发的这次 click 不算「打开这条对话」
+        if (Date.now() < recentLongPressUntil) return;
         void openRecentChat(entry).catch(error => {
           console.error('[Claude-Clawd] 打开近期对话失败：', error);
         });
@@ -7246,21 +7406,33 @@ if (CLAUDE_ENABLED) {
       row.querySelector('.deleteChat')?.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
-        if (recentDeleteBusy) return;
-        recentDeleteBusy = true;
-        void deleteRecentWithoutOpening(row).catch(error => {
-          console.error('[Claude-Clawd] 删除近期对话失败：', error);
-          const detail = String(error?.message || error || '').slice(0, 180);
-          hostWindow.toastr?.error?.(
-            ccPrefersChinese() ? `删除失败：${detail}` : `Chat deletion failed: ${detail}`,
-          );
-        }).finally(() => {
-          recentDeleteBusy = false;
-          refreshRailRecents({ force: true });
-        });
+        deleteRecentRow(row);
       });
+      row.querySelector('.cw-recent-more')?.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (recentMenu?.row === row) closeRecentMenu();
+        else openRecentMenu(entry, row, event.currentTarget);
+      });
+      /* 手机没有悬停：长按一行直接打开它的菜单（0.5 秒，手指挪开 8px 以上算滚动，不算长按） */
+      row.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'touch') return;
+        const x = event.clientX, y = event.clientY;
+        const timer = hostWindow.setTimeout(() => {
+          recentLongPressUntil = Date.now() + 700;
+          openRecentMenu(entry, row, row.querySelector('.cw-recent-more') || row);
+        }, 500);
+        const stop = () => { hostWindow.clearTimeout(timer); row.removeEventListener('pointermove', move); };
+        const move = e => { if (Math.hypot(e.clientX - x, e.clientY - y) > 8) stop(); };
+        row.addEventListener('pointermove', move);
+        row.addEventListener('pointerup', stop, { once: true });
+        row.addEventListener('pointercancel', stop, { once: true });
+      });
+      row.addEventListener('contextmenu', event => { if (Date.now() < recentLongPressUntil) event.preventDefault(); });
       list.append(row);
     }
+    if (recentMenu && !recentMenu.row.isConnected) closeRecentMenu();   // 列表重建了，菜单指着的那行已经不在
+    markCurrentRecent();
     setBodyClass('clawd-has-recents', entries.length > 0);
   }
 
@@ -7369,6 +7541,7 @@ if (CLAUDE_ENABLED) {
     const holder = hostDocument.querySelector('#top-settings-holder');
     if (!holder) return;
     ensureRecentsSlot(holder);
+    markCurrentRecent();
     if (recentRenderPending) return;
 
     const now = Date.now();

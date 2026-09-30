@@ -470,6 +470,27 @@ html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatName{positio
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatDate{position:static!important;grid-column:2!important;grid-row:1!important;width:auto!important;white-space:nowrap!important;opacity:1!important;visibility:visible!important}
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatPreview{position:static!important;grid-column:1/-1!important;grid-row:2!important;width:auto!important;max-width:100%!important;min-width:0!important;margin:0!important;line-height:1.4!important}
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatActions{position:absolute!important;right:0!important;top:0!important}
+/* 近期对话「⋯」（Lulu 2026-09-29，照 claude.ai）：垃圾桶换成「⋯」，点开是置顶 / 重命名 / 删除的小菜单（index.js openRecentMenu）。
+   电脑：悬停这一行才出现，出现时顶掉右上角的时间。手机没有悬停：只在当前对话那一行常显，其他行长按打开菜单。
+   手机主题原来故意把 .chatActions 整个藏了（所以手机上删除、编辑都没有），v4 里放出来。其他结构 / 皮肤仍是原来的垃圾桶。 */
+html:not([data-cw-v4]) .cw-recent-more{display:none!important}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatActions{display:flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;z-index:2}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatActions>.deleteChat{display:none!important}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .cw-recent-more{display:grid!important;place-items:center!important;width:26px!important;height:24px!important;margin:-4px -2px 0 0!important;padding:0!important;border:0!important;border-radius:6px!important;background:none!important;color:var(--v4-muted)!important;cursor:pointer!important;opacity:0;pointer-events:none}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .cw-recent-more::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:var(--cw-v4-icon-dots) center/contain no-repeat;mask:var(--cw-v4-icon-dots) center/contain no-repeat}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .cw-recent-more:hover,html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .recentChat.cw-recent-menu-open .cw-recent-more{background:var(--v4-hover)!important;color:var(--v4-text)!important}
+html[data-cw-v4] body:not(.clawd-mobile-layout) #top-settings-holder .clawd-rail-recents .recentChat:is(:hover,:focus-within,.cw-recent-menu-open) .cw-recent-more,
+html[data-cw-v4] body.clawd-mobile-layout #top-settings-holder .clawd-rail-recents .recentChat:is(.cw-current,.cw-recent-menu-open) .cw-recent-more{opacity:1;pointer-events:auto}
+html[data-cw-v4] body:not(.clawd-mobile-layout) #top-settings-holder .clawd-rail-recents .recentChat:is(:hover,:focus-within,.cw-recent-menu-open) .chatDate,
+html[data-cw-v4] body.clawd-mobile-layout #top-settings-holder .clawd-rail-recents .recentChat:is(.cw-current,.cw-recent-menu-open) .chatDate{visibility:hidden!important}
+.cw-recent-menu{position:fixed;z-index:4100;display:flex;flex-direction:column;min-width:150px;padding:5px;box-sizing:border-box;background:var(--v4-panel,#fff);border:1px solid var(--v4-line,#e5e3dc);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.14)}
+.cw-recent-menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:7px;background:none;font:400 14px/1.3 var(--cw-v4-font,inherit);color:var(--v4-text,#1f1e1d);text-align:left;white-space:nowrap;cursor:pointer}
+.cw-recent-menu-item:hover{background:var(--v4-hover,rgba(31,30,29,.05))}
+.cw-recent-menu-item.danger{color:var(--v4-danger,#c2412f)}
+.cw-recent-menu-item::before{content:"";flex:none;width:16px;height:16px;background:currentColor;-webkit-mask:var(--cw-recent-icon) center/contain no-repeat;mask:var(--cw-recent-icon) center/contain no-repeat}
+.cw-recent-menu-item[data-icon="pin"]{--cw-recent-icon:var(--cw-v4-icon-pin)}
+.cw-recent-menu-item[data-icon="pencil"]{--cw-recent-icon:var(--cw-v4-icon-pencil)}
+.cw-recent-menu-item[data-icon="trash"]{--cw-recent-icon:var(--cw-v4-icon-trash)}
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents :is(.recentChat,.recentChatInfo,.chatNameContainer){height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important}
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatNameContainer{grid-template-rows:auto auto!important}
 html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatPreview{inset:auto!important;transform:none!important;translate:none!important;height:auto!important;min-height:0!important;max-height:none!important}

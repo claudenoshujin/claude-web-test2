@@ -7,8 +7,8 @@ const indexPath = path.join(root, 'index.js');
 const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 
-assert.equal(manifest.version, '2.0.186');
-assert.equal(manifest.js, 'loader-2.0.186.js');
+assert.equal(manifest.version, '2.0.187');
+assert.equal(manifest.js, 'loader-2.0.187.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -174,4 +174,10 @@ assert.match(officialCss, /#chat>\.mes:not\(\[data-media-display="gallery"\]\) \
 assert.doesNotMatch(officialCss, /#chat[^{]*\{[^}]*overflow:visible/, 'the popup must not change overflow on the chat area or messages');
 assert.match(officialCss, /html\[data-cw-v4\] body #options>\.options-content>a,[^{]*\{(?![^}]*display:)[^}]*padding:8px 10px!important/, 'input menu items must not force display: ST hides some of them by state');
 assert.match(officialCss, /:is\(#extensionsMenu,#options>\.options-content\)\{max-height:var\(--cw-v4-menu-maxh/, 'input menus are capped at the room above the buttons');
+/* 近期对话「⋯」菜单（2026-09-29）：置顶 / 重命名 / 删除，走酒馆自己的接口 */
+assert.match(index, /more\.className = 'cw-recent-more';/, 'each recent row gets a ⋯ button');
+assert.match(index, /item\('pin', pinned \?/, 'the ⋯ menu offers pin / unpin');
+assert.match(index, /main\.renameGroupOrCharacterChat\(\{ characterId: String\(index\), oldFileName: oldName, newFileName: newName, loader: false \}\)/, 'rename goes through ST\'s own renameGroupOrCharacterChat');
+assert.match(index, /writeAccountStorage\(PINNED_CHATS_KEY, state\)/, 'pin writes ST\'s own pinnedChats account storage key');
+assert.match(officialCss, /body\.clawd-mobile-layout #top-settings-holder \.clawd-rail-recents \.recentChat:is\(\.cw-current,\.cw-recent-menu-open\) \.cw-recent-more/, 'phone: ⋯ shows on the current chat (others long-press)');
 console.log('✓ Claude Web 2.0.156 focused regressions passed');
