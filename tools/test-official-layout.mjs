@@ -190,7 +190,7 @@ worldEntry.querySelector('dialog[open]').close();
   optBtn.click();
   assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-shift'),'-40px','≡ menu shifts onto the + button\'s left edge');
   assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-w'),'200px','both menus take the wider natural width (at least 200px)');
-  assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-maxh'),'399px','menus are capped at the room above the buttons (welcome page: composer mid-screen)');
+  assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-maxh'),'383px','menus are capped at the room above the buttons, minus their own padding/border (welcome page: composer mid-screen)');
   opts.getBoundingClientRect=rect(0,236);extBtn.click();
   assert.equal(d.documentElement.style.getPropertyValue('--cw-v4-menu-w'),'236px','width follows the wider menu, including a closed one');
   assert.equal(extMenu.style.display,'none','measuring a closed menu must leave it closed');

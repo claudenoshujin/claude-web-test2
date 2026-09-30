@@ -720,7 +720,8 @@ export function installOfficialLayout(win = window) {
       // Both open upward (Popper top-start) and ST caps them at the window height, not at the
       // room above the button. On the welcome page the composer sits mid-screen, so a long menu
       // ran off the top. Cap the height at the room above the button; the list scrolls inside.
-      root.style.setProperty('--cw-v4-menu-maxh', Math.max(160, Math.floor(extBtn.getBoundingClientRect().top - 12)) + 'px');
+      // 28 = 上方留白 12 + 菜单自己的内边距和边框约 14：只减 12 的话整个菜单比上方空间高一点，Popper 会把它翻到按钮下面去
+      root.style.setProperty('--cw-v4-menu-maxh', Math.max(160, Math.floor(extBtn.getBoundingClientRect().top - 28)) + 'px');
     }, true);
     disposers.push(() => { root.style.removeProperty('--cw-v4-menu-w'); root.style.removeProperty('--cw-v4-menu-shift'); root.style.removeProperty('--cw-v4-menu-maxh'); });
     const ctx = win.SillyTavern?.getContext?.();
