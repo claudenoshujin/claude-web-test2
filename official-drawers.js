@@ -221,7 +221,10 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const head=make('div','cw-v4-wi-edit-head'),kill=Q('entryKillSwitch');
     const comment=Q('comment');if(comment){comment.classList.add('cw-v4-title-field');move(es,comment,head);}
     const stateSel=Q('entryStateSelector');const stateText=[];
-    if(stateSel){[...stateSel.options].forEach(o=>{stateText.push([o,o.textContent]);const st=STATE[o.value];if(st)o.textContent=t(st[0],st[1]);});stateSel.classList.add('cw-v4-state-sel');move(es,stateSel,head);}
+    if(stateSel){[...stateSel.options].forEach(o=>{stateText.push([o,o.textContent]);const st=STATE[o.value];if(st){o.textContent=t(st[0],st[1]);o.dataset.cwDot=st[2];}});stateSel.classList.add('cw-v4-state-sel');move(es,stateSel,head);}
+    // 2.0.242（Lulu：像原版那样有蓝灯绿灯）：状态下拉左边一颗灯，跟着当前状态变色；下拉列表里每项前面也有（openSelMenu 读 data-cw-dot）。
+    const stDot=make('span','cw-v4-dot cw-v4-state-dot');const paintDot=()=>{const k=STATE[stateSel?.value]?.[2]||'green';if(stDot.dataset.kind!==k)stDot.dataset.kind=k;};
+    if(stateSel){stateSel.before(stDot);es.created.push(stDot);paintDot();stateSel.addEventListener('input',paintDot);stateSel.addEventListener('change',paintDot);}
     const sw=make('input','');sw.type='checkbox';sw.checked=!kill?.classList.contains('fa-toggle-off');sw.addEventListener('change',()=>{kill?.click();});head.append(sw);
     const posSel=Q('position'),posText=[];
     if(posSel)[...posSel.options].forEach(o=>{posText.push([o,o.textContent]);const k=o.getAttribute('data-i18n')||'';const zh={'Before Char Defs':['角色定义之前','Before character'],'After Char Defs':['角色定义之后','After character'],'Before EM':['示例消息之前','Before examples'],'After EM':['示例消息之后','After examples'],'Before AN':['作者注释之前',"Before Author's Note"],'After AN':['作者注释之后',"After Author's Note"],'at Depth System':['按深度 · 系统','At depth · System'],'at Depth User':['按深度 · 用户','At depth · User'],'at Depth AI':['按深度 · AI','At depth · AI'],'Outlet':['输出口','Outlet']}[k];if(zh)o.textContent=t(...zh);});
@@ -251,6 +254,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       content?.removeEventListener('input',tk);
       for(const [c,d,h] of shown){c.style.display=d;c.hidden=h;c.classList.remove('cw-v4-icon-toggle');}
       for(const [o,v] of [...stateText,...posText])o.textContent=v;
+      if(stateSel){stateSel.removeEventListener('input',paintDot);stateSel.removeEventListener('change',paintDot);for(const o of stateSel.options)delete o.dataset.cwDot;}
       comment?.classList.remove('cw-v4-title-field');stateSel?.classList.remove('cw-v4-state-sel');
       for(const [node,mark] of [...es.moves].reverse())if(mark.parentNode)mark.replaceWith(node);
       es.created.forEach(n=>n.remove());box.remove();paintEntry(entry);
@@ -433,7 +437,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   function characters(panel){const list=get('rm_characters_block');if(!list)return;const started=begin(list);if(!started)return;const {s,page}=started;
     // In the edit view the native list button is the way back to the list.
     const back=get('rm_button_characters');if(back&&!back.querySelector('.cw-v4-action-label')){const label=make('span','cw-v4-action-label',t('全部角色','All characters'));back.append(label);s.created.push(label);back.classList.add('cw-v4-back');s.cleanup=()=>back.classList.remove('cw-v4-back');}
-    const sec=section(page,'');row(s,sec,'','点「编辑」修改角色；点整行直接开始聊天',[act(s,get('rm_button_create'),'新建角色',true),menu(s,[['从文件导入',get('character_import_button')],['从网址导入',get('external_import_button')],['新建群聊',get('rm_button_group_chats')],['批量编辑',get('bulkEditButton')],['网格视图',get('charListGridToggle')]])]);
+    const sec=section(page,'');row(s,sec,'','点角色进入编辑；⋯ 里可以直接开始聊天',[act(s,get('rm_button_create'),'新建角色',true),menu(s,[['从文件导入',get('character_import_button')],['从网址导入',get('external_import_button')],['新建群聊',get('rm_button_group_chats')],['批量编辑',get('bulkEditButton')],['网格视图',get('charListGridToggle')]])]);
     const all=section(page,'全部角色');all.classList.add('cw-v4-entries');const b=bar();all.append(b);
     b.append(searchBox(s,get('character_search_bar'),'搜索角色'));move(s,get('character_sort_order'),b);
     const tags=list.querySelector('#charListFixedTop .rm_tag_controls');
@@ -466,15 +470,17 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       if(action)get(action)?.click();else if(!edit)closeSettings?.();
     };
     const run=action=>()=>select(true,action).catch(console.error);
-    actions.append(button(L('编辑'),e=>{e.stopPropagation();select(true).catch(console.error);}),menu(s,[['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['删除',null,true,run('delete_button')]]));
+    // 2.0.215（Lulu）：点角色 = 进入编辑（和设置里其他「›」行一样进下一页）；直接去聊天放进 ⋯ 的第一项。原来点整行是开始聊天、「编辑」另有一个按钮。
+    const chev=make('span','cw-v4-character-chev');chev.setAttribute('aria-hidden','true');
+    actions.append(menu(s,[['开始聊天',null,false,()=>select(false).catch(console.error)],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['删除',null,true,run('delete_button')]]),chev);
     item.append(actions);
-    const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(false).catch(console.error);};
+    const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(true).catch(console.error);};
     item.addEventListener('click',click);s.cleanup=()=>item.removeEventListener('click',click);
   });}
 
   /* ---------------- API 连接 ---------------- */
   function api(panel){
-    panel.classList.add('cw-v4-api-page');const started=begin(panel);
+    if(!panel.classList.contains('cw-v4-api-page'))panel.classList.add('cw-v4-api-page');const started=begin(panel);
     if(started){const {s,page}=started;
       s.profile=section(page,'连接配置');
       // Provider blocks sit inside the API section so the source row continues
@@ -510,7 +516,8 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
 
   /* ---------------- 扩展 ---------------- */
   function extensions(panel){
-    panel.classList.add('cw-v4-extension-page');
+    // 已经有就不再 add：add 一个已有的 class 也会重写属性，触发设置页的 sync 循环（见 official-layout.js sync）。
+    if(!panel.classList.contains('cw-v4-extension-page'))panel.classList.add('cw-v4-extension-page');
     const started=begin(panel);
     if(started){const {s,page}=started,top=section(page,'');
       row(s,top,'','管理、安装和配置扩展',[act(s,get('third_party_extension_button'),'安装扩展'),act(s,get('extensions_details'),'管理')]);

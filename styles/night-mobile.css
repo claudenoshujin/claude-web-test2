@@ -2295,11 +2295,6 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
     html body #send_textarea { font-size:16px !important; }
   }
 }
-.mes.last_mes { animation:claude-fade-rise 240ms cubic-bezier(.16,1,.3,1) both; }
-@keyframes claude-fade-rise {
-  from { opacity:0; transform:translateY(4px); }
-  to { opacity:1; transform:translateY(0); }
-}
 :is(button,.mes_button,.menu_button,.drawer-icon,a,select,.inline-drawer-toggle):focus-visible {
   outline:2px solid var(--cw-mark) !important; outline-offset:2px !important;
 }
@@ -2364,8 +2359,8 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
    2.0.162：原来写成 html:has(...)，根节点 :has() 会让聊天每次追加都重算整页样式。
    改由 index.js 在 <html> 上同步 claude-pm-open / claude-top-drawer-open；
    :not(#claude-spec...) 只用来补回原 :has() 的优先级，不要删，也不要再改回 :has()。 */
-html.claude-pm-open:not(#claude-spec),
-html.claude-pm-open:not(#claude-spec) body {
+html[data-claude-pm-open]:not(#claude-spec),
+html[data-claude-pm-open]:not(#claude-spec) body {
   transform:none !important;
   perspective:none !important;
   filter:none !important;
@@ -2401,7 +2396,7 @@ html.claude-pm-open:not(#claude-spec) body {
   min-height:max(0px, calc(var(--cl-mobile-viewport-height, 100vh) - 100dvh + 16px));
   pointer-events:none;
 }
-html.claude-pm-open:not(#claude-spec) body #form_sheld {
+html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
   visibility:hidden !important;
   pointer-events:none !important;
 }
@@ -5195,7 +5190,7 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
 
 /* Claude Web 2.0.11 — keep the original mobile header stable while a drawer opens. */
 @media (max-width:700px) {
-  html.claude-top-drawer-open:not(#claude-spec.claude-spec.claude-spec) body #top-bar {
+  html[data-claude-top-drawer-open]:not(#claude-spec.claude-spec.claude-spec) body #top-bar {
     pointer-events:auto !important;
     background:var(--cw-topbar-surface, var(--cw-surface-page)) !important;
     background-image:none !important;
@@ -5205,7 +5200,7 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
     content:none !important;
     display:none !important;
   }
-  html.claude-top-drawer-open:not(#claude-spec.claude-spec.claude-spec) body
+  html[data-claude-top-drawer-open]:not(#claude-spec.claude-spec.claude-spec) body
     #top-settings-holder > :is(.clawd-rail-brand,.clawd-mobile-new-chat,.clawd-rail-toggles,.clawd-rail-recents) {
     display:none !important;
   }
@@ -5382,7 +5377,7 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
 @media (max-width:700px) {
   html body #top-settings-holder > .drawer > .drawer-content {
     clip-path:none !important;
-    translate:none !important;
+    translate:none;
     transform:translate3d(-100%,0,0) !important;
     visibility:hidden !important;
     contain:layout paint !important;
@@ -5393,7 +5388,7 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
   }
   html body #top-settings-holder > .drawer > .drawer-content.openDrawer {
     clip-path:none !important;
-    translate:none !important;
+    translate:none;
     transform:translate3d(0,0,0) !important;
     visibility:visible !important;
     will-change:transform !important;
@@ -5404,7 +5399,7 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
   html body #top-settings-holder > .drawer > .drawer-content.closedDrawer,
   html body #top-settings-holder > .drawer > .drawer-content:not(.openDrawer) {
     clip-path:none !important;
-    translate:none !important;
+    translate:none;
     transform:translate3d(-100%,0,0) !important;
     visibility:hidden !important;
     pointer-events:none !important;

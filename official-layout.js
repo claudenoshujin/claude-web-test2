@@ -1,6 +1,6 @@
-import { officialIcons } from './official-icons.js?v=20260929c';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20260928d';
-import { tr } from './official-i18n.js?v=20260928d';
+import { officialIcons } from './official-icons.js?v=20261001a';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261002d';
+import { tr } from './official-i18n.js?v=20261001q';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -41,7 +41,7 @@ export function installOfficialLayout(win = window) {
   const PAGES = [
     {key:'look',title:'外观',icon:'palette',group:'偏好设置',lede:'主题、显示样式、尺寸与颜色',sections:[
       ['主题',()=>{const sel=take('themes');addClass(sel,'cw-v4-wide');const r1=prow(t('UI 主题','UI Theme'),'当前使用的界面主题预设',[sel],'cw-v4-stack');
-        const r2=R.btns('主题文件',['ui-preset-update-button','ui-preset-save-button','ui_preset_import_button','ui_preset_export_button','ui-preset-delete-button'],{icons:{'ui-preset-update-button':'save','ui-preset-save-button':'saveplus','ui_preset_import_button':'import','ui_preset_export_button':'export','ui-preset-delete-button':'trash'},desc:'覆盖保存 · 另存为新主题 · 导入 · 导出 · 删除',cls:''});
+        const r2=R.btns('主题文件',['ui-preset-update-button','ui-preset-save-button','ui_preset_import_button','ui_preset_export_button','ui-preset-delete-button'],{icons:{'ui-preset-update-button':'save','ui-preset-save-button':'saveplus','ui_preset_import_button':'import','ui_preset_export_button':'export','ui-preset-delete-button':'trash'},desc:'覆盖保存 · 另存为新主题 · 导入 · 导出 · 删除',cls:'cw-v4-textbtns',labels:{'ui-preset-update-button':'覆盖保存','ui-preset-save-button':'另存为','ui_preset_import_button':'导入','ui_preset_export_button':'导出','ui-preset-delete-button':'删除'}});
         addClass(doc.getElementById('ui-preset-delete-button'),'cw-v4-danger');const file=take('ui_preset_import_file');if(file&&r2)pm(file,r2);return [r1,r2];}],
       ['显示样式',()=>[R.sel('avatar_style'),R.sel('chat_display'),R.sel('media_display'),R.sel('toastr_position'),R.tog('waifuMode')]],
       ['尺寸',()=>[R.range('chat_width_slider','chat_width_slider_counter'),R.range('font_scale','font_scale_counter'),R.range('blur_strength','blur_strength_counter'),R.range('shadow_width','shadow_width_counter')]],
@@ -115,6 +115,8 @@ export function installOfficialLayout(win = window) {
     num(id,label){const el=take(id);if(!el)return null;let lab=el.previousElementSibling;while(lab&&!/^(SMALL|SPAN|LABEL)$/.test(lab.tagName))lab=lab.previousElementSibling;addClass(el,'cw-v4-num');return prow(label||textOf(lab)||labelFor(el),titleOf(el),[el]);},
     btns(label,ids,o={}){const els=ids.map(id=>{const b=take(id);if(!b)return null;addClass(b,'cw-v4-pref-btn');
         if(o.icons?.[id]){addClass(b,'cw-v4-icononly');const ic=icon(o.icons[id]);b.prepend(ic);prefParts.push(ic);}
+        // 2.0.222 电脑照 Claude Desktop：描边按钮写字。只给传了 labels 的行（主题文件）用，CSS 在电脑上显示这个短名、藏图标。
+        if(o.labels?.[id])b.dataset.cwLabel=L(o.labels[id]);
         else b.querySelectorAll('i').forEach(i=>{const g={'fa-recycle':'reset','fa-user-shield':'shield','fa-user-tie':'user','fa-right-from-bracket':'logout'};const k=Object.keys(g).find(c=>i.classList.contains(c));if(k){const ic=icon(g[k]);i.before(ic);prefParts.push(ic);}});
         return b;});
       return prow(label?L(label):'',o.desc||'',els,o.cls??'cw-v4-stackm');},
@@ -168,7 +170,10 @@ export function installOfficialLayout(win = window) {
     const pages = make('div','cw-v4-pref-pages');
     for (const p of PAGES) {
       const page = make('section','cw-v4-pref-page'); page.dataset.page = p.key;
-      page.append(make('h2','cw-v4-pref-title',L(p.title)));
+      const prefTitle = make('h2','cw-v4-pref-title',L(p.title));
+      // 没有导语时下面紧跟第一个小节标题；电脑上照 Claude Desktop 让小节标题顶上来（见 CSS ⑳）。
+      if (!p.lede) prefTitle.setAttribute('data-cw-headed','');
+      page.append(prefTitle);
       if (p.lede) page.append(make('p','cw-v4-lede',L(p.lede)));
       for (const [title,build] of p.sections) {
         const sec = make('div','cw-v4-section cw-v4-pref-sec'); sec.append(make('h2','',L(title)));
@@ -192,11 +197,33 @@ export function installOfficialLayout(win = window) {
     selectPrefs(prefPage);
   }
   const isOpen = p => p.classList.contains('openDrawer') && !p.classList.contains('closedDrawer');
-  function closeSettings() {
+  /* 2.0.222 电脑照 Claude Desktop（Lulu 录屏逐帧量的）：打开时对话框 100ms 淡入、只放大一点点（0.98→1），
+     背景压暗 + 模糊 200ms 淡入；关的时候对话框 70ms 淡出、背景 170ms。曲线前快后慢（≈ easeOutQuart）。
+     根节点 data-cw-desk-anim=in / out 只在动画那一小段挂着（data-* 不是 class，见 2.0.217），在设置里切页不重播。
+     关：先放 70ms 淡出，再让酒馆关抽屉；背景在 out 期间由 CSS 继续留着淡完。 */
+  const DESK_IN = 100, DESK_OUT = 70, DESK_BD_IN = 200, DESK_BD_OUT = 170;
+  let deskAnimTimer = 0, deskClosing = 0;
+  const calm = () => !!win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  function deskAnim(state, ms) {
+    win.clearTimeout(deskAnimTimer);
+    if (!state) { root.removeAttribute('data-cw-desk-anim'); return; }
+    if (root.getAttribute('data-cw-desk-anim') !== state) root.setAttribute('data-cw-desk-anim', state);
+    deskAnimTimer = win.setTimeout(() => root.removeAttribute('data-cw-desk-anim'), ms);
+  }
+  function closeNow() {
+    win.clearTimeout(deskClosing); deskClosing = 0;
+    closeSelMenu();
     for (const dialog of dialogs) dialog.close();
     for (const p of panels.values()) if (isOpen(p)) nativeToggle(p)?.click();
   }
+  function closeSettings() {
+    if (mobile() || !current || calm()) { closeNow(); return; }
+    if (deskClosing) return;
+    deskAnim('out', DESK_BD_OUT + 40);
+    deskClosing = win.setTimeout(closeNow, DESK_OUT);
+  }
   function activate(id) {
+    if (deskClosing) { win.clearTimeout(deskClosing); deskClosing = 0; deskAnim(null); }
     requestedPanel = id;
     const p = panels.get(id);
     if (p && !isOpen(p)) {
@@ -214,19 +241,20 @@ export function installOfficialLayout(win = window) {
     const nav = make('nav', 'cw-v4-nav'); nav.setAttribute('aria-label', t('设置页面', 'Settings pages'));
     const searchBox=make('label','cw-v4-search'); const search=make('input',''); search.type='search'; search.placeholder=L('搜索设置'); search.setAttribute('aria-label',search.placeholder); searchBox.append(icon('search'),search); nav.append(searchBox);
     on(search,'input',()=>{searchQuery=search.value.trim().toLocaleLowerCase();if(searchQuery)activate('user-settings-block');schedule();});
-    nav.append(make('div', 'cw-v4-group', L('酒馆')));
-    ids.forEach(([id, cn, en], i) => {
-      if (i === 8) { nav.append(make('div', 'cw-v4-group', L('偏好设置'))); return; }
-      const b = button('', () => activate(id), 'cw-v4-navitem'); b.append(icon(['sliders','plug','type','book','image','puzzle','card','user'][i]),make('span','',L(cn))); b.dataset.panel = id; nav.append(b);
-    });
+    // 2.0.208 第六稿的分组：对话 / 内容 / 界面 / 偏好设置（偏好设置的子页都放在最后一组）。
+    const NAV_ICONS = ['sliders','plug','type','book','image','puzzle','card','user'];
+    for (const [group, order] of [['对话',[0,1,2]],['内容',[3,6,7]],['界面',[4,5]]]) {
+      nav.append(make('div', 'cw-v4-group', L(group)));
+      for (const i of order) { const [id, cn] = ids[i]; const b = button('', () => activate(id), 'cw-v4-navitem'); b.append(icon(NAV_ICONS[i]),make('span','',L(cn))); b.dataset.panel = id; nav.append(b); }
+    }
+    nav.append(make('div', 'cw-v4-group', L('偏好设置')));
     for (const p of PAGES) {
-      if (p.key === 'adv') nav.append(make('div','cw-v4-group',L('系统')));
       const b = button('', () => {search.value='';searchQuery='';selectPrefs(p.key);}, 'cw-v4-navitem cw-v4-pref-nav'); b.append(icon(p.icon),make('span','',L(p.title))); b.dataset.pref = p.key; nav.append(b);
     }
     const head = make('header', 'cw-v4-head');
     // Phones: ≡ opens the Claude sidebar over the settings page (design v4 dp page); tapping outside returns to it.
     // Closing the page first cost a full-page restyle (~1.4 s frozen on phones), so the page stays open underneath.
-    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } railOver(true); win.requestAnimationFrame(() => win.requestAnimationFrame(() => { if (!doc.body.hasAttribute('data-clawd-menu')) rail.click(); })); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
+    const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } if (!doc.body.hasAttribute('data-clawd-menu')) rail.click(); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
     const title = make('h1', 'cw-v4-title');
     const close = button('', closeSettings, 'cw-v4-close'); close.append(icon('close')); close.setAttribute('aria-label', t('关闭设置', 'Close settings'));
     head.append(back, title, close);
@@ -268,21 +296,46 @@ export function installOfficialLayout(win = window) {
     const end = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', end); handle.removeEventListener('pointercancel', end); handle.removeEventListener('lostpointercapture', end); };
     handle.addEventListener('pointermove', move); ['pointerup','pointercancel','lostpointercapture'].forEach(type => handle.addEventListener(type,end));
   }
-  // Dialog stays inside the original parent (form, world entry, or extension
-  // container). Delegated events and closest() relationships remain intact.
+  // Dialog stays inside the original form / world entry / extension container
+  // (just outside our row wrapper). Delegated events and closest() still work.
   // opts.head replaces the title, opts.foot goes left of Done, opts.onClose
   // runs after the node is back in place (design openDialog).
   function openEditor(node, title, desc, opts = {}) {
     if (!node.isConnected || node.classList.contains('cw-v4-editing')) return;
+    // 2.0.222：扩展标题里带着帮助链接的「?」（图像生成 ?），弹窗标题不要它。
+    if (typeof title === 'string') title = title.replace(/\s*[?？]$/, '');
     const anchor = doc.createComment('cw-v4-return'); node.before(anchor);
+    // 2.0.221（Lulu：打开某个扩展的设置，它在列表里那一行就没了，关掉后零点几秒才回来）：扩展那一行是包在扩展自己的块里的，
+    // 整块搬进弹出页时行也跟着走。搬走期间原处放一份行的拷贝（不能点），搬回来再拿掉。
+    const standRow = node.querySelector?.(':scope>.cw-v4-extension-row');
+    let standIn = null;
+    if (standRow) { standIn = make('div', node.className + ' cw-v4-standin'); standIn.inert = true; standIn.setAttribute('aria-hidden', 'true'); standIn.append(standRow.cloneNode(true)); anchor.before(standIn); }
     const dialog = make('dialog', 'cw-v4-editor popup');
     const head = make('header', 'cw-v4-editor-head'); head.append(opts.head || make('h2', '', title));
-    const close = button('', () => dialog.close(),'cw-v4-button cw-v4-editor-x');close.append(icon('close'));close.setAttribute('aria-label',L('关闭'));head.append(close);
-    const footer=make('footer','cw-v4-editor-footer');if(opts.foot){footer.append(opts.foot,make('span','cw-v4-grow'));}footer.append(button(L('完成'),()=>dialog.close(),'cw-v4-button cw-v4-primary'));
+    // 手机上弹窗是从底下升起的弹出页：× / 完成 先播下滑（data-cw-closing），播完再关；电脑和 Escape 直接关。
+    // 2.0.222 电脑：照 Claude Desktop 先淡出 70ms 再关（data-cw-desk-out，CSS 放动画）。
+    const shut = () => {
+      if (!mobile()) { if (calm() || dialog.hasAttribute('data-cw-desk-out')) { dialog.close(); return; } dialog.setAttribute('data-cw-desk-out', ''); win.setTimeout(() => dialog.open && dialog.close(), DESK_OUT); return; }
+      if (dialog.hasAttribute('data-cw-closing')) { dialog.close(); return; } dialog.setAttribute('data-cw-closing', ''); syncSheet(); const done = () => dialog.open && dialog.close(); dialog.addEventListener('animationend', e => { if (e.target === dialog) done(); }); win.setTimeout(done, SHEET_MS + 80); };
+    dialog._cwShut = shut;
+    const close = button('', shut,'cw-v4-button cw-v4-editor-x');close.append(icon('close'));close.setAttribute('aria-label',L('关闭'));head.append(close);
+    // 2.0.211 手机（照 Claude 的 Capabilities 页）：左上是「‹ 上一页的名字」，不要 × 和「完成」（CSS 按宽度切换）。
+    // 上一页：从别的弹窗里打开的就是那个弹窗的标题，否则是设置页顶栏的标题。
+    const parentEditor = anchor.parentElement?.closest('dialog.cw-v4-editor');
+    const backLabel = (parentEditor ? parentEditor.querySelector(':scope>.cw-v4-editor-head>h2')?.textContent : doc.querySelector('.cw-v4-shell .cw-v4-title')?.textContent)?.trim() || L('返回');
+    const back = button('', shut, 'cw-v4-button cw-v4-editor-back'); back.append(icon('chevl'), make('span', '', backLabel)); back.setAttribute('aria-label', backLabel); head.prepend(back);
+    const footer=make('footer','cw-v4-editor-footer');if(opts.foot){footer.append(opts.foot,make('span','cw-v4-grow'));}else footer.classList.add('cw-v4-editor-footer-done');footer.append(button(L('完成'),shut,'cw-v4-button cw-v4-primary'));
     const body = make('div', 'cw-v4-editor-body');
     if (desc) body.append(make('p','cw-v4-editor-desc',desc));
     if (node.matches('textarea')) dialog.classList.add('cw-v4-text-editor');
-    anchor.after(dialog); body.append(node); dialog.append(head, body,footer);
+    // 2.0.209：弹窗放到我们自己包的行外面（仍在原来的表单 / 分区里）。放在行里时，手机按行类型排版的规则
+    // （[data-cw-kind=nav] 里的按钮铺满整行等）会套到弹窗和它的按钮上，弹窗飘到左上角、「完成」跑出去。
+    let host = null;
+    for (let n = anchor.parentElement?.closest('.cw-v4-row,.cw-v4-api-row'); n; n = n.parentElement?.closest('.cw-v4-row,.cw-v4-api-row')) host = n;
+    // 2.0.214：要编辑的东西在收起的 <details> 里（Claude Web「自定义配色」）时，放在 details 里面的 <dialog> 画不出来；挪到最外层收起的 details 后面。
+    let place = host || anchor;
+    for (let d = place.parentElement?.closest('details:not([open])'); d; d = d.parentElement?.closest('details:not([open])')) place = d;
+    place.after(dialog); body.append(node); dialog.append(head, body,footer);
     // Select2 normally attaches results to body, which is behind a modal's
     // top layer. Preserve its existing adapter/options and change only host.
     const pickerHosts=[];
@@ -298,15 +351,162 @@ export function installOfficialLayout(win = window) {
       for(const [adapter,parent,select] of pickerHosts){win.jQuery(select).select2('close');adapter.$dropdownParent=parent;}
       node.hidden = oldHidden; node.style.setProperty('display',oldDisplay,oldPriority); node.classList.remove('cw-v4-editing');
       if (anchor.parentNode) anchor.replaceWith(node);
+      standIn?.remove();
       try { opts.onClose?.(); } catch (error) { console.warn('[Claude Web] editor close', error); }
-      dialog.remove(); dialogs.delete(dialog); focus?.isConnected && focus.focus(); schedule();
+      dialog.remove(); dialogs.delete(dialog); syncSheet(); focus?.isConnected && focus.focus({preventScroll: true}); schedule();
     }, {once:true});
-    dialog.showModal(); (node.matches('textarea') ? node : close).focus();
+    dialog.dataset.cwSheetTitle = typeof title === 'string' ? title : (head.querySelector('h2')?.textContent || '');
+    sheetDrag(dialog, head, shut);
+    // 2.0.214：手机弹出页里照 App 一页摊开——Claude Web 设置的各组（外观 / 布局……）都展开，组名当灰字标签。
+    if (mobile()) node.querySelectorAll?.('details.claude-web-section:not([open])').forEach(d => { d.open = true; });
+    // 2.0.219：聚焦一律 preventScroll——弹出页画在最上层，但在 DOM 里还挂在设置面板里，普通 focus() 会把面板滚到它那儿
+    // （Lulu：点扩展的设置再关掉，扩展页自己跳到下面去了）。
+    dialog.showModal(); syncSheet(); (node.matches('textarea') ? node : mobile() ? back : close).focus({preventScroll: true});
   }
   function labelFor(node) {
     const label = node.id && doc.querySelector(`label[for="${win.CSS.escape(node.id)}"]`);
     return (label?.textContent || node.getAttribute('aria-label') || node.previousElementSibling?.textContent || node.title || node.name || node.id || '').trim().slice(0,120);
   }
+  /* 2.0.208 第六稿：按行里的控件给行打类型（data-cw-kind），手机 CSS 按类型排版：
+     actions = 几个按钮（拆成一行一个的蓝字操作行）；nav = 一个按钮（整行变成「›」行，按钮铺满整行接点击）；
+     selact = 下拉 + 按钮（保存另起一行）。按钮文字是「编辑 / 配置 / 选择」这类泛称时打 data-cw-generic，「›」行里不显示它。
+     不读布局（sync 很频繁）；只在类型变化时才写属性。 */
+  const GENERIC_BTN = /^(编辑|配置|选择|设置|管理|打开|Edit|Configure|Choose|Open|Manage|Settings)$/i;
+  const hiddenEl = k => k.hidden || k.style.display === 'none' || k.classList.contains('displayNone') || k.classList.contains('cw-v4-hidden-native');
+  function tagRows(panel) {
+    for (const row of panel.querySelectorAll('.cw-v4-row,.cw-v4-api-row')) {
+      const ctl = row.querySelector(':scope>.cw-v4-row-controls,:scope>.cw-v4-api-controls');
+      let kind = '';
+      if (ctl) {
+        const kids = [...ctl.children].filter(k => !hiddenEl(k));
+        // 用户角色页的「设为默认 / 绑定到当前角色」是画成开关的按钮，保持开关，不改成「›」行。
+        const isBtn = k => k.matches('.cw-v4-as-btn,.cw-v4-pref-btn,.cw-v4-button,.menu_button,button') && !k.matches('[id^=lock_],[role=switch],[aria-pressed]');
+        const btns = kids.filter(isBtn), more = kids.filter(k => k.matches('details.cw-v4-more')), others = kids.filter(k => !isBtn(k) && !k.matches('details.cw-v4-more'));
+        if (btns.length >= 2 && !others.length) kind = 'actions';
+        else if (btns.length === 1 && more.length && !others.length) kind = 'actions';
+        else if (btns.length === 1 && !more.length && others.every(k => k.matches('.cw-v4-chips'))) kind = 'nav';
+        else if (btns.length && others.length === 1 && others[0].matches('select')) kind = 'selact';
+        for (const b of btns) {
+          const label = (b.querySelector('.cw-v4-action-label')?.textContent || b.textContent || '').trim();
+          const generic = GENERIC_BTN.test(label) ? '1' : '';
+          if ((b.dataset.cwGeneric || '') !== generic) { if (generic) b.dataset.cwGeneric = generic; else delete b.dataset.cwGeneric; }
+        }
+      }
+      if ((row.dataset.cwKind || '') !== kind) { if (kind) row.dataset.cwKind = kind; else delete row.dataset.cwKind; }
+      const many = kind === 'actions' && ctl && [...ctl.children].filter(k => !hiddenEl(k) && k.matches('.cw-v4-as-btn,.cw-v4-pref-btn,.cw-v4-button,.menu_button,button')).length >= 2 ? '1' : '';
+      if ((row.dataset.cwMany || '') !== many) { if (many) row.dataset.cwMany = many; else delete row.dataset.cwMany; }
+    }
+  }
+  /* 2.0.222 电脑：2–3 个短选项的下拉画成分段按钮（照 Claude Desktop 外观页的 Small / Medium / Large）。
+     原来的 <select> 留着（CSS 在电脑上藏起）当唯一的值：点分段 = 改它的值并派发 input / change，酒馆的 jQuery 处理照常跑；
+     酒馆用程序改了值（加载预设等）不会发事件，sync 时按当前值重画选中态，只在真变了才写属性。手机不建，照旧用下拉。 */
+  /* 2.0.229 电脑下拉照 Claude Desktop（Lulu 截图：酒馆一直用的是 Windows 原生的深灰列表）：
+     按下设置页 / 编辑弹窗里的下拉时不弹原生列表，弹我们自己的：白底圆角卡片、细边 + 软阴影、35px 一行、
+     当前项灰底 + 蓝色 ✓；超过 10 项顶上有搜索框；默认在下拉下面、右边对齐，下面放不下就翻到上面。
+     <select> 本身仍是唯一的值：选了就改它的值并派发 input / change，酒馆的处理照常跑。
+     列表是 popover（最上层）；下拉在模态的编辑弹窗里时，列表挂在那个弹窗里面（挂在外面会被模态弄成不能点）。
+     键盘：Enter / 空格 / Alt+↓ 打开，↑↓ 移动，Enter 选，Esc 只关列表（不关设置）。点外面、滚动、改窗口大小都会关。手机不用这个。 */
+  let selMenu = null, selFor = null, selActive = -1, selItems = [];
+  const selTarget = el => !mobile() && el instanceof win.HTMLSelectElement && !el.multiple && !el.disabled
+    && !el.classList.contains('select2-hidden-accessible') && !el.classList.contains('cw-v4-has-seg') && !!el.closest('.cw-v4-panel,dialog.cw-v4-editor');
+  function closeSelMenu(refocus) {
+    if (!selMenu) return;
+    const s = selFor, m = selMenu;
+    selMenu = null; selFor = null; selItems = []; selActive = -1;
+    try { if (m.matches(':popover-open')) m.hidePopover(); } catch {}
+    m.remove();
+    s?.removeAttribute('data-cw-open');
+    if (refocus && s?.isConnected) s.focus({preventScroll: true});
+  }
+  function markSel(i) {
+    if (i < 0 || i >= selItems.length) return;
+    selActive = i;
+    selItems.forEach((it, k) => { if (it.el.classList.contains('cw-on') !== (k === i)) it.el.classList.toggle('cw-on', k === i); });
+    selItems[i].el.scrollIntoView({block: 'nearest'});
+  }
+  function stepSel(dir) {
+    if (!selItems.length) return;
+    let i = selActive;
+    for (let n = 0; n < selItems.length; n++) { i = (i + dir + selItems.length) % selItems.length; if (!selItems[i].disabled) { markSel(i); return; } }
+  }
+  function pickSel(i) {
+    const it = selItems[i], s = selFor; if (!it || it.disabled || !s) return;
+    closeSelMenu(true);
+    if (s.value === it.value) return;
+    s.value = it.value;
+    s.dispatchEvent(new Event('input', {bubbles: true}));
+    s.dispatchEvent(new Event('change', {bubbles: true}));
+  }
+  function openSelMenu(sel) {
+    closeSelMenu();
+    const m = make('div', 'cw-v4-selmenu'), list = make('div', 'cw-v4-selmenu-list');
+    m.setAttribute('popover', 'manual'); list.setAttribute('role', 'listbox');
+    // 2.0.241：列表挂在 body 上，不在 .openDrawer 里；酒馆 script.js 的 html touchstart/mousedown 会把它当成「点了抽屉外面」，
+    // 选一项就把整个设置关掉。按下事件在列表这里截住，不再冒泡到 html（选项靠 click 生效，不受影响）。
+    for (const t of ['mousedown', 'touchstart']) m.addEventListener(t, e => e.stopPropagation(), {passive: true});
+    const opts = [...sel.options].filter(o => !o.hidden && o.style.display !== 'none');
+    let search = null;
+    if (opts.length > 10) { search = make('input', 'cw-v4-selmenu-search'); search.type = 'text'; search.placeholder = L('搜索'); search.setAttribute('aria-label', L('搜索')); m.append(search); }
+    m.append(list);
+    const build = q => {
+      list.replaceChildren(); selItems = []; let group = null;
+      for (const o of opts) {
+        const label = (o.textContent || '').trim() || o.value;
+        if (q && !label.toLocaleLowerCase().includes(q)) continue;
+        const g = o.parentElement?.tagName === 'OPTGROUP' ? o.parentElement.label : null;
+        if (g && g !== group) list.append(make('div', 'cw-v4-selmenu-group', g));
+        group = g;
+        const el = make('div', 'cw-v4-selmenu-item'); el.append(make('span', '', label)); el.setAttribute('role', 'option');
+        if (o.dataset.cwDot) { const d = make('span', 'cw-v4-dot'); d.dataset.kind = o.dataset.cwDot; el.prepend(d); }
+        if (o.selected) { el.classList.add('cw-sel'); el.setAttribute('aria-selected', 'true'); }
+        if (o.disabled) el.classList.add('cw-dis');
+        const idx = selItems.length; selItems.push({el, value: o.value, disabled: o.disabled});
+        el.addEventListener('pointermove', () => { if (selActive !== idx) markSel(idx); });
+        el.addEventListener('click', e => { e.stopPropagation(); pickSel(idx); });
+        list.append(el);
+      }
+      if (!selItems.length) list.append(make('div', 'cw-v4-selmenu-empty', L('没有匹配的选项')));
+    };
+    build('');
+    (sel.closest('dialog[open]') || doc.body).append(m);
+    try { m.showPopover(); } catch {}
+    selMenu = m; selFor = sel; sel.setAttribute('data-cw-open', '');
+    // 位置：右边和下拉对齐，宽度至少和下拉一样（再不小于 220），下面不够就翻上去。
+    const r = sel.getBoundingClientRect(), vw = win.innerWidth, vh = win.innerHeight;
+    m.style.minWidth = Math.max(220, Math.round(r.width)) + 'px';
+    const below = vh - r.bottom - 12, above = r.top - 12, down = below >= 240 || below >= above;
+    m.style.maxHeight = Math.max(120, Math.min(400, (down ? below : above) - 6)) + 'px';
+    const b = m.getBoundingClientRect();
+    m.style.left = Math.round(Math.min(vw - b.width - 8, Math.max(8, r.right - b.width))) + 'px';
+    m.style.top = Math.round(down ? r.bottom + 6 : r.top - 6 - b.height) + 'px';
+    const cur = selItems.findIndex(it => it.el.classList.contains('cw-sel'));
+    markSel(cur >= 0 ? cur : selItems.findIndex(it => !it.disabled));
+    if (search) {
+      search.addEventListener('input', () => { build(search.value.trim().toLocaleLowerCase()); const c = selItems.findIndex(it => it.el.classList.contains('cw-sel')); markSel(c >= 0 ? c : selItems.findIndex(it => !it.disabled)); });
+      search.focus({preventScroll: true});
+    }
+  }
+  const segSel = new Map();
+  const segOpts = sel => [...sel.options].filter(o => !o.hidden && !o.disabled);
+  const segFits = sel => { const o = segOpts(sel); return o.length >= 2 && o.length <= 3 && o.every(x => { const s = x.textContent.trim(); return s && s.length <= 8; }); };
+  function paintSeg(sel) {
+    const seg = segSel.get(sel); if (!seg) return;
+    const opts = segOpts(sel);
+    if (seg.childElementCount !== opts.length || opts.some((o, i) => seg.children[i].dataset.value !== o.value || seg.children[i].textContent !== o.textContent.trim())) {
+      seg.replaceChildren(...opts.map(o => { const b = button(o.textContent.trim(), () => { if (sel.value === o.value) return; sel.value = o.value; sel.dispatchEvent(new Event('input', {bubbles:true})); sel.dispatchEvent(new Event('change', {bubbles:true})); paintSeg(sel); }, 'cw-v4-segsel-item'); b.dataset.value = o.value; return b; }));
+    }
+    for (const b of seg.children) { const on = b.dataset.value === sel.value; if ((b.getAttribute('aria-pressed') === 'true') !== on) b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  }
+  function buildSegs(panel) {
+    if (mobile()) return;
+    panel.querySelectorAll('.cw-v4-row-controls>select:not([multiple]):not(.select2-hidden-accessible)').forEach(sel => {
+      if (segSel.has(sel) || !segFits(sel)) return;
+      const seg = make('div', 'cw-v4-segsel'); seg.setAttribute('role', 'group');
+      sel.after(seg); sel.classList.add('cw-v4-has-seg'); segSel.set(sel, seg);
+      on(sel, 'change', () => paintSeg(sel)); paintSeg(sel);
+    });
+  }
+  disposers.push(() => { for (const [sel, seg] of segSel) { seg.remove(); sel.classList.remove('cw-v4-has-seg'); } segSel.clear(); });
   function enhance(panel) {
     drawerLayouts.mount(panel);
     if (panel.id === 'user-settings-block') buildPrefs(panel);
@@ -378,6 +578,8 @@ export function installOfficialLayout(win = window) {
       disposers.push(()=>{if(list.matches(':popover-open'))list.hidePopover();});
     });
     // Native textareas continue to save using their original input handlers.
+    // 2.0.214：色块都在行的最右边，取色器默认往右展开会跑出屏幕；改成往左展开。
+    panel.querySelectorAll('toolcool-color-picker:not([popup-position])').forEach(c => c.setAttribute('popup-position', 'right'));
     panel.querySelectorAll('textarea').forEach(ta => {
       if (ta.dataset.cwV4Text || ta.matches('.select2-search__field') || ta.closest('.select2-container,[data-v-app],#extensions_settings,#extensions_settings2,.world_entry,dialog') || ta.id === 'settingsSearch' || ta.classList.contains('displayNone') || ta.style.display === 'none') return;
       ta.dataset.cwV4Text = '1';
@@ -492,33 +694,44 @@ export function installOfficialLayout(win = window) {
     }
     const last = [...chat.querySelectorAll('.mes[is_user="false"]:not([is_system="true"])')].at(-1);
     let disclaimer = chat.querySelector('.cw-v4-disclaimer');
-    if (!last || doc.body.classList.contains('clawd-welcome') || !enabled()) { disclaimer?.remove(); return; }
-    if (!disclaimer) { disclaimer = make('div','cw-v4-disclaimer'); chat.append(disclaimer); }
+    /* 2.0.232 电脑：照 Claude Desktop 把这句放在输入框下面、靠右（Lulu 截图）。不挪元素——试过把它挪到 #form_sheld 里，
+       进对话时停不到最底下（别的脚本在加载对话时对它的进出有反应）。改成在 #send_form 上写 data-cw-disclaimer，由 CSS 的 ::after 画出来。
+       手机照旧是聊天最后的一行。 */
+    const sendForm = doc.getElementById('send_form');
+    const setFormNote = v => { if (!sendForm) return; if (v) { if (sendForm.getAttribute('data-cw-disclaimer') !== v) sendForm.setAttribute('data-cw-disclaimer', v); } else if (sendForm.hasAttribute('data-cw-disclaimer')) sendForm.removeAttribute('data-cw-disclaimer'); };
+    if (!last || doc.body.classList.contains('clawd-welcome') || !enabled()) { disclaimer?.remove(); setFormNote(''); return; }
     const name = last.querySelector('.name_text')?.textContent.trim() || ctx?.name2 || 'AI';
     const text = `${name} is AI and can make mistakes.`;
-    if (disclaimer.textContent !== text) disclaimer.textContent = text;
-    if (disclaimer !== chat.lastElementChild) chat.append(disclaimer);
-    const offset=Math.max(0,last.getBoundingClientRect().left-chat.getBoundingClientRect().left-parseFloat(win.getComputedStyle(chat).paddingLeft||0));
-    const inset=`${offset}px`;if(disclaimer.style.marginLeft!==inset)disclaimer.style.marginLeft=inset;
+    if (!mobile()) { disclaimer?.remove(); setFormNote(text); }
+    else {
+      setFormNote('');
+      if (!disclaimer) { disclaimer = make('div','cw-v4-disclaimer'); chat.append(disclaimer); }
+      if (disclaimer.textContent !== text) disclaimer.textContent = text;
+      if (disclaimer !== chat.lastElementChild) chat.append(disclaimer);
+      const offset=Math.max(0,last.getBoundingClientRect().left-chat.getBoundingClientRect().left-parseFloat(win.getComputedStyle(chat).paddingLeft||0));
+      const inset=`${offset}px`;if(disclaimer.style.marginLeft!==inset)disclaimer.style.marginLeft=inset;
+    }
     if (input) { const placeholder = t(`回复 ${name}`,`Reply to ${name}`); if (input.placeholder !== placeholder) input.placeholder = placeholder; }
   }
-  // Marks "Claude sidebar opened over a settings page" (see official-layout.css). Set two frames before the
-  // sidebar opens so the scrim can fade in; cleared once the sidebar has slid back out (210 ms).
-  let railOverTimer = 0;
-  function railOver(on) {
-    if (railOverTimer) { win.clearTimeout(railOverTimer); railOverTimer = 0; }
-    root.classList.toggle('cw-v4-rail-over', on);
+  /* 2.0.248 电脑聊天页：快捷回复那排（#qr--bar，预设 / 插件加的按钮）照 Claude 放到输入框正上方（CSS ㉘，绝对定位、可以换行）。
+     它不占位置了，所以量它的实际高度写到 #form_sheld 的 --cw-qr-h，输入区整体往上让出这么高，按钮多到几排也不会盖住聊天。 */
+  let qrBar = null;
+  const qrRo = win.ResizeObserver ? new win.ResizeObserver(() => paintQrHeight()) : null; if (qrRo) observers.push(qrRo);
+  disposers.push(() => doc.getElementById('form_sheld')?.style.removeProperty('--cw-qr-h'));
+  function paintQrHeight() {
+    const sheld = doc.getElementById('form_sheld'); if (!sheld) return;
+    const h = qrBar?.isConnected ? Math.ceil(qrBar.getBoundingClientRect().height) : 0;
+    const v = h > 0 ? (h + 8) + 'px' : '0px';
+    if (sheld.style.getPropertyValue('--cw-qr-h') !== v) sheld.style.setProperty('--cw-qr-h', v);
   }
-  function syncRailOver(settingsOpen) {
-    if (!root.classList.contains('cw-v4-rail-over')) return;
-    // Sidebar still open with no page yet: a page was just tapped in the phone sidebar and is on its way
-    // (index.js keeps the sidebar over it until it has painted). Only drop the mark once the sidebar is gone.
-    if (!settingsOpen) { if (!doc.body.hasAttribute('data-clawd-menu')) railOver(false); return; }
-    if (doc.body.hasAttribute('data-clawd-menu')) { if (railOverTimer) { win.clearTimeout(railOverTimer); railOverTimer = 0; } return; }
-    if (!railOverTimer) railOverTimer = win.setTimeout(() => { railOverTimer = 0; if (!doc.body.hasAttribute('data-clawd-menu')) root.classList.remove('cw-v4-rail-over'); }, 260);
+  function syncQrBar() {
+    const q = doc.getElementById('qr--bar');
+    if (q !== qrBar) { if (qrBar) qrRo?.unobserve(qrBar); qrBar = q; if (q) qrRo?.observe(q); }
+    paintQrHeight();
   }
   function sync() {
     raf = 0; if (destroyed) return;
+    syncQrBar();
     root.toggleAttribute('data-cw-v4', enabled());
     if (!enabled()) { if (shell) shell.hidden = true; for (const dialog of dialogs) dialog.close(); restoreAdaptedContainers(); root.removeAttribute('data-cw-v4-settings'); return; }
     if (!shell) buildShell();
@@ -530,13 +743,17 @@ export function installOfficialLayout(win = window) {
       const glyph=nativeToggle(p)?.querySelector('.drawer-icon');
       const glyphName=['sliders','plug','type','book','image','puzzle','card','user','gear'][ids.findIndex(s=>s[0]===id)];
       glyph?.style.setProperty('--cw-v4-nav-icon',`var(--cw-v4-icon-${glyphName})`);
-      observe(p, records => { if (records.some(r => r.type === 'childList' || r.target === p)) schedule(); }, {childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+      // 打开旧聊天性能修复（20261001）：面板关着时里面的增删（表情列表、提示词管理器等重建）不排 sync；面板打开时自身 class 变化会排一次，enhance 那时再补。
+      observe(p, records => { if (records.some(r => r.target === p || (r.type === 'childList' && isOpen(p)))) schedule(); }, {childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     });
     const open = [...panels.values()].filter(isOpen);
     const p = open.find(n => n.id === requestedPanel) || (open.includes(current) ? current : open[0]);
-    for (const panel of panels.values()) panel.classList.toggle('cw-v4-inactive', isOpen(panel) && panel !== p);
+    // 2.0.218：只在真的要变时才写 class。classList.toggle / add 就算状态没变也会重写 class 属性、产生一条变更记录——
+    // 上面那个观察面板 class 的 observer 收到又排一次 sync，于是设置页开着时 sync 每帧都跑；每次还让酒馆 keyboard.js
+    // 把整个面板（扩展页约 2800 个元素）用二十几个选择器重扫一遍。实测弹出页升起那 1.5 秒里转了 90 圈。
+    for (const panel of panels.values()) { const off = isOpen(panel) && panel !== p; if (panel.classList.contains('cw-v4-inactive') !== off) panel.classList.toggle('cw-v4-inactive', off); }
     if (p) {
-      if (!current) previousFocus = doc.activeElement;
+      if (!current) { previousFocus = doc.activeElement; if (!mobile() && !calm()) deskAnim('in', DESK_BD_IN + 60); }
       if (current !== p) { current = p; shell.classList.remove('cw-v4-show-nav'); }
       root.setAttribute('data-cw-v4-settings','open'); shell.hidden = false;
       if (shell.dataset.panel !== p.id) shell.dataset.panel = p.id;
@@ -547,10 +764,16 @@ export function installOfficialLayout(win = window) {
       shell.querySelectorAll('[data-pref]').forEach(b => b.classList.toggle('cw-v4-selected', p.id === 'user-settings-block' && b.dataset.pref === prefPage));
       shell.querySelectorAll('[data-panel]').forEach(b => { const active = b.dataset.panel === p.id; if (active) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
       enhance(p);
+      if (mobile()) tagRows(p);
+      else { buildSegs(p); for (const sel of segSel.keys()) if (p.contains(sel)) paintSeg(sel); }
       if(p.id!=='user-settings-block'){
         let pageTitle=p.querySelector(':scope>.cw-v4-page-title');
         if(!pageTitle){pageTitle=make('h2','cw-v4-page-title');p.prepend(pageTitle);}
         if(pageTitle.textContent!==titleText)pageTitle.textContent=titleText;
+        // 大标题下面紧跟一个带标题的小节时标上 data-cw-headed，电脑上藏掉大标题（Claude Desktop 没有页面大标题，见 CSS ⑳）。只在变化时写。
+        const s0=p.querySelector('.cw-v4-drawer-page>.cw-v4-section');
+        const headed=!!s0&&!!pageTitle.nextElementSibling?.contains(s0)&&!s0.previousElementSibling&&s0.firstElementChild?.tagName==='H2';
+        if(pageTitle.hasAttribute('data-cw-headed')!==headed)pageTitle.toggleAttribute('data-cw-headed',headed);
       }
       if (p.id === 'user-settings-block') p.querySelectorAll('.cw-v4-pref-page').forEach(n => {
         // Search matches a row by its title/description or by its section name, as in the design.
@@ -565,10 +788,9 @@ export function installOfficialLayout(win = window) {
       p.querySelectorAll('textarea[data-cw-v4-text]').forEach(ta => ta._cwV4Paint?.());
       p.querySelectorAll('input[type=range]').forEach(fill);
     } else {
-      if (current) { current = null; previousFocus?.isConnected && previousFocus.focus(); }
+      if (current) { current = null; previousFocus?.isConnected && previousFocus.focus({preventScroll: true}); }
       shell.hidden = true; root.removeAttribute('data-cw-v4-settings');
     }
-    syncRailOver(!!current);
     syncChat();
   }
   // Sliders draw the travelled part with --fill (design native.css).
@@ -597,11 +819,62 @@ export function installOfficialLayout(win = window) {
     on(doc,'click', e => {
       const toggle=e.target.closest?.('.drawer-toggle'); const panel=toggle?.parentElement.querySelector(':scope > .drawer-content');
       if(!panel || !panels.has(panel.id)) return;
+      // 手机侧栏开着时点入口由 index.js 接管（showPanelFromRail → activate），这里不重复处理。
+      if (e.isTrusted && doc.body.hasAttribute('data-clawd-menu') && !doc.body.classList.contains('clawd-tauritavern-host')) return;
       requestedPanel=panel.id;
       if(!e.isTrusted || isOpen(panel)) return;
       for (const old of panels.values()) if (old !== panel && isOpen(old) && !old.classList.contains('pinnedOpen')) nativeToggle(old)?.click();
     },true);
     on(doc,'keydown', e => { if (e.key === 'Escape' && current && !doc.querySelector('dialog[open]') && !e.defaultPrevented) { closeSettings(); e.preventDefault(); } });
+    // 2.0.229 下拉列表（openSelMenu）：按下下拉时拦下原生列表；点外面 / 滚动 / 改窗口大小关掉；键盘在下面那个 Escape 处理之前先接。
+    on(doc, 'mousedown', e => {
+      const t = e.target;
+      if (selMenu && selMenu.contains(t)) return;
+      if (t instanceof win.HTMLSelectElement && selTarget(t)) {
+        e.preventDefault();
+        if (selFor === t) { closeSelMenu(true); return; }
+        t.focus({preventScroll: true}); openSelMenu(t); return;
+      }
+      if (selMenu) closeSelMenu();
+    }, true);
+    on(doc, 'scroll', e => { if (selMenu && !selMenu.contains(e.target)) closeSelMenu(); }, true);
+    // 2.0.243（Lulu：预设从 Default 换成 Kemini，预设自带的「首次使用配置」窗口一点，整个设置就关了）：
+    // 酒馆 script.js 的 html touchstart/mousedown 把按在 .openDrawer 外面的都当成「点外面」关抽屉。电脑上设置是对话框，
+    // 只该由背景（它自己处理）、× 和 Esc 关；浮在设置上面的东西（别的扩展的窗口、我们挂在 body 上的外壳和浮层）按下时不往上传。
+    for (const type of ['mousedown', 'touchstart']) on(doc.body, type, e => {
+      if (!current || mobile()) return;
+      const t = e.target;
+      if (t instanceof win.Element && !t.closest('#top-settings-holder')) e.stopPropagation();
+    }, {passive: true});
+    on(win, 'resize', () => closeSelMenu());
+    on(win, 'keydown', e => {
+      if (!selMenu) {
+        const a = doc.activeElement;
+        if (selTarget(a) && (e.key === 'Enter' || e.key === ' ' || (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')))) { e.preventDefault(); e.stopImmediatePropagation(); openSelMenu(a); }
+        return;
+      }
+      if (!selFor?.isConnected) { closeSelMenu(); return; }
+      const k = e.key;
+      if (k === 'ArrowDown' || k === 'ArrowUp') stepSel(k === 'ArrowDown' ? 1 : -1);
+      else if (k === 'Home') markSel(selItems.findIndex(it => !it.disabled));
+      else if (k === 'End') { for (let i = selItems.length - 1; i >= 0; i--) if (!selItems[i].disabled) { markSel(i); break; } }
+      else if (k === 'Enter') pickSel(selActive);
+      else if (k === 'Escape') closeSelMenu(true);
+      else if (k === 'Tab') { closeSelMenu(true); return; }
+      else return;   // 其他键（打字）交给搜索框
+      e.preventDefault(); e.stopImmediatePropagation();
+    }, true);
+    disposers.push(() => closeSelMenu());
+    // 2.0.222 电脑：酒馆自己的 Escape（RossAscends-mods.js）不看有没有弹窗，见到可见的抽屉就关——在编辑弹窗里按 Escape
+    // 会把整个设置一起关掉。在 window 捕获阶段先接：有我们的编辑弹窗就只关最上面那个，否则带淡出关设置。
+    // 下拉、⋯ 菜单、提示词编辑页、酒馆自己的弹窗开着时不接，让它们自己处理。
+    on(win,'keydown', e => {
+      if (e.key !== 'Escape' || e.defaultPrevented || mobile() || !current) return;
+      if (doc.querySelector('.select2-container--open,.cw-v4-more[open],#completion_prompt_manager_popup.openDrawer,dialog[open]:not(.cw-v4-editor)')) return;
+      const top = [...dialogs].filter(d => d.open).at(-1);
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (top) top._cwShut?.(); else closeSettings();
+    }, true);
     on(win,'resize', () => { resetGeometry(); schedule(); });
     // Read-only keyboard flag for the short-screen (phone landscape) composer.
     // The input keeps focus after Back hides the keyboard, so focus alone is not enough.
@@ -630,7 +903,6 @@ export function installOfficialLayout(win = window) {
     disposers.push(() => { if (kbFrame) win.cancelAnimationFrame(kbFrame); });
     if (win.screen?.orientation?.addEventListener) on(win.screen.orientation, 'change', queueKeyboard);
     disposers.push(() => root.removeAttribute('data-cw-v4-landscape'));
-    disposers.push(() => railOver(false));
     syncKeyboard();
     on(win, 'resize', queueKeyboard);
     if (win.visualViewport) on(win.visualViewport, 'resize', queueKeyboard);
@@ -730,7 +1002,253 @@ export function installOfficialLayout(win = window) {
     for (const key of ['CHAT_CHANGED','CHARACTER_MESSAGE_RENDERED','USER_MESSAGE_RENDERED','MESSAGE_SWIPED','SETTINGS_LOADED','APP_READY']) {
       const event = ctx?.eventTypes?.[key]; if (event && ctx.eventSource?.on) { ctx.eventSource.on(event,schedule); disposers.push(() => ctx.eventSource.removeListener?.(event,schedule)); }
     }
+    watchSheets();
   };
+  /* 2.0.212 / 2.0.213 手机弹出页（Lulu 照 Claude App）：弹出页升起时，后面整页往后、往上缩小（圆角、压暗），
+     屏幕最上面露出黑底和那页缩小后的顶边。2.0.213：升起 / 收起、后面那页缩放、压暗全部同一时长同一曲线（CSS --cw-sheet-dur / --cw-sheet-curve）；
+     弹出页套弹出页时下面那层往后缩、变暗（data-cw-sheet-under），上面那层低一点（data-cw-sheet-lvl2）；顶栏可以往下拖关闭；
+     酒馆的宽 / 大弹窗（不含透明的加载画面）也换成「‹ 上一页 | 标题 | 确定」的顶栏。
+     html[data-cw-sheet]：有弹出页开着；[data-cw-sheet-deep]：叠了两层以上；[data-cw-sheet-anim]：开关前后挂过渡；[data-cw-sheet-drag]：拖动中（关过渡）。 */
+  const SHEET_POPUP = 'dialog.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup)';
+  const SMALL_POPUP = 'dialog.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor)';
+  const DANGER_TEXT = /删除|移除|清空|永久|Delete|Remove|permanently/i;
+  const SHEET_MS = 280, BACK_S = .93; // 2.0.220：Lulu 定 0.28 秒（原 0.38），和 CSS --cw-sheet-dur 一起改
+  let sheetAnimTimer = 0, sheetStack = [], dimEl = null, lastTrigger = null, pmWasOpen = false, pmCloseTimer = 0, pmHost = null, pmAnchor = null, pmPickers = [], pmEsc = null;
+  /* 2.0.214：提示词编辑页本来是 body 里的一块，后面那页（body）缩小时它要反向放大、body 还不能裁——于是侧栏等屏幕外的东西
+     缩进来时会露边（Lulu：左边一条白、顶上一条白），Clawd 动作也盖在它上面。改成手机上它打开时，临时搬进一个 showModal 的 <dialog>
+     （浏览器最上层，不受 body 缩放 / 裁剪影响），收起播完再搬回原处。酒馆按 id 找它、按钮直接绑事件，搬家不影响；
+     下拉（select2）的弹出层也改挂到这个 dialog 上，不然会被挡在后面。 */
+  // 2.0.217 提速：浏览器支持 popover 时用 popover 把它放进最上层——showModal 会让页面其余部分全部变成 inert，
+  // 整页重算样式（实测打开 27ms / 关闭 26ms，手机 4× 降速 288 / 215ms）；popover 同样在最上层但不碰其余页面。
+  // 老内核（安卓模拟器里 Via 的 WebView 113）没有 popover，退回 showModal。popover 用 <div>（<dialog> 不带 open 会被 UA 藏起来）。
+  const canPopover = typeof win.HTMLElement.prototype.showPopover === 'function';
+  const pmBack = pm => ([...pm.children].find(a => a.style.display !== 'none' && a.querySelector('.cw-pm-back')) || pm).querySelector('.cw-pm-back');
+  function hostPm(pm) {
+    if (pmHost) return;
+    pmAnchor = doc.createComment('cw-pm-home'); pm.before(pmAnchor);
+    pmHost = make(canPopover ? 'div' : 'dialog', 'cw-pm-host'); doc.body.append(pmHost); pmHost.append(pm);
+    if (canPopover) {
+      pmHost.setAttribute('popover', 'manual');
+      // popover 不困住焦点（showModal 会），Escape 可能落在页面上：开着时在 document 上接（下拉开着时让下拉先关）。
+      pmEsc = e => { if (e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('.select2-container--open')) return; e.preventDefault(); e.stopImmediatePropagation(); pmBack(pm)?.click(); };
+      doc.addEventListener('keydown', pmEsc, true);
+    } else pmHost.addEventListener('cancel', e => { e.preventDefault(); pmBack(pm)?.click(); });
+    pm.querySelectorAll('select').forEach(select => { const ad = win.jQuery?.(select).data?.('select2')?.dropdown; if (ad?.$dropdownParent) { pmPickers.push([ad, ad.$dropdownParent]); ad.$dropdownParent = win.jQuery(pmHost); } });
+    const back = [...pm.children].find(a => a.style.display === 'flex')?.querySelector('.cw-pm-back');
+    if (canPopover) { shieldUp(); pmHost.showPopover(); }
+    else { if (back) back.autofocus = true; pmHost.showModal(); if (back) back.autofocus = false; }
+    back?.focus({preventScroll: true});
+  }
+  function unhostPm() {
+    if (!pmHost) return;
+    for (const [ad, parent] of pmPickers) ad.$dropdownParent = parent; pmPickers = [];
+    const pm = pmEl();
+    if (pm && pmAnchor?.parentNode) pmAnchor.replaceWith(pm); else pmAnchor?.remove();
+    if (pmEsc) { doc.removeEventListener('keydown', pmEsc, true); pmEsc = null; }
+    if (canPopover) { try { pmHost.hidePopover(); } catch {} } else pmHost.close();
+    pmHost.remove(); pmHost = null; pmAnchor = null;
+    shieldMaybeDown();
+  }
+  const pmEl = () => doc.getElementById('completion_prompt_manager_popup');
+  const sheetIsOpen = el => el.matches('dialog') ? el.open && !el.hasAttribute('closing') && !el.hasAttribute('data-cw-closing') : el.classList.contains('openDrawer');
+  function animWindow() {
+    root.setAttribute('data-cw-sheet-anim', '');
+    win.clearTimeout(sheetAnimTimer);
+    sheetAnimTimer = win.setTimeout(() => root.removeAttribute('data-cw-sheet-anim'), SHEET_MS + 80);
+  }
+  function syncSheet() {
+    const pm = pmEl();
+    // 提示词编辑页：酒馆摘掉 openDrawer 后 200ms 就 display:none，比我们的下滑短；收起期间挂 data-cw-closing，CSS 让它多显示一会儿播完。
+    const pmOpen = Boolean(pm?.classList.contains('openDrawer'));
+    // 2.0.217 提速：酒馆开 / 关它时用 jQuery slideDown / slideUp(200)，每帧改行内高度、重排；高度和动作都由我们的 CSS 管，直接让它跳到结束。
+    if (pm && pmOpen !== pmWasOpen && mobile() && enabled()) win.jQuery?.(pm).stop(true, true);
+    if (pm && pmWasOpen && !pmOpen && mobile()) { pm.setAttribute('data-cw-closing', ''); win.clearTimeout(pmCloseTimer); pmCloseTimer = win.setTimeout(() => { pm.removeAttribute('data-cw-closing'); unhostPm(); }, SHEET_MS + 40); }
+    if (pm && pmOpen) { win.clearTimeout(pmCloseTimer); pm.removeAttribute('data-cw-closing'); if (mobile() && enabled()) hostPm(pm); }
+    if (pm && !pmOpen && !pm.hasAttribute('data-cw-closing')) unhostPm();
+    pmWasOpen = pmOpen;
+    // 2.0.247 普通尺寸的酒馆弹窗（改名 / 另存为 / 删除确认……）照 Claude Desktop 排（CSS ㉗）；删除类的「确定」画成红色。只在变化时写属性。
+    for (const d of doc.querySelectorAll(SMALL_POPUP + '[open]')) {
+      const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || '');
+      if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger);
+    }
+    let now = [];
+    if (mobile() && enabled()) {
+      now = [...doc.querySelectorAll('dialog.cw-v4-editor[open],' + SHEET_POPUP + '[open]')];
+      if (pmOpen) now.push(pm);
+      now = now.filter(sheetIsOpen);
+    }
+    sheetStack = sheetStack.filter(el => now.includes(el)).concat(now.filter(el => !sheetStack.includes(el)));
+    sheetStack.forEach((el, i) => {
+      el.toggleAttribute('data-cw-sheet-under', i < sheetStack.length - 1 && el.matches('dialog'));
+      if (i > 0) el.setAttribute('data-cw-sheet-lvl2', ''); else el.removeAttribute('data-cw-sheet-lvl2');
+      if (el.matches(SHEET_POPUP)) decorateStPopup(el);
+    });
+    for (const el of doc.querySelectorAll('[data-cw-sheet-under]')) if (!sheetStack.includes(el)) el.removeAttribute('data-cw-sheet-under');
+    const open = sheetStack.length > 0, deep = sheetStack.length > 1;
+    if (open === root.hasAttribute('data-cw-sheet') && deep === root.hasAttribute('data-cw-sheet-deep')) return;
+    animWindow();
+    root.toggleAttribute('data-cw-sheet', open);
+    root.toggleAttribute('data-cw-sheet-deep', deep);
+  }
+  // 「‹」后面写哪一页：下面还有弹出页就写它的标题，否则写设置页顶栏的标题。
+  function sheetBackLabel(el) {
+    const i = sheetStack.indexOf(el);
+    const below = i > 0 ? sheetStack[i - 1] : (i < 0 && sheetStack.length ? sheetStack.at(-1) : null);
+    return (below?.dataset.cwSheetTitle || (!below && doc.querySelector('.cw-v4-shell:not([hidden]) .cw-v4-title')?.textContent) || '').trim() || t('返回', 'Back');
+  }
+  // 往下拖关闭：只在顶栏上按住才算（内容区的手势留给滚动）。拖动时弹出页跟手，后面那页的缩放 / 压暗按比例插值；
+  // 松手时拖过三分之一或甩得够快就关，否则弹回。
+  function sheetDrag(el, handle, close) {
+    let st = null;
+    const setBack = p => {
+      if (p == null) { doc.body.style.removeProperty('scale'); dimEl?.style.removeProperty('opacity'); return; }
+      const s = BACK_S + (1 - BACK_S) * p;
+      doc.body.style.scale = String(s);
+      if (dimEl) dimEl.style.opacity = String(.2 * (1 - p));
+    };
+    handle.addEventListener('pointerdown', e => {
+      if (!mobile() || e.button !== 0 || sheetStack.at(-1) !== el || e.target.closest('button,a,input,select,textarea,label,.menu_button')) return;
+      st = {id: e.pointerId, y0: e.clientY, t0: win.performance.now(), dy: 0, h: el.getBoundingClientRect().height || 1};
+      try { handle.setPointerCapture(e.pointerId); } catch {}
+    });
+    handle.addEventListener('pointermove', e => {
+      if (!st || e.pointerId !== st.id) return;
+      st.dy = Math.max(0, e.clientY - st.y0);
+      if (st.dy < 4) return;
+      root.setAttribute('data-cw-sheet-drag', '');
+      el.style.translate = `0 ${st.dy}px`;
+      if (sheetStack.length === 1) setBack(Math.min(1, st.dy / st.h));
+    });
+    const end = e => {
+      if (!st || e.pointerId !== st.id) return;
+      const {dy, t0, h} = st; st = null;
+      const v = dy / Math.max(1, win.performance.now() - t0);
+      root.removeAttribute('data-cw-sheet-drag');
+      animWindow();
+      void el.offsetWidth;
+      el.style.removeProperty('translate'); setBack(null);
+      if (dy > 4 && (dy > h / 3 || v > .6)) close();
+    };
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) handle.addEventListener(type, end);
+  }
+  // 酒馆宽 / 大弹窗：顶栏「‹ 上一页 | 标题 | 确定」。有「取消」时 ‹ = 取消、「确定」挪到右上；只有一个按钮（关闭 / 确定）时 ‹ = 它；
+  // 都没有时 ‹ = 按 Escape（cancel 事件，酒馆自己决定能不能关）。标题取点开它的那个按钮的名字，取不到就用内容开头的标题。
+  function decorateStPopup(dlg) {
+    if (dlg.querySelector(':scope>.cw-st-head')) return;
+    const ok = dlg.querySelector('.popup-controls>.popup-button-ok'), cancel = dlg.querySelector('.popup-controls>.popup-button-cancel');
+    const shown = n => Boolean(n) && n.style.display !== 'none' && !n.classList.contains('displayNone');
+    const okOn = shown(ok), cancelOn = shown(cancel);
+    const closeIt = () => { if (cancelOn) cancel.click(); else if (okOn) ok.click(); else dlg.dispatchEvent(new win.Event('cancel', {cancelable: true})); };
+    const trig = lastTrigger && Date.now() - lastTrigger.at < 2000 ? lastTrigger.el : null;
+    const trigText = trig ? (trig.getAttribute('title') || trig.querySelector('span:not(.cw-v4-action-label)')?.textContent || trig.textContent || '').trim() : '';
+    const firstHead = dlg.querySelector('.popup-content>:is(h2,h3):first-child, .popup-content>:first-child>:is(h2,h3):first-child');
+    const title = (trigText && trigText.length <= 24 ? trigText : firstHead?.textContent || '').trim();
+    const label = sheetBackLabel(dlg);
+    dlg.dataset.cwSheetTitle = title;
+    dlg.classList.add('cw-st-sheet');
+    const head = make('div', 'cw-st-head');
+    const back = button('', closeIt, 'cw-st-back'); back.append(icon('chevl'), make('span', '', label)); back.setAttribute('aria-label', label);
+    head.append(back, make('h2', '', title));
+    if (okOn && cancelOn) head.append(button(ok.textContent.trim(), () => ok.click(), 'cw-st-ok')); else head.append(make('span', ''));
+    dlg.prepend(head);
+    sheetDrag(dlg, head, closeIt);
+  }
+  /* 2.0.218 提速：手机上的弹出页（我们的编辑弹窗、酒馆宽 / 大弹窗）不用 showModal，改成 show() + showPopover()——
+     同样进浏览器最上层，但不会让页面其余部分变 inert（showModal 一开一关各要整页重算样式：PC 约 27ms，手机 4× 降速约 290 / 215ms）。
+     <dialog> 照样是 open（酒馆认 dialog[open]、close()、[opening] / [closing] 动画都不变）。模态白送的两件事自己补：
+     · 点后面的页面不能有反应：弹出页底下垫一层透明的 .cw-sheet-shield（也是 popover，先于弹出页显示，所以在它下面）；
+     · Escape 关弹窗：document 上接，给我们的弹窗走 shut()，给酒馆弹窗发 cancel 事件（酒馆自己决定能不能关）。
+     老内核没有 popover、电脑、不是弹出页的对话框：照旧 showModal。 */
+  const nativeShowModal = win.HTMLDialogElement.prototype.showModal;
+  let shield = null;
+  const liftable = d => canPopover && mobile() && enabled() && d.matches(SHEET_POPUP + ',dialog.cw-v4-editor');
+  function shieldUp() {
+    if (!canPopover) return;
+    if (!shield) {
+      shield = make('div', 'cw-sheet-shield'); shield.setAttribute('popover', 'manual'); shield.setAttribute('aria-hidden', 'true');
+      for (const type of ['click', 'pointerdown', 'mousedown', 'touchstart']) shield.addEventListener(type, e => { e.preventDefault(); e.stopPropagation(); }, {passive: false});
+      doc.body.append(shield);
+    }
+    if (!shield.matches(':popover-open')) shield.showPopover();
+  }
+  function shieldMaybeDown() {
+    if (!shield || doc.querySelector('dialog[data-cw-lifted][open]') || pmHost) return;
+    try { shield.hidePopover(); } catch {}
+  }
+  function liftDialog(d) {
+    d.setAttribute('popover', 'manual'); d.setAttribute('data-cw-lifted', '');
+    shieldUp();
+    // 2.0.219：直接挂 open，不调 show()——show() 会自动把焦点给第一个按钮，而且不带 preventScroll；弹出页在 DOM 里还挂在设置面板里，
+    // 面板就被滚到它那儿（Lulu：点扩展的设置，扩展页自己往下跳）。焦点由各自的代码给（我们的弹窗 focus({preventScroll})，酒馆的弹窗自己 setAutoFocus）。
+    if (!d.open) d.setAttribute('open', '');
+    if (!d.matches(':popover-open')) {
+      try { d.showPopover(); }
+      catch { d.close(); d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted'); shieldMaybeDown(); nativeShowModal.call(d); return; }
+    }
+    // 酒馆在 close 事件里可能马上又 showModal() 一次（关闭被拦下时）：那时 d 还开着，就不撤 popover，等下一次 close。
+    const onClose = () => {
+      if (d.open) { d.addEventListener('close', onClose, {once: true}); return; }
+      try { if (d.matches(':popover-open')) d.hidePopover(); } catch {}
+      d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted');
+      shieldMaybeDown();
+    };
+    d.addEventListener('close', onClose, {once: true});
+  }
+  function onSheetEscape(e) {
+    if (e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('dialog:modal,.select2-container--open')) return;
+    const top = [...sheetStack].reverse().find(el => el.matches?.('dialog[data-cw-lifted][open]'));
+    if (!top) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (top._cwShut) top._cwShut(); else top.dispatchEvent(new win.Event('cancel', {cancelable: true}));
+  }
+  function installLift() {
+    if (!canPopover) return;
+    win.HTMLDialogElement.prototype.showModal = function () { if (liftable(this)) return liftDialog(this); return nativeShowModal.call(this); };
+    on(doc, 'keydown', onSheetEscape, true);
+    disposers.push(() => { win.HTMLDialogElement.prototype.showModal = nativeShowModal; shield?.remove(); shield = null; });
+  }
+  function watchSheets() {
+    installLift();
+    dimEl = make('div', 'cw-sheet-dim'); dimEl.setAttribute('aria-hidden', 'true'); doc.body.append(dimEl);
+    // 2.0.214：Claude Web 设置弹窗里「自定义配色」照 App 是一行「›」，点了升起下一层弹出页（色块原样搬过去，关了搬回来）。
+    on(doc, 'click', e => {
+      const sum = e.target.closest?.('dialog.cw-v4-editor #claude-web-colors>summary');
+      const sw = sum && doc.getElementById('claude-web-swatches');
+      if (!sw || !mobile()) return;
+      e.preventDefault();
+      openEditor(sw, sum.textContent.trim(), sum.parentElement.querySelector(':scope>.claude-web-help')?.textContent.trim());
+    }, true);
+    // 记住最近点的按钮，给酒馆弹窗的顶栏当标题。
+    on(doc, 'click', e => { const el = e.target.closest?.('button,.menu_button,[role=button],a'); if (el) lastTrigger = {el, at: Date.now()}; }, true);
+    // 酒馆的 Popup 是 body 的直接子元素：只看 body 的直接子元素增删，再看这些 <dialog> 自己的 open / closing。
+    const watched = new WeakSet();
+    const dialogMo = new win.MutationObserver(syncSheet); observers.push(dialogMo);
+    const hook = () => { for (const d of doc.querySelectorAll('body>dialog.popup')) if (!watched.has(d)) { watched.add(d); dialogMo.observe(d, {attributes:true, attributeFilter:['open','closing','opening']}); } syncSheet(); };
+    observe(doc.body, hook, {childList:true});
+    const pm = pmEl();
+    if (pm) { observe(pm, syncSheet, {attributes:true, attributeFilter:['class']}); decoratePromptPopup(pm); }
+    on(win, 'resize', syncSheet);
+    disposers.push(() => { win.clearTimeout(sheetAnimTimer); win.clearTimeout(pmCloseTimer); unhostPm(); dimEl?.remove(); for (const a of ['data-cw-sheet','data-cw-sheet-anim','data-cw-sheet-deep','data-cw-sheet-drag']) root.removeAttribute(a); });
+    hook();
+  }
+  // 提示词管理器的编辑 / 查看页也照弹出页排：顶栏「‹ 预设 | 编辑 | 保存」。按钮只是去点酒馆原来的关闭 / 保存，保存逻辑不变。
+  // 原来的 <h3> 搬进顶栏当标题（保留它的 data-i18n），关掉扩展时搬回去。顶栏可以往下拖关闭。
+  function decoratePromptPopup(pm) {
+    for (const [areaId, closeId, saveId] of [['completion_prompt_manager_popup_edit','completion_prompt_manager_popup_entry_form_close','completion_prompt_manager_popup_entry_form_save'],['completion_prompt_manager_popup_inspect','completion_prompt_manager_popup_close_button','']]) {
+      const area = doc.getElementById(areaId), h3 = area?.querySelector(':scope>h3');
+      if (!area || !h3 || area.querySelector(':scope>.cw-pm-head')) continue;
+      const head = make('div', 'cw-pm-head');
+      const backLabel = t('预设', 'Presets');
+      const closeIt = () => doc.getElementById(closeId)?.click();
+      const back = button('', closeIt, 'cw-pm-back'); back.append(icon('chevl'), make('span', '', backLabel)); back.setAttribute('aria-label', backLabel);
+      const marker = doc.createComment('cw-pm-h3'); h3.before(marker);
+      head.append(back, h3);
+      if (saveId) head.append(button(t('保存', 'Save'), () => doc.getElementById(saveId)?.click(), 'cw-pm-save'));
+      area.prepend(head);
+      sheetDrag(pm, head, closeIt);
+      disposers.push(() => { if (marker.parentNode) marker.replaceWith(h3); head.remove(); });
+    }
+  }
   if (doc.readyState === 'loading') on(doc,'DOMContentLoaded',start,{once:true}); else start();
-  return { refresh: sync, destroy() { destroyed = true; observers.forEach(m=>m.disconnect()); disposers.forEach(f=>f()); if (raf) win.cancelAnimationFrame(raf); for (const d of dialogs) d.close(); restoreAdaptedContainers(); shell?.remove(); doc.querySelector('.cw-v4-chat-head')?.remove(); root.removeAttribute('data-cw-v4'); root.removeAttribute('data-cw-v4-settings'); } };
+  return { refresh: sync, activate, destroy() { destroyed = true; observers.forEach(m=>m.disconnect()); disposers.forEach(f=>f()); if (raf) win.cancelAnimationFrame(raf); for (const d of dialogs) d.close(); restoreAdaptedContainers(); shell?.remove(); doc.querySelector('.cw-v4-chat-head')?.remove(); root.removeAttribute('data-cw-v4'); root.removeAttribute('data-cw-v4-settings'); } };
 }

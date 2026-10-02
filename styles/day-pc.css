@@ -2225,11 +2225,6 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
     html body #send_textarea { font-size:16px !important; }
   }
 }
-.mes.last_mes { animation:claude-fade-rise 240ms cubic-bezier(.16,1,.3,1) both; }
-@keyframes claude-fade-rise {
-  from { opacity:0; transform:translateY(4px); }
-  to { opacity:1; transform:translateY(0); }
-}
 :is(button,.mes_button,.menu_button,.drawer-icon,a,select,.inline-drawer-toggle):focus-visible {
   outline:2px solid var(--cw-mark) !important; outline-offset:2px !important;
 }
@@ -2295,7 +2290,7 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
   background-image:none !important;
   isolation:isolate;
 }
-html.claude-pm-open:not(#claude-spec) body #form_sheld {
+html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
   visibility:hidden !important;
   pointer-events:none !important;
 }

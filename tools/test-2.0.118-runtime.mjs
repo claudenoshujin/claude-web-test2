@@ -250,12 +250,16 @@ assert.equal(window.getComputedStyle(window.document.querySelector('#native-tt-p
 
 externalModal.style.display = 'grid';
 await new Promise(resolve => window.setTimeout(resolve, 40));
-assert.ok(window.document.body.classList.contains('clawd-external-modal-open'), 'visible third-party full-screen modal must lower the Claude rail');
-assert.equal(window.document.querySelector('#top-settings-holder').style.getPropertyValue('z-index'), '1', 'modal must lower the rail at node priority');
-assert.equal(window.document.querySelector('#top-bar').style.getPropertyValue('z-index'), '1', 'modal must also lower the full-height rail shell');
+assert.ok(window.document.body.classList.contains('clawd-external-modal-open'), 'visible third-party full-screen modal is detected');
+/* 2.0.246：不再把侧栏降到 1（侧栏会沉到欢迎页下面看不见），改把弹窗抬到 4100。 */
+assert.equal(window.document.querySelector('#top-settings-holder').style.getPropertyValue('z-index'), '', 'the rail is not lowered for an external modal');
+assert.equal(window.document.querySelector('#top-bar').style.getPropertyValue('z-index'), '', 'the full-height rail shell is not lowered either');
+assert.equal(externalModal.style.getPropertyValue('z-index'), '4100', 'the external modal is lifted above the rail');
+assert.equal(externalModal.style.getPropertyPriority('z-index'), 'important', 'the lift beats important cascade layers');
 externalModal.style.display = 'none';
 await new Promise(resolve => window.setTimeout(resolve, 40));
-assert.ok(!window.document.body.classList.contains('clawd-external-modal-open'), 'closing the third-party modal must restore the Claude rail');
+assert.ok(!window.document.body.classList.contains('clawd-external-modal-open'), 'closing the third-party modal clears the state');
+assert.equal(externalModal.style.getPropertyValue('z-index'), '', 'closing the modal restores its own inline layer');
 assert.equal(window.document.querySelector('#top-settings-holder').style.getPropertyValue('z-index'), '', 'closing the modal must restore the original inline rail layer');
 assert.equal(window.document.querySelector('#top-bar').style.getPropertyValue('z-index'), '', 'closing the modal must restore the full-height rail shell');
 
@@ -280,26 +284,34 @@ Object.defineProperty(cachedPageHide, 'persisted', { value: true });
   const html = window.document.documentElement;
   const pm = window.document.getElementById('completion_prompt_manager_popup');
   const drawer = window.document.getElementById('tt-drawer-content');
-  assert.equal(html.classList.contains('claude-pm-open'), false, 'prompt editor closed: no claude-pm-open');
+  assert.equal(html.hasAttribute('data-claude-pm-open'), false, 'prompt editor closed: no claude-pm-open');
   pm.classList.add('openDrawer');
   await new Promise(resolve => window.setTimeout(resolve, 0));
-  assert.equal(html.classList.contains('claude-pm-open'), true, 'opening the prompt editor must mark <html>');
+  assert.equal(html.hasAttribute('data-claude-pm-open'), true, 'opening the prompt editor must mark <html>');
   pm.classList.remove('openDrawer');
   await new Promise(resolve => window.setTimeout(resolve, 0));
-  assert.equal(html.classList.contains('claude-pm-open'), false, 'closing the prompt editor must clear the mark');
+  assert.equal(html.hasAttribute('data-claude-pm-open'), false, 'closing the prompt editor must clear the mark');
   if (drawer.parentElement?.parentElement?.id === 'top-settings-holder') {
     drawer.classList.replace('closedDrawer', 'openDrawer');
     await new Promise(resolve => window.setTimeout(resolve, 0));
-    assert.equal(html.classList.contains('claude-top-drawer-open'), true, 'opening a top drawer must mark <html>');
+    assert.equal(html.hasAttribute('data-claude-top-drawer-open'), true, 'opening a top drawer must mark <html>');
     drawer.classList.replace('openDrawer', 'closedDrawer');
     await new Promise(resolve => window.setTimeout(resolve, 0));
-    assert.equal(html.classList.contains('claude-top-drawer-open'), false, 'closing the top drawer must clear the mark');
+    assert.equal(html.hasAttribute('data-claude-top-drawer-open'), false, 'closing the top drawer must clear the mark');
   } else throw new Error('fixture drawer was moved out of #top-settings-holder');
 }
 /* 欢迎语跟着当前用户名走（2026-09-29 反馈：换了 User 名字，标题还是旧名字 Dr. Misy）。
    换人 / 改名只换名字那几个字：同一句、同一个节点，不重抽、不重建。 */
 {
   const doc = window.document;
+  // Mobile throttling (110ms) plus rAF can exceed a fixed 120ms wait.
+  const waitForGreeting = async predicate => {
+    const deadline = Date.now() + 1500;
+    while (!predicate() && Date.now() < deadline) {
+      await new Promise(resolve => window.setTimeout(resolve, 25));
+    }
+    assert.ok(predicate(), 'greeting must settle within 1500ms');
+  };
   context.chat = [];
   doc.querySelectorAll('#chat > .mes').forEach(m => m.remove());
   const realRandom = Math.random;
@@ -307,7 +319,7 @@ Object.defineProperty(cachedPageHide, 'persisted', { value: true });
   window.sessionStorage.removeItem('clawd-last-hero-line');
   context.name1 = 'Alpha';
   emitRuntimeEvent('persona_changed');
-  await new Promise(resolve => window.setTimeout(resolve, 120));
+  await waitForGreeting(() => /Alpha/.test(doc.querySelector('.clawd-welcome-hero')?.textContent || ''));
   Math.random = realRandom;
   const hero = doc.querySelector('.clawd-welcome-hero');
   assert.ok(hero, 'an empty, unselected chat shows the welcome greeting');
@@ -315,12 +327,12 @@ Object.defineProperty(cachedPageHide, 'persisted', { value: true });
   assert.match(first, /Alpha/, 'the greeting uses the current user name');
   context.name1 = 'Beta';
   emitRuntimeEvent('persona_changed');
-  await new Promise(resolve => window.setTimeout(resolve, 120));
+  await waitForGreeting(() => hero.textContent === first.replace('Alpha', 'Beta'));
   assert.equal(doc.querySelector('.clawd-welcome-hero'), hero, 'switching persona must not rebuild the greeting');
   assert.equal(hero.textContent, first.replace('Alpha', 'Beta'), 'same greeting, new name');
   context.name1 = '';
   emitRuntimeEvent('persona_changed');
-  await new Promise(resolve => window.setTimeout(resolve, 120));
+  await waitForGreeting(() => !/Beta/.test(hero.textContent));
   assert.doesNotMatch(doc.querySelector('.clawd-welcome-hero').textContent, /Beta|,\s*$|，\s*$/, 'no name: the name-free version of the same greeting, no dangling comma');
 }
 window.dispatchEvent(cachedPageHide);

@@ -123,7 +123,7 @@ html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder .cw-v4-panel:is(
   width:calc(var(--cw-v4-w) - 212px)!important;height:calc(var(--cw-v4-h) - 59px)!important;
   max-width:none!important;min-width:0!important;max-height:none!important;min-height:0!important;
   right:auto!important;bottom:auto!important;transform:none!important;inset-block-end:auto!important;
-  translate:none!important;clip-path:none!important;transition:none!important;animation:none!important;
+  translate:none;clip-path:none!important;transition:none!important;animation:none!important;
   margin:0!important;padding:20px 28px 36px!important;border:0!important;border-radius:0 0 15px 0!important;
   background:var(--cw-v4-bg)!important;color:var(--cw-v4-text)!important;box-shadow:none!important;
   overflow:auto!important;z-index:3001!important;contain:none!important;
@@ -410,7 +410,8 @@ html[data-cw-v4] body #chat .cw-v4-swipes>button{display:flex!important;align-it
 html[data-cw-v4] body #chat .cw-v4-swipes>button:disabled{opacity:.3!important;cursor:default}
 html[data-cw-v4] .cw-v4-swipe-count{font:400 12px/1 var(--cw-v4-font);color:var(--cw-v4-muted);min-width:32px;text-align:center}
 html:not([data-cw-v4]) .cw-v4-swipes{display:none!important}
-html[data-cw-v4] body #chat>.mes[is_user="true"] {display:flex!important;flex-direction:row-reverse!important;align-items:flex-start!important;gap:10px;background:none!important;border:0!important}
+/* 2.0.249：欢迎页不能把用户消息放出来（欢迎页快速切换角色后，该角色以前的用户消息露在欢迎页上），所以排除 .clawd-welcome。 */
+html[data-cw-v4] body:not(.clawd-welcome) #chat>.mes[is_user="true"] {display:flex!important;flex-direction:row-reverse!important;align-items:flex-start!important;gap:10px;background:none!important;border:0!important}
 html[data-cw-v4] body #chat>.mes[is_user="true"] .mes_block{display:flex;flex-direction:column;align-items:flex-end;max-width:85%;min-width:0;padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important}
 html[data-cw-v4] body #chat>.mes[is_user="true"] .mes_text{background:#efeee9!important;border-radius:18px!important;padding:10px 16px!important;font-family:var(--cw-font-ui,"Noto Sans SC",sans-serif)!important}
 html[data-cw-v4][data-claude-integrated-theme="night"] body #chat>.mes[is_user="true"] .mes_text{background:#393937!important}
@@ -871,8 +872,8 @@ html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-pref-page>:is(.cw
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-pref-page select.cw-v4-wide:not([multiple]):not([data-v-app] *){width:100%!important;max-width:none!important;border-color:var(--v4-ctl-line)!important;background-color:var(--v4-ctl)!important;text-align:left;text-align-last:left;padding:0 32px 0 12px!important;font-size:14px!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-row.cw-v4-stack>.cw-v4-row-controls:has(>select.cw-v4-wide,>textarea){width:100%}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.cw-v4-pref-btn,.cw-v4-button,.cw-v4-as-btn).cw-v4-danger{color:var(--v4-danger)!important}
-html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-row-controls>toolcool-color-picker{display:block!important;width:34px!important;height:34px!important;border-radius:8px!important;border:1px solid var(--v4-ctl-line)!important;overflow:hidden!important;flex:none;--tool-cool-color-picker-btn-bg:transparent;--tool-cool-color-picker-btn-border-color:transparent}
-html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-row-controls>toolcool-color-picker::part(button){width:34px;height:34px;border:0;border-radius:0;padding:0}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-row-controls>toolcool-color-picker{display:block!important;width:34px!important;height:34px!important;border-radius:8px!important;border:1px solid var(--v4-ctl-line)!important;overflow:visible!important;flex:none;--tool-cool-color-picker-btn-bg:transparent;--tool-cool-color-picker-btn-border-color:transparent}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-row-controls>toolcool-color-picker::part(button){width:34px;height:34px;border:0;border-radius:8px;padding:0;overflow:hidden}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-row-controls>toolcool-color-picker::part(button-color){width:34px;height:34px;border-radius:0}
 /* prompt manager rows: the theme styles them with two-ID selectors */
 html[data-cw-v4] body #top-settings-holder #completion_prompt_manager #completion_prompt_manager_list>li.cw-v4-prompt-row{grid-template-columns:auto minmax(0,1fr) auto auto auto!important;grid-auto-rows:auto!important;column-gap:14px!important;min-height:0!important;margin:0!important;padding:11px 2px!important;background:none!important;border:0!important;border-bottom:1px solid var(--v4-row-line)!important;border-radius:0!important}
@@ -1185,7 +1186,7 @@ html[data-claude-mode] body #top-settings-holder>.clawd-rail-brand{order:-1000!i
 html[data-claude-mode] body #top-settings-holder>.clawd-rail-recents{order:1000!important}
 html[data-claude-mode] body #top-settings-holder>.drawer#persona-management-button{order:1001!important}
 /* 被重排时去掉「偏好设置」上方的分组留白（claude-rail-reordered 由 index.js 检测行内 order 后挂上）。 */
-html.claude-rail-reordered body #top-settings-holder>.drawer#user-settings-button{margin-top:0!important}
+html[data-claude-rail-reordered] body #top-settings-holder>.drawer#user-settings-button{margin-top:0!important}
 /* 兼容模式的手机抽屉页高度用的是键盘出现前冻结的像素高度（--cl-mobile-viewport-height）。浏览器地址栏会随滚动收起 / 出现的
    （Chrome、Edge 等），冻结时地址栏正好收起，冻结值就比现在看得见的高度大，页面最底下几项被压在地址栏后面拉不出来（扩展多时最明显）。
    底部补上「冻结高度 − 当前可见高度」这段空白，差多少补多少；两者一样时不多出任何空白。 */
@@ -1193,26 +1194,9 @@ html.claude-rail-reordered body #top-settings-holder>.drawer#user-settings-butto
 /* 兼容模式把 #top-settings-holder 提到 z-index 10060（压过美化），设置页的遮罩就跟着盖住了 3002 的设置外壳：
    顶栏（标题、≡、×）看不见，只剩一条灰带。完整模式里外壳本来就在 holder 之上（3002 > 3001），这里按同样的关系抬到 holder 之上。 */
 html[data-claude-mode="compat"][data-cw-v4-settings] .cw-v4-shell{z-index:10061!important}
-/* 以下「侧栏盖在设置页上」的规则只在 html.cw-v4-rail-over 时生效：official-layout.js 在设置页 ≡ 打开侧栏前挂上、侧栏收起并滑出后摘掉。
-   从聊天页的侧栏点入口进设置页时没有这个标记，侧栏照常直接收起（否则延迟恢复的层级会让侧栏在设置页顶栏上留下一条白条）。
-   设置页开着时点左上角 ≡：侧栏直接盖在设置页上（design v4：点侧栏外面收回，页面还在），不先关页——关页会触发整页样式重算，
-   手机上侧栏要卡 1 秒多才出来。设置页是侧栏容器的子孙、又铺满整屏，侧栏打开期间把它压到侧栏自己的层底（z-index:-1），再用侧栏的 ::after 铺一层纸色底（同样 -1、但排在它后面）；这层底随侧栏一起滑入滑出，
-   设置页被逐渐盖住，不会闪出后面的聊天区；这层底在设置页里一直保留（侧栏收起时它跟着在屏幕外），收起时设置页和侧栏自己的层级都延后 210ms 再恢复，
-   让侧栏先滑出去（否则侧栏一收起就掉到遮罩和设置顶栏下面，滑出时是灰的）。右边露出的那条 180ms 淡入压暗、点击穿透到 scrim。scrim 所在容器在设置页里一直保留（只藏 ≡ 和临时聊天按钮），
-   否则它从 display:none 直接出现，淡入不生效。
-   侧栏容器回到平时的 4050 并恢复可点（设置页打开时它是 pointer-events:none；另一条带 :has() 的规则优先级更高，这里重复 id 压过它）、
-   把平时收起侧栏用的 scrim 放出来（它在 4045，盖住设置外壳 3002，点外面就收起侧栏）；scrim 所在容器里的 ≡ 和临时聊天按钮不放出来。 */
 @media(max-width:700px){
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body .clawd-mobile-chrome{display:block!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body .clawd-mobile-chrome>:not(.clawd-mobile-scrim){display:none!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder{transition:left 210ms cubic-bezier(.22,.8,.3,1),z-index 0s linear 210ms!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body[data-clawd-menu] #top-settings-holder#top-settings-holder{z-index:4050!important;pointer-events:auto!important;transition:left 210ms cubic-bezier(.22,.8,.3,1),z-index 0s!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){transition:filter 180ms ease,z-index 0s linear 210ms!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body[data-clawd-menu] #top-settings-holder#top-settings-holder .cw-v4-panel.openDrawer:not(.closedDrawer){transition:filter 180ms ease,z-index 0s!important;z-index:-1!important;filter:brightness(.8)!important;pointer-events:none!important}
-html.cw-v4-rail-over[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder::after{content:""!important;display:block!important;position:absolute!important;inset:0!important;z-index:-1!important;background:var(--cw-surface-page)!important;pointer-events:none!important}
 /* 手机上设置页铺满全屏，桌面对话框用的 .cw-v4-backdrop 本来就被盖住；它在侧栏容器里，侧栏滑出时会盖在侧栏各行上，所以手机设置页里一直不显示。 */
 html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder>.cw-v4-backdrop{display:none!important}
-html.cw-v4-rail-over[data-claude-mode="compat"][data-cw-v4-settings] body[data-clawd-menu] .cw-v4-shell{z-index:3002!important}
 /* 顶栏抽屉打开时主题会藏起字标 / Recents / New chat（claude-top-drawer-open 那条）。手机设置页里侧栏不打开时在屏幕外，
    一直放出来也看不到；只在打开时放出来的话，收起滑出的途中它们会突然消失。 */
 html[data-cw-v4][data-cw-v4-settings][data-claude-layout] body #top-settings-holder#top-settings-holder>:is(.clawd-rail-brand,.clawd-mobile-new-chat){display:flex!important}
@@ -1229,12 +1213,834 @@ html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.cw-v4-row,.cw-v4-se
 /* v4 设置页关掉就立即隐藏，不播手机主题的抽屉收起动画。day-mobile.css 让关上的抽屉继续 display:block 280ms、
    clip-path 收起后才 visibility:hidden；v4 页面关上时会先塌成约 100px 高的一块，侧栏盖在设置页上切换入口时，
    这块会作为一张小卡片浮在侧栏上（Via 录屏约 4～7 帧）。 */
-@media(max-width:700px){html[data-cw-v4] body #top-settings-holder>.drawer>.drawer-content.cw-v4-panel:not(.openDrawer){visibility:hidden!important;transition:none!important}}
-/* 手机侧栏点设置入口：页面在侧栏底下画好以后直接切过去，不滑（index.js closeMobileMenuAfterPanel 挂 cw-v4-rail-snap 两帧）。
-   2.0.193 滑着揭开页面，滑动撞上页面加载的阻塞，前约 125ms 不动、然后一下跳完，看着抽一下。
-   类名重复几遍是为了压过上面 cw-v4-rail-over 那几条带过渡的规则。普通点 ≡ / 点遮罩开关侧栏不受影响。 */
+/* 关闭的手机设置页保留原生节点和尺寸，但暂停子树渲染。历史对话会同步更新
+   隐藏的角色编辑面板；只设 visibility:hidden 仍会为其显隐操作反复计算样式。
+   openDrawer 出现后此规则自动退出，打开页面恢复正常渲染。 */
+@media(max-width:700px){html[data-cw-v4] body #top-settings-holder>.drawer>.drawer-content.cw-v4-panel:not(.openDrawer){visibility:hidden!important;content-visibility:hidden!important;transition:none!important}}
+/* 2.0.203 手机侧栏改成推开式（Lulu 2026-09-30，照 Claude 手机版）：侧栏固定在左边不动，移动的是页面。
+   打开：页面（聊天区 #sheld 连同输入框、顶栏、≡ 和临时聊天按钮；设置页的面板和 .cw-v4-shell 顶栏）往右推开一个侧栏宽，
+   露出底下的侧栏；收起：页面滑回盖住侧栏。页面不压暗，只在左边缘带一道阴影。
+   面板选择器重复 .cw-v4-panel：前面固定设置面板位置的规则用 :is(#id…) 带了 ID 权重。
+   translate 不能带 !important（带了合成器不接，Chrome 判 AffectsImportantProperty），所以主题里几条 translate:none 也去掉了 !important。
+   2.0.204：html[data-cw-push] 从打开前一刻挂到收起滑完（index.js setMobileMenuOpen）。挂着时各层停在 translate:0 0，
+   滑动是 0 0 ⇄ 侧栏宽，同一种值、各层都已有变换层，合成器才接得住；从 translate:none 起步时浏览器判定「关键帧值类型不同 /
+   目标没有合成层」，整段滑动退回主线程，每帧重算样式 50–100ms，各层还各走各的（顶栏和页面错开）。
+   不挂时回到 none：#sheld 常驻变换会成为输入框（fixed）的定位参照，键盘处理不能冒这个险。
+   侧栏也只在挂着时就位在 left:0，其余时间挪到屏幕外。不切 visibility：它会继承，一切换侧栏里连同打开的设置页三千多个元素都要重算样式。
+   层级：聊天页里侧栏保持原来的 4050（其他扩展的悬浮按钮照旧压在下面），挂着时把页面各层抬到侧栏之上；
+   设置页里面板本来就是侧栏容器的子元素、在侧栏各行之上，外壳（3002）在侧栏容器（3001）之上，不用抬。
+   点页面露出的那条收起侧栏：scrim 透明，只盖侧栏右边那条。阴影只加在整屏高的层上，矮的顶栏加了会在下沿漏出一道。 */
 @media(max-width:700px){
-html.cw-v4-rail-snap.cw-v4-rail-snap.cw-v4-rail-snap[data-cw-v4] body #top-settings-holder#top-settings-holder,
-html.cw-v4-rail-snap.cw-v4-rail-snap.cw-v4-rail-snap[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel,
-html.cw-v4-rail-snap.cw-v4-rail-snap.cw-v4-rail-snap[data-cw-v4] body .clawd-mobile-scrim{transition:none!important}
+html[data-cw-v4]{--cw-rail-w:min(85vw,420px);--cw-push:300ms cubic-bezier(.2,.8,.2,1)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder{left:calc(-1 * var(--cw-rail-w) - 12px)!important;width:var(--cw-rail-w)!important;max-width:none!important;border-right:0!important;box-shadow:none!important;transition:none!important}
+html[data-cw-push][data-cw-v4] body #top-settings-holder#top-settings-holder{left:0!important}
+html[data-cw-v4][data-cw-v4-settings] body[data-clawd-menu] #top-settings-holder#top-settings-holder{pointer-events:auto!important}
+html[data-cw-push][data-cw-v4] body :is(#sheld,#top-bar,.clawd-mobile-menu-button,.cw-v4-temporary,.cw-v4-shell),
+html[data-cw-push][data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-content.cw-v4-panel.cw-v4-panel.cw-v4-panel{translate:0px 0px;transition:translate var(--cw-push)!important}
+html[data-cw-push][data-cw-v4] body[data-clawd-menu] :is(#sheld,#top-bar,.clawd-mobile-menu-button,.cw-v4-temporary,.cw-v4-shell),
+html[data-cw-push][data-cw-v4] body[data-clawd-menu] #top-settings-holder#top-settings-holder>.drawer>.drawer-content.cw-v4-panel.cw-v4-panel.cw-v4-panel{translate:var(--cw-rail-w) 0}
+html[data-cw-push][data-cw-v4]:not([data-cw-v4-settings]) body #sheld{z-index:4051!important}
+html[data-cw-push][data-cw-v4]:not([data-cw-v4-settings]) body #top-bar{z-index:4052!important}
+html[data-cw-push][data-cw-v4]:not([data-cw-v4-settings]) body .cw-v4-temporary{z-index:4061!important}
+html[data-cw-v4] body[data-clawd-menu] .clawd-mobile-scrim.clawd-mobile-scrim{z-index:4060!important}
+html[data-cw-v4] body #sheld,
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-content.cw-v4-panel.cw-v4-panel.cw-v4-panel{box-shadow:-10px 0 28px -10px rgba(20,20,19,.18)!important}
+html[data-cw-v4] body[data-clawd-menu] .clawd-mobile-menu-button.clawd-mobile-menu-button{visibility:visible!important}
+html[data-cw-v4] body .clawd-mobile-scrim.clawd-mobile-scrim{background:transparent!important;transition:none!important}
+html[data-cw-v4] body[data-clawd-menu] .clawd-mobile-scrim.clawd-mobile-scrim{left:var(--cw-rail-w)!important}
+html[data-cw-v4][data-cw-v4-settings] body[data-clawd-menu] .clawd-mobile-chrome{display:block!important}
+html[data-cw-v4][data-cw-v4-settings] body .clawd-mobile-chrome>:not(.clawd-mobile-scrim){display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.clawd-rail-brand{padding-left:13px!important}
+/* 配色（官网 · 日间）：参考 Claude 手机版，侧栏 #f3f3f1、页面 #f9f9f7，比原来的 #faf9f5 少一点黄。 */
+html[data-cw-v4][data-claude-palette="anthropic-light"]{--cw-paper-0:#f9f9f7!important;--cw-topbar-surface:#f9f9f7!important}
+html[data-cw-v4][data-claude-palette="anthropic-light"] body #top-settings-holder#top-settings-holder{background:#f3f3f1!important}
+html[data-cw-v4][data-claude-palette="anthropic-light"] body #top-settings-holder .cw-v4-panel.openDrawer,
+html[data-cw-v4][data-claude-palette="anthropic-light"] .cw-v4-shell :is(.cw-v4-head,.cw-v4-nav){background:#f9f9f7!important}
+/* 2.0.205：Claude 手机版的抽屉页从顶栏到底是同一个底色，顶栏下没有分隔线，搜索框是无边框的灰底。
+   设置页正文原来走 --cw-v4-bg（#fff），和 #f9f9f7 的顶栏拼成两截；外壳还带着桌面对话框的 1px 描边，手机上就是顶栏下那条线。 */
+html[data-cw-v4][data-claude-palette="anthropic-light"]{--cw-v4-bg:#f9f9f7;--v4-panel:#f9f9f7}
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell{box-shadow:none!important}
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell>.cw-v4-head{border-bottom:0!important}
+html[data-cw-v4][data-claude-palette="anthropic-light"] .cw-v4-shell>.cw-v4-search{background:#e4e4e2!important}
+/* 滚动条：手机本来是覆盖式、不划不出现；电脑窄窗口里是常驻的一条灰杠。平时透明，指到滚动区域上才淡淡显出来。
+   用标准的 scrollbar-color：Chrome 121 起它一设上，::-webkit-scrollbar 那套就不再生效。 */
+html[data-cw-v4] body #top-settings-holder :is(.cw-v4-panel,.clawd-rail-recents){scrollbar-width:thin!important;scrollbar-color:transparent transparent!important}
+html[data-cw-v4] body #top-settings-holder :is(.cw-v4-panel,.clawd-rail-recents):hover{scrollbar-color:rgba(20,20,19,.16) transparent!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder :is(.cw-v4-panel,.clawd-rail-recents):hover{scrollbar-color:rgba(255,255,255,.18) transparent!important}
+/* 2.0.205 排版照 Claude 手机版（Lulu 2026-09-30 全选四项）。对照截图量的：列表标题约 17px、副标题 15px、每项约 74px 高，
+   分组是灰色小字不是黑色粗标题，没有分隔线，没有白底描边的小按钮。
+   1) 字号字重：行标题 17px / 说明 15px，行标题字重 450（西文落到 Hanken 500，中文落到常规体），顶栏标题 600。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row-title{font-size:17px!important;font-weight:450!important;line-height:1.35!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.cw-v4-row-info>p,.cw-v4-row-desc,.cw-v4-note){font-size:15px!important;line-height:1.45!important}
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell .cw-v4-title{font-weight:600!important}
+/* 2) 分区标题改成灰色小标签，去掉分区之间的细线，靠留白分组。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section>h2{font-size:15px!important;font-weight:400!important;color:var(--v4-muted)!important;margin:0 0 2px!important;letter-spacing:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section{border-top:0!important;padding-top:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section+.cw-v4-section{margin-top:34px!important}
+/* 3) 按钮、下拉框、输入框：无边框灰底（和搜索框同色），不再是一排白底描边的小方块。 */
+html[data-cw-v4][data-claude-palette="anthropic-light"]{--v4-ctl:#e4e4e2;--v4-ctl-line:transparent}
+html[data-cw-v4][data-claude-integrated-theme="night"]{--v4-ctl:#30302e;--v4-ctl-line:transparent}
+/* 行与行之间的分隔线（设置行、API 行、世界书条目、预设条目……都走 --v4-row-line）在手机上一律去掉，靠行距分组。 */
+html[data-cw-v4][data-cw-v4]{--v4-row-line:transparent}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel :is(.cw-v4-button,.cw-v4-native-action):not(.cw-v4-primary){background:var(--v4-ctl)!important;border-color:transparent!important}
+/* 扩展列表照 Claude 的列表：没有行间分隔线，图标不装在描边方框里，名称 17px。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-row{border-bottom:0!important;padding:14px 0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-icon{width:28px!important;height:28px!important;border:0!important;background:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-icon::before{width:22px!important;height:22px!important;background:var(--v4-text)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-name{font-size:17px!important}
+/* 4) 行距拉开：每行上下 16px，页面左右 20px。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row{padding:16px 0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-content.cw-v4-panel.cw-v4-panel.cw-v4-panel{padding-left:20px!important;padding-right:20px!important}
+}
+
+/* 2.0.207 设置页照第五稿（design-v5.html，Lulu 2026-09-30 定稿）。
+   ① 设置页里剩下的 Font Awesome 实心图标换成和侧栏同一套的线性图标（official-icons.js，用 mask 画，颜色跟 currentColor）。 */
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-person-circle-question,.fa-save,.fa-floppy-disk,.fa-key,.fa-plus,.fa-plus-square,.fa-square-plus,.fa-chain,.fa-link,.fa-pencil,.fa-pen-to-square,.fa-pen,.fa-edit,.fa-trash-can,.fa-trash,.fa-folder,.fa-folder-plus,.fa-gear,.fa-cog,.fa-star,.fa-users,.fa-user-plus,.fa-user-graduate,.fa-tags,.fa-tag,.fa-lock,.fa-ellipsis-vertical,.fa-ellipsis,.fa-maximize,.fa-expand,.fa-circle-question,.fa-question-circle,.fa-circle-exclamation,.fa-exclamation-circle,.fa-filter-circle-xmark,.fa-file-import,.fa-file-export)::before{content:""!important;display:inline-block!important;width:1.15em!important;height:1.15em!important;vertical-align:-.2em;background:currentColor!important;-webkit-mask:var(--cw-v4-icon) center/contain no-repeat;mask:var(--cw-v4-icon) center/contain no-repeat;font-family:inherit!important}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-save,.fa-floppy-disk){--cw-v4-icon:var(--cw-v4-icon-save)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-key){--cw-v4-icon:var(--cw-v4-icon-key)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-plus,.fa-plus-square,.fa-square-plus){--cw-v4-icon:var(--cw-v4-icon-plus)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-chain,.fa-link){--cw-v4-icon:var(--cw-v4-icon-link)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-pencil,.fa-pen-to-square,.fa-pen,.fa-edit){--cw-v4-icon:var(--cw-v4-icon-pencil)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-person-circle-question,.fa-user-plus){--cw-v4-icon:var(--cw-v4-icon-userplus)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-trash-can,.fa-trash){--cw-v4-icon:var(--cw-v4-icon-trash)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-folder){--cw-v4-icon:var(--cw-v4-icon-folder)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-folder-plus){--cw-v4-icon:var(--cw-v4-icon-folderplus)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-gear,.fa-cog){--cw-v4-icon:var(--cw-v4-icon-gear)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-star){--cw-v4-icon:var(--cw-v4-icon-star)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-users){--cw-v4-icon:var(--cw-v4-icon-users)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-user-plus){--cw-v4-icon:var(--cw-v4-icon-userplus)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-user-graduate){--cw-v4-icon:var(--cw-v4-icon-user)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-tags,.fa-tag){--cw-v4-icon:var(--cw-v4-icon-tag)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-lock){--cw-v4-icon:var(--cw-v4-icon-lock)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-ellipsis-vertical,.fa-ellipsis){--cw-v4-icon:var(--cw-v4-icon-dots)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-maximize,.fa-expand){--cw-v4-icon:var(--cw-v4-icon-expand)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-circle-question,.fa-question-circle){--cw-v4-icon:var(--cw-v4-icon-help)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-circle-exclamation,.fa-exclamation-circle){--cw-v4-icon:var(--cw-v4-icon-alert)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-filter-circle-xmark){--cw-v4-icon:var(--cw-v4-icon-filterx)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-file-import){--cw-v4-icon:var(--cw-v4-icon-import)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-file-export){--cw-v4-icon:var(--cw-v4-icon-export)}
+/* ② 手机：设置页是卡片式的一页（顶上留一道缝）、内容装进白色圆角卡片、控件 iOS 化。
+   色值取自 Claude 手机版设置页截图：底 #f9f9f7、卡片 #fff、卡片里缩进细线、分组灰字在卡片外、开关蓝色、操作是蓝字。
+   卡片就是 .cw-v4-section 本身（分区带 content-visibility:auto，会裁掉画在分区外的东西，所以分组名留在分区里，白底用 ::before 从分组名下面画起）：酒馆把行包在各种原生容器里（API 页每组都是单独的 <form>），按「相邻的行」拼卡片拼不起来；
+   分组名 h2 挪到卡片上方。行本身透明，行与行之间画缩进细线——酒馆给不可用的行整行加 opacity，透明的行淡掉的只是文字，不会把卡片也淡掉。 */
+@media(max-width:700px){
+html[data-cw-v4]{--cw-sheet-gap:10px;--m-card:#fff;--m-hair:rgba(20,20,19,.09);--m-blue:#2c6fc5;--m-gapfill:#d6d6d6;--m-field:#f3f3f1;--m-val:#3d3d3a;
+  --m-updown:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8984' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 9.5 4-4 4 4M8 14.5l4 4 4-4'/%3E%3C/svg%3E")}
+html[data-cw-v4][data-claude-integrated-theme="night"]{--m-card:#2b2a28;--m-hair:rgba(255,255,255,.08);--m-blue:#6aa6ef;--m-gapfill:#0e0e0d;--m-field:#353431;--m-val:#d8d7d2}
+/* 卡片里的输入类控件用浅灰底（2.0.206 是 #e4e4e2，放在白卡片上太重） */
+html[data-cw-v4][data-cw-v4]{--v4-ctl:var(--m-field)}
+/* 2.0.209：设置页本身是全屏抽屉页（Claude 手机版的 Chats 页），顶上不留缝；缝只给编辑弹窗（见 ⑤）。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-content.cw-v4-panel.cw-v4-panel.cw-v4-panel{padding-left:16px!important;padding-right:16px!important}
+/* 卡片 = 分区；分组名挪到卡片上方。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section.cw-v4-section{--m-top:0px;position:relative!important;isolation:isolate;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;margin:12px 0 0!important;box-shadow:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section.cw-v4-section:has(>h2){--m-top:28px;margin-top:22px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section.cw-v4-section>h2{height:28px!important;margin:0!important;padding:0 16px 8px!important;line-height:20px!important;box-sizing:border-box!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section.cw-v4-section::before{content:"";position:absolute;top:var(--m-top);left:0;right:0;bottom:0;background:var(--m-card);border-radius:12px;z-index:-1;pointer-events:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section.cw-v4-section::after{content:"";position:absolute;top:var(--m-top);left:0;right:0;height:1px;background:var(--m-card);pointer-events:none;z-index:1}
+/* 行：透明，内边距 13/16；每行顶上一条从文字起点开始的细线，卡片最上面那条被上面的 ::after 盖掉。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.cw-v4-row,.cw-v4-api-row,.cw-v4-extension-row){background:transparent!important;padding:13px 16px!important;margin:0!important;border:0!important;border-radius:0!important;position:relative!important;min-height:52px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section :is(.cw-v4-row,.cw-v4-api-row,.cw-v4-extension-row)::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--m-hair);pointer-events:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.cw-v4-note,.cw-v4-api-note){padding:0 16px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section>.cw-v4-bar{padding:12px 16px!important;margin:0!important}
+/* 选择框：「值 + ⌃⌄」，没有底色和边框。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.cw-v4-row,.cw-v4-api-row) select:not([multiple]){appearance:none!important;-webkit-appearance:none!important;background:transparent var(--m-updown) right center/16px 16px no-repeat!important;border:0!important;box-shadow:none!important;padding:0 22px 0 0!important;min-height:32px!important;height:auto!important;font-size:17px!important;color:var(--m-val)!important;text-align-last:right}
+/* 只有一个选择框的行：选择框和标题同一行（Claude 的「标题 …… 值 ⌃⌄」），不再另起一行。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child){display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child)>.cw-v4-row-info{flex:1 1 0!important;min-width:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child)>.cw-v4-row-controls{flex:0 1 auto!important;width:auto!important;margin:0!important;justify-content:flex-end!important}
+/* 按钮类操作：蓝字，没有底色和边框；删除类红字。放在卡片（分区）里的都算。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-section :is(.cw-v4-button,.cw-v4-as-btn,.cw-v4-pref-btn,.menu_button,.cw-v4-native-action,.cw-v4-more>summary){background:none!important;border:0!important;box-shadow:none!important;color:var(--m-blue)!important;padding:6px!important;min-height:0!important;font-size:17px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-section .cw-v4-more>summary{color:var(--m-val)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-section :is(.cw-v4-button,.cw-v4-as-btn,.cw-v4-pref-btn,.menu_button).cw-v4-danger{color:var(--v4-danger)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-section :is(.cw-v4-button,.cw-v4-as-btn).cw-v4-primary{color:var(--m-blue)!important;font-weight:600!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-section :is(.cw-v4-button,.menu_button):disabled{opacity:.4!important}
+/* 输入框：卡片里一块浅灰底圆角，没有边框。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section :is(input[type=text],input[type=number],input[type=search],input[type=password],input:not([type]),textarea){background:var(--m-field)!important;border:0!important;box-shadow:none!important;border-radius:10px!important;font-size:17px!important;color:var(--v4-text)!important}
+/* iOS 大开关（Claude 用蓝色）。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) input[type=checkbox]:not(.sr-only):not([data-v-app] *){width:51px!important;min-width:51px!important;height:31px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) input[type=checkbox]:not(.sr-only):not([data-v-app] *)::after{width:27px!important;height:27px!important;box-shadow:0 2px 5px rgba(0,0,0,.18)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) input[type=checkbox]:checked:not(.sr-only):not([data-v-app] *)::after{transform:translateX(20px)!important}
+/* 滑杆：蓝色已走段 + 白色大圆钮。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) input[type=range]:not([data-v-app] *)::-webkit-slider-runnable-track{background:linear-gradient(var(--v4-toggle-on),var(--v4-toggle-on)) 0/var(--fill,50%) 100% no-repeat,var(--v4-track)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) input[type=range]:not([data-v-app] *)::-webkit-slider-thumb{width:26px!important;height:26px!important;margin-top:-11px!important;background:#fff!important;border:0!important;box-shadow:0 2px 6px rgba(0,0,0,.2),0 0 0 .5px rgba(0,0,0,.06)!important}
+}
+/* ③ 电脑：设置对话框照 Claude 桌面版设置页（2026-09-30 截图）：小节标题 16px 粗体、行间细线更浅、
+   下拉框是「文字 + ⌄」不带框、只有一个下拉框的行下拉框放在标题同一行、滑杆蓝色、扩展图标不装方框。 */
+@media(min-width:701px){
+html[data-cw-v4][data-cw-v4]{--v4-row-line:#f0efed}
+html[data-cw-v4][data-cw-v4][data-claude-integrated-theme="night"]{--v4-row-line:#34332f}
+/* 2.0.237：小节标题 500，不用 600。Windows 上中文回落到微软雅黑，雅黑没有半粗，600 直接换成 Bold，再加描边就很黑；
+   500 是雅黑常规 + 英文 Segoe 半粗，和页面大标题一样（Claude Desktop 里页面标题和小节标题也是同一个字重）。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-section>h2{font-size:16px!important;font-weight:500!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.cw-v4-row,.cw-v4-api-row) select:not([multiple]){border-color:transparent!important;background-color:transparent!important;box-shadow:none!important;width:auto!important;min-width:0!important;max-width:100%!important;flex:0 1 auto!important;padding-left:8px!important;text-align:right;text-align-last:right}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.cw-v4-row,.cw-v4-api-row) select:not([multiple]):hover{background-color:var(--v4-hover)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child){display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:24px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child)>.cw-v4-row-info{flex:1 1 0!important;min-width:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child)>.cw-v4-row-controls{flex:0 1 auto!important;width:auto!important;margin:0!important;justify-content:flex-end!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-icon{border:0!important;background:none!important;width:28px!important;height:28px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-icon::before{width:20px!important;height:20px!important;background:var(--v4-text)!important;opacity:.8}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) input[type=range]:not([data-v-app] *)::-webkit-slider-runnable-track{background:linear-gradient(var(--v4-toggle-on),var(--v4-toggle-on)) 0/var(--fill,50%) 100% no-repeat,var(--v4-track)!important}
+}
+/* ④ 2.0.208 第六稿（design-v6.html，Lulu 2026-09-30 确认）：按 official-layout.js 打的 data-cw-kind 排每种行。 */
+@media(max-width:700px){
+/* 2.0.209：偏好设置的七个大标题（外观、界面……）和它们下面的说明不显示（Lulu：Claude 手机版没有这种大标题），分组靠灰字标签和卡片。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #user-settings-block :is(.cw-v4-pref-title,.cw-v4-lede){display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #user-settings-block .cw-v4-pref-page+.cw-v4-pref-page{margin-top:0!important}
+/* actions：标题一行，下面每个按钮一行（图标 + 名字，蓝字；删除红字）；只有图标的按钮用 title 当名字；⋯ 放到标题行右边。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions]{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:0!important;padding-bottom:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions][data-cw-many]>.cw-v4-row-info :is(.cw-v4-row-desc,p){display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions]>:is(.cw-v4-row-controls,.cw-v4-api-controls){display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:0!important;width:auto!important;margin:10px 0 0!important;padding:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel [data-cw-kind=actions]>:is(.cw-v4-row-controls,.cw-v4-api-controls)>:is(.cw-v4-as-btn,.cw-v4-pref-btn,.cw-v4-button,.menu_button,button){display:flex!important;justify-content:flex-start!important;align-items:center!important;gap:14px!important;width:100%!important;max-width:none!important;height:auto!important;min-height:50px!important;margin:0!important;padding:13px 0!important;border-top:1px solid var(--m-hair)!important;border-radius:0!important;text-align:left!important;font-size:17px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions] .cw-v4-icononly::after{content:attr(title);font-size:17px;line-height:1.3;color:inherit}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions] :is(.cw-v4-icon,.cw-v4-icon svg){width:20px!important;height:20px!important;flex:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions]>:is(.cw-v4-row-controls,.cw-v4-api-controls)>details.cw-v4-more{position:absolute!important;top:9px!important;right:10px!important}
+/* nav：一个按钮的行整行可点——按钮铺满整行（透明），右边一个「›」；按钮文字不是泛称时灰字显示在 › 前面。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=nav]{padding-right:40px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=nav]::after{content:"";position:absolute;right:14px;top:50%;width:16px;height:16px;margin-top:-8px;background:#a3a19b;-webkit-mask:var(--cw-v4-icon-chevr) center/contain no-repeat;mask:var(--cw-v4-icon-chevr) center/contain no-repeat;pointer-events:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel [data-cw-kind=nav] :is(.cw-v4-as-btn,.cw-v4-pref-btn,.cw-v4-button,.menu_button,button){position:absolute!important;inset:0!important;z-index:1;display:flex!important;align-items:center!important;justify-content:flex-end!important;width:auto!important;max-width:none!important;height:auto!important;margin:0!important;padding:0 40px 0 0!important;background:transparent!important;border:0!important;color:var(--sub,#878785)!important;font-size:17px!important;font-weight:400!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel [data-cw-kind=nav] [data-cw-generic]{color:transparent!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=nav] .cw-v4-chips{margin-right:4px;color:var(--sub,#878785)}
+/* selact：下拉框跟标题同一行（值 ⌃⌄ + ⋯），保存这类按钮另起一行蓝字。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=selact]{display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;align-items:center!important;column-gap:10px!important;row-gap:0!important;padding-bottom:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=selact]>.cw-v4-row-info{flex:1 1 0!important;min-width:0!important;padding-bottom:13px}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=selact]>:is(.cw-v4-row-controls,.cw-v4-api-controls){display:contents!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=selact] select{flex:0 1 auto!important;max-width:55%!important;width:auto!important;margin-bottom:13px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=selact] details.cw-v4-more{margin-bottom:13px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel [data-cw-kind=selact] :is(.cw-v4-as-btn,.cw-v4-button,.menu_button){order:9;flex:0 0 100%!important;display:flex!important;justify-content:flex-start!important;align-items:center!important;gap:14px!important;margin:0!important;padding:13px 0!important;min-height:50px!important;border-top:1px solid var(--m-hair)!important;border-radius:0!important}
+/* 扩展列表：「配置」换成整行可点 + 「›」；细线从图标后面开始；拼图图标细一点。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-row{padding-right:40px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-row::before{left:52px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-row::after{content:"";position:absolute;right:14px;top:50%;width:16px;height:16px;margin-top:-8px;background:#a3a19b;-webkit-mask:var(--cw-v4-icon-chevr) center/contain no-repeat;mask:var(--cw-v4-icon-chevr) center/contain no-repeat;pointer-events:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel#rm_extensions_block .cw-v4-extension-edit{position:absolute!important;inset:0!important;z-index:1;width:auto!important;height:auto!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;color:transparent!important;font-size:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_extensions_block .cw-v4-extension-icon::before{width:20px!important;height:20px!important;opacity:.8}
+/* 操作行里带文字的按钮：显示线性图标、文字 17px；删除类红字（按 id / title 认）。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions] .cw-v4-as-btn>i[class*="fa-"]{display:inline-flex!important;width:20px!important;justify-content:center;font-size:17px!important;color:inherit!important;opacity:1!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions] :is(.cw-v4-action-label,.cw-v4-as-btn>span){font-size:17px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel [data-cw-kind=actions] :is([id*=delete],[title^="删除"],[title^="Delete"]){color:var(--v4-danger)!important}
+/* 提示词管理器：铅笔（编辑）| 名字 + 说明 | ⋯ | 开关靠右，和第六稿一样；「编辑」两个字不显示，铅笔照样能点。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row{grid-template-columns:24px minmax(0,1fr) auto auto!important;column-gap:12px!important;align-items:center!important;padding:12px 16px!important;background:transparent!important;border:0!important;border-radius:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row+.cw-v4-prompt-row{border-top:1px solid var(--m-hair)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-edit-action{grid-column:1!important;grid-row:1!important;order:0!important;justify-self:center;background:none!important;border:0!important;padding:0!important;width:24px!important;height:24px!important;min-width:0!important;color:var(--v4-text)!important;opacity:.8;font-size:18px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row>.prompt-manager-edit-action .cw-v4-action-label{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row>.completion_prompt_manager_prompt_name{grid-column:2!important;grid-row:1!important;order:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row>details.cw-v4-more{grid-column:3!important;grid-row:1!important;order:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-toggle-action{grid-column:4!important;grid-row:1!important;order:0!important;justify-self:end}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-edit-action::before{width:18px!important;height:18px!important;display:inline-block!important;content:""!important;background:currentColor!important;-webkit-mask:var(--cw-v4-icon-pencil) center/contain no-repeat!important;mask:var(--cw-v4-icon-pencil) center/contain no-repeat!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-toggle-action{width:51px!important;height:31px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-toggle-action::before{width:27px!important;height:27px!important;box-shadow:0 2px 5px rgba(0,0,0,.18)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-toggle-action::before{top:2px!important;left:2px!important;transform:none!important;transition:left .15s!important;background:#fff!important;border-radius:50%!important;content:""!important;position:absolute!important;display:block!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-toggle-action.fa-toggle-on::before{left:22px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-toggle-action::after{display:none!important}
+}
+/* ⑤ 2.0.209 / 2.0.211 手机：编辑弹窗（openEditor 的 <dialog class="cw-v4-editor">）照 Claude 手机版的弹出页（Capabilities 那种）：
+   从顶上留一道缝的地方铺到底，上角圆；缝里是黑底 + 往里缩的灰色圆角边（后面那页缩小后露出的顶边）。
+   2.0.211（Lulu）：缝加宽到 52px（照参考：状态栏那么高的黑底，下沿露出后面那页的顶边）；
+   顶栏左边「‹ 上一页的名字」、标题居中，没有 × 和「完成」；内容放在白色圆角卡片里。 */
+@media(max-width:700px){
+html[data-cw-v4]{--cw-sheet-gap:52px}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor{position:fixed!important;inset:var(--cw-sheet-gap) 0 0 0!important;width:100vw!important;max-width:none!important;height:auto!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:12px 12px 0 0!important;background:var(--cw-v4-bg)!important;box-shadow:none!important;overflow:visible!important;transform:none!important;animation:cw-sheet-up var(--cw-sheet-dur) var(--cw-sheet-curve);transition:translate var(--cw-sheet-dur) var(--cw-sheet-curve),scale var(--cw-sheet-dur) var(--cw-sheet-curve),filter var(--cw-sheet-dur) var(--cw-sheet-curve),inset var(--cw-sheet-dur) var(--cw-sheet-curve)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor[data-cw-closing]{animation:cw-sheet-down var(--cw-sheet-dur) var(--cw-sheet-curve) forwards}
+/* 遮罩透明：顶上的黑底和后面那页的顶边由 ⑦ 缩小后面那页得到（2.0.212），不再在 ::backdrop 上画。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor::backdrop{background:transparent}
+/* 顶栏：‹ 上一页 | 标题 | 空，左右两格等宽让标题真正居中。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px!important;height:56px;padding:0 12px 0 6px!important;border:0!important;background:transparent!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head>:not(.cw-v4-editor-x,.cw-v4-editor-back){grid-column:2;grid-row:1;max-width:calc(100vw - 180px);text-align:center!important;font-size:17px!important;font-weight:600!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head>.cw-v4-editor-x{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head>.cw-v4-editor-back.cw-v4-editor-back.cw-v4-editor-back.cw-v4-editor-back{grid-column:1;grid-row:1;justify-self:start;display:inline-flex!important;align-items:center;gap:2px!important;max-width:100%;min-width:0;height:40px!important;min-height:0!important;padding:0 6px 0 0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;outline:0!important;color:var(--v4-text)!important;font-size:17px!important;font-weight:400!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head>.cw-v4-editor-back>.cw-v4-icon{width:26px!important;height:26px!important;flex:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head>.cw-v4-editor-back>span:not(.cw-v4-icon){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 「完成」不要：只有「完成」的底栏整条不显示；带别的东西（删除这条……）的底栏留着，去掉「完成」。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-footer-done{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-footer>.cw-v4-primary{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-footer{padding:10px 16px calc(10px + env(safe-area-inset-bottom))!important;border:0!important;background:transparent!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body{padding:4px 16px 24px!important;background:transparent!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor .cw-v4-editor-desc{font-size:15px!important;color:var(--v4-muted)!important;margin:0 4px 12px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body>textarea.cw-v4-editing{background:var(--m-card)!important;border:0!important;border-radius:12px!important;padding:14px 16px!important;font-size:15px!important;box-shadow:none!important}
+/* 白底：没有自带卡片（分区）的内容（扩展的设置、反向代理、创作者注释……）整块放进一张白色圆角卡片。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body>.cw-v4-editing:not(textarea):not(:has(.cw-v4-section)):not(#claude-web-settings):not(:has(#claude-web-settings)){background:var(--m-card)!important;border:0!important;border-radius:12px!important;padding:12px 16px!important;box-shadow:none!important}
+}
+/* 电脑：对话框照旧用 × 和「完成」，没有「‹ 上一页」。 */
+@media(min-width:701px){html[data-cw-v4] .cw-v4-editor-back{display:none!important}}
+/* ⑥ 2.0.210（Lulu 2026-09-30）：酒馆自己的编辑弹窗也照 Capabilities 那种弹出页——从底下升起，顶上留缝。
+   覆盖：提示词管理器的编辑 / 查看页（#completion_prompt_manager_popup，不是 <dialog>，没有 ::backdrop，缝画在 body::after 上，
+   html[data-claude-pm-open] 由 index.js 同步）；酒馆 Popup 的宽 / 大弹窗（.wide/.wider/.large_dialogue_popup，开关时酒馆挂 [opening] / [closing]，
+   按它们的时长 --popup-animation-speed 播）。小的确认框（删除吗？）照旧居中，iOS 的提示框也是居中的。 */
+@keyframes cw-sheet-up{from{translate:0 100%}to{translate:0 0}}
+@keyframes cw-sheet-down{from{translate:0 0}to{translate:0 100%}}
+@keyframes cw-sheet-fade{from{opacity:0}to{opacity:1}}
+@keyframes cw-sheet-fadeout{from{opacity:1}to{opacity:0}}
+@media(max-width:700px){
+html[data-cw-v4] body dialog.popup.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup){position:fixed!important;inset:var(--cw-sheet-gap) 0 0 0!important;width:100vw!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;border:0!important;border-radius:12px 12px 0 0!important;box-shadow:none!important;transform:none!important}
+html[data-cw-v4] body dialog.popup.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup)[opening]{animation:cw-sheet-up var(--cw-sheet-dur) var(--cw-sheet-curve)!important}
+html[data-cw-v4] body dialog.popup.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup)[closing]{animation:cw-sheet-down var(--cw-sheet-dur) var(--cw-sheet-curve) forwards!important}
+html[data-cw-v4] body dialog.popup.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup)::backdrop{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* 提示词管理器的编辑页：高度沿用主题的冻结视口高度（键盘不压缩它，见 day-mobile.css 2.0.112–114），只往下让出一道缝。 */
+html[data-cw-v4] body #completion_prompt_manager_popup#completion_prompt_manager_popup.openDrawer{inset:var(--cw-sheet-gap) 0 auto 0!important;height:calc(var(--cl-mobile-viewport-height,100vh) - var(--cw-sheet-gap))!important;min-height:calc(var(--cl-mobile-viewport-height,100vh) - var(--cw-sheet-gap))!important;max-height:calc(var(--cl-mobile-viewport-height,100vh) - var(--cw-sheet-gap))!important;border:0!important;border-radius:12px 12px 0 0!important;box-shadow:none!important;animation:cw-sheet-up var(--cw-sheet-dur) var(--cw-sheet-curve)}
+/* 扩展页第一张卡片：「管理、安装和配置扩展」这一行只有说明（几个按钮时说明不显示），标题区是空的，顶上空出一截。
+   没有标题的操作行直接从第一个操作开始，第一个操作不画顶线。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions][data-cw-many]:not(:has(>.cw-v4-row-info .cw-v4-row-title)){padding-top:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions][data-cw-many]:not(:has(>.cw-v4-row-info .cw-v4-row-title))>.cw-v4-row-info{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel [data-cw-kind=actions][data-cw-many]:not(:has(>.cw-v4-row-info .cw-v4-row-title))>:is(.cw-v4-row-controls,.cw-v4-api-controls){margin-top:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel [data-cw-kind=actions][data-cw-many]:not(:has(>.cw-v4-row-info .cw-v4-row-title))>:is(.cw-v4-row-controls,.cw-v4-api-controls)>:first-child{border-top:0!important}
+/* 提示词管理器：token 数（酒馆算过之后才有，如「24」）原来和 ⋯ 挤在同一格叠在一起。单独一格，灰色小字放在 ⋯ 左边。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row{grid-template-columns:24px minmax(0,1fr) auto auto auto!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel #completion_prompt_manager_list .cw-v4-prompt-row>.prompt_manager_prompt_tokens{grid-column:3!important;grid-row:1!important;order:0!important;justify-self:end!important;min-width:0!important;font-size:13px!important;color:var(--v4-muted)!important;font-variant-numeric:tabular-nums}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row>details.cw-v4-more{grid-column:4!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompt-row.cw-v4-prompt-row>.prompt-manager-toggle-action{grid-column:5!important}
+}
+
+/* ⑦ 2.0.212 手机：弹出页后面那页往后、往上缩小（Lulu 看 Claude App：顶上露出的那块是后面那页缩小后的顶边，不是画出来的）。
+   html[data-cw-sheet] 由 official-layout.js 的 syncSheet 挂：我们的编辑弹窗、酒馆宽 / 大弹窗、提示词编辑页开着时。
+   整个 body 缩到 .93、上角圆、压暗，html 底色变黑，于是屏幕顶上是黑底 + 后面那页的顶边。
+   只用 scale 属性：主题在提示词编辑页打开时给 body 写了 transform:none!important（day-mobile 2.0.112），scale 是另一个属性，不冲突。
+   「往下挪 18px」也并进 scale：以 (50%, 18/(1-.93)) 为原点缩放，顶边正好落在 18px，左右各缩进 3.5%。
+   弹窗本身：<dialog> 在顶层，不受 body 缩放影响；提示词编辑页在 body 里，用反向 scale（原点换算到它自己身上）抵消。 */
+@media(max-width:700px){
+html[data-cw-v4]{--cw-back-s:.93;--cw-back-y:18px}
+html[data-cw-v4][data-cw-sheet],html[data-cw-v4][data-cw-sheet-anim]{background:#000!important}
+html[data-cw-v4][data-cw-sheet-anim] body{transition:scale var(--cw-sheet-dur) var(--cw-sheet-curve),border-radius var(--cw-sheet-dur) var(--cw-sheet-curve)!important}
+html[data-cw-v4][data-cw-sheet] body{scale:var(--cw-back-s);transform-origin:50% calc(var(--cw-back-y) / (1 - var(--cw-back-s)))!important;border-radius:12px!important;overflow:hidden!important}
+html[data-cw-v4][data-cw-sheet-anim] body{transform-origin:50% calc(var(--cw-back-y) / (1 - var(--cw-back-s)))!important;overflow:hidden!important}
+/* 压暗：2.0.213 改成 body 里一个真元素 .cw-sheet-dim（official-layout.js 加），见 ⑨。 */
+}
+@keyframes cw-dim-in{from{opacity:0}to{opacity:.2}}
+/* ⑧ 2.0.212 提示词管理器的编辑 / 查看页（Lulu：点编辑有两种弹窗）。
+   酒馆关它时先摘 openDrawer、再用 jQuery slideUp 200ms 才 display:none；这 200ms 里 ⑥ 的弹出页规则不再命中，
+   露出主题原来那张居中的卡片（圆角 16、四周留边）——这就是「第二种弹窗」。收起期间（没有 openDrawer、行内还是 display:block）
+   照样按弹出页排，播下滑。2.0.213：由 syncSheet 挂 data-cw-closing 认，并强制 display:block 到下滑播完（酒馆 200ms 就藏，比下滑短）。顶栏「‹ 预设 | 编辑 | 保存」由 official-layout.js decoratePromptPopup 加；字段放进白色卡片。 */
+@media(max-width:700px){
+html[data-cw-v4] body #completion_prompt_manager_popup#completion_prompt_manager_popup[data-cw-closing]:not(.openDrawer){display:block!important;position:fixed!important;inset:var(--cw-sheet-gap) 0 auto 0!important;width:100vw!important;max-width:none!important;margin:0!important;height:calc(var(--cl-mobile-viewport-height,100vh) - var(--cw-sheet-gap))!important;min-height:calc(var(--cl-mobile-viewport-height,100vh) - var(--cw-sheet-gap))!important;max-height:calc(var(--cl-mobile-viewport-height,100vh) - var(--cw-sheet-gap))!important;border:0!important;border-radius:12px 12px 0 0!important;box-shadow:none!important;background:var(--cw-v4-bg)!important;z-index:10095!important;overflow:hidden!important;transform:none!important;rotate:none!important;animation:cw-sheet-down var(--cw-sheet-dur) var(--cw-sheet-curve) forwards}
+html[data-cw-v4] body #completion_prompt_manager_popup#completion_prompt_manager_popup{padding:0!important;background:var(--cw-v4-bg)!important}
+html[data-cw-v4] body #completion_prompt_manager_popup :is(#completion_prompt_manager_popup_edit,#completion_prompt_manager_popup_inspect){padding:0 0 24px!important;gap:0!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;height:56px;padding:0 12px 0 6px;background:var(--cw-v4-bg);margin:0 0 4px}
+html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head>h3{grid-column:2;margin:0!important;padding:0!important;font-size:17px!important;font-weight:600!important;text-align:center!important;white-space:nowrap;color:var(--v4-text)!important;border:0!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head>button{display:inline-flex;align-items:center;min-width:0;height:40px;padding:0 6px;margin:0;background:none!important;border:0!important;box-shadow:none!important;outline:0;font-size:17px!important;font-family:inherit}
+html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head>.cw-pm-back{grid-column:1;justify-self:start;gap:2px;padding-left:0;color:var(--v4-text)!important;font-weight:400}
+html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head>.cw-pm-back>.cw-v4-icon{width:26px;height:26px;flex:none}
+html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head>.cw-pm-save{grid-column:3;justify-self:end;color:var(--m-blue)!important;font-weight:600!important}
+/* 字段：白色圆角卡片（和我们的弹出页一样）；原来的关闭 / 保存按钮由顶栏代替，底下只留「重置」。 */
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry{margin:0 16px!important;padding:6px 16px 12px!important;background:var(--m-card)!important;border:0!important;border-radius:12px!important;box-shadow:none!important;width:auto!important}
+html[data-cw-v4] body #completion_prompt_manager_popup :is(#completion_prompt_manager_popup_entry_form_close,#completion_prompt_manager_popup_entry_form_save,#completion_prompt_manager_popup_close_button){display:none!important}
+}
+@media(min-width:701px){html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head>button{display:none!important}html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head{display:contents}}
+/* 2.0.212 的「提示词编辑页开着时 body 不裁、改圆设置页外壳」已在 2.0.214 撤掉（它会让屏幕外的侧栏缩进来露边），
+   改成把提示词编辑页搬进最上层的 dialog（⑪）。下面只剩它的 svg 箭头写法。 */
+@media(max-width:700px){
+}
+/* 提示词编辑页的反向缩放跟 body 用同一条过渡：开 / 关时两者同步变化，乘起来始终约等于 1（误差 0.2% 以内），弹出页不会一下缩一下。 */
+@media(max-width:700px){
+html[data-cw-v4] body #completion_prompt_manager_popup .cw-pm-head>.cw-pm-back svg{fill:none!important;stroke:currentColor!important}
+}
+/* ⑨ 2.0.213 手机弹出页照 Claude App（Lulu 2026-10-01 看过伪实机 design-sheet-v1.html 后定的）：
+   1) 升起 / 收起、后面那页缩放、压暗：同一时长同一曲线，一起开始一起结束（原来收起 .24s、后面那页 .34s，各走各的）。
+   2) 压暗是 body 里的真元素 .cw-sheet-dim（跟着 body 缩放、自己带圆角——提示词编辑页开着时 body 不裁，伪元素的直角会在圆角外露出一块）。
+   3) 弹出页套弹出页：下面那层往后缩、变暗，上面那层低 14px，后面那页更暗。
+   4) 顶栏往下拖关闭（official-layout.js sheetDrag），拖动中关掉过渡。
+   5) 酒馆宽 / 大弹窗（选择器写 :is(dialog,#cw-spec)：只认 dialog，但带一个 ID 的权重，压过主题 :is(.popup,…,#options) :is(button,…) 那条）：顶栏「‹ 上一页 | 标题 | 确定」，内容放白色卡片；「管理扩展」整页照 App 排（操作行、卡片、开关）。 */
+html[data-cw-v4]{--cw-sheet-dur:.28s;--cw-sheet-curve:cubic-bezier(.32,.72,0,1)}
+@keyframes cw-dim-in{from{opacity:0}to{opacity:.2}}
+@media(max-width:700px){
+html[data-cw-v4] body>.cw-sheet-dim{display:none;position:fixed;inset:0;z-index:10094;pointer-events:none;background:#000;opacity:0;border-radius:12px}
+html[data-cw-v4][data-cw-sheet] body>.cw-sheet-dim,html[data-cw-v4][data-cw-sheet-anim] body>.cw-sheet-dim{display:block;transition:opacity var(--cw-sheet-dur) var(--cw-sheet-curve)}
+html[data-cw-v4][data-cw-sheet] body>.cw-sheet-dim{opacity:.2;animation:cw-dim-in var(--cw-sheet-dur) var(--cw-sheet-curve)}
+html[data-cw-v4][data-cw-sheet-deep] body>.cw-sheet-dim{opacity:.35}
+/* 拖动中：弹出页、后面那页、压暗都跟手，不要过渡 */
+html[data-cw-v4][data-cw-sheet-drag] body,html[data-cw-v4][data-cw-sheet-drag] body>.cw-sheet-dim,html[data-cw-v4][data-cw-sheet-drag] body :is(dialog.cw-v4-editor,dialog.cw-st-sheet,#completion_prompt_manager_popup){transition:none!important}
+html[data-cw-v4] body :is(.cw-v4-editor-head,.cw-st-head,.cw-pm-head){touch-action:none}
+/* 提示词编辑页松手弹回时 translate 也要过渡（开关前后那条只写了 scale） */
+html[data-cw-v4] body #completion_prompt_manager_popup#completion_prompt_manager_popup.openDrawer{transition:translate var(--cw-sheet-dur) var(--cw-sheet-curve)}
+/* 弹出页套弹出页 */
+html[data-cw-v4] body dialog[data-cw-sheet-under][data-cw-sheet-under]{scale:.94;transform-origin:50% 0;filter:brightness(.92)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor[data-cw-sheet-lvl2],
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup.cw-st-sheet[data-cw-sheet-lvl2]{inset:calc(var(--cw-sheet-gap) + 14px) 0 0 0!important}
+/* 酒馆宽 / 大弹窗的顶栏 */
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup.cw-st-sheet{display:flex!important;flex-direction:column!important;padding:0!important;background:var(--cw-v4-bg)!important;color:var(--v4-text)!important;text-align:left!important;transition:translate var(--cw-sheet-dur) var(--cw-sheet-curve),scale var(--cw-sheet-dur) var(--cw-sheet-curve),filter var(--cw-sheet-dur) var(--cw-sheet-curve),inset var(--cw-sheet-dur) var(--cw-sheet-curve)}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.cw-st-head{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;height:56px;padding:0 12px 0 6px;flex:none}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.cw-st-head>h2{grid-column:2;margin:0!important;font:600 17px/1.3 var(--cw-v4-font)!important;color:var(--v4-text)!important;max-width:calc(100vw - 180px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.cw-st-head>button{display:inline-flex;align-items:center;min-width:0;height:40px;margin:0;padding:0 6px;background:none!important;border:0!important;box-shadow:none!important;outline:0;font:400 17px/1 var(--cw-v4-font)!important;cursor:pointer}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.cw-st-head>.cw-st-back{grid-column:1;justify-self:start;gap:2px;padding-left:0;color:var(--v4-text)!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.cw-st-head>.cw-st-back>.cw-v4-icon{width:26px;height:26px;flex:none}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.cw-st-head>.cw-st-back>span:not(.cw-v4-icon){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.cw-st-head>.cw-st-ok{grid-column:3;justify-self:end;color:var(--m-blue)!important;font-weight:600!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .popup-controls>:is(.popup-button-ok,.popup-button-cancel),html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.popup-button-close{display:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .popup-controls:not(:has(>.menu_button:not(.popup-button-ok):not(.popup-button-cancel))){display:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet>.popup-body{flex:1 1 auto!important;min-height:0!important;overflow:auto!important;padding:4px 16px 24px!important;background:transparent!important;max-height:none!important;height:auto!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .popup-content{background:var(--m-card);border-radius:12px;padding:12px 16px;text-align:left}
+/* 「管理扩展」照 App：顶上一张操作卡（蓝字行）；分组灰字；每个扩展一行（名字 + 版本，右边开关）。 */
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .popup-content:has(>.extensions_info){background:transparent;padding:0}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info{font:400 17px/1.35 var(--cw-v4-font)}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extensions_toolbar{display:flex!important;flex-direction:column!important;gap:0!important;padding:0!important;margin:0!important;background:var(--m-card);border-radius:12px;overflow:hidden}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extensions_toolbar>.expander{display:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extensions_toolbar>.menu_button{position:relative;display:flex!important;justify-content:flex-start!important;align-items:center;gap:12px;width:100%!important;min-height:50px;margin:0!important;padding:13px 16px!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;color:var(--m-blue)!important;font-size:17px!important;filter:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extensions_toolbar>.menu_button~.menu_button::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--m-hair)}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info h3{font:400 15px/1.3 var(--cw-v4-font)!important;color:var(--v4-muted)!important;margin:22px 16px 8px!important;padding:0!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .third_party_toolbar .menu_button{background:none!important;border:0!important;box-shadow:none!important;color:var(--m-blue)!important;font-size:15px!important;margin:14px 0 0!important;padding:4px!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_block{position:relative;display:flex!important;align-items:center!important;gap:12px!important;min-height:56px;margin:0!important;padding:10px 16px!important;background:var(--m-card)!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info :not(.extension_block)+.extension_block{border-radius:12px 12px 0 0!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_block:not(:has(+.extension_block)){border-bottom-left-radius:12px!important;border-bottom-right-radius:12px!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_block+.extension_block::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--m-hair)}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_icon{display:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_text_block{order:1;flex:1 1 auto;min-width:0}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_name{font-size:17px!important;font-weight:400!important;color:var(--v4-text)!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info :is(.extension_version,.extension_author){display:block;font-size:14px!important;color:var(--v4-muted)!important;margin:2px 0 0!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_actions{order:2}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle{order:3;display:flex;align-items:center}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle>input[type=checkbox]{appearance:none!important;-webkit-appearance:none!important;position:relative!important;width:51px!important;height:31px!important;min-width:51px!important;margin:0!important;border:0!important;border-radius:16px!important;background:#e9e9ea!important;cursor:pointer;transition:background .15s;box-shadow:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle>input[type=checkbox]::before{display:none!important;content:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle>input[type=checkbox]::after{content:""!important;position:absolute!important;top:2px!important;left:2px!important;width:27px!important;height:27px!important;border-radius:50%!important;background:#fff!important;box-shadow:0 2px 5px rgba(0,0,0,.18)!important;transition:left .15s!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle>input[type=checkbox]:checked{background:var(--v4-toggle-on,#2c76d8)!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle>input[type=checkbox]:checked::after{left:22px!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle>input[type=checkbox]:disabled{opacity:.4}
+html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extension_toggle>input[type=checkbox]:not(:checked){background:#45443f!important}
+}
+@media(min-width:701px){html[data-cw-v4] body dialog.popup>.cw-st-head,html[data-cw-v4] body>.cw-sheet-dim{display:none!important}}
+/* ⑩ 2.0.214 取色器打不开（Lulu：点文本颜色没反应）：取色面板画在色块下面、行外面，三层把它裁掉了——
+   色块本身 overflow:hidden（为了圆角，874 行；圆角改到 ::part(button)）、行和分区的 content-visibility:auto（自带绘制裁剪）。
+   有色块的行 / 分区不做 content-visibility；正在点的那一行抬到后面几行之上，分区抬到后面几个分区之上。 */
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.cw-v4-section,.cw-v4-row):has(toolcool-color-picker){content-visibility:visible!important;contain:none!important}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-section:has(toolcool-color-picker){z-index:1}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-row:has(toolcool-color-picker):focus-within{z-index:5}
+/* ⑪ 2.0.214 提示词编辑页手机上搬进 dialog.cw-pm-host（official-layout.js hostPm）：在浏览器最上层，不随后面那页缩放，也不用反向放大、不用让 body 不裁。
+   这个 dialog 本身透明、铺满、不拦东西，提示词编辑页照旧用自己的 fixed 定位（⑥ ⑧）。 */
+html[data-cw-v4] body>.cw-pm-host{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;overflow:visible;outline:0}
+html[data-cw-v4] body>.cw-pm-host::backdrop{background:transparent}
+/* 弹出页顶栏按钮：程序聚焦（打开时把焦点放在「‹」上，免得手机弹键盘）不显示主题的橙色焦点框。 */
+html[data-cw-v4] body :is(.cw-pm-head,.cw-st-head,.cw-v4-editor-head)>button:is(:focus,:focus-visible){outline:0!important;box-shadow:none!important}
+/* ⑫ 2.0.214 自检（酒馆截图和 design-sheet-v1.html 并排比）后按 HTML 改的几处，手机。
+   1) 提示词编辑页：输入框无边框灰底 16px；下拉「值 ⌃⌄」；表单不再撑满（原来「提示词」那块 flex-grow 撑开，中间空一大截）；
+      「禁止覆盖」开关；字段一张白卡片，「重置」另一张卡片蓝字。
+   2) Claude Web 设置（弹窗里）：分组灰字 + 白卡片，每项一行「标题（说明在下）…… 值 ⌃⌄」，勾选框是开关，导出 / 导入 / 清除是蓝字行。
+   3) 文本编辑弹窗正文用界面字体 16px（不是等宽）。
+   4) 管理扩展：「加载顺序」是黑字 + ›（它是进下一页，不是操作）。
+   5) 扩展页「安装扩展 / 管理」换线性图标。 */
+@media(max-width:700px){
+/* 1) 提示词编辑页 */
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry{background:transparent!important;padding:0!important;margin:0 16px!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form{display:block!important;height:auto!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form>.flex-container{display:flow-root!important;background:var(--m-card)!important;padding:0 16px!important;margin:0!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form>.flex-container:first-child{border-radius:12px 12px 0 0!important;padding-top:4px!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form>.completion_prompt_manager_popup_entry_form_control{display:flow-root!important;flex:none!important;background:var(--m-card)!important;border-radius:0 0 12px 12px!important;padding:0 16px 16px!important;margin:0!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form_control{margin:0!important;padding:0!important;gap:0!important;width:auto!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form_control>label,html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form_control>.flex-container{display:flex!important;align-items:center;justify-content:space-between;margin:14px 0 6px!important;font:400 15px/1.3 var(--cw-v4-font)!important;color:var(--v4-text)!important}
+html[data-cw-v4] body #completion_prompt_manager_popup :is(input.text_pole,select.text_pole:not(.select2-hidden-accessible),textarea.text_pole){display:block!important;width:100%!important;max-width:none!important;box-sizing:border-box!important;min-height:44px!important;margin:0!important;padding:10px 12px!important;border:0!important;border-radius:10px!important;background-color:var(--m-field)!important;box-shadow:none!important;font:400 16px/1.5 var(--cw-v4-font)!important;color:var(--v4-text)!important}
+html[data-cw-v4] body #completion_prompt_manager_popup select.text_pole:not([multiple]){appearance:none!important;-webkit-appearance:none!important;background-image:var(--m-updown)!important;background-repeat:no-repeat!important;background-position:right 12px center!important;background-size:16px 16px!important;padding-right:36px!important}
+html[data-cw-v4] body #completion_prompt_manager_popup textarea.text_pole{min-height:160px!important;height:auto!important;flex:none!important;resize:none!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .select2-container .select2-selection--multiple{min-height:44px!important;border:0!important;border-radius:10px!important;background:var(--m-field)!important;box-shadow:none!important;padding:4px 8px!important;font:400 16px/1.5 var(--cw-v4-font)!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .text_muted{font-size:13.5px!important;line-height:1.45!important;color:var(--v4-muted)!important;margin:5px 0 0!important;opacity:1!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_forbid_overrides_block label{display:flex!important;flex-direction:row-reverse;align-items:center;gap:8px;margin:0!important;font-size:14px!important;color:var(--v4-muted)!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_forbid_overrides_block input[type=checkbox]{appearance:none!important;-webkit-appearance:none!important;position:relative!important;display:inline-block!important;width:51px!important;height:31px!important;min-width:51px!important;margin:0!important;border:0!important;border-radius:16px!important;background:#e9e9ea!important;cursor:pointer;box-shadow:none!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_forbid_overrides_block input[type=checkbox]::before{display:none!important;content:none!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_forbid_overrides_block input[type=checkbox]::after{content:""!important;position:absolute!important;top:2px!important;left:2px!important;width:27px!important;height:27px!important;border-radius:50%!important;background:#fff!important;box-shadow:0 2px 5px rgba(0,0,0,.18)!important;transition:left .15s!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_forbid_overrides_block input[type=checkbox]:checked{background:var(--v4-toggle-on,#2c76d8)!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_forbid_overrides_block input[type=checkbox]:checked::after{left:22px!important}
+html[data-cw-v4] body #completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form_footer{display:block!important;margin:16px 0 0!important;padding:0!important;background:var(--m-card);border-radius:12px;overflow:hidden}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_popup_entry_form_reset{display:flex!important;align-items:center;justify-content:flex-start!important;width:100%!important;height:auto!important;min-height:50px;margin:0!important;padding:13px 16px!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;color:var(--m-blue)!important;font:400 17px/1.3 var(--cw-v4-font)!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_popup_entry_form_reset::before{content:none!important;display:none!important}
+html[data-cw-v4] body #completion_prompt_manager_popup #completion_prompt_manager_popup_entry_form_reset::after{content:attr(title);font:400 17px/1.3 var(--cw-v4-font)!important}
+
+/* 2) Claude Web 设置（只在我们的弹窗里改，侧栏扩展页里那份不动） */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings{font:400 17px/1.35 var(--cw-v4-font)!important;color:var(--v4-text)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .inline-drawer-content{padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-master{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-height:52px;margin:0!important;padding:10px 16px!important;background:var(--m-card)!important;border:0!important;border-radius:12px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings :is(.claude-web-master,.claude-web-check)>span{order:1;flex:1 1 auto;min-width:0;font-size:17px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings :is(.claude-web-master,.claude-web-check) b{font-weight:400!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings :is(.claude-web-master,.claude-web-check)>input[type=checkbox]{order:2;margin:0!important;flex:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings #claude-web-enabled-hint{margin:6px 16px 0!important;font-size:14px!important;color:var(--v4-muted)!important;opacity:1!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings :is(.claude-web-sections,details.claude-web-section){display:block!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings details.claude-web-section>summary{display:block!important;list-style:none!important;margin:0!important;padding:22px 16px 8px!important;background:none!important;border:0!important;font:400 15px/1.3 var(--cw-v4-font)!important;color:var(--v4-muted)!important;cursor:default;pointer-events:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings details.claude-web-section>summary::-webkit-details-marker{display:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings details.claude-web-section>summary::after,html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-section-summary{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-section-body{display:block!important;margin:0!important;padding:0!important;background:var(--m-card)!important;border:0!important;border-radius:12px!important;overflow:hidden}
+/* 每项一行。#claude-web-full-appearance 这类只是装别的项的壳，不当一行。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field:has(>.claude-web-field){display:block!important;padding:0!important;margin:0!important;border:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field:not(:has(>.claude-web-field)):not(label):not(details){position:relative;display:grid!important;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-items:center;min-height:52px;margin:0!important;padding:12px 16px!important;border:0!important;border-radius:0!important;background:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field>label{grid-column:1;grid-row:1;margin:0!important;font:400 17px/1.35 var(--cw-v4-font)!important;color:var(--v4-text)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field>label b{font-weight:400!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field>select{grid-column:2;grid-row:1 / span 2;justify-self:end;align-self:center;appearance:none!important;-webkit-appearance:none!important;width:auto!important;max-width:42vw!important;min-height:32px!important;height:auto!important;margin:0!important;padding:0 22px 0 0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent var(--m-updown) right center/16px 16px no-repeat!important;font:400 17px/1.3 var(--cw-v4-font)!important;color:var(--m-val)!important;text-align:right;text-align-last:right;text-overflow:ellipsis}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field>:not(label):not(select){grid-column:1 / -1}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field>.claude-web-help{grid-column:1;margin:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-help{font-size:14px!important;line-height:1.4!important;color:var(--v4-muted)!important;opacity:1!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-section-body>.claude-web-help,html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-field>.claude-web-help:empty{margin:-8px 0 0!important;padding:0 16px 12px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-help:empty{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings label.checkbox_label.claude-web-check{position:relative;display:flex!important;align-items:center;gap:12px;min-height:52px;margin:0!important;padding:10px 16px!important;border:0!important;background:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-suboptions{margin:0!important;padding:0 0 0 16px!important;border:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-range{position:relative;margin:0!important;padding:10px 16px!important;font-size:15px!important}
+/* 行与行之间的缩进细线（每张卡片第一行不画） */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-section-body :is(.claude-web-field:not(:has(>.claude-web-field)),label.claude-web-check,.claude-web-actions,.claude-web-range,details#claude-web-colors)::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--m-hair);pointer-events:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-section-body>:first-child::before{display:none}
+/* 自定义配色：一行「›」，点了升起下一层弹出页（official-layout.js） */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings details#claude-web-colors{position:relative;display:block!important;margin:0!important;padding:0!important;border:0!important;background:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings details#claude-web-colors>summary{display:flex!important;align-items:center;justify-content:space-between;min-height:52px;padding:12px 16px!important;list-style:none!important;font:400 17px/1.35 var(--cw-v4-font)!important;color:var(--v4-text)!important;opacity:1!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings details#claude-web-colors>summary::-webkit-details-marker{display:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings details#claude-web-colors>summary::after{content:"";width:16px;height:16px;background:#a3a19b;-webkit-mask:var(--cw-v4-icon-chevr) center/contain no-repeat;mask:var(--cw-v4-icon-chevr) center/contain no-repeat}
+/* 导出 / 导入 / 清除：蓝字行（清除红字） */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-actions{position:relative;display:flex!important;flex-direction:column;gap:0!important;margin:0!important;padding:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-actions>.menu_button{position:relative;display:flex!important;justify-content:flex-start!important;width:100%!important;min-height:50px;margin:0!important;padding:13px 16px!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;color:var(--m-blue)!important;font:400 17px/1.3 var(--cw-v4-font)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-actions>.menu_button+.menu_button::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--m-hair)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-actions>#claude-web-reset{color:var(--v4-danger)!important}
+/* 3) 文本编辑弹窗正文：界面字体 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body>textarea.cw-v4-editing{font:400 16px/1.5 var(--cw-v4-font)!important}
+/* 4) 管理扩展：「加载顺序」是进下一页 */
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extensions_toolbar>.menu_button:last-child{color:var(--v4-text)!important;justify-content:space-between!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extensions_toolbar>.menu_button:last-child::after{content:"";width:16px;height:16px;background:#a3a19b;-webkit-mask:var(--cw-v4-icon-chevr) center/contain no-repeat;mask:var(--cw-v4-icon-chevr) center/contain no-repeat}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info .extensions_toolbar>.menu_button>i{display:none!important}
+}
+/* 5) 线性图标（所有宽度） */
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel :is(.fa-cloud-arrow-down,.fa-cubes)::before{content:""!important;display:inline-block!important;width:1.15em!important;height:1.15em!important;vertical-align:-.2em;background:currentColor!important;-webkit-mask:var(--cw-v4-icon) center/contain no-repeat;mask:var(--cw-v4-icon) center/contain no-repeat;font-family:inherit!important}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .fa-cloud-arrow-down{--cw-v4-icon:var(--cw-v4-icon-clouddown)}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .fa-cubes{--cw-v4-icon:var(--cw-v4-icon-cube)}
+/* 2.0.214 自检第二轮 */
+@media(max-width:700px){
+/* 「深度 / 排序」酒馆用 visibility:hidden 藏（位置是「相对」时），还占着地方——提示词上面空出一大截就是它们。 */
+html[data-cw-v4] body #completion_prompt_manager_popup :is(#completion_prompt_manager_depth_block,#completion_prompt_manager_order_block)[style*="visibility: hidden"]{display:none!important}
+/* 勾选项后面那段说明（不在行里）：贴到上一行标题下面 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings .claude-web-check+.claude-web-help{margin:-10px 0 0!important;padding:0 16px 12px!important}
+}
+@media(max-width:700px){
+/* 提示词编辑页的正文框：固定 160px 高（原来被压成两行半） */
+html[data-cw-v4] body #completion_prompt_manager_popup textarea#completion_prompt_manager_popup_entry_form_prompt{height:160px!important;min-height:160px!important;max-height:none!important}
+/* 自定义配色（升起的那一层）：照 App 一行一个「名字 …… 色块」 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body>#claude-web-swatches.cw-v4-editing{display:block!important;padding:0!important;background:var(--m-card)!important;border-radius:12px!important;overflow:hidden}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-swatches>.claude-web-swatch{position:relative;display:flex!important;align-items:center;gap:12px;min-height:52px;margin:0!important;padding:10px 16px!important;font:400 17px/1.3 var(--cw-v4-font)!important;color:var(--v4-text)!important;cursor:pointer}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-swatches>.claude-web-swatch+.claude-web-swatch::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--m-hair)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-swatches>.claude-web-swatch>span{order:1;flex:1 1 auto;min-width:0}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-swatches>.claude-web-swatch>input[type=color]{order:2;flex:none;width:28px!important;height:28px!important;min-height:0!important;padding:0!important;margin:0!important;border:1px solid rgba(20,20,19,.12)!important;border-radius:8px!important;background:none!important;overflow:hidden;cursor:pointer}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-swatches>.claude-web-swatch>input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-swatches>.claude-web-swatch>input[type=color]::-webkit-color-swatch{border:0;border-radius:7px}
+}
+/* 2.0.215 角色卡列表：每行右边 ⋯ 和「›」（点行进入编辑）。 */
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-character-actions>.cw-v4-character-chev{display:inline-block;width:16px;height:16px;flex:none;background:#a3a19b;-webkit-mask:var(--cw-v4-icon-chevr) center/contain no-repeat;mask:var(--cw-v4-icon-chevr) center/contain no-repeat;pointer-events:none}
+/* ⑬ 2.0.216 对齐（Lulu：角色卡头像和筛选图标贴着卡片左边）：列表类分区（.cw-v4-entries）里酒馆原生的列表和行没有 16px 内边距，
+   只有我们包的搜索 / 排序缩进了。逐页查（tools/_tmp/cc-219-align.cjs）后补齐：角色列表、用户角色列表、角色筛选标签、
+   背景页的标签栏和缩略图网格、提示词列表上面的「新建提示词 / 插入 / ⋯」。 */
+@media(max-width:700px){
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(#rm_print_characters_block .character_select,#user_avatar_block .avatar-container){padding-left:16px!important;padding-right:16px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-entries :is(.rm_tag_controls,.completion_prompt_manager_footer){padding-left:16px!important;padding-right:16px!important;box-sizing:border-box!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #Backgrounds .cw-v4-entries ul.bg_tabs_list{margin-left:16px!important;margin-right:16px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #Backgrounds .cw-v4-entries .bg_tab_panel{padding-left:16px!important;padding-right:16px!important}
+}
+/* 「其他设置」（没归进任何一行的原生控件，official-drawers.js finish）：原来是一个悬在卡片之间的「⋯」小按钮（预设页最明显）。
+   手机上做成一张卡片里的一行「其他设置 ›」，点了照旧打开弹出页。 */
+@media(max-width:700px){
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-leftovers:not([hidden]){display:block!important;margin:22px 0 0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-button{display:flex!important;align-items:center;justify-content:space-between!important;width:100%!important;min-height:52px!important;height:auto!important;margin:0!important;padding:13px 16px!important;background:var(--m-card)!important;border:0!important;border-radius:12px!important;box-shadow:none!important;font-size:0!important;color:var(--v4-text)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-leftovers>button.cw-v4-button::before{content:attr(title);font:400 17px/1.3 var(--cw-v4-font);color:var(--v4-text)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-leftovers>button.cw-v4-button::after{content:"";width:16px;height:16px;flex:none;background:#a3a19b;-webkit-mask:var(--cw-v4-icon-chevr) center/contain no-repeat;mask:var(--cw-v4-icon-chevr) center/contain no-repeat}
+}
+/* 2.0.218：弹出页改用 popover 后垫在它底下的透明挡板（official-layout.js shieldUp），拦住点到后面页面的手势。 */
+html[data-cw-v4] body>.cw-sheet-shield{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;overflow:hidden;outline:0;pointer-events:auto}
+html[data-cw-v4] body>.cw-sheet-shield::backdrop{background:transparent}
+/* 2.0.218：电脑对话框不要「‹ 上一页」（2.0.211 起是手机才有的）。原来那条 display:none 权重不够，被 736 行的按钮规则（带 ID）压过，电脑上也露出来了。 */
+@media(min-width:701px){html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-editor>.cw-v4-editor-head>.cw-v4-editor-back{display:none!important}}
+/* 2.0.219（Lulu：点「管理」按钮会往右挪）：主题给抽屉 / 弹窗里的按钮按下时 transform:scale(.975)（day-mobile 1060 行），
+   小按钮是「按一下缩一下」；整行宽的操作行（478px）从中间缩，左边的图标和字就往右挪 6px。设置页和弹出页里照 App：按下不缩，整行底色变深一点。 */
+html[data-cw-v4] body :is(#top-settings-holder .cw-v4-panel,.cw-v4-editor,.cw-st-sheet,#completion_prompt_manager_popup) :is(button,.menu_button,.inline-drawer-toggle,.icon-button):active{transform:none!important}
+@media(max-width:700px){
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel :is([data-cw-kind=actions]>:is(.cw-v4-row-controls,.cw-v4-api-controls)>*,[data-cw-kind=nav] :is(.cw-v4-as-btn,.cw-v4-pref-btn,.cw-v4-button,.menu_button,button),.cw-v4-leftovers>button,.cw-v4-extension-edit):active{background:rgba(20,20,19,.06)!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel :is([data-cw-kind=actions]>:is(.cw-v4-row-controls,.cw-v4-api-controls)>*,[data-cw-kind=nav] :is(.cw-v4-as-btn,.cw-v4-pref-btn,.cw-v4-button,.menu_button,button),.cw-v4-leftovers>button,.cw-v4-extension-edit):active{background:rgba(255,255,255,.06)!important}
+}
+/* 2.0.219 提速：弹出页里的内容块屏幕外的先不算样式和排版（content-visibility:auto），升起那一下只算看得见的部分。
+   设置页本身早就这么做（2.0.19x，打开约 925 → 676ms）。只放在块级卡片上；块里不画到块外的东西（下拉是系统的 / 挂在弹出页上）。 */
+@media(max-width:700px){
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor :is(.claude-web-section-body,.cw-v4-section,#claude-web-swatches){content-visibility:auto;contain-intrinsic-size:auto 320px}
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet .extensions_info :is(.extension_block){content-visibility:auto;contain-intrinsic-size:auto 56px}
+}
+/* 2.0.220（Lulu：管理扩展升起时「快到顶停一下再到」）：酒馆 Popup 开 / 关时给 ::backdrop 放 fade-in / fade-out（popup--animation-fast 下几乎是 0 秒），
+   伪元素的 animationend 也派发在 dialog 上，酒馆以为动画放完了——开的时候马上摘掉 [opening]，我们挂在 [opening] 上的升起动画被取消，弹出页直接跳到顶；
+   关的时候 141ms 就把弹窗移除，下滑也被截断。弹出页的 ::backdrop 本来就透明（压暗是 .cw-sheet-dim），这里把它的动画关掉，酒馆就等我们的升起 / 下滑放完。 */
+@media(max-width:700px){
+html[data-cw-v4] body dialog.popup.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup):is([opening],[closing])::backdrop{animation:none!important}
+}
+
+/* ⑨ 2.0.222 电脑照 Claude Desktop（Lulu 看过伪实机 Claude outputs/design-desk-v1.html 后定的；拖动 / 改大小保留，其余照 Desktop）。
+   色值从 Claude Desktop 截图量的：导航底 #fcfcfb、选中 #e3e3e2、分隔线 #e3e3e2、字 #141413、关的开关 #cdcdcd、描边 #e6e6e6；
+   背景压暗 40% + 模糊 3px（整层淡入，不动模糊半径）；对话框四周离窗口 52px、宽上限 1290；圆角 12。
+   动画时长和曲线见 official-layout.js 的 DESK_IN / DESK_OUT（Lulu 录屏逐帧量的）。 */
+@keyframes cw-desk-in{from{opacity:0;scale:.98}}
+@keyframes cw-desk-out{to{opacity:0;scale:.98}}
+@keyframes cw-desk-fade-in{from{opacity:0}}
+@keyframes cw-desk-fade-out{to{opacity:0}}
+/* 内容层（酒馆的抽屉）上有主题的 opacity:1!important（day-pc.css），!important 压过动画，透明度动不了。
+   内容层改用 filter:opacity() 淡入淡出（filter 没人占）。试过让 opacity 读一个动画驱动的注册属性：算出来是 1，画面却停在 0（整页空白），不要再用。 */
+@keyframes cw-desk-panel-in{from{filter:opacity(0);scale:.98}}
+@keyframes cw-desk-panel-out{to{filter:opacity(0);scale:.98}}
+@media(min-width:701px){
+/* 字（Lulu 2026-10-01 在 Claude outputs/design-font-v1.html 里和 Claude Desktop 并排比过，选了右边那版）：
+   主题写的 Hanken Grotesk 其实没装也没加载，英文一直是 Segoe UI、中文是微软雅黑，比 Claude Desktop 细。
+   英文换 Win11 自带的 Segoe UI Variable（没有的机器自动退回 Segoe UI）；中文雅黑没有中间粗细，整体加 .25px 同色描边。
+   实测 Chrome 对系统里的 Segoe UI Variable 不认 450 这种中间粗细（和 400 一样宽），所以不改 font-weight。
+   只在「字体 = 跟风格」（默认值 follow）时生效；皮肤自己带了字体（--cw-skin-sans）就仍用皮肤的。用户在设置里选了别的字体就不动。
+   图标字体和聊天正文不加描边（正文没在对比里，等 Lulu 看）。 */
+html[data-cw-v4][data-claude-font="follow"]{--cl-sans:var(--cw-skin-sans,"Hanken Grotesk","Segoe UI Variable Text",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,var(--cl-cjk))!important;--cw-v4-font:var(--cw-skin-sans,"Hanken Grotesk","Segoe UI Variable Text","Noto Sans SC",-apple-system,"Segoe UI",Arial,sans-serif)}
+/* 扩展配置弹窗里不再重复一遍扩展列表那一行（图标 + 名字 + 配置），弹窗标题已经是它的名字。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body>.cw-v4-editing>.cw-v4-extension-row{display:none!important}
+html[data-cw-v4]:not([data-claude-integrated-theme="night"]){
+  --v4-ink:#141413;--v4-text:#141413;--v4-desc:#87867f;--v4-line:#e3e3e2;--v4-ctl-line:#e6e6e6;--v4-row-line:#f0f0ef;
+  --v4-nav-bg:#fcfcfb;--v4-toggle-off:#cdcdcd;--v4-track:#e4e4e2;--v4-hover:rgba(0,0,0,.04)}
+html[data-cw-v4]{--cw-v4-w:min(1290px,calc(100vw - 104px));--cw-v4-h:min(1056px,calc(100dvh - 104px))}
+/* 外壳：圆角 12、Claude 那种轻阴影。外壳本身是透明的，内容层（酒馆的抽屉，z 3001）在它下面透出来——外壳不能铺底色。
+   内容层原来摆在 x+211 / y+1、四边各让 1px，导航和内容之间那 1px 就透出后面的灰；现在贴齐导航右边、上下铺满。 */
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell{border-radius:12px!important;box-shadow:0 16px 48px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.08)!important}
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell .cw-v4-nav{border-radius:12px 0 0 12px!important}
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell .cw-v4-head{border-radius:0 12px 0 0!important}
+html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.openDrawer:not(.closedDrawer){left:calc(var(--cw-v4-x) + 210px)!important;top:var(--cw-v4-y)!important;width:calc(var(--cw-v4-w) - 210px)!important;height:var(--cw-v4-h)!important;border-radius:0 12px 12px 0!important}
+/* 扩展自己的折叠标题（「图像生成 ?」那条灰条），弹窗标题已经是它。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body>.cw-v4-editing>div:not(.cw-v4-extension-row)>.inline-drawer:first-child>.inline-drawer-header{display:none!important}
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell .cw-v4-navitem{height:35px!important;min-height:35px!important;padding-top:0!important;padding-bottom:0!important;margin-bottom:1px!important}
+/* 背景：中性压暗 + 模糊。关的时候（data-cw-desk-anim=out）酒馆已经关了抽屉，背景还要留着淡完。 */
+html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder>.cw-v4-backdrop,
+html[data-cw-v4][data-cw-desk-anim=out] body #top-settings-holder>.cw-v4-backdrop{display:block!important;visibility:visible!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:3000!important;background:rgba(0,0,0,.4)!important;-webkit-backdrop-filter:blur(3px)!important;backdrop-filter:blur(3px)!important}
+html[data-cw-v4][data-cw-desk-anim=out] body #top-settings-holder{z-index:3001!important}
+/* 2.0.236：淡出期间 #top-bar 也要留在 0。酒馆先摘 data-cw-v4-settings，#top-bar 回到 3990，会把还在 3001 的侧栏整条盖住约 60ms（关抽屉后侧栏「刷新一下」）。 */
+html[data-cw-v4][data-cw-desk-anim=out] body #top-bar{z-index:0!important;pointer-events:none!important}
+/* 主窗口去黄（官网 · 日间）：Claude Desktop 侧栏 #fafaf8、聊天区 #fbfbfb，两块几乎一样；酒馆原来侧栏 #f3f2ed、聊天区 #faf9f5。 */
+html[data-cw-v4][data-claude-palette="anthropic-light"]{--cw-paper-0:#fbfbfa!important;--cw-topbar-surface:#fbfbfa!important;--cw-v4-page-bg:#fbfbfa}
+html[data-cw-v4][data-claude-palette="anthropic-light"] body #top-settings-holder#top-settings-holder{background:#fafaf8!important}
+/* 主题文件：描边按钮写字（覆盖保存 / 另存为 / 导入 / 导出 / 删除），说明和按钮重复了就不显示。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-textbtns .cw-v4-icononly[data-cw-label]>.cw-v4-icon{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-textbtns .cw-v4-icononly[data-cw-label]{width:auto!important;min-width:0!important;padding:0 13px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-textbtns .cw-v4-icononly[data-cw-label]::after{content:attr(data-cw-label);font:400 14px/1 var(--cw-v4-font)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-textbtns>.cw-v4-row-info>p{display:none!important}
+/* 分段按钮（2–3 个短选项的下拉，见 official-layout.js buildSegs）：浅灰底槽、选中的白底描边。原下拉藏起。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel select.cw-v4-has-seg{display:none!important}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-segsel{display:inline-flex;background:#f3f3f3;border-radius:8px;padding:2px;flex:none}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder .cw-v4-panel .cw-v4-segsel{background:var(--v4-hover)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item{all:unset;box-sizing:border-box!important;display:inline-block!important;width:auto!important;min-width:0!important;height:30px!important;min-height:0!important;margin:0!important;padding:0 12px!important;border:1px solid transparent!important;border-radius:6px!important;background:transparent!important;box-shadow:none!important;font:400 14px/28px var(--cw-v4-font)!important;color:#8f8e88!important;cursor:pointer;white-space:nowrap;transform:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item:hover{color:var(--v4-text)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item[aria-pressed=true]{background:var(--v4-panel)!important;color:var(--v4-text)!important;border-color:var(--v4-ctl-line)!important;box-shadow:0 1px 2px rgba(0,0,0,.05)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item:focus-visible{outline:2px solid #2a78d6;outline-offset:1px}
+/* 编辑弹窗：照 Claude 的小弹窗（选语言那个）——浅灰顶栏 + 细线，标题 15px 600，× 在顶栏；没有「完成」（改了就生效）；
+   高度随内容（文本编辑保留原高度）；后面的设置框只压暗。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor{border:0!important;border-radius:12px!important;box-shadow:0 16px 48px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.08)!important;overflow:hidden}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor:not(.cw-v4-text-editor){height:auto!important;max-height:min(650px,calc(100dvh - 64px))!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor::backdrop{background:rgba(0,0,0,.22)}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head{min-height:51px;padding:10px 12px 10px 20px!important;gap:12px!important;background:#f3f3f3!important;border-bottom:1px solid #dadada!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head{background:var(--cw-v4-surface,#2c2c2a)!important;border-bottom-color:var(--v4-line)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-head h2{font-size:15px!important;font-weight:500!important;color:var(--v4-text)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-footer-done{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor>.cw-v4-editor-body{padding:12px 20px 18px!important}
+}
+/* 动画（只在电脑、没开「减少动态」时）。外壳和内容是两个独立的 fixed 层，要一起缩放：内容层的缩放原点设在整个对话框中心。
+   用独立的 scale 属性，不用 transform（面板规则里 transform:none!important）。 */
+@media(min-width:701px) and (prefers-reduced-motion:no-preference){
+html[data-cw-v4][data-cw-desk-anim=in] body .cw-v4-shell.cw-v4-shell:not([hidden]){animation:cw-desk-in 100ms cubic-bezier(.25,1,.5,1) both!important}
+html[data-cw-v4][data-cw-desk-anim=in] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.openDrawer:not(.closedDrawer){animation:cw-desk-panel-in 100ms cubic-bezier(.25,1,.5,1) both!important}
+html[data-cw-v4][data-cw-desk-anim=in] body #top-settings-holder>.cw-v4-backdrop{animation:cw-desk-fade-in 200ms cubic-bezier(.25,1,.5,1) both!important}
+html[data-cw-v4][data-cw-desk-anim=out] body .cw-v4-shell.cw-v4-shell{animation:cw-desk-out 70ms cubic-bezier(.25,1,.5,1) forwards!important}
+html[data-cw-v4][data-cw-desk-anim=out] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.openDrawer:not(.closedDrawer){animation:cw-desk-panel-out 70ms cubic-bezier(.25,1,.5,1) forwards!important}
+html[data-cw-v4][data-cw-desk-anim=out] body #top-settings-holder>.cw-v4-backdrop{animation:cw-desk-fade-out 170ms cubic-bezier(.25,1,.5,1) forwards!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.openDrawer:not(.closedDrawer){transform-origin:calc(var(--cw-v4-w) / 2 - 210px) calc(var(--cw-v4-h) / 2 - 52px)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor[open]{animation:cw-desk-in 100ms cubic-bezier(.25,1,.5,1) both}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor[open]::backdrop{animation:cw-desk-fade-in 200ms cubic-bezier(.25,1,.5,1) both}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor[data-cw-desk-out]{animation:cw-desk-out 70ms cubic-bezier(.25,1,.5,1) forwards}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor[data-cw-desk-out]::backdrop{animation:cw-desk-fade-out 70ms cubic-bezier(.25,1,.5,1) forwards}
+}
+
+/* ⑩ 2.0.224 字加粗扩到手机（Lulu 2026-10-01：手机对照 Claude App 也偏细）。聊天正文试过加粗，Lulu 看了说不加好一点（2.0.225 去掉）。
+   电脑 .25px、手机 .3px 同色描边（手机屏密度高，同样的 CSS 像素看着更细）。只在「字体 = 跟风格」（默认）时；代码和图标字体不加。 */
+html[data-cw-v4][data-claude-font="follow"] body{-webkit-text-stroke:.25px currentColor}
+@media(max-width:700px){html[data-cw-v4][data-claude-font="follow"] body{-webkit-text-stroke:.3px currentColor}}
+html[data-cw-v4][data-claude-font="follow"] body :is(#chat,#chat *,pre,code,.fa,.fa-solid,.fa-regular,.fa-brands,[class^="fa-"],[class*=" fa-"]){-webkit-text-stroke:0}
+
+/* ⑪ 2.0.229 角色卡编辑页的「‹ 全部角色」（Lulu：有点挤）：被主题的按钮规则压成 11px 左右，贴着页标题和角色名。
+   做成正常大小的返回：14.5px、‹ 18px，上下各留出空，指上去有浅底。 */
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_button_characters#rm_button_characters.cw-v4-back{display:inline-flex!important;align-items:center!important;gap:6px!important;margin:8px 0 16px -6px!important;padding:5px 10px 5px 6px!important;min-height:32px!important;border-radius:8px!important;font:400 14.5px/1.3 var(--cw-v4-font)!important;color:var(--v4-muted,#73726c)!important;background:transparent!important}
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_button_characters#rm_button_characters.cw-v4-back>.cw-v4-action-label{font:inherit!important;color:inherit!important}
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_button_characters#rm_button_characters.cw-v4-back::before{font:400 20px/1 var(--cw-v4-font)!important;margin-top:-2px}
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_button_characters#rm_button_characters.cw-v4-back:hover{background:var(--v4-hover,rgba(0,0,0,.04))!important;color:var(--v4-text,#141413)!important}
+
+/* ⑫ 2.0.229 电脑滚动条照 Claude Desktop（Lulu：对话历史那些太淡太粗；设置导航那条太长）：
+   Claude 量出来是细滚动条，滑块 7px、#aeaead，没有轨道（Chrome 的 scrollbar-width:thin）。
+   Chrome 121 起设了 scrollbar-color 就不再走 ::-webkit-scrollbar 那套（上面 10px + 3px 透明边、#c9c5bc 的旧写法自动失效）。
+   设置内容区常显（Claude 的设置对话框也是常显），不再「指上去才出现」。设置导航只比框高一点点，滑块几乎和框一样长，藏掉，滚轮照样能滚。 */
+@media(min-width:701px){
+/* 2.0.233：原来这里对所有元素 * 设了细滚动条。Chrome 一设标准的 scrollbar-width / scrollbar-color，元素上
+   「::-webkit-scrollbar{display:none}」那种藏法就失效——好几处本来藏着的滚动条又冒出来了（Lulu 截图）。只给设置内容区和弹窗正文设。 */
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel,
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel:hover,
+html[data-cw-v4] body dialog.cw-v4-editor .cw-v4-editor-body{scrollbar-width:thin!important;scrollbar-color:#aeaead transparent!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder .cw-v4-panel,
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder .cw-v4-panel:hover,
+html[data-cw-v4][data-claude-integrated-theme="night"] body dialog.cw-v4-editor .cw-v4-editor-body{scrollbar-color:#5f5e5a transparent!important}
+html[data-cw-v4] body .cw-v4-shell.cw-v4-shell .cw-v4-nav{scrollbar-width:none!important}
+}
+
+/* ⑬ 2.0.229 电脑下拉列表（official-layout.js openSelMenu），照 Claude Desktop（Lulu 截图 P3 量的）：
+   白底、细灰边 + 软阴影、圆角 12；一行 35px、圆角 8；指着的和当前项都是 #f3f3f3，当前项右边蓝色 ✓；
+   超过 10 项顶上一条搜索框、下面细线；打开时下拉本身变成 #f3f3f3 的灰底小胶囊（用 box-shadow 画，不挪位置）。 */
+.cw-v4-selmenu{position:fixed;inset:auto;margin:0;box-sizing:border-box;display:flex;flex-direction:column;max-width:360px;padding:0;border:1px solid #dcdcda;border-radius:12px;background:#fff;color:#141413;box-shadow:0 10px 30px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06);font:400 15px/1.3 var(--cw-v4-font,"Segoe UI",sans-serif);-webkit-text-stroke:inherit;overflow:hidden;z-index:2147483000}
+.cw-v4-selmenu::backdrop{display:none}
+.cw-v4-selmenu>.cw-v4-selmenu-search{all:unset;box-sizing:border-box;flex:none;height:40px;padding:0 14px;border-bottom:1px solid #e6e6e6;font:inherit;color:inherit}
+.cw-v4-selmenu>.cw-v4-selmenu-search::placeholder{color:#a3a19b}
+.cw-v4-selmenu>.cw-v4-selmenu-list{flex:1;min-height:0;overflow:auto;padding:5px;scrollbar-width:thin;scrollbar-color:#aeaead transparent}
+.cw-v4-selmenu .cw-v4-selmenu-item{display:flex;align-items:center;gap:12px;min-height:35px;padding:0 10px 0 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.cw-v4-selmenu .cw-v4-selmenu-item>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cw-v4-selmenu .cw-v4-selmenu-item.cw-on,.cw-v4-selmenu .cw-v4-selmenu-item.cw-sel{background:#f3f3f3}
+.cw-v4-selmenu .cw-v4-selmenu-item.cw-sel::after{content:"";flex:none;width:16px;height:16px;background:#2a78d6;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3L13 4.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3L13 4.5'/%3E%3C/svg%3E") center/contain no-repeat}
+.cw-v4-selmenu .cw-v4-selmenu-item.cw-dis{opacity:.45;cursor:default}
+.cw-v4-selmenu .cw-v4-selmenu-group{padding:9px 12px 4px;font-size:12.5px;color:#87867f}
+.cw-v4-selmenu .cw-v4-selmenu-empty{padding:10px 12px;color:#87867f}
+html[data-claude-integrated-theme="night"] .cw-v4-selmenu{background:#30302e;color:#ecebe6;border-color:#44433e;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+html[data-claude-integrated-theme="night"] .cw-v4-selmenu>.cw-v4-selmenu-search{border-bottom-color:#44433e}
+html[data-claude-integrated-theme="night"] .cw-v4-selmenu .cw-v4-selmenu-item:is(.cw-on,.cw-sel){background:#3b3a37}
+html[data-claude-integrated-theme="night"] .cw-v4-selmenu .cw-v4-selmenu-item.cw-sel::after{background:#5ea0ec}
+html[data-cw-v4] body select[data-cw-open]{background-color:#f3f3f3!important;box-shadow:0 0 0 5px #f3f3f3!important;border-radius:6px!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body select[data-cw-open]{background-color:#3b3a37!important;box-shadow:0 0 0 5px #3b3a37!important}
+
+/* ⑭ 2.0.231（Lulu）：电脑上聊天记录的滚动条也不要了（滚轮 / 触控板照样滚）；
+   Claude Web 设置弹窗里「启用 Claude Web」那一行被主题的勾选行规则把内边距清零，字贴着卡片左边，和下面「外观」不齐——补回 12px。 */
+@media(min-width:701px){
+html[data-cw-v4] body #chat{scrollbar-width:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings label.claude-web-master.claude-web-master{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;min-height:52px!important;padding:0 12px!important;box-sizing:border-box!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings label.claude-web-master.claude-web-master>input{order:2!important;margin:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings label.claude-web-master.claude-web-master>span{order:1!important;flex:1 1 auto!important}
+}
+
+/* ⑮ 2.0.232 主窗口照 Claude Desktop（Lulu 看过 Claude outputs/design-main-v1.html：除了两组入口之间的空和最近对话，其余照 Claude）。
+   量的是 Lulu 截的 Claude Desktop 对话窗口：
+   · 侧栏和聊天区的分隔线 #e2e2e1。酒馆这里是侧栏自己的边（#e3e3e2）叠在 #top-bar 的边（14% 黑）上，合起来成了 #c6c6c5；去掉 #top-bar 那条。
+   · 侧栏入口每行 29px、图标 16px、字 14px（原来 35px / 20px / 14.5px）。两组入口之间的空保留。
+   · 输入框：一圈清楚的细实边（#c9c9c7），阴影很淡（原来是很浅的边 + 明显的阴影）。 */
+@media(min-width:701px){
+html[data-cw-v4] body #top-bar#top-bar{border-right-color:transparent!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder{border-right:1px solid #e2e2e1!important}
+/* 真正看到的那条线是侧栏宽度把手（.clawd-rail-grip）的 ::after 画的（主题 2.0.22 为了让线压在抽屉上面），颜色走 --cl-rail-edge。 */
+html[data-cw-v4] body .clawd-rail-grip::after{background:#e2e2e1!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body .clawd-rail-grip::after{background:#3a3935!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder{border-right-color:#3a3935!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-toggle{height:29px!important;min-height:29px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-toggle .drawer-icon{width:16px!important;height:16px!important;min-width:16px!important;max-width:16px!important;flex:0 0 16px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-toggle>.clawd-rail-label{font-size:14px!important}
+html[data-cw-v4] body #form_sheld#form_sheld #send_form{border:1px solid #c9c9c7!important;box-shadow:0 1px 3px rgba(0,0,0,.035)!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #form_sheld#form_sheld #send_form{border-color:#4a4945!important;box-shadow:0 1px 3px rgba(0,0,0,.2)!important}
+/* 「启用 Claude Web」那一行再往左挪 2px，和下面「外观」的字对齐（2.0.231 量出来差 2px）。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor #claude-web-settings label.claude-web-master.claude-web-master{padding:0 12px 0 10px!important}
+}
+/* 手机上聊天记录的滚动条也不要（Lulu 2026-10-01）。 */
+@media(max-width:700px){html[data-cw-v4] body #chat{scrollbar-width:none!important}html[data-cw-v4] body #chat::-webkit-scrollbar{display:none!important}}
+
+/* ⑯ 2.0.232 对话页照 Claude Desktop（Lulu 截的对话窗口，「对话宽度 = 窄」）：正文列约 546px、输入框约 623px。
+   酒馆这里是主题的 --cw-column（clamp(820px,64vw,1120px)，1341 宽窗口下 858px），不是酒馆自己的「页面宽度」设置。
+   「… is AI and can make mistakes.」挪到输入框下面、靠右、小号灰字（official-layout.js syncChat）。 */
+@media(min-width:701px){
+/* 2.0.234（Lulu：太窄了，正文要跟着窗口宽度变）：不再固定 552 / 624，正文和输入框回到主题的 --cw-column（clamp(820px,64vw,1120px)）。 */
+html[data-cw-v4] body #send_form#send_form[data-cw-disclaimer]::after{content:attr(data-cw-disclaimer)!important;display:block!important;position:absolute!important;top:calc(100% + 7px)!important;right:6px!important;left:auto!important;bottom:auto!important;width:auto!important;height:auto!important;margin:0!important;background:none!important;opacity:1!important;animation:none!important;translate:none!important;pointer-events:none!important;white-space:nowrap;font:400 12px/1.4 var(--cw-v4-font)!important;color:#87867f!important;-webkit-text-stroke:0}
+}
+
+/* ⑰ 2.0.233（Lulu：「角色对话历史」的滑条）指的是侧栏「最近」那一列的滚动条——电脑、手机都不要（滚轮 / 手指照样能滚）。
+   连 2.0.205 那条「指上去才淡淡显出来」也一起盖掉。 */
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents,
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents:hover{scrollbar-width:none!important;scrollbar-gutter:auto!important}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+
+/* ⑱ 2.0.234 侧栏本身（#top-settings-holder / #top-bar）的滚动条：主题原来用 ::-webkit-scrollbar 把滑块涂成透明——能滚但看不见。
+   一旦有标准的 scrollbar-* 属性落到它身上，这种藏法就失效，冒出一整条长滑条（Lulu 截图，侧栏右边那条）。直接用标准属性藏掉。 */
+html[data-cw-v4] body :is(#top-settings-holder,#top-bar){scrollbar-width:none!important}
+html[data-cw-v4] body :is(#top-settings-holder,#top-bar)::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+
+/* ⑲ 2.0.235（Lulu：更新后进对话、滚动都卡）：描边的字 Chrome 没法用缓存的字形，只能一个个按轮廓画；滚动时新露出来的每一行都要重画。
+   实测把聊天区（#chat 里所有东西：正文、名字、时间、按钮）的描边去掉，滚动的长任务和帧间隔就回到没改字体时的水平。
+   所以描边只留在侧栏、设置、弹窗和输入框上（上面那条排除规则从 .mes_text 扩到整个 #chat）。 */
+
+/* ⑳ 2.0.238 电脑设置页的纵向节奏照 Claude Desktop（Lulu：「排版看起来不太好，行距间距」）。
+   按截图逐行量（tools/_tmp/cc-244-profile.cjs，字的墨迹上下沿和分隔线）：Desktop 没有页面大标题，页面标题和小节标题一样 16px；
+   小节标题到第一行 40（带说明）/ 46（单行带按钮），上一节末尾到下一个小节标题 63–65，行上下 14，标题到说明 10。
+   酒馆原来：大标题 18px 下面紧跟小节标题（两个标题叠着），小节标题到第一行 26–37 忽近忽远，小节之间 69–77。
+   大标题下面紧跟带标题的小节时（official-layout.js 标 data-cw-headed）藏掉大标题：留 0 高、-40px 下边距，
+   和第一个小节的 40px 上边距折叠成 0，第一个小节标题正好落在大标题的位置。 */
+@media(min-width:701px){
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel :is(.cw-v4-page-title,.cw-v4-pref-title){font-size:16px!important;font-weight:500!important;line-height:1.35!important;margin:0 0 10px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-pref-title{margin-bottom:8px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel :is(.cw-v4-page-title,.cw-v4-pref-title)[data-cw-headed]{visibility:hidden!important;height:0!important;overflow:hidden!important;margin:0 0 -40px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-section>h2{line-height:1.35!important;margin:0 0 18px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel :is(.cw-v4-row,.cw-v4-api-row,.cw-v4-pref-row):not(dialog *){padding-top:14px!important;padding-bottom:14px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-section{margin-top:40px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-section:not(:has(>h2)):first-child{margin-top:6px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel :is(.cw-v4-row-info>p,.cw-v4-row-desc){margin-top:2px!important}
+}
+/* ㉑ 2.0.239 灰色说明字不描边（Lulu：说明字比 Desktop 重）。颜色和 Desktop 一样（#87857f / #898781），重在描边：中文笔画密，0.25px 描边让灰字发糊。
+   只去掉设置和编辑弹窗里的说明类文字；标题、行名、控件照旧描边。 */
+@media(min-width:701px){
+html[data-cw-v4][data-claude-font="follow"] body #top-settings-holder :is(.cw-v4-row-info>p,.cw-v4-row-desc,.cw-v4-row-desc *,.cw-v4-lede,.cw-v4-note,.cw-v4-row-info small,.cw-v4-api-row small,.cw-v4-api-row .cw-v4-hint){-webkit-text-stroke:0!important}
+}
+/* ㉒ 2.0.239 写字按钮（酒馆 Font Awesome 图标按钮 + 我们的文字，如 API 页「保存」）：图标的 ::before 被别处更重的规则放回 display:block，
+   宽 0 但还占一个 flex 位置，和文字之间多出 7px gap，字往右偏。加权重再藏一次。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) .cw-v4-as-btn.cw-v4-as-btn::before,html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) .cw-v4-as-btn.cw-v4-as-btn::after{display:none!important;content:none!important}
+/* ㉓ 2.0.239 API 页「自定义端点」下面那行提示（酒馆原文 <small> 里带 <b>）：10.9px + 雅黑粗体糊成一团。改成 12.5px 常规灰字、不描边。 */
+@media(min-width:701px){
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-api-controls small{font-size:12.5px!important;line-height:1.55!important;color:var(--v4-desc)!important;-webkit-text-stroke:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-api-controls small :is(b,strong){font-weight:inherit!important;color:inherit!important;-webkit-text-stroke:0!important}
+}
+/* ㉔ 2.0.240 电脑下拉照 Claude Desktop 画成带边框的框（Lulu 定：电脑带框，手机 / 窄屏仍是无框「值 ⌄」）。
+   Desktop 量的：高 34、边 #e6e6e6、圆角 8、字靠左、箭头靠右、约 240 宽。酒馆原来已是 34 高的框，只是边透明、字靠右。 */
+@media(min-width:701px){
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel select:not([multiple]):not([data-v-app] *):not(.select2-hidden-accessible):not(.cw-v4-entry-identity *){border:1px solid #e6e6e6!important;background-color:#fff!important;border-radius:8px!important;padding:0 34px 0 12px!important;text-align:left!important;text-align-last:left!important;min-width:200px!important;background-position:calc(100% - 11px) 50%!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel select:not([multiple]):not([data-v-app] *):not(.select2-hidden-accessible):not(.cw-v4-entry-identity *){border-color:#44433e!important;background-color:#262624!important}
+}
+/* ㉕ 2.0.242 世界书蓝灯绿灯（Lulu：像原版那样）：常驻蓝 / 关键字绿 / 向量紫。列表里的灯 7→8px；
+   条目弹窗顶栏的状态下拉里面左边一颗（灯是下拉前面的兄弟元素，用负边距叠进框里，不接点击）；下拉列表每项前面一颗。 */
+html[data-cw-v4] body #top-settings-holder #WorldInfo .cw-v4-dot{width:8px;height:8px}
+html[data-cw-v4] body #top-settings-holder .cw-v4-selmenu .cw-v4-dot{width:8px;height:8px;border-radius:50%;flex:none;background:#3fa05a}
+html[data-cw-v4] body #top-settings-holder .cw-v4-selmenu .cw-v4-dot[data-kind="blue"]{background:#2a78d6}
+html[data-cw-v4] body #top-settings-holder .cw-v4-selmenu .cw-v4-dot[data-kind="link"]{background:#8a6fd1}
+html[data-cw-v4] body #top-settings-holder .cw-v4-selmenu .cw-v4-selmenu-item:has(>.cw-v4-dot){gap:10px}
+html[data-cw-v4] body #top-settings-holder .cw-v4-wi-dialog .cw-v4-wi-edit-head>.cw-v4-state-dot{position:relative;z-index:1;margin:0 -30px 0 12px;pointer-events:none}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-wi-dialog .cw-v4-wi-edit-head>select.cw-v4-state-sel.cw-v4-state-sel.cw-v4-state-sel.cw-v4-state-sel.cw-v4-state-sel.cw-v4-state-sel{padding-left:28px!important;min-width:132px!important}
+
+/* ㉖ 2.0.245 Assistant 的头像显示成 Clawd（Lulu 选「只换显示」）：文件 default_Assistant.png 不动，扩展关掉就是原图。
+   <img> 上的 content:url() 会替换画出来的图（Chromium / WebView）；只认默认头像文件名，Assistant 换过头像就不管。
+   2.0.246：换成 Lulu 给的「打领带提公文包」的 Clawd（icons/assistant-clawd.png，183×127 白底），整张放进圆里；
+   欢迎页那条助理消息的头像（index.js 换成像素 Clawd 的那张）也用这张，保持一致。 */
+html body img[src*="default_Assistant.png" i][src],html body .claude-welcome-clawd-assistant .mesAvatarWrapper .avatar img[src]{content:url("../icons/assistant-clawd.png")!important;image-rendering:auto!important;object-fit:contain!important;object-position:50% 55%!important;box-sizing:border-box!important;padding:4%!important;background-color:#fff!important}
+
+/* ㉗ 2.0.247 普通尺寸的酒馆弹窗（改名 / 另存为 / 删除确认 / 新建文件夹 / 安装扩展……）照 Claude Desktop 的 Rename / Delete 弹窗
+   （稿 Claude outputs/design-popup-v1.html，参考 图片库/…/2026-10-02_电脑_{重命名,删除确认}弹窗.png，Lulu 选标题 17px）：
+   宽 440、圆角 12、内边距 24/26/26，左对齐；输入框 35 高、边 #e6e6e6、圆角 8；按钮 34 高、间隔 10、靠右，取消在左（白底描边）、
+   确定在右（黑 #0b0b0b；删除类红 #d03b3b，official-layout.js 按内容挂 data-cw-danger）。宽 / 大弹窗不在这里。
+   :is(dialog,#cw-spec) 带一个 ID 权重，压过主题 :is(.popup,…,#options) 那批规则。只在电脑尺寸。 */
+@media(min-width:701px){
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor){box-sizing:border-box!important;width:440px!important;min-width:0!important;max-width:calc(100vw - 32px)!important;height:fit-content!important;min-height:0!important;max-height:calc(100dvh - 48px)!important;padding:24px 26px 26px!important;border:0!important;border-radius:12px!important;background:#fff!important;color:#141413!important;text-align:left!important;box-shadow:0 16px 48px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.08)!important;font-size:15px!important;line-height:1.5!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor)::backdrop{background:rgba(0,0,0,.4)!important;-webkit-backdrop-filter:blur(3px)!important;backdrop-filter:blur(3px)!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-body{display:flex!important;flex-direction:column!important;gap:0!important;padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;text-align:left!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-content{margin:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;text-align:left!important;color:#3d3d3a!important;font-size:15px!important;line-height:1.5!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-content :is(h1,h2,h3,h4){margin:0 0 8px!important;padding:0!important;background:none!important;border:0!important;text-align:left!important;font-size:17px!important;font-weight:500!important;line-height:1.35!important;color:#141413!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-content :is(small,.fontsize90p,.opacity50p){color:#73726c!important;font-size:13.5px!important;-webkit-text-stroke:0!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) textarea.popup-input:is(:not([rows]),[rows="1"]){box-sizing:border-box!important;width:100%!important;height:35px!important;min-height:35px!important;max-height:35px!important;margin:16px 0 0!important;padding:0 12px!important;border:1px solid #e6e6e6!important;border-radius:8px!important;background:#fff!important;color:#141413!important;font-size:15px!important;line-height:33px!important;resize:none!important;overflow:hidden!important;white-space:nowrap!important;box-shadow:none!important;outline:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) :is(textarea.popup-input,input.text_pole):focus{border-color:#c2c1bd!important;box-shadow:0 0 0 3px rgba(20,20,19,.06)!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls{display:flex!important;align-self:stretch!important;width:100%!important;box-sizing:border-box!important;flex-wrap:wrap!important;justify-content:flex-end!important;align-items:center!important;gap:10px!important;margin:20px 0 0!important;padding:0!important;background:none!important;border:0!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.menu_button{display:inline-flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;height:34px!important;min-height:34px!important;min-width:64px!important;width:auto!important;margin:0!important;padding:0 14px!important;border:1px solid #e6e6e6!important;border-radius:8px!important;background:#fff!important;color:#141413!important;font-size:14.5px!important;font-weight:500!important;line-height:1!important;box-shadow:none!important;filter:none!important;opacity:1!important;transform:none!important;order:0}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.menu_button:hover{background:#f5f5f4!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.popup-button-cancel{order:1}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.popup-button-ok{order:2;background:#0b0b0b!important;border-color:#0b0b0b!important;color:#fff!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.popup-button-ok:hover{background:#2a2a28!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup[data-cw-danger]:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.popup-button-ok{background:#d03b3b!important;border-color:#d03b3b!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup[data-cw-danger]:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.popup-button-ok:hover{background:#b93030!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.menu_button:focus-visible{outline:2px solid #141413!important;outline-offset:2px!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup[data-cw-danger]:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.popup-button-ok:focus-visible{outline-color:#d03b3b!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor){background:#262624!important;color:#f8f8f6!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) :is(.popup-content,.popup-content :is(h1,h2,h3,h4)){color:#f8f8f6!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) :is(textarea.popup-input,.popup-controls>.menu_button:not(.popup-button-ok)){background:#30302e!important;border-color:#44433e!important;color:#f8f8f6!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec).popup.popup:not([data-cw-danger]):not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls>.popup-button-ok{background:#f8f8f6!important;border-color:#f8f8f6!important;color:#141413!important}
+}
+
+/* ㉘ 2.0.248 电脑聊天页的输入框照 Claude Desktop（稿 Claude outputs/design-composer-v1.html，Lulu 2026-10-02 认可默认那一版）：
+   宽 847（不超过正文列）、一行高 54、圆角 14、边 #dededd + 淡阴影；快捷回复那排（#qr--bar）移到框正上方，居中、可以换行，
+   左右让开大 Clawd 和三只 Clawd；它脱离了文档流，official-layout.js 把它的高度写到 #form_sheld 的 --cw-qr-h，输入区整体往上让。
+   框下面一行：左边免责声明，右边「角色 + 强度 ⌄」（index.js 的 .clawd-character-switcher，原来只在欢迎页）。欢迎页不动。 */
+@media(min-width:701px){
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld#form_sheld{padding-top:calc(8px + var(--cw-qr-h,0px))!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form{max-width:min(847px,var(--cw-column,847px))!important;min-height:54px!important;padding:8px 10px!important;border-color:#dededd!important;border-radius:14px!important;box-shadow:0 4px 14px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03)!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar{position:absolute!important;left:0!important;right:0!important;top:auto!important;bottom:calc(100% + 8px)!important;z-index:1!important;display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-end!important;align-content:flex-end!important;gap:6px!important;width:auto!important;height:auto!important;max-height:none!important;margin:0!important;padding:0 84px 0 76px!important;border:0!important;background:none!important;box-shadow:none!important;overflow:visible!important;pointer-events:none!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar:empty{display:none!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar :is(.qr--buttons,.qr--buttons>div:not(.qr--button)){display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:6px!important;margin:0!important;padding:0!important;width:auto!important;background:none!important;border:0!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar *{pointer-events:auto}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar .qr--button{display:inline-flex!important;align-items:center!important;height:28px!important;min-height:28px!important;margin:0!important;padding:0 10px!important;border:1px solid #e6e6e6!important;border-radius:8px!important;background:#fff!important;color:#3d3d3a!important;font-size:13px!important;line-height:1!important;opacity:1!important;box-shadow:0 1px 2px rgba(0,0,0,.03)!important;-webkit-text-stroke:0!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar .qr--button:hover{background:#f5f5f4!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form[data-cw-disclaimer]::after{left:18px!important;right:auto!important;top:calc(100% + 9px)!important;font-size:12px!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form .clawd-character-switcher{position:absolute!important;top:calc(100% + 4px)!important;right:10px!important;left:auto!important;bottom:auto!important;height:26px!important;padding:0 6px 0 8px!important;gap:6px!important;border-radius:7px!important;background:transparent!important;color:#3d3d3a!important;font-size:13px!important;font-weight:400!important;-webkit-text-stroke:0!important;z-index:2!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form .clawd-character-switcher:is(:hover,[aria-expanded="true"]){background:#efefee!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body:not(.clawd-welcome) #form_sheld #send_form#send_form{border-color:#3a3936!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar .qr--button{background:#30302e!important;border-color:#44433e!important;color:#e8e6df!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body:not(.clawd-welcome) #form_sheld #send_form#send_form .clawd-character-switcher{color:#e8e6df!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body:not(.clawd-welcome) #form_sheld #send_form#send_form .clawd-character-switcher:is(:hover,[aria-expanded="true"]){background:#30302e!important}
 }

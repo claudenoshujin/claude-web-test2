@@ -483,6 +483,9 @@ function cancel(x, y, id = 1) {
   event.pointerId = id;
   clawd.dispatchEvent(event);
 }
+/* 2.0.229：打盹计时从加载就开始（2.0.227），上面把时钟拨快了 5 分钟，Clawd 这时是真睡着了；
+   睡着时按下只叫醒、不放「被按住」（2.0.229）。先敲一下键盘把它叫醒，再测按下。 */
+document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Shift', bubbles: true }));
 press(50, 50);
 assert.equal(cTrack(), 'press', '按下就该是 press（被按住）');
 cancel(50, 50);

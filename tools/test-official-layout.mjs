@@ -69,6 +69,19 @@ late.closest('dialog').close();
 // A pinned native drawer must not make selection oscillate on each observer pass.
 const pinned=d.getElementById('WorldInfo');pinned.classList.add('openDrawer');pinned.classList.remove('closedDrawer');
 app.refresh();const title=d.querySelector('.cw-v4-title').textContent;app.refresh();assert.equal(d.querySelector('.cw-v4-title').textContent,title);
+// Phone sidebar entry (2.0.203 push drawer): activate closes the open page first, then opens the target,
+// so SillyTavern never waits animation_duration with no page open.
+d.documentElement.dataset.claudeLayout='mobile';d.body.setAttribute('data-clawd-menu','open');
+show('user-settings-block');app.refresh();
+const toggleClicks=[];for(const id of ['user-settings-block','rm_extensions_block'])d.getElementById(id).closest('.drawer').querySelector(':scope>.drawer-toggle').addEventListener('click',()=>toggleClicks.push(id));
+app.activate('rm_extensions_block');
+assert.deepEqual(toggleClicks,['user-settings-block','rm_extensions_block'],'old page closes before the target opens');
+assert.equal(app.preparePanel,undefined,'no retained-page handoff API remains');
+show('rm_extensions_block');app.refresh();
+assert.equal(d.querySelector('.cw-v4-shell').dataset.panel,'rm_extensions_block');
+assert.equal(d.documentElement.hasAttribute('data-cw-v4-pending'),false);
+assert.equal(d.querySelectorAll('.cw-v4-retained').length,0);
+d.body.removeAttribute('data-clawd-menu');delete d.documentElement.dataset.claudeLayout;
 d.documentElement.dataset.claudeStructure='linear';app.refresh();
 assert.equal(d.querySelector('.cw-v4-pref-pages'),null,'switching structure restores original preferences');
 assert.equal(d.querySelector('.cw-v4-more'),null,'native actions must not stay in collapsed menus outside v4');

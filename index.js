@@ -14,8 +14,9 @@
  */
 
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20260929k";
+import { installOfficialLayout } from "./official-layout.js?v=20261002i";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
+import { createClawdPile } from "./clawd-pile.js?v=20261001w";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -425,7 +426,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.196-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.250-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -456,7 +457,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20260929c', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20261002j', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -568,7 +569,7 @@ if (CLAUDE_ENABLED) {
 /* 2.0.162：弹层状态标记。主题里原先用 html:has(#completion_prompt_manager_popup.openDrawer)、
    body:has(#top-settings-holder > .drawer > .drawer-content.openDrawer) 判断弹层是否打开，
    根节点 :has() 让聊天区每次追加内容都要重新判断整页（见 diagnostics/手机卡顿排查-20260928.md，
-   桌面 4× 降速模拟里样式重算约 6 s → 0.05 s）。改成这里在 <html> 上挂两个 class：
+   桌面 4× 降速模拟里样式重算约 6 s → 0.05 s）。改成这里在 <html> 上挂两个标记（2.0.217 起是 data 属性，不是 class）：
      claude-pm-open          Prompt 编辑弹层打开
      claude-top-drawer-open  顶栏任一抽屉打开
    只监听这两处元素自己的 class 变化，不看聊天区；状态真的变了 classList.toggle 才会改根节点。 */
@@ -578,16 +579,27 @@ if (CLAUDE_ENABLED) {
   const sync = () => {
     const pm = document.getElementById('completion_prompt_manager_popup');
     const holder = document.getElementById('top-settings-holder');
-    root.classList.toggle('claude-pm-open', !!pm?.classList.contains('openDrawer'));
-    root.classList.toggle('claude-top-drawer-open',
+    // 2.0.217：改挂 data 属性，不再改 <html> 的 class——主题里有 [class*="spreset" i] 这类按 class 子串匹配的选择器，
+    // 根节点 class 一变整页都要重新匹配（提示词编辑页一开一关各约 12ms，手机 4× 降速约 100ms）。
+    root.toggleAttribute('data-claude-pm-open', !!pm?.classList.contains('openDrawer'));
+    root.toggleAttribute('data-claude-top-drawer-open',
       !!holder?.querySelector(':scope > .drawer > .drawer-content.openDrawer'));
     /* 菜单精简器这类脚本会给侧栏各项写行内 order 来重排。重排后「偏好设置」上方那段分组留白
        会跟着它跑到别处，显得突兀，所以只要检测到有人重排就去掉这段留白（样式见 official-layout.css）。 */
-    root.classList.toggle('claude-rail-reordered',
+    root.toggleAttribute('data-claude-rail-reordered',
       !!holder?.querySelector(':scope > [style*="order"]'));
   };
   const install = () => {
-    const observer = new MutationObserver(sync);
+    /* 打开旧聊天性能修复（20261001 手机 LoAF/观察器计时）：subtree 观察会把抽屉里面板内容的
+       class/style 变化（表情列表、提示词管理器重建等）也送进来，每批都跑一次 sync。
+       只认三类目标：提示词编辑弹层本身、holder 的直接子项（行内 order）、抽屉本身（holder > .drawer > .drawer-content）。 */
+    const observer = new MutationObserver(records => {
+      const pm = document.getElementById('completion_prompt_manager_popup');
+      const holder = document.getElementById('top-settings-holder');
+      if (records.some(r => r.target === pm
+        || r.target.parentElement === holder
+        || r.target.parentElement?.parentElement === holder)) sync();
+    });
     const pm = document.getElementById('completion_prompt_manager_popup');
     const holder = document.getElementById('top-settings-holder');
     if (pm) observer.observe(pm, { attributes: true, attributeFilter: ['class'] });
@@ -1110,8 +1122,10 @@ if (CLAUDE_ENABLED) {
     return BUILT_IN.find(preset => preset.id === id) ?? null;
   }
 
-  function apply(tokens) {
+  /* data-claude-palette 记下当前是哪套预设（自定义记 custom），CSS 按预设做少量手机端微调。 */
+  function apply(tokens, id = CUSTOM_ID) {
     const root = document.documentElement;
+    root.dataset.claudePalette = id;
     for (const [key, value] of Object.entries(tokens)) {
       if (!ALLOWED.has(key)) continue;
       root.style.setProperty(key, String(value));
@@ -1124,7 +1138,7 @@ if (CLAUDE_ENABLED) {
     if (!preset) return null;
     /* 只套这个预设。自定义不再叠在这上面 —— 它是「风格」下拉里并列的一项，
        否则调过一次色之后切风格就几乎看不出变化。 */
-    apply(resolve(preset));
+    apply(resolve(preset), preset.id);
     if (persist) {
       try { window.localStorage.setItem(STORAGE_PRESET, preset.id); } catch { /* 无痕模式 */ }
     }
@@ -2037,6 +2051,7 @@ if (CLAUDE_ENABLED) {
   const LEFT_SWIPE_PROXY_CLASS = 'claude-swipe-left-proxy';
   const SWIPE_PROXY_CLASS = 'claude-swipe-right-proxy';
   const REROLL_CLASS = 'claude-reroll-button';
+  let generationStartSeq = 0;
   const PRESET_REASONING_CLASS = 'claude-has-preset-reasoning';
   const SWIPE_VIEW_CLASS = 'claude-swipe-in-viewport';
   const USER_ACTIONS_CLASS = 'claude-user-message-actions';
@@ -2068,14 +2083,34 @@ if (CLAUDE_ENABLED) {
     if (list && list.contains(name) !== Boolean(on)) list.toggle(name, Boolean(on));
   };
   const isMobileMenuOpen = () => hostDocument.body.hasAttribute(MOBILE_MENU_ATTRIBUTE);
-  /* 「等设置页画好再收侧栏」的任务号（closeMobileMenuAfterPanel）。每次打开侧栏、每次点新的入口都换号，
-     旧任务看到号不对就作废，免得连续切换时旧任务把刚重新打开的侧栏收掉。 */
+  /* 「新页画好再收侧栏」的任务号（showPanelFromRail）。每次打开侧栏都换号，
+     等待途中重新开关过侧栏时，旧任务看到号不对就作废。 */
   let mobileMenuCloseToken = 0;
+  let mobileNavPanelCleanup = null;
+  let mobileNavActivating = false;
+  /* 2.0.204 推开式侧栏的合成层开关（见 official-layout.css 推开式那段）：打开前在 html 上挂 data-cw-push，让各层先停在
+     translate:0 0 并强制算一次样式，滑动才从同类型的值起步、由合成器跑；收起滑完（300ms）再摘掉，各层回到 none。
+     用 data 属性不用 class：改 html 的 class 属性会让页面里所有 [class*=…] 属性选择器重新匹配，一开一收各重算三千多个元素。 */
+  const PUSH_LIVE_ATTRIBUTE = 'data-cw-push';
+  let pushLiveTimer = 0;
   const setMobileMenuOpen = open => {
+    mobileNavPanelCleanup?.();
     if (open) mobileMenuCloseToken += 1;
     if (open === isMobileMenuOpen()) return;
-    if (open) hostDocument.body.setAttribute(MOBILE_MENU_ATTRIBUTE, 'open');
-    else hostDocument.body.removeAttribute(MOBILE_MENU_ATTRIBUTE);
+    const root = hostDocument.documentElement;
+    hostWindow.clearTimeout(pushLiveTimer);
+    if (open) {
+      if (!root.hasAttribute(PUSH_LIVE_ATTRIBUTE)) {
+        root.setAttribute(PUSH_LIVE_ATTRIBUTE, '');
+        void hostWindow.getComputedStyle(hostDocument.body).translate;
+      }
+      hostDocument.body.setAttribute(MOBILE_MENU_ATTRIBUTE, 'open');
+    } else {
+      hostDocument.body.removeAttribute(MOBILE_MENU_ATTRIBUTE);
+      pushLiveTimer = hostWindow.setTimeout(() => {
+        if (!isMobileMenuOpen()) root.removeAttribute(PUSH_LIVE_ATTRIBUTE);
+      }, 320);
+    }
   };
   const MOBILE_LAYOUT_CLASS = 'clawd-mobile-layout';
   const VIRTUAL_KEYBOARD_OVERLAY_CLASS = 'clawd-virtual-keyboard-overlay';
@@ -2123,6 +2158,8 @@ if (CLAUDE_ENABLED) {
   let lastManualScrollAt = 0;
   let frameId = 0;
   let destroyed = false;
+  /* 2.0.223：输入框右上角三只叠着睡觉的 Clawd（clawd-pile.js），替换原来的装饰图 #send_form::after。 */
+  const clawdPile = createClawdPile({ doc: hostDocument, win: hostWindow });
   let previousTypingActive = false;
   let generationEventActive = false;
   const generationSubscriptions = [];
@@ -2269,6 +2306,7 @@ if (CLAUDE_ENABLED) {
   let mobileChrome = null;
   let mobileNavHolder = null;
   let mobileNavCloseHandler = null;
+  let mobileNavPrepareHandler = null;
   let composerResizeObserver = null;
   let observedComposerShell = null;
   let composerInsetRaf = 0;
@@ -2374,12 +2412,8 @@ if (CLAUDE_ENABLED) {
         background-color: transparent !important;
       }
 
-      /* Claude 的桌面侧栏使用高层级常驻。第三方扩展打开真正的全屏弹窗时，
-         侧栏必须退到遮罩后面，否则会把弹窗左侧工具区盖住。body 状态由下面
-         的通用几何检测维护，不依赖任何插件名称。 */
-      html[data-claude-mode] body.${EXTERNAL_MODAL_OPEN_CLASS} #top-settings-holder {
-        z-index: 1 !important;
-      }
+      /* 2.0.246：原来这里在第三方全屏弹窗出现时把 #top-settings-holder 降到 1，侧栏（和设置）会沉到欢迎页下面看不见。
+         改由 liftExternalModals 把弹窗抬到侧栏上面，这条规则删掉。 */
 
       body.${READY_CLASS} #chat > .mes[is_user="false"] > .swipe_left,
       body.${READY_CLASS} #chat > .mes[is_user="false"] > .swipeRightBlock,
@@ -4374,6 +4408,7 @@ if (CLAUDE_ENABLED) {
       form.append(button);
       scheduleA2BoundsWarm(button);
     }
+    clawdPile.ensure();
     syncClawdBState();
     return button;
   }
@@ -4562,6 +4597,11 @@ if (CLAUDE_ENABLED) {
     source.on(receivedType, onReceived);
     generationSubscriptions.push({ source, type: receivedType, handler: onReceived });
 
+    /* 2.0.250：重 Roll 用这个判断「酒馆是不是真的开始生成过」（见 runSwipeProxy）。试运行（dryRun，只算 token）不算。 */
+    const startCountType = types.GENERATION_STARTED || 'generation_started';
+    const onStartCount = (_type, _options, dryRun) => { if (!dryRun) generationStartSeq += 1; };
+    source.on(startCountType, onStartCount);
+    generationSubscriptions.push({ source, type: startCountType, handler: onStartCount });
     subscribe('GENERATION_STARTED', 'generation_started', 'start');
     subscribe('GENERATION_ENDED', 'generation_ended', 'done');
     subscribe('GENERATION_STOPPED', 'generation_stopped', 'stopped');
@@ -5249,7 +5289,10 @@ if (CLAUDE_ENABLED) {
     let decorLeft = limitRight;
     if (form) {
       const sf = form.getBoundingClientRect();
-      if (sf.width) decorLeft = sf.right - 18 - 36 - A2_DECOR_RESERVE;
+      /* 2.0.223：右上角换成三只一堆（约 60 宽），按它实际的左边让。 */
+      const pileLeft = clawdPile.left();
+      if (pileLeft != null) decorLeft = pileLeft - A2_DECOR_RESERVE;
+      else if (sf.width) decorLeft = sf.right - 18 - 36 - A2_DECOR_RESERVE;
     }
 
     const maxx = A2.x + (limitRight - A2_EDGE - pr.right);
@@ -5299,6 +5342,9 @@ if (CLAUDE_ENABLED) {
     if (A2.held && event.pointerId !== A2.pointerId) { event.preventDefault(); return; }
     A2.pointerId = event.pointerId;
     A2.tookPointer = false;
+    /* 2.0.229（Lulu：点睡着的 Clawd，直接播被戳，没有伸懒腰）：按下这一下就会把它叫醒（a2NoteInteraction → wake），
+       等松手走到 a2Poke 时已经不算睡着了。先记下「按下时在睡」，松手没拖就只醒来伸懒腰，不戳、不加烦躁。 */
+    A2.wokeOnDown = idleAsleep;
     a2NoteInteraction();
     a2TraceMark('pointerdown', { x: event.clientX, y: event.clientY });
     if (a2Locked()) {
@@ -5337,7 +5383,9 @@ if (CLAUDE_ENABLED) {
        但在地上时只是「被按住」（压扁一点、影子还在），挪动超过 5px 才拎起来——
        以前一按下就摆被拎起来的姿势，按住想轻抚时会先吊起来再切轻抚（Lulu 2026-09-24）。
        在半空中被接住的，直接就是拎着。 */
-    setClawdC(A2.fy < 0 ? 'grab' : 'press', 0);
+    /* 2.0.229：睡着时按下不放「被按住」——它会把刚开始的醒来（B 轨短动作）取消掉，松手后直接回待机。
+       睡着时这一下只叫醒它；真拖起来（挪动超过 5px）照常拎起。 */
+    if (!A2.wokeOnDown) setClawdC(A2.fy < 0 ? 'grab' : 'press', 0);
     /* 轻抚（Lulu 2026-09-24）：按住不动 0.6 秒。手机没有悬停，只能靠这个；电脑上按住也一样算。
        挪动超过 5px 就是拖，0.6 秒内松手还是戳，三者分得开。 */
     hostWindow.clearTimeout(A2.petTimer);
@@ -5392,6 +5440,7 @@ if (CLAUDE_ENABLED) {
       return;
     }
     A2.petting = false;
+    if (A2.moved || A2.fy < 0) A2.wokeOnDown = false;   // 拖了 / 半空接住：不是戳，醒来标记作废
     if (A2.moved) {
       a2Ballistic(button);                     // 拖过就是抛
     } else if (A2.fy < 0) {
@@ -5550,6 +5599,12 @@ if (CLAUDE_ENABLED) {
     if (a2Locked()) {
       return;                                  // 生气期间戳它没用
     }
+    if (A2.wokeOnDown) {
+      A2.wokeOnDown = false;
+      setClawdC(null);                         // 收掉按下时的「被按住」，露出 B 轨的醒来 + 伸懒腰
+      clawdPokeReaction();
+      return;
+    }
     A2.lastDec = Date.now();
     a2NoteInteraction();
     if (clawdTracks.A) {
@@ -5701,9 +5756,12 @@ if (CLAUDE_ENABLED) {
   const IDLE_SLEEP_MS = 180000;
   let lastActivityAt = Date.now();
   let idleAsleep = false;
-  // 打开酒馆挂在那儿不算「你在这段对话里停了一分钟」。
-  // 要先在这个对话里有过一次输入，计时才开始 —— 否则一进来干等一分钟它就睡了。
-  let hasChatActivity = false;
+  /* 2.0.227（Lulu：大 Clawd 不理它也不睡了，被闲置动作顶替）：原来要先在对话里打过字计时才开始，
+     而欢迎页上每次刷新都把这个标记清掉（本意是「回到欢迎页时重新计时」，但写成了「在欢迎页上就一直清」），
+     于是欢迎页上永远睡不着，空档全被闲置动作填满。阈值早已从 1 分钟改成 3 分钟，打开酒馆挂着 3 分钟睡着是对的：
+     现在从加载起就计时；回到欢迎页只在「刚切回来」那一下重新计时。hasChatActivity 留着当开关，恒为 true。 */
+  let hasChatActivity = true;
+  let wasWelcome = null;
 
   /* D2 被冷落：跟打盹是两条独立轴线。打盹看的是「页面有没有键盘活动」
      （lastActivityAt），冷落看的是「有没有人戳过 Clawd 本体」
@@ -5735,11 +5793,9 @@ if (CLAUDE_ENABLED) {
     syncClawdBState();
   }
 
-  /* 入睡前哈欠一下，呼吸动画晚 900ms 才接上——不然哈欠和呼吸两段 transform
-     叠在一起抢镜。900ms 内如果又有活动打断（noteActivity 把 idleAsleep 设回
-     false），这个 setTimeout 到点时靠 idleAsleep 的最新值挡住，不会替一次
-     已经取消的入睡把睡觉样式硬套上去。 */
-  const SLEEP_TRANSITION_MS = 900;
+  // 打一次瞌睡多久就睡着：犯困那段第 1.9 秒是点头点到最低、还没「猛地惊醒」（clawd-rig.js 的 drowsy，2000ms 惊醒）。
+  const DOZE_OFF_MS = 1900;
+  let dozeTimer = 0;
 
   function refreshIdleSleep() {
     if (ccSleeping || !hasChatActivity) {
@@ -5748,10 +5804,6 @@ if (CLAUDE_ENABLED) {
     }
     const elapsed = Date.now() - lastActivityAt;
     const idle = elapsed > IDLE_SLEEP_MS;
-    const drowsyOn = !idle && elapsed > IDLE_SLEEP_MS * .75;
-    // 呼吸/睡觉两档中间原来是空的：入睡前最后 25% 的等待时间加一档
-    // 「醒着但没人理」的东张西望，不再从静止直接跳到闭眼。
-    setDrowsy(drowsyOn);
 
     /* 冷落只在「人还在活跃聊天」（elapsed 没到 drowsy 门槛）时判定——
        快睡着 / 已经在打盹入睡的场景交给 drowsy/sleeping 表达，两者不重叠。
@@ -5771,25 +5823,33 @@ if (CLAUDE_ENABLED) {
       setNeglected(true);
     }
 
-    if (idle === idleAsleep) {
-      if (idle) setSleeping(true);
-      return;
-    }
-    idleAsleep = idle;
+    /* 2.0.228（Lulu：一直在重复打瞌睡）：犯困那段是循环的（点头、更低、猛地惊醒，2.8 秒一圈），
+       原来从 2 分 15 秒一直放到 3 分钟，要连着打十几次瞌睡、惊醒十几次才睡着。
+       现在 3 分钟到了才打一次瞌睡：点两下头、在最低那一下（1.9 秒，惊醒之前）直接接睡着（打哈欠、坐下、冒 Z）。
+       这 1.9 秒里有键盘 / 点输入框 / 抓戳，就算醒着，不睡。 */
     if (!idle) {
-      setSleeping(false);
+      if (dozeTimer) { hostWindow.clearTimeout(dozeTimer); dozeTimer = 0; }
+      if (ccDrowsy) setDrowsy(false);
+      if (idleAsleep) { idleAsleep = false; setSleeping(false); }
       return;
     }
+    if (idleAsleep) { setSleeping(true); return; }
+    if (dozeTimer) return;
     setNeglected(false);
-    setDrowsy(false);
-    hostWindow.setTimeout(() => {
-      if (idleAsleep) setSleeping(true);
-    }, SLEEP_TRANSITION_MS);
+    setDrowsy(true);
+    dozeTimer = hostWindow.setTimeout(() => {
+      dozeTimer = 0;
+      if (Date.now() - lastActivityAt <= IDLE_SLEEP_MS) return;
+      ccDrowsy = false;
+      idleAsleep = true;
+      setSleeping(true);
+    }, DOZE_OFF_MS);
   }
 
   function noteActivity() {
     hasChatActivity = true;
     lastActivityAt = Date.now();
+    if (dozeTimer) { hostWindow.clearTimeout(dozeTimer); dozeTimer = 0; }
     setDrowsy(false);
     if (!idleAsleep) return;
     idleAsleep = false;
@@ -5974,7 +6034,6 @@ if (CLAUDE_ENABLED) {
   let welcomeStage = 'welcome';
   let leavingSince = 0;
   let sendWatchBound = false;
-  let fadeAnimationWatchBound = false;
   /* 快速角色菜单是欢迎页上的“发送目标”选择器，不是导航入口。
      酒馆内部仍需先选中角色，才能让随后发送的消息进入正确角色上下文；
      但 pending 存在时视觉上继续停留在欢迎页，直到用户真正发送。 */
@@ -5995,16 +6054,6 @@ if (CLAUDE_ENABLED) {
   /* 监听绑在 document 上，不绑 #send_form —— 这个改版部署会重建表单，
      绑在它身上的监听会跟着没。入口也不只认一个 id。
      酒馆自己的事件只作辅助，且不写死事件名。 */
-  function watchMessageFadeAnimation() {
-    if (fadeAnimationWatchBound) return;
-    fadeAnimationWatchBound = true;
-    hostDocument.addEventListener('animationend', event => {
-      if (event.animationName === 'claude-fade-rise' && event.target instanceof hostWindow.HTMLElement) {
-        event.target.style.animation = 'none';
-      }
-    }, true);
-  }
-
   function watchUserSend() {
     if (!welcomeEnabled || sendWatchBound) return;
     sendWatchBound = true;
@@ -6781,14 +6830,15 @@ if (CLAUDE_ENABLED) {
     }
     const isWelcome = welcomeStage === 'welcome';
     setBodyClass(WELCOME_CLASS, isWelcome);
-    // 回到欢迎页 = 换对话了，打盹计时重新来过
-    if (isWelcome && hasChatActivity) {
-      hasChatActivity = false;
+    // 回到欢迎页 = 换对话了，打盹计时重新来过（只在刚切回来的那一下）
+    if (isWelcome && wasWelcome === false) {
+      lastActivityAt = Date.now();
       idleAsleep = false;
       setSleeping(false);
       setNeglected(false);
       lastPokeAt = Date.now();
     }
+    wasWelcome = isWelcome;
 
     const chat = hostDocument.querySelector('#chat');
     // 全文档找，不只找 #chat 下面 —— 酒馆重建聊天区时旧的可能被挪到别处，
@@ -7709,6 +7759,7 @@ if (CLAUDE_ENABLED) {
        订阅这个事件，就不需要靠定时轮询来发现变化了。 */
     const changedType = types.CHAT_CHANGED || 'chatLoaded';
     const changedHandler = () => {
+      guardMobileChatAutofocus();
       recentSignature = null;
       refreshRailRecents({ force: true });
       scheduleChatReconcile();
@@ -8274,6 +8325,18 @@ if (CLAUDE_ENABLED) {
       menu.style.setProperty('left', '12px', 'important');
       menu.style.setProperty('width', 'auto', 'important');
     }
+    /* 2.0.248：聊天页的按钮在输入框下面、贴着屏幕底，往下展开会掉出视口；下面放不下而上面更宽时改成往上展开。 */
+    const below = lowerBoundary - (rect.bottom + 8);
+    const above = rect.top - 8 - (viewportTop + 12);
+    if (!compactMobile && below < 240 && above > below) {
+      /* 用 top 不用 bottom：某些宽度下 body 成了 fixed 的包含块（高度不是视口），bottom 会算到屏幕外。先定最大高度，量出实际高度再放。 */
+      const upHeight = Math.min(420, above);
+      menu.style.setProperty('bottom', 'auto', 'important');
+      menu.style.setProperty('max-height', `${upHeight}px`, 'important');
+      list.style.maxHeight = `${Math.max(48, Math.min(352, upHeight - 60))}px`;
+      menu.style.setProperty('top', `${Math.max(viewportTop + 12, rect.top - 8 - menu.offsetHeight)}px`, 'important');
+      return;
+    }
     const available = Math.max(96, lowerBoundary - top);
     const maxHeight = Math.min(420, available);
     menu.style.setProperty('top', `${top}px`, 'important');
@@ -8297,6 +8360,26 @@ if (CLAUDE_ENABLED) {
     rememberCharacterName(picked?.name);
     closeCharacterMenu();
     clearDrawerGuard();
+    /* 2.0.249：聊天页（2.0.248 起也有这个按钮）里选角色 = 直接打开那个角色的聊天，不回欢迎页、不挂 pending。 */
+    if (!hostDocument.body.classList.contains(WELCOME_CLASS)) {
+      try {
+        const context = getContext();
+        const select = typeof context?.selectCharacterById === 'function'
+          ? context.selectCharacterById
+          : (await loadDeleteModules()).main?.selectCharacterById;
+        if (typeof select !== 'function') throw new Error('当前酒馆版本没有提供角色切换接口。');
+        await select(String(index), { switchMenu: false });
+        scheduleRefresh();
+      } catch (error) {
+        console.error('[Claude Clawd] 角色切换失败:', error);
+        hostWindow.toastr?.error?.(
+          ccPrefersChinese()
+            ? `角色切换失败：${String(error?.message || error).slice(0, 160)}`
+            : `Character switch failed: ${String(error?.message || error).slice(0, 160)}`,
+        );
+      }
+      return;
+    }
     const previousPending = pendingWelcomeCharacter;
     pendingWelcomeCharacter = { index, name: String(picked?.name || '') };
     welcomeStage = 'welcome';
@@ -8429,7 +8512,8 @@ if (CLAUDE_ENABLED) {
     staleMics.forEach(mic => mic.remove());
 
     let button = row.querySelector(':scope > .' + CHARACTER_SWITCHER_CLASS);
-    const showSwitcher = !mobileEnabled && hostDocument.body.classList.contains(WELCOME_CLASS);
+    /* 2.0.248：电脑聊天页也显示（照 Claude 的「Opus 5.5 Medium」放在输入框下面右边，CSS ㉘）；手机仍不显示。 */
+    const showSwitcher = !mobileEnabled;
     if (!showSwitcher) {
       closeCharacterMenu();
       button?.remove();
@@ -8519,35 +8603,34 @@ if (CLAUDE_ENABLED) {
     mobileChrome?.menu?.setAttribute('aria-expanded', 'false');
   }
 
-  /* 等 v4 设置页在侧栏底下打开、画完，再**直接**切过去（见 mobileNavCloseHandler）。
-     「打开」= 抽屉有 openDrawer 且 official-layout 已经挂上 data-cw-v4-settings；之后再等两帧让它真的画出来。
-     2.0.193 在这里让侧栏滑走揭开页面，结果滑动撞上页面加载的阻塞：前约 125ms 不动，然后 387px 的行程一下跳掉 370px，
-     看着像抽一下（2026-09-29 采样）。所以这一步不滑：加 cw-v4-rail-snap 关掉侧栏的过渡，收起、过两帧再摘掉。
-     普通的打开 / 收起侧栏（点 ≡、点遮罩）动画照旧。任务号不对就作废（见 mobileMenuCloseToken）。 */
-  function closeMobileMenuAfterPanel(panel) {
-    const token = ++mobileMenuCloseToken;
-    const started = Date.now();
-    const root = hostDocument.documentElement;
-    const snapClose = () => {
-      if (destroyed || token !== mobileMenuCloseToken || !isMobileMenuOpen()) return;
-      root.classList.add('cw-v4-rail-snap');
-      closeMobileMenu();
-      // 不管任务号：这个类只管这一次收起，留着会让之后所有侧栏动画都没了
-      hostWindow.requestAnimationFrame(() => hostWindow.requestAnimationFrame(() => root.classList.remove('cw-v4-rail-snap')));
+  /* 2.0.203（Lulu 定：照 Claude 手机版的推开式）：侧栏固定在左边，页面往右推开露出侧栏（见 official-layout.css 末尾）。
+     侧栏里点设置入口：新页先在右边露出的那条里原地换上（official-layout 的 activate 先关旧页再开新页，
+     酒馆就不会在两页之间空等 animation_duration、露出首页），等新页画出一帧，再收侧栏，新页往左滑回盖住侧栏。 */
+  function showPanelFromRail(panel) {
+    const token = mobileMenuCloseToken;
+    let raf = 0, shownFrames = 0, frames = 0;
+    const cleanup = () => {
+      if (raf) hostWindow.cancelAnimationFrame(raf);
+      raf = 0;
+      if (mobileNavPanelCleanup === cleanup) mobileNavPanelCleanup = null;
     };
-    const tick = () => {
-      if (destroyed || token !== mobileMenuCloseToken) return;
-      const ready = panel.classList.contains('openDrawer')
-        && root.getAttribute('data-cw-v4-settings') === 'open';
-      if (ready || Date.now() - started > 900) {
-        hostWindow.requestAnimationFrame(() => hostWindow.requestAnimationFrame(snapClose));
-        return;
-      }
-      hostWindow.requestAnimationFrame(tick);
+    const wait = () => {
+      raf = 0;
+      // 等待途中重新开关了侧栏（任务号变了 / 侧栏已收）就作废。
+      if (destroyed || token !== mobileMenuCloseToken || !isMobileMenuOpen()) { cleanup(); return; }
+      const shell = hostDocument.querySelector('.cw-v4-shell');
+      const shown = panel.classList.contains('openDrawer') && shell && !shell.hidden && shell.dataset.panel === panel.id;
+      // 新页在上一帧已经画出来（shownFrames 至少 1），这一帧再收；酒馆一直没打开它时，约 5 秒后照样收起，不把侧栏卡住。
+      if ((shown && shownFrames++ >= 1) || ++frames > 300) { cleanup(); closeMobileMenu(); return; }
+      raf = hostWindow.requestAnimationFrame(wait);
     };
-    hostWindow.requestAnimationFrame(tick);
+    mobileNavPanelCleanup?.();
+    mobileNavPanelCleanup = cleanup;
+    // activate 用酒馆自己的开关按钮关旧页、开新页；这两次程序点击不能被当成「点了入口要收侧栏」。
+    mobileNavActivating = true;
+    try { hostWindow.__claudeOfficialLayout?.activate(panel.id); } finally { mobileNavActivating = false; }
+    raf = hostWindow.requestAnimationFrame(wait);
   }
-
   async function startMobileNewChat() {
     closeMobileMenu();
     const native = hostDocument.querySelector(
@@ -8629,22 +8712,35 @@ if (CLAUDE_ENABLED) {
     const holder = hostDocument.querySelector('#top-settings-holder');
     if (holder) {
       mobileNavHolder = holder;
+      mobileNavPrepareHandler = event => {
+        if (!isMobileMenuOpen() || event.button > 0) return;
+        const toggle = event.target?.closest?.('.drawer-toggle');
+        if (!toggle || isTauriTavernHost() || !hostDocument.documentElement.hasAttribute('data-cw-v4')) return;
+        // Keep ST's outside-pointer handler from closing the old page before click.
+        event.stopPropagation();
+      };
+      holder.addEventListener('touchstart', mobileNavPrepareHandler, { capture: true, passive: true });
+      holder.addEventListener('mousedown', mobileNavPrepareHandler, true);
       mobileNavCloseHandler = event => {
         const target = event.target instanceof hostWindow.Element ? event.target : null;
         // 近期对话的操作区（「⋯」和它的操作条）、长按刚打开操作条后补发的那次 click：都不收侧栏（Lulu 2026-09-29：点「⋯」侧栏就收回了）
-        if (!target || target.closest('.deleteChat, .deleteChatButton, .chatActions')) return;
+        if (mobileNavActivating || !target || target.closest('.deleteChat, .deleteChatButton, .chatActions')) return;
         if (Date.now() < recentLongPressUntil) return;
         const drawerToggle = target.closest('.drawer-toggle');
         if (drawerToggle && isTauriTavernHost()) return;
         if (!drawerToggle && !target.closest('.recentChat, .clawd-mobile-new-chat, .character_select')) return;
-        /* v4 设置页（Lulu 2026-09-29：切换抽屉时先闪一下首页再出页面，很卡）：以前一点入口侧栏就立刻滑走，
-           设置页却还要几帧才建好，中间露出的是首页。现在侧栏先留在上面（cw-v4-rail-over：页面画在侧栏底下），
-           等页面真的打开并画出来（再过两帧），侧栏才滑走、把页面露出来。最多等 0.9 秒兜底。 */
         const panel = drawerToggle?.parentElement?.querySelector(':scope > .drawer-content');
         if (panel && hostDocument.documentElement.hasAttribute('data-cw-v4')) {
-          hostDocument.documentElement.classList.add('cw-v4-rail-over');
-          closeMobileMenuAfterPanel(panel);
-          return;
+          // Synthetic clicks also implement native Close/Escape. Let those close
+          // an open drawer; only a real tap on the current entry means "show this page".
+          if (!event.isTrusted && panel.classList.contains('openDrawer')) return;
+          if (event.isTrusted && isMobileMenuOpen()) {
+            // 当前页：只收侧栏，页面滑回。别的页：原地换上新页，画好后再滑回（showPanelFromRail）。
+            event.stopImmediatePropagation();
+            if (panel.classList.contains('openDrawer')) closeMobileMenu();
+            else showPanelFromRail(panel);
+            return;
+          }
         }
         closeMobileMenu();
       };
@@ -8908,6 +9004,9 @@ if (CLAUDE_ENABLED) {
   let lookY = 0;
   function applyLook() {
     lookRaf = 0;
+    /* 2.0.217：设置页开着时 Clawd 在设置页后面看不见，不跟鼠标——每次读位置都会强制整页排版，
+       正赶上弹出页升起时（窄窗口用鼠标点）实测多出约 22ms。 */
+    if (hostDocument.documentElement.hasAttribute('data-cw-v4-settings')) return;
     hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(button => {
       // 睡着的时候不跟随
       if (clawdTracks.B === 'sleep') return;
@@ -8994,7 +9093,31 @@ if (CLAUDE_ENABLED) {
     syncCcComposerState(true);
   };
 
+  // Mobile chat loading must not summon the IME. readonly blocks it before
+  // focusin; a real touch releases the guard before the browser focuses the field.
+  // Own only our readonly change, leaving native/other-extension locks intact.
+  let mobileChatAutofocusTarget = null;
+  function releaseMobileChatAutofocus() {
+    if (mobileChatAutofocusTarget) mobileChatAutofocusTarget.readOnly = false;
+    mobileChatAutofocusTarget = null;
+  }
+  function guardMobileChatAutofocus() {
+    if (destroyed || !isMobileLayout()) return;
+    const input = hostDocument.getElementById('send_textarea');
+    if (!input || input === hostDocument.activeElement || input.readOnly) return;
+    releaseMobileChatAutofocus();
+    mobileChatAutofocusTarget = input;
+    input.readOnly = true;
+  }
+  const handleComposerFocusGesture = event => {
+    if (!event.isTrusted || !isMobileLayout()) return;
+    if (event.target?.closest?.('#send_textarea')) releaseMobileChatAutofocus();
+  };
   const handleFocusIn = event => {
+    if (event.target === mobileChatAutofocusTarget) {
+      event.target.blur();
+      return;
+    }
     if (isMobileLayout() && isSoftKeyboardTarget(event.target)) {
       if (!virtualKeyboardOverlayActive) ensureAndroidKeyboardPanAnchor(true);
       /* TT 的部分 WebView 会在 focusin 后立刻缩 layout viewport。先在同一任务里
@@ -9031,6 +9154,7 @@ if (CLAUDE_ENABLED) {
        正好在键盘弹出的关键帧冻结数秒。键盘避让不依赖这段装饰动画。 */
   };
   const handleFocusOut = event => {
+    if (event.target === mobileChatAutofocusTarget) return;
     if (isMobileLayout() && isSoftKeyboardTarget(event.target)) scheduleMobileViewportSettle();
     if (event.target?.id !== 'send_textarea') return;
     /* 不等下一帧：WebView 随后若开始重排长聊天，rAF/定时器都会被主线程堵住。
@@ -9419,6 +9543,11 @@ if (CLAUDE_ENABLED) {
       ? currentSwipeId + 1
       : (currentSwipeId + (isLeft ? -1 : 1) + swipes.length) % swipes.length;
 
+    /* 2.0.250（Lulu：生成中点停止，会再重 Roll 一次）：swipe.to 会等这次生成结束。中途停止后酒馆可能把没写完的新回复撤掉、
+       swipe_id 退回原样，下面的「没变化 → 点原生 →」兜底就又在最后一条上点了一次 → = 再生成一次。
+       只要这次调用里真的开始过生成（被停掉也算），就当处理完了，不兜底。 */
+    const startSeqBefore = generationStartSeq;
+    const generationRan = () => generationStartSeq !== startSeqBefore;
     try {
       if (typeof swipeApi?.to === 'function') {
         /* forceMesId avoids depending on .last_mes timing. Existing candidates
@@ -9448,10 +9577,11 @@ if (CLAUDE_ENABLED) {
         ? Number(updated?.swipe_id ?? 0) !== currentSwipeId
           || (Array.isArray(updated?.swipes) && updated.swipes.length > swipes.length)
         : Number(updated?.swipe_id ?? 0) === targetSwipeId;
-      if (swipeChanged) return true;
+      if (swipeChanged || generationRan()) return true;
       console.warn('[Claude Clawd] Swipe API returned without changing swipe_id; falling back to the native control.');
       return fallbackToNativeControl();
     } catch (error) {
+      if (generationRan()) return true;
       console.warn('[Claude Clawd] Swipe API failed; falling back to the native control.', error);
       return fallbackToNativeControl();
     }
@@ -9782,6 +9912,12 @@ if (CLAUDE_ENABLED) {
     if (!(element instanceof hostWindow.HTMLElement)) return false;
     // Our settings frame shares the native drawer layer; it is not an external modal.
     if (element.id === 'cw-v4-settings') return false;
+    /* 2.0.211：showModal() 打开的 <dialog> 在顶层，本来就盖在所有东西上面，不用把侧栏降下去。
+       手机上酒馆的宽 / 大弹窗改成铺满的弹出页后会被当成「外部全屏弹窗」，侧栏容器降到 1，
+       连带里面打开的设置页沉到聊天页下面——弹窗收起时露出欢迎页，再跳回设置页。 */
+    try { if (element.matches('dialog:modal')) return false; } catch {}
+    /* 2.0.218：手机弹出页改用 show() + showPopover() 进最上层（不是 :modal），也不算。 */
+    try { if (element.matches(':popover-open,[data-cw-lifted]')) return false; } catch {}
     const rail = hostDocument.querySelector('#top-settings-holder');
     if (rail && (rail === element || rail.contains(element) || element.contains(rail))) return false;
     const style = hostWindow.getComputedStyle(element);
@@ -9793,31 +9929,35 @@ if (CLAUDE_ENABLED) {
     return rect.width >= viewportWidth * 0.7 && rect.height >= viewportHeight * 0.7;
   }
 
-  function syncExternalModalRailLayer() {
-    const modalOpen = observeExternalModalCandidates().some(isVisibleFullScreenExternalModal);
-    setBodyClass(EXTERNAL_MODAL_OPEN_CLASS, modalOpen);
-    /* Claude 桌面左栏由两个同级 fixed 外壳共同组成：#top-settings-holder
-       放设置按钮，#top-bar 负责整条侧栏底板。只降低前者时，视觉上似乎
-       退让了，但命中测试仍会落到 #top-bar，第三方弹窗里的按钮依旧点不到。 */
-    const rails = Array.from(hostDocument.querySelectorAll('#top-settings-holder, #top-bar'));
-    if (modalOpen && rails.length) {
-      const sameRails = externalModalRailState.length === rails.length
-        && externalModalRailState.every((state, index) => state.element === rails[index]);
-      if (!sameRails) {
-        restoreExternalModalRailLayer();
-        externalModalRailState = rails.map(element => ({
-          element,
-          value: element.style.getPropertyValue('z-index'),
-          priority: element.style.getPropertyPriority('z-index'),
-        }));
-      }
-      /* 兼容样式位于 @layer cw-frame。级联层中的 !important 会反向压过
-         普通未分层规则，所以这里只靠选择器无法保证退让；节点级 important
-         同时保留并在关闭时恢复原内联值。 */
-      for (const rail of rails) rail.style.setProperty('z-index', '1', 'important');
-      return;
+  /* 2.0.244（Lulu：选了 Kemini 预设，它的「首次使用配置」全屏窗口一出来，设置就沉到主页下面，透出主页、白底）：
+     设置页（v4）装在 #top-settings-holder 里，把侧栏降到 1 就是把整个设置也降下去。2.0.246 起任何时候都不降侧栏，
+     改成把比侧栏 / 设置低的外部全屏窗口抬到 4100（窗口关掉时还原）。 */
+  const liftedExternalModals = new Map();
+  function liftExternalModals(modals) {
+    for (const modal of modals) {
+      if (liftedExternalModals.has(modal)) continue;
+      const z = Number.parseInt(hostWindow.getComputedStyle(modal).zIndex, 10);
+      if (Number.isFinite(z) && z >= 4100) continue;
+      liftedExternalModals.set(modal, { value: modal.style.getPropertyValue('z-index'), priority: modal.style.getPropertyPriority('z-index') });
+      modal.style.setProperty('z-index', '4100', 'important');
     }
+    for (const [modal, state] of liftedExternalModals) {
+      if (modals.includes(modal)) continue;
+      liftedExternalModals.delete(modal);
+      if (state.value) modal.style.setProperty('z-index', state.value, state.priority);
+      else modal.style.removeProperty('z-index');
+    }
+  }
+
+  function syncExternalModalRailLayer() {
+    const modals = observeExternalModalCandidates().filter(isVisibleFullScreenExternalModal);
+    const modalOpen = modals.length > 0;
+    setBodyClass(EXTERNAL_MODAL_OPEN_CLASS, modalOpen);
+    /* 2.0.246（Lulu：欢迎页弹出 Kemini 的配置窗口时，整个侧栏不见了）：原来把 #top-settings-holder / #top-bar 降到 1
+       让外部弹窗能点到，可侧栏就沉到欢迎页下面看不见了（设置开着时连设置也沉下去，2.0.244）。
+       现在一律不降侧栏，只把比侧栏低的外部全屏窗口抬到 4100（liftExternalModals），关掉时还原。 */
     restoreExternalModalRailLayer();
+    liftExternalModals(modalOpen ? modals : []);
   }
 
   function restoreExternalModalRailLayer() {
@@ -9851,6 +9991,7 @@ if (CLAUDE_ENABLED) {
        真机实测：生成期间它产生 1566 条记录，是全场最多的一类，比第二名还多 57%。
        整个 #completion_prompt_manager 子树直接不参与刷新判断。 */
     if (target.closest('#completion_prompt_manager')) return false;
+    if (insideClosedDrawer(record)) return false;
     if (target.closest(CHARACTER_MANAGER_SELECTOR)) return false;
 
     /* Third-party floating panels update inline position styles on every pointer
@@ -9901,13 +10042,28 @@ if (CLAUDE_ENABLED) {
     });
   }
 
+  /* 2.0.225（Lulu：三只 Clawd 点起来卡卡的）：那一堆自己每 1.1 秒加删一个 Z、点巫师加删闪光。这些增删也进了这里，
+     每次都触发下面「有没有外部全屏弹窗」的整页 querySelectorAll（实测点巫师一次约 96ms）。它们只在那一堆里面，直接滤掉。 */
+  const inClawdPile = record => { const t = record.target; return !!(t?.nodeType === 1 ? t : t?.parentElement)?.closest?.('.clawd-pile'); };
+  /* 打开旧聊天性能修复（20261001 根部减法对照）：打开旧聊天后，原生会在关着的设置抽屉里重建表情列表、Quick Reply、
+     酒馆助手面板和提示词管理器，并给各抽屉扫一遍 tabindex。抽屉关着时这些节点看不见，
+     这里也不读它们；以前每批变动都换来一轮外部浮层检查和全量刷新，手机上打开旧聊天后
+     主线程被这些后续工作占到 2.5 秒（关掉 CW 时约 0.2 秒）。
+     只跳过「关着的抽屉里面」的变动：抽屉自己开合的 class 变化仍照常触发刷新。 */
+  function insideClosedDrawer(record) {
+    const node = record.target?.nodeType === 1 ? record.target : record.target?.parentElement;
+    const drawer = node?.closest?.('.closedDrawer');
+    return !!drawer && drawer !== node;
+  }
+
   function handleObservedMutations(records) {
+    if (records.some(inClawdPile)) { records = records.filter(r => !inClawdPile(r)); if (!records.length) return; }
     /* Character Manager 的可见性只需每帧检查一次。TT 一批 DOM 变动里可能送来
        数百条记录，旧代码会为每批同步 querySelector + getComputedStyle。
        2.0.161：只在有元素增删时检查。候选弹窗自身的 class / style / open 变化由
        externalModalObserver 负责；纯属性变动（Clawd 动作、body 状态类）不会让弹窗出现或消失，
        以前每批都要强制一次样式和布局，点输入框弹键盘时就是这里在抢主线程。 */
-    if (records.some(record => record.type === 'childList'
+    if (records.some(record => record.type === 'childList' && !insideClosedDrawer(record)
       && [...record.addedNodes, ...record.removedNodes].some(node => node.nodeType === 1))) {
       scheduleExternalSurfaceIsolation();
     }
@@ -9973,6 +10129,7 @@ if (CLAUDE_ENABLED) {
   };
 
   function refreshClawd() {
+
     refreshing = true;
     const startedAt = (hostWindow.performance ?? Date).now();
     try {
@@ -10099,7 +10256,6 @@ if (CLAUDE_ENABLED) {
     refreshRailLabels();
     watchChatDeleted();   // 上下文晚于脚本就绪，所以每轮试一次，接上就不再重复
     watchUserSend();
-    watchMessageFadeAnimation();
     refreshRailRecents();
     refreshWelcomeShortcuts();
     refreshCharacterSwitcher();
@@ -10126,6 +10282,7 @@ if (CLAUDE_ENABLED) {
   const MOBILE_GENERATION_REFRESH_MIN_GAP = 180;
 
   function scheduleRefresh() {
+
     if (destroyed || diagnosticRefreshPaused || frameId || throttleTimer) return;
     const minGap = isMobileLayout()
       ? (previousTypingActive ? MOBILE_GENERATION_REFRESH_MIN_GAP : MOBILE_REFRESH_MIN_GAP)
@@ -10412,6 +10569,8 @@ if (CLAUDE_ENABLED) {
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
     hostDocument.body.classList.toggle(TAURITAVERN_HOST_CLASS, isTauriTavernHost());
     externalModalObserver = new hostWindow.MutationObserver(scheduleExternalSurfaceIsolation);
+    // 2.0.244：设置开 / 关也要重算侧栏层级（见 liftExternalModals）。
+    externalModalObserver.observe(hostDocument.documentElement, { attributes: true, attributeFilter: ['data-cw-v4-settings'] });
     syncExternalSurfaceIsolation();
     syncExternalModalRailLayer();
     installVirtualKeyboardOverlay();
@@ -10461,6 +10620,8 @@ if (CLAUDE_ENABLED) {
     hostDocument.addEventListener('input', handleComposerInput, true);
     hostDocument.addEventListener('visibilitychange', noteCcVisibility, { passive: true });
     hostDocument.addEventListener('visibilitychange', recoverStalledFrame, { passive: true });
+    hostDocument.addEventListener('pointerdown', handleComposerFocusGesture, true);
+    hostDocument.addEventListener('touchstart', handleComposerFocusGesture, { capture: true, passive: true });
     hostDocument.addEventListener('focusin', handleFocusIn, true);
     hostDocument.addEventListener('focusout', handleFocusOut, true);
     hostWindow.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
@@ -10570,11 +10731,15 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    clawdPile.destroy();
+    hostWindow.clearTimeout(pushLiveTimer);
+    hostDocument.documentElement.removeAttribute(PUSH_LIVE_ATTRIBUTE);
     cleanupClawdRigEffects();
     externalModalObserver?.disconnect();
     externalModalObserver = null;
     hostDocument.body.classList.remove(EXTERNAL_MODAL_OPEN_CLASS);
     restoreExternalModalRailLayer();
+    liftExternalModals([]);
     if (externalSurfaceIsolationRaf) hostWindow.cancelAnimationFrame(externalSurfaceIsolationRaf);
     externalSurfaceIsolationRaf = 0;
     restoreExternalThemeStyle();
@@ -10623,9 +10788,12 @@ if (CLAUDE_ENABLED) {
     closeMobileMenu();
     if (mobileNavHolder && mobileNavCloseHandler) {
       mobileNavHolder.removeEventListener('click', mobileNavCloseHandler, true);
+      mobileNavHolder.removeEventListener('touchstart', mobileNavPrepareHandler, true);
+      mobileNavHolder.removeEventListener('mousedown', mobileNavPrepareHandler, true);
     }
     mobileNavHolder = null;
     mobileNavCloseHandler = null;
+    mobileNavPrepareHandler = null;
     mobileChrome?.root?.remove();
     mobileChrome = null;
     hostDocument.querySelectorAll('.' + ANDROID_KEYBOARD_PAN_ANCHOR_CLASS).forEach(node => node.remove());
@@ -10667,6 +10835,9 @@ if (CLAUDE_ENABLED) {
     hostDocument.removeEventListener('input', handleComposerInput, true);
     hostDocument.removeEventListener('visibilitychange', noteCcVisibility);
     hostDocument.removeEventListener('visibilitychange', recoverStalledFrame);
+    releaseMobileChatAutofocus();
+    hostDocument.removeEventListener('pointerdown', handleComposerFocusGesture, true);
+    hostDocument.removeEventListener('touchstart', handleComposerFocusGesture, true);
     hostDocument.removeEventListener('focusin', handleFocusIn, true);
     hostDocument.removeEventListener('focusout', handleFocusOut, true);
     if (throttleTimer) {

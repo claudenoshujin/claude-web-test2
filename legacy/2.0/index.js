@@ -2682,7 +2682,6 @@ if (CLAUDE_ENABLED) {
   let welcomeStage = 'welcome';
   let leavingSince = 0;
   let sendWatchBound = false;
-  let fadeAnimationWatchBound = false;
   /* 快速角色菜单是欢迎页上的“发送目标”选择器，不是导航入口。
      酒馆内部仍需先选中角色，才能让随后发送的消息进入正确角色上下文；
      但 pending 存在时视觉上继续停留在欢迎页，直到用户真正发送。 */
@@ -2703,16 +2702,6 @@ if (CLAUDE_ENABLED) {
   /* 监听绑在 document 上，不绑 #send_form —— 这个改版部署会重建表单，
      绑在它身上的监听会跟着没。入口也不只认一个 id。
      酒馆自己的事件只作辅助，且不写死事件名。 */
-  function watchMessageFadeAnimation() {
-    if (fadeAnimationWatchBound) return;
-    fadeAnimationWatchBound = true;
-    hostDocument.addEventListener('animationend', event => {
-      if (event.animationName === 'claude-fade-rise' && event.target instanceof hostWindow.HTMLElement) {
-        event.target.style.animation = 'none';
-      }
-    }, true);
-  }
-
   function watchUserSend() {
     if (!welcomeEnabled || sendWatchBound) return;
     sendWatchBound = true;
@@ -5771,7 +5760,6 @@ if (CLAUDE_ENABLED) {
     refreshRailLabels();
     watchChatDeleted();   // 上下文晚于脚本就绪，所以每轮试一次，接上就不再重复
     watchUserSend();
-    watchMessageFadeAnimation();
     refreshRailRecents();
     refreshWelcomeShortcuts();
     refreshCharacterSwitcher();
