@@ -1,5 +1,5 @@
 import { officialIcons } from './official-icons.js?v=20261002u';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005k';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005l';
 import { tr } from './official-i18n.js?v=20261002t';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
@@ -710,7 +710,15 @@ export function installOfficialLayout(win = window) {
         finally { temp.disabled = false; }
       }, 'cw-v4-temporary');
       temp.setAttribute('aria-label',t('临时聊天','Temporary chat'));temp.title=t('临时聊天','Temporary chat');
-      temp.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 20V10a7 7 0 0 1 14 0v10l-3-2-4 2-4-2-3 2Z"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg>';
+      temp.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d=\"M3.6 20.3V12.05a8.45 8.45 0 0 1 16.9 0V20.3Q17.64 16.1 14.83 20.3 12.02 16.1 9.22 20.3 6.41 16.1 3.6 20.3Z\"/><circle cx=\"8.15\" cy=\"11.9\" r=\"1.25\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"15.9\" cy=\"11.9\" r=\"1.25\" fill=\"currentColor\" stroke=\"none\"/></svg>';
+      /* 2.0.286（design-flavor-v3，Lulu 定）：照 Claude App，对话页右上角换成「新建对话」气泡 + ⋯（⋯ 纯装饰）；欢迎页仍是幽灵。
+         显隐交给 CSS 看 body.clawd-welcome。气泡点了等于侧栏底部「+ 新对话」。 */
+      const fresh = button('', () => doc.querySelector('.clawd-mobile-new-chat')?.click(), 'cw-v4-newchat-top');
+      fresh.setAttribute('aria-label',t('新对话','New chat'));fresh.title=t('新对话','New chat');
+      fresh.innerHTML='<svg viewBox="0 0 24 24" fill="none"><path d="M12 3.6c-4.75 0-8.6 3.35-8.6 7.5 0 2.15 1.03 4.08 2.7 5.45l-.75 3.85 4.05-2.05c.83.2 1.7.3 2.6.3 4.75 0 8.6-3.35 8.6-7.55S16.75 3.6 12 3.6Z" fill="currentColor"/><path d="M12 7.9v6.4M8.8 11.1h6.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
+      const more = make('span', 'cw-v4-more-top'); more.setAttribute('aria-hidden','true');
+      more.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
+      chrome.append(fresh, more);
       chrome.append(temp);
     }
     const last = [...chat.querySelectorAll('.mes[is_user="false"]:not([is_system="true"])')].at(-1);
@@ -1155,7 +1163,7 @@ export function installOfficialLayout(win = window) {
       code: '<path d="M8.5 8 4.5 12l4 4M15.5 8l4 4-4 4M13.2 6.5l-2.4 11"/>',
       search: '<circle cx="10.8" cy="10.8" r="6"/><path d="m15.3 15.3 4.2 4.2"/>',
       filter: '<path d="M8.5 4v2.6M8.5 11.4V20M15.5 4v8.6M15.5 17.4V20"/><circle cx="8.5" cy="9" r="2.4"/><circle cx="15.5" cy="15" r="2.4"/>',
-      ghost: '<path d="M4.5 19.5V11a7.5 7.5 0 0 1 15 0v8.5l-1.9-1.4-1.85 1.4-1.9-1.4L12 19.5l-1.85-1.4-1.9 1.4-1.85-1.4z"/><circle cx="9.6" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="14.4" cy="12" r="1" fill="currentColor" stroke="none"/>',
+      ghost: '<path d="M3.6 20.3V12.05a8.45 8.45 0 0 1 16.9 0V20.3Q17.64 16.1 14.83 20.3 12.02 16.1 9.22 20.3 6.41 16.1 3.6 20.3Z"/><circle cx="8.15" cy="11.9" r="1.25" fill="currentColor" stroke="none"/><circle cx="15.9" cy="11.9" r="1.25" fill="currentColor" stroke="none"/>',
       min: '<path d="M6 12h12"/>', max: '<rect x="6" y="6" width="12" height="12" rx="1"/>', close: '<path d="M6 6l12 12M18 6 6 18"/>',
     };
     // 「最近」：同一个角色连着的几条只在第一条放头像，后面换成空心小点（稿 B）。
