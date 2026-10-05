@@ -15,7 +15,7 @@
 
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20261005l";
+import { installOfficialLayout } from "./official-layout.js?v=20261005m";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 import { createClawdPile } from "./clawd-pile.js?v=20261001w";
 
@@ -427,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.286-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.287-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -458,7 +458,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20261005l', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20261005m', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -7063,15 +7063,26 @@ if (CLAUDE_ENABLED) {
     closeRecentMenu();
     const cn = ccPrefersChinese();
     const pinned = Object.prototype.hasOwnProperty.call(readPinnedChats(), pinnedKeyFor(entry.record));
+    /* 2.0.287（design-flavor-v4，Lulu）：v4 外观下改成和「+」「≡」、消息「…」同一套菜单（.cw-menu，字 + 图标、删除红色），
+       电脑和手机都改；挂在「⋯」下面（手机右对齐、电脑左对齐）。非 v4 外观仍是原来的图标横条。 */
+    const cwLook = hostDocument.documentElement.hasAttribute('data-cw-v4');
     const menu = hostDocument.createElement('div');
-    menu.className = 'cw-recent-menu';
-    menu.setAttribute('role', 'menu');
+    menu.className = cwLook ? 'cw-menu-wrap cw-recent-menu-wrap' : 'cw-recent-menu';
+    const box = cwLook ? hostDocument.createElement('div') : menu;
+    if (cwLook) { box.className = 'cw-menu cw-recent-menu-list'; menu.append(box); }
+    box.setAttribute('role', 'menu');
     const item = (icon, label, run, danger = false) => {
       const b = hostDocument.createElement('button');
       b.type = 'button';
       b.className = 'cw-recent-menu-item' + (danger ? ' danger' : '');
       b.setAttribute('role', 'menuitem');
       b.dataset.icon = icon;
+      if (cwLook) {
+        b.className = 'cw-menu-item' + (danger ? ' cw-danger' : '');
+        const ic = hostDocument.createElement('span'); ic.className = 'cw-recent-ic'; ic.dataset.icon = icon;
+        const lb = hostDocument.createElement('span'); lb.className = 'cw-menu-label'; lb.textContent = label;
+        b.append(ic, lb);
+      }
       // 只放图标（Lulu 2026-09-29：不要拉下来一整列，做成一条、不要文字）；名字进 title / aria-label
       b.title = label;
       b.setAttribute('aria-label', label);
@@ -7086,7 +7097,7 @@ if (CLAUDE_ENABLED) {
       });
       return b;
     };
-    menu.append(
+    box.append(
       item('pin', pinned ? (cn ? '取消置顶' : 'Unpin') : (cn ? '置顶' : 'Pin'), () => toggleRecentPin(entry)),
       item('pencil', cn ? '重命名' : 'Rename', () => renameRecent(entry)),
       item('trash', cn ? '删除' : 'Delete', async () => deleteRecentRow(row), true),
@@ -7094,16 +7105,22 @@ if (CLAUDE_ENABLED) {
     hostDocument.body.append(menu);
     row.classList.add('cw-recent-menu-open');
     /* 一条横的操作条，放在「⋯」左边、和它同一行居中，不盖住下面几行；左边放不下才放到「⋯」下方 */
-    const a = anchor.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    const a = anchor.getBoundingClientRect(), m = box.getBoundingClientRect();
     let left = a.left - m.width - 4;
     let top = a.top + (a.height - m.height) / 2;
-    if (left < 8) {
+    if (cwLook) {
+      const phone = hostWindow.matchMedia('(max-width:700px)').matches;
+      left = phone ? a.right - m.width + 6 : a.left - 6;
+      left = Math.max(8, Math.min(left, hostWindow.innerWidth - m.width - 8));
+      top = a.bottom + 6;
+      if (top + m.height > hostWindow.innerHeight - 8) top = Math.max(8, a.top - m.height - 6);
+    } else if (left < 8) {
       left = Math.max(8, Math.min(a.right - m.width, hostWindow.innerWidth - m.width - 8));
       top = a.bottom + 4;
       if (top + m.height > hostWindow.innerHeight - 8) top = Math.max(8, a.top - m.height - 4);
     }
-    menu.style.left = Math.round(left) + 'px';
-    menu.style.top = Math.round(top) + 'px';
+    box.style.left = Math.round(left) + 'px';
+    box.style.top = Math.round(top) + 'px';
     const outside = event => { if (!menu.contains(event.target) && !anchor.contains(event.target)) closeRecentMenu(); };
     const key = event => { if (event.key === 'Escape') { closeRecentMenu(); event.stopPropagation(); } };
     const away = () => closeRecentMenu();

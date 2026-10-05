@@ -2825,6 +2825,24 @@ html:not([data-cw-v4]) :is(.cw-v4-newchat-top,.cw-v4-more-top){display:none!impo
   html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #send_form#send_form#send_form#send_form{border-color:#d6d6d3!important;box-shadow:0 2px 12px rgba(0,0,0,.065),0 0 1px rgba(0,0,0,.05)!important}
 }
 
+/* ㊹ 2.0.287（design-flavor-v4，Lulu：头像 A + 正圆、⋯ 菜单和其他菜单一样，电脑也改）。放在 ㊴ 前面。
+   头像缩略图是 2:3 竖图：裁圆取上面（50% 15%）看得到脸；手机原规则 min-height 32 把 26 圆撑成竖椭圆，这里一起压成 26×26 正圆。
+   最近「⋯」菜单用 .cw-menu（index.js openRecentMenu），图标沿用原来的遮罩变量。 */
+@media(max-width:700px){
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat:not(#zz1)>.avatar,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat:not(#zz1)>.avatar img{width:26px!important;height:26px!important;min-width:26px!important;max-width:26px!important;min-height:26px!important;max-height:26px!important;flex:0 0 26px!important;aspect-ratio:1/1!important;border-radius:50%!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat:not(#zz1)>.avatar img{object-fit:cover!important;object-position:50% 15%!important}
+  html[data-cw-v4] body .clawd-user-face img{object-position:50% 15%!important}
+}
+html[data-cw-v4] .cw-recent-menu-list .cw-recent-ic{flex:none;width:17px;height:17px;background:currentColor;-webkit-mask:var(--cw-recent-icon) center/contain no-repeat;mask:var(--cw-recent-icon) center/contain no-repeat}
+html[data-cw-v4] .cw-recent-menu-list .cw-recent-ic[data-icon="pin"]{--cw-recent-icon:var(--cw-v4-icon-pin)}
+html[data-cw-v4] .cw-recent-menu-list .cw-recent-ic[data-icon="pencil"]{--cw-recent-icon:var(--cw-v4-icon-pencil)}
+html[data-cw-v4] .cw-recent-menu-list .cw-recent-ic[data-icon="trash"]{--cw-recent-icon:var(--cw-v4-icon-trash)}
+html[data-cw-v4] .cw-recent-menu-list{min-width:180px!important}
+@media(max-width:700px){
+  html[data-cw-v4] .cw-recent-menu-list{width:220px!important}
+  html[data-cw-v4] .cw-recent-menu-list .cw-recent-ic{order:3;width:21px;height:21px;margin-left:auto}
+}
+
 /* ㊴ 2.0.266 扩展设置页（照 design-phone-ext-v1.html）。页面是 official-extension-settings.js 画的 .cwx-page：
    小节 .cwx-sec（灰字 / 电脑粗体标题 .cwx-lab）→ 白卡片 .cwx-card → 一行一项 .cwx-row。控件是酒馆原来的，搬进行里。
    这块由 tools/_tmp/cc-286/apply.cjs 从 block-39.src.css 生成（html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 页面前缀，html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup)  = 外层前缀，html[data-cw-v4][data-claude-integrated-theme="night"] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 夜间页面前缀）。 */
