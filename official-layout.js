@@ -1,5 +1,5 @@
 import { officialIcons } from './official-icons.js?v=20261002u';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005d';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005k';
 import { tr } from './official-i18n.js?v=20261002t';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
@@ -1134,7 +1134,7 @@ export function installOfficialLayout(win = window) {
         const y = Math.min(Math.max(8, rr.top - 6), win.innerHeight - 8 - mr.height);
         m.style.left = Math.round(x) + 'px'; m.style.top = Math.round(y) + 'px';
       };
-      wrap.append(build(items, 0)); doc.body.append(wrap); cwMenu = wrap;
+      wrap.append(build(items, 0)); doc.body.append(wrap); cwMenu = wrap; wrap._cwAnchor = anchor;
       const m = wrap.firstElementChild, a = anchor.getBoundingClientRect(), r = m.getBoundingClientRect();
       let x = Math.min(Math.max(8, a.left), win.innerWidth - 8 - r.width);
       let y = up ? a.top - 6 - r.height : a.bottom + 6;
@@ -1142,6 +1142,49 @@ export function installOfficialLayout(win = window) {
       m.style.left = Math.round(x) + 'px'; m.style.top = Math.round(y) + 'px';
       return wrap;
     }
+    // 2.0.281（稿 design-desk-align-v2，Lulu 认可）：电脑上照新版 Claude Desktop 加三处装饰——侧栏顶上的工具栏、
+    // 右上角「幽灵 · 最小化 · 最大化 · 关闭」、「最近」旁边的放大镜。都只是样子（aria-hidden，点了没反应），只在电脑宽度显示（CSS）。
+    const SV = (d, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const deco = (cls, html) => { const n = make('div', cls); n.setAttribute('aria-hidden', 'true'); n.innerHTML = html; return n; };
+    // 2.0.283（稿 design-desk-align-v5）：图标照参考逐个重画——聊天是两个叠着的气泡、代码 </>、筛选两条竖线一上一下两个圈、≡ 第三条短、幽灵圆顶四个小波浪。
+    const P = {
+      menu: '<path d="M4.5 7h15M4.5 12h15M4.5 17h8"/>',
+      panel: '<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9.5 4.5v15"/>',
+      back: '<path d="M19 12H5.5M11 18l-6-6 6-6"/>', fwd: '<path d="M5 12h13.5M13 6l6 6-6 6"/>',
+      chat: '<path d="M10 4.5a5.5 5.5 0 0 0-4.9 8l-.9 3.1 3.1-.9A5.5 5.5 0 1 0 10 4.5z"/><path d="M15.9 9.6a5 5 0 0 1 3.4 7l.8 2.9-2.9-.8a5 5 0 0 1-6.4-1.9"/>',
+      code: '<path d="M8.5 8 4.5 12l4 4M15.5 8l4 4-4 4M13.2 6.5l-2.4 11"/>',
+      search: '<circle cx="10.8" cy="10.8" r="6"/><path d="m15.3 15.3 4.2 4.2"/>',
+      filter: '<path d="M8.5 4v2.6M8.5 11.4V20M15.5 4v8.6M15.5 17.4V20"/><circle cx="8.5" cy="9" r="2.4"/><circle cx="15.5" cy="15" r="2.4"/>',
+      ghost: '<path d="M4.5 19.5V11a7.5 7.5 0 0 1 15 0v8.5l-1.9-1.4-1.85 1.4-1.9-1.4L12 19.5l-1.85-1.4-1.9 1.4-1.85-1.4z"/><circle cx="9.6" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="14.4" cy="12" r="1" fill="currentColor" stroke="none"/>',
+      min: '<path d="M6 12h12"/>', max: '<rect x="6" y="6" width="12" height="12" rx="1"/>', close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    };
+    // 「最近」：同一个角色连着的几条只在第一条放头像，后面换成空心小点（稿 B）。
+    const markRepeats = () => {
+      let prev = null;
+      for (const r of doc.querySelectorAll('#top-settings-holder .clawd-rail-recents .recentChat')) {
+        const key = (r.dataset.avatar || '') + '|' + (r.dataset.group || '');
+        const rep = key !== '|' && key === prev;
+        if (r.classList.contains('cw-rec-rep') !== rep) r.classList.toggle('cw-rec-rep', rep);
+        prev = key;
+      }
+    };
+    let recObs = null, recSlot = null;
+    const ensureDeskDeco = () => {
+      if (!enabled()) return;
+      const holder = doc.getElementById('top-settings-holder');
+      if (holder && !holder.querySelector(':scope>.cw-desk-tool')) holder.prepend(deco('cw-desk-tool',
+        SV(P.menu) + SV(P.panel) + SV(P.back) + SV(P.fwd, 'cw-dim') +
+        `<span class="cw-desk-seg"><span class="cw-on">${SV(P.chat)}</span><span>${SV(P.code, 'cw-dim')}</span></span>`));
+      if (!doc.querySelector('body>.cw-desk-win')) doc.body.append(deco('cw-desk-win', SV(P.ghost, 'cw-ghost') + SV(P.min) + SV(P.max) + SV(P.close)));
+      const lab = holder?.querySelector('.clawd-rail-recents-label');
+      if (lab && !lab.querySelector(':scope>.cw-rec-search')) lab.append(deco('cw-rec-search', SV(P.search)), deco('cw-rec-search cw-rec-filter', SV(P.filter)));
+      const slot = holder?.querySelector('.clawd-rail-recents');
+      if (slot && slot !== recSlot) { recObs?.disconnect(); recSlot = slot; recObs = new win.MutationObserver(markRepeats); recObs.observe(slot, { childList: true, subtree: true }); }
+      markRepeats();
+    };
+    ensureDeskDeco();
+    { const h = doc.getElementById('top-settings-holder'); if (h) { const mo = new win.MutationObserver(ensureDeskDeco); mo.observe(h, { childList: true }); disposers.push(() => mo.disconnect()); } }
+    disposers.push(() => { recObs?.disconnect(); doc.querySelectorAll('.cw-desk-tool,.cw-desk-win,.cw-rec-search').forEach(n => n.remove()); doc.querySelectorAll('.cw-rec-rep').forEach(n => n.classList.remove('cw-rec-rep')); });
     // 2.0.275 手机的操作菜单（照 Claude App：灰色标题 + 一列选项 + 单独一块「取消」，从底部升起；点背后的暗处也关）。
     let cwSheet = null;
     const closeActionSheet = () => { const s = cwSheet; if (!s) return; cwSheet = null; s.setAttribute('data-cw-out', ''); win.setTimeout(() => s.remove(), 180); };
@@ -1231,7 +1274,8 @@ export function installOfficialLayout(win = window) {
     const moving = doc.getElementById('movingDivs');
     if (moving) { const mo = new win.MutationObserver(galSync); mo.observe(moving, { childList: true }); disposers.push(() => { mo.disconnect(); doc.querySelector('#movingDivs > #gallery .dragClose')?.click(); doc.querySelector('.cw-gal-dim')?.remove(); }); }
     on(doc, 'pointerdown', e => { if (cwSheet && !cwSheet.contains(e.target)) closeActionSheet(); }, true);
-    on(doc, 'pointerdown', e => { if (cwMenu && !cwMenu.contains(e.target)) closeCwMenu(); }, true);
+    // 2.0.279（Lulu：点头像菜单反复打开）：按下点开菜单的那个按钮时不在这里关，交给按钮自己的点击去「再点一下关掉」。
+    on(doc, 'pointerdown', e => { if (cwMenu && !cwMenu.contains(e.target) && !cwMenu._cwAnchor?.contains?.(e.target)) closeCwMenu(); }, true);
     on(doc, 'keydown', e => { if (cwMenu && e.key === 'Escape') { e.stopPropagation(); closeCwMenu(); } }, true);
     on(win, 'resize', closeCwMenu);
     disposers.push(closeCwMenu);
@@ -1239,7 +1283,8 @@ export function installOfficialLayout(win = window) {
     let acctBypass = false;
     const openDrawerById = id => { const t = doc.querySelector('#' + id + ' > .drawer-toggle'); if (!t) return; acctBypass = true; t.click(); acctBypass = false; };
     on(doc, 'click', e => {
-      if (acctBypass || !enabled()) return;
+      // 2.0.282（Lulu：设置里点「用户角色」弹出了账户菜单）：设置页是用程序代点这个按钮打开用户角色页的，只拦真的用手点的。
+      if (acctBypass || !enabled() || !e.isTrusted) return;
       const t = e.target.closest?.('#persona-management-button > .drawer-toggle');
       if (!t || !t.querySelector('.clawd-user-face')) return;
       if (doc.getElementById('persona-management-button')?.querySelector('.drawer-content.openDrawer')) return; // 已经开着：照原样（关上）
@@ -1287,6 +1332,7 @@ export function installOfficialLayout(win = window) {
             if (sep && items.length) items.push({sep: 1});
             items.push({icon: ic, label: native.dataset.cwLabel || '', danger: cls === 'mes_edit_delete', run: () => native.click()});
           }
+          if (cwMenu?._cwAnchor === more) { closeCwMenu(); return; } // 再点一下 ⋯ 收起
           popMenu(more, items, {cls: 'cw-editmenu'});
         }, 'cw-edit-more');
         more.append(icon('dots')); more.setAttribute('aria-label', L('更多')); bar.prepend(more);

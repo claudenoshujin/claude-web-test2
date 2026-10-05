@@ -2713,6 +2713,99 @@ html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_members
 html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-pf .cw-v4-pf-go>.cw-v4-pf-label{flex:1;min-width:0;margin:0;color:var(--m-blue)}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-pf .cw-v4-pf-go>.cw-v4-pf-value{flex:none;color:var(--v4-muted)}
 }
+/* ㊶ 2.0.284 对话区照参考（放在 ㊴ 前面：tools/_tmp/cc-286/apply.cjs 会重写 ㊴ 到文件末尾） + 背景透传 A（稿 design-bg-chat-v2，Lulu 2026-10-05 定：透传 A、电脑正文 17.5、顶栏跟侧栏一样的磨砂板、输入框上方渐隐）。
+   电脑量 Snipaste_2026-10-05_03-32-40（1:1，跟 ㊵ 侧栏同一比例），手机量 Weixin Image_20261005032632（375 宽）。
+   字号仍乘酒馆的 --fontScale。 */
+/* —— 电脑对话区 —— */
+html[data-cw-v4][data-claude-layout="pc"] body{--cl-pc-font-size:17.5px}
+html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="false"] :is(.mes_text,.mes_reasoning){line-height:1.515!important}
+html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="false"] .mes_text p{margin:0 0 12.5px!important}
+html[data-cw-v4][data-claude-layout="pc"] body #chat>:is(.mes,.typing_indicator){max-width:min(826px,100%)!important}
+html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="true"] .mes_text{background:#f0f0ef!important;border-radius:16px!important;padding:12.5px 18px!important;font-size:calc(15px * var(--fontScale,1))!important;line-height:1.4667!important}
+html[data-cw-v4][data-claude-layout="pc"][data-claude-integrated-theme="night"] body #chat>.mes[is_user="true"] .mes_text{background:#393937!important}
+html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="true"]+.mes[is_user="false"]{margin-top:18px!important}
+/* 用户气泡右边比正文多出去 20（参考 1:1）；窄窗口没地方就不出去 */
+@media(min-width:1200px){html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="true"] .mes_block{position:relative;left:20px}}
+/* 输入框上方渐隐：正文滚到输入框上沿前 40px 内淡掉（透传时淡进背景图，所以用 mask，不盖底色）；底部多留 28px，滚到底时最后一行不淡 */
+html[data-cw-v4][data-claude-layout="pc"] body:not(.clawd-welcome) #chat{-webkit-mask-image:linear-gradient(#000 calc(100% - 40px),transparent);mask-image:linear-gradient(#000 calc(100% - 40px),transparent);padding-bottom:34px!important}
+/* —— 手机对话区 —— */
+html[data-cw-v4][data-claude-layout="mobile"] body{--cl-mobile-font-size:17px}
+html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #chat{padding-left:16px!important;padding-right:16px!important}
+html[data-cw-v4][data-claude-layout="mobile"] body #chat>.mes :is(.mes_text,.mes_reasoning){line-height:1.59!important}
+html[data-cw-v4][data-claude-layout="mobile"] body #chat>.mes[is_user="false"] .mes_text p{margin:0 0 17px!important}
+html[data-cw-v4][data-claude-layout="mobile"] body #chat>.mes[is_user="true"] .mes_block{max-width:80%}
+html[data-cw-v4][data-claude-layout="mobile"] body #chat>.mes[is_user="true"] .mes_text{background:#f0efeb!important;border-radius:24px!important;padding:10.5px 18px!important;font-size:calc(17px * var(--fontScale,1))!important}
+html[data-cw-v4][data-claude-layout="mobile"][data-claude-integrated-theme="night"] body #chat>.mes[is_user="true"] .mes_text{background:#393937!important}
+html[data-cw-v4][data-claude-layout="mobile"] body #chat .mes .mes_buttons>:is(.mes_copy,.mes_narrate,.mes_edit,.claude-reroll-button,.extraMesButtonsHint)::before{width:20px;height:20px}
+html[data-cw-v4][data-claude-layout="mobile"] body #chat .cw-v4-disclaimer{font-size:14px}
+html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #form_sheld{padding-left:15px!important;padding-right:15px!important}
+html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #form_sheld #send_form#send_form{min-height:100px!important;border-radius:20px!important}
+html[data-cw-v4][data-claude-layout="mobile"][data-claude-integrated-theme="day"] body:not(.clawd-welcome) #form_sheld #send_form#send_form{border:1px solid #e4e4e1!important;box-shadow:0 2px 12px rgba(0,0,0,.045)!important}
+html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #form_sheld #send_form#send_form{padding:8px 8px 4px!important}
+html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #send_textarea{height:40px!important;min-height:40px!important}
+/* —— 背景透传 A：图铺满整个窗口。侧栏和顶栏是同一种白磨砂板，输入框、用户气泡是白卡磨砂（夜间换成黑的）。
+   侧栏的底色交给它后面的 #top-bar（电脑上是侧栏后面那一层，手机上就是顶栏）：#top-bar 跟抽屉平级，可以上模糊；
+   #top-settings-holder 不能上（它是那些 fixed 抽屉的祖先，加了模糊抽屉会被框进侧栏里，见 index.js 透传那段）。
+   手机侧栏是滑出来的抽屉，照旧实色，所以 holder 只在电脑上清底。 */
+html[data-cw-v4][data-claude-bg-transparent="on"]{--cw-pass-pane:rgba(251,251,249,.62);--cw-pass-card:rgba(255,255,255,.72);--cw-pass-bub:rgba(255,255,255,.62);--cw-pass-edge:rgba(255,255,255,.6)}
+html[data-cw-v4][data-claude-bg-transparent="on"][data-claude-integrated-theme="night"]{--cw-pass-pane:rgba(31,30,29,.62);--cw-pass-card:rgba(48,48,46,.72);--cw-pass-bub:rgba(57,57,55,.62);--cw-pass-edge:rgba(255,255,255,.08)}
+html[data-cw-v4][data-claude-layout="pc"][data-claude-bg-transparent="on"] body #top-settings-holder#top-settings-holder#top-settings-holder{background:transparent!important;border-right-color:rgba(20,20,19,.08)!important}
+html[data-cw-v4][data-claude-bg-transparent="on"] body #top-bar#top-bar#top-bar,html[data-cw-v4][data-claude-bg-transparent="on"] body #sheld>.cw-v4-chat-head.cw-v4-chat-head{background:var(--cw-pass-pane)!important;-webkit-backdrop-filter:blur(22px) saturate(1.2)!important;backdrop-filter:blur(22px) saturate(1.2)!important}
+html[data-cw-v4][data-claude-bg-transparent="on"] body #form_sheld #send_form#send_form#send_form{background:transparent!important;isolation:isolate;border-color:var(--cw-pass-edge)!important;box-shadow:0 2px 14px rgba(0,0,0,.06)!important}
+html[data-cw-v4][data-claude-bg-transparent="on"] body #form_sheld #send_form#send_form#send_form::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--cw-pass-card);-webkit-backdrop-filter:blur(20px) saturate(1.3);backdrop-filter:blur(20px) saturate(1.3);pointer-events:none}
+html[data-cw-v4][data-claude-layout="pc"][data-claude-bg-transparent="on"] body #chat>.mes[is_user="true"] .mes_text{background:var(--cw-pass-bub)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+/* 手机气泡不上模糊（一屏好几个，安卓滚动吃不消），底色浓一点 */
+html[data-cw-v4][data-claude-layout="mobile"][data-claude-bg-transparent="on"] body #chat>.mes[is_user="true"] .mes_text{background:rgba(255,255,255,.8)!important}
+html[data-cw-v4][data-claude-layout="mobile"][data-claude-bg-transparent="on"][data-claude-integrated-theme="night"] body #chat>.mes[is_user="true"] .mes_text{background:rgba(57,57,55,.82)!important}
+/* 毛玻璃开着时，原来是 #sheld 自己上 backdrop-filter（index.js）。#sheld 一带模糊，里面顶栏、输入框的模糊就只能糊到 #sheld 里面，
+   正文会清清楚楚透出顶栏。新版界面里把这层模糊挪到 #sheld::before 上，#sheld 本身不带模糊，浓度照旧跟滑条。 */
+html[data-cw-v4][data-claude-bg-blur="on"] body #sheld#sheld#sheld{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:transparent!important;isolation:isolate}
+html[data-cw-v4][data-claude-bg-blur="on"] body #sheld#sheld#sheld::before{content:"";position:absolute;inset:0;z-index:-1;background:color-mix(in srgb,var(--claude-glass-base,#96968f) var(--claude-bg-blur-opacity,22%),transparent);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);pointer-events:none}
+/* ㊷ 2.0.285 味道（照 design-flavor-v1 + v2，Lulu 2026-10-05 按推荐定）。放在 ㊴ 前面（cc-286/apply.cjs 会重写 ㊴ 到文件末尾）。
+   电脑：欢迎语思源宋体 300→400 + 标点半宽（halt），输入框提示字去描边，模型名常规，最近名字不加粗；
+         输入框浅边 + 散开的淡阴影、提示字照官方深一点；右上窗口按钮 1:1 画在整像素上（1px 线、11px 宽）；
+         「最近」旁两个小图标 #52514e；左上工具栏线 1.3。
+   （稿里「预览更淡」「入口图标 #6b6a66」两条的 CSS 当时没压过原规则，Lulu 看到的稿没有这两处变化，所以没落。）
+   手机：最近头像 26 圆、日期和 ⋯ 退后、「最近」15 号；入口行 46、最近行 48、名字 16；字和图标近黑 #1f1e1d、图标 25 格（照 App）。
+   欢迎语 300 那档仍加载着，手机欢迎语明写 300 保持原样。颜色只管日间。 */
+@media(min-width:701px){
+  html[data-cw-v4] body .clawd-welcome-hero.clawd-welcome-hero{font-weight:400!important;font-feature-settings:"halt"!important}
+  html[data-cw-v4] body #send_textarea#send_textarea::placeholder{-webkit-text-stroke:0!important}
+  html[data-cw-v4] body .clawd-character-current.clawd-character-current{font-weight:400!important;-webkit-text-stroke:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat .characterName.characterName{font-weight:400!important}
+  html[data-cw-v4] body .cw-desk-win>svg:not(.cw-ghost){width:24px!important;height:24px!important;padding:6px 13px!important;stroke-width:1!important}
+  html[data-cw-v4] body .cw-desk-win>svg:nth-child(2) path{d:path("M6.5 12.5h11")}
+  html[data-cw-v4] body .cw-desk-win>svg:nth-child(3) rect{x:6.5px;y:6.5px;width:11px;height:11px}
+  html[data-cw-v4] body .cw-desk-win>svg:nth-child(4) path{d:path("M7 7l10 10M17 7 7 17")}
+  html[data-cw-v4] body .cw-rec-search svg{stroke-width:1.4!important}
+  html[data-cw-v4] body .cw-desk-tool svg{stroke-width:1.3!important}
+}
+@media(min-width:701px){
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body .clawd-character-current.clawd-character-current{color:#3d3d3a!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #send_form#send_form#send_form#send_form{border:1px solid #e0e0de!important;box-shadow:0 4px 20px rgba(0,0,0,.045),0 1px 2px rgba(0,0,0,.02)!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #send_textarea#send_textarea::placeholder{color:#9b9a96!important;opacity:1!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body .cw-desk-win.cw-desk-win{color:#3d3d3a!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body .cw-rec-search.cw-rec-search{color:#52514e!important}
+}
+@media(max-width:700px){
+  html[data-cw-v4] body .clawd-welcome-hero.clawd-welcome-hero{font-weight:300!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat>.avatar,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat>.avatar img{flex:0 0 26px!important;width:26px!important;height:26px!important;min-width:26px!important;max-height:26px!important;border-radius:50%!important;object-fit:cover!important;border:0!important;box-shadow:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat .chatDate{font-size:12px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat .cw-recent-more{opacity:.45!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .clawd-rail-recents-label.clawd-rail-recents-label{font-size:15px!important;font-weight:400!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer.drawer:not(#persona-management-button)>.drawer-toggle{min-height:46px!important;height:46px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat{min-height:48px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat .characterName.characterName{font-size:16px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer.drawer:not(#zz1):not(#zz2)>.drawer-toggle>.drawer-icon.drawer-icon{width:25px!important;height:25px!important;min-width:25px!important;max-width:25px!important;min-height:25px!important;flex:0 0 25px!important;margin:0 0 0 -2px!important}
+}
+@media(max-width:700px){
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat .chatDate{color:#b5b4af!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #top-settings-holder#top-settings-holder .clawd-rail-recents .clawd-rail-recents-label.clawd-rail-recents-label{color:#7c7c7a!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #top-settings-holder#top-settings-holder>.drawer.drawer>.drawer-toggle,html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #top-settings-holder#top-settings-holder .clawd-rail-label{color:#1f1e1d!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat .characterName.characterName{color:#1f1e1d!important}
+  html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body #top-settings-holder#top-settings-holder>.drawer.drawer:not(#zz1):not(#zz2)>.drawer-toggle>.drawer-icon.drawer-icon{background:#1f1e1d!important}
+}
+
 /* ㊴ 2.0.266 扩展设置页（照 design-phone-ext-v1.html）。页面是 official-extension-settings.js 画的 .cwx-page：
    小节 .cwx-sec（灰字 / 电脑粗体标题 .cwx-lab）→ 白卡片 .cwx-card → 一行一项 .cwx-row。控件是酒馆原来的，搬进行里。
    这块由 tools/_tmp/cc-286/apply.cjs 从 block-39.src.css 生成（html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 页面前缀，html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup)  = 外层前缀，html[data-cw-v4][data-claude-integrated-theme="night"] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 夜间页面前缀）。 */
@@ -3389,4 +3482,159 @@ html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.clawd-rail-l
   html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-meta,html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-more{display:none!important}
   html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-face.clawd-user-face{flex:0 0 32px!important;width:32px!important;min-width:32px!important;max-width:32px!important;height:32px!important;min-height:32px!important;max-height:32px!important;border-radius:50%!important}
   html[data-cw-v4] body .clawd-mobile-new-chat.clawd-mobile-new-chat{height:44px!important;min-height:44px!important;padding:0 20px!important;border-radius:22px!important;font:500 16px/44px var(--cw-v4-font)!important;-webkit-text-stroke:0!important}
+}
+
+/* ---------- 2.0.279 Lulu：菜单里的字不要描边加粗（中文发粗）；对话列表日期下面的虚线去掉 ---------- */
+html[data-cw-v4] body :is(.cw-menu-wrap,.cw-asheet,.cwx-more-list,#extensionsMenu,#options,.clawd-character-menu,.extraMesButtons,.actionButtonsModal,.cw-delbar,.cw-delbar-top,.cwx-seg) :is(*,*::before,*::after){-webkit-text-stroke:0!important}
+html[data-cw-v4] body :is(.cw-menu-wrap .cw-menu-item,.cw-menu-wrap .cw-menu-label,.cwx-more-item,#extensionsMenu .list-group-item,#options a,.clawd-character-menu .clawd-character-option,.extraMesButtons>*){font-weight:400!important}
+html[data-cw-v4] body #top-settings-holder .clawd-rail-recents .chatDate{text-decoration:none!important;border-bottom:0!important}
+/* 2.0.279 手机：近期对话的「⋯」原来绝对定位压在日期上（日期下面那三个点就是它），挪到日期右边单独一列 */
+@media(max-width:700px){
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer{grid-template-columns:minmax(0,1fr) auto auto!important;align-items:center!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatActions{position:static!important;grid-column:3!important;grid-row:1!important;display:flex!important;align-items:center!important;margin:0 -6px 0 0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatActions .cw-recent-more{margin:0!important}
+}
+
+/* ---------- 2.0.279 电脑：照新版 Claude Desktop 量的数（Snipaste_2026-10-05_01-44-14，1x）再对一遍 ----------
+   侧栏 294 宽、底色 #fbfbf9、右边 1px #e2e2e1；入口一组不分段，28 高、步距 29，图标 15 在 x≈17、字在 x≈42；
+   小标题离上面一组 ~28、13px 灰；列表 28 高步距 30；底部 48 高、上面 1px #e2e2e1，头像 22 在 x≈13；
+   输入框边 #dfdfde、圆角 18。 */
+@media(min-width:701px){
+  html[data-cw-v4][data-claude-structure="rail"]:root,html[data-cw-v4][data-claude-structure="rail"]:root body{--cl-rail:294px}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder{background:#fbfbf9!important;border-right:1px solid #e2e2e1!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{height:28px!important;min-height:28px!important;gap:9px!important;border-radius:8px!important;padding:0 10px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button){margin-top:1px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:has(#user-settings-block){margin-top:1px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle:hover,html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle:has(+.openDrawer){background:#edece8!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label{margin:26px 8px 5px 8px!important;font-size:12.5px!important;color:#8a8985!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat{height:28px!important;min-height:28px!important;margin-bottom:2px!important;border-radius:8px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat:hover{background:#edece8!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName{color:#3d3d3a!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatPreview{color:#8a8985!important}
+  /* 近期对话一直排到底部那条线（滚动），不再在最后一条和用户行之间空一截 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;margin-bottom:0!important;padding-bottom:8px!important;border-bottom:0!important;scrollbar-width:thin}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle{margin:0 -8px!important;padding:0 13px!important;border-top:1px solid #e2e2e1!important;background:transparent!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle:hover{background:transparent!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-name{color:#3d3d3a!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-plan{color:#8a8985!important}
+  html[data-cw-v4] body #send_form#send_form{border-color:#dfdfde!important}
+}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder{background:#1f1e1d!important;border-right-color:#33322f!important}
+@media(min-width:701px){
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle{border-top-color:#33322f!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder :is(>.drawer:not(#persona-management-button)>.drawer-toggle:hover,.clawd-rail-recents .recentChat:hover){background:#2b2a27!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-name{color:#dcdad3!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form#send_form{border-color:#3a3936!important}
+}
+
+@media(min-width:701px){
+  /* 顶上品牌行收矮，第一行入口中心落在 ~61（参考图） */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder{padding-top:4px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-brand{height:36px!important;min-height:36px!important;margin:0 0 6px!important;line-height:36px!important;overflow:visible!important;display:flex!important;align-items:center!important;transform:none!important;padding-left:8px!important}
+  html[data-cw-v4] body .clawd-pc-top-actions{top:9px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .drawer-icon{width:16px!important;height:16px!important;min-width:16px!important;flex:0 0 16px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{gap:9px!important}
+  /* 底部：头像在 x≈13、字在 x≈42，⌄ 紧跟在名字后面 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle{padding-left:5px!important;justify-content:flex-start!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-meta{flex:0 1 auto!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-more{margin-left:6px!important;margin-right:0!important;position:static!important;right:auto!important}
+}@media(min-width:701px){html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button{border-top:0!important;padding-top:0!important;margin-top:0!important}}
+@media(min-width:701px){html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button{margin-left:-8px!important;margin-right:-8px!important}html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle{margin:0!important;padding-left:13px!important}}
+@media(min-width:701px){html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button{width:auto!important;max-width:none!important;align-self:stretch!important}html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle{width:100%!important;box-sizing:border-box!important}}
+/* 2.0.280（Lulu：电脑上关掉提示词编辑，卡片缩成一条白条停一下）：酒馆关的时候先清空表单再卷起 200ms，空卡片就是那条白条。电脑上一摘 openDrawer 立刻藏。 */
+@media(min-width:701px){html[data-cw-v4] body #completion_prompt_manager_popup:not(.openDrawer){display:none!important;transition:none!important}}
+
+
+/* ---------- 2.0.281 电脑对齐新版 Claude（稿 design-desk-align-v2，Lulu 认可；尺寸照 Snipaste_2026-10-05_01-44-14 量的墨迹）----------
+   中文墨高 13 → 14.5px；图标墨宽 13 → 17px 框；字重加回 500。工具栏 / 右上角 / 放大镜是装饰。 */
+.cw-desk-tool,.cw-desk-win,.cw-rec-search{display:none}
+@media(min-width:701px){
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-brand,html[data-cw-v4] body .clawd-pc-top-actions{display:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool{display:flex;align-items:center;gap:0;height:40px;margin:0 -2px 6px;padding:0 0 0 4px;color:#3d3d3a}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool>svg{flex:none;width:18px;height:18px;margin:0 8px 0 9px}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool>svg.cw-dim,html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-dim{color:#b5b4af}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg{display:flex;margin-left:auto;padding:2px;border-radius:9px;background:#efeeea}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg>span{display:grid;place-items:center;width:34px;height:26px;border-radius:7px}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg>span.cw-on{background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06)}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg svg{width:17px;height:17px}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder{padding-top:0!important}
+  /* 入口：14.5px 500，图标 17 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .clawd-rail-label{font:500 14.5px/20px var(--cw-v4-font)!important;color:#141413!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .drawer-icon{width:17px!important;height:17px!important;min-width:17px!important;flex:0 0 17px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{gap:9px!important;padding:0 9px!important;height:29px!important;min-height:29px!important}
+  /* 最近：13px 标题，放大镜 + 筛选 16；列表 14.5 / 13 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label{display:flex!important;align-items:center!important;gap:14px!important;font-size:13px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label>.cw-rec-search{display:block;margin-left:auto;width:16px;height:16px;color:#3d3d3a}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label>.cw-rec-search svg{width:16px;height:16px;display:block}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label::after{width:16px!important;height:16px!important;color:#3d3d3a;background:#3d3d3a!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName>.characterName{font:500 14.5px/20px var(--cw-v4-font)!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatPreview{font-size:13px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat{height:28px!important;min-height:28px!important;margin-bottom:2px!important}
+  /* 用户：名字 14.5 / 500，plan 13 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-name{font:500 14.5px/20px var(--cw-v4-font)!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-plan{font-size:13px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle{padding-left:13px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-face.clawd-user-face{flex:0 0 24px!important;width:24px!important;min-width:24px!important;max-width:24px!important;height:24px!important;min-height:24px!important;max-height:24px!important}
+  /* 右上角：幽灵 20、窗口按钮 14，中心 y≈18 */
+  html[data-cw-v4] body>.cw-desk-win{position:fixed;top:4px;right:8px;z-index:3000;display:flex;align-items:center;gap:0;color:#3d3d3a;pointer-events:none;right:0!important}
+  html[data-cw-v4] body>.cw-desk-win>svg{box-sizing:content-box;flex:none;width:20px;height:20px;padding:8px 15px;stroke-width:1.3}
+  html[data-cw-v4] body>.cw-desk-win>svg.cw-ghost{box-sizing:content-box;width:27px;height:27px;padding:4px 12px 4px 0;margin-right:2px;stroke-width:1.5}
+  /* 欢迎区：标题 46px 400、星 40；输入框 706×115、圆角 18、按内容区居中，整组往下 48 */
+  html[data-cw-v4] body.clawd-welcome .clawd-welcome-hero{font-size:46px!important;font-weight:400!important;padding-top:48px!important}
+  html[data-cw-v4] body.clawd-welcome .clawd-welcome-hero>.asterisk{width:40px!important;height:40px!important;min-width:40px!important}
+  html[data-cw-v4] body.clawd-welcome #form_sheld #send_form#send_form{box-sizing:border-box!important;width:706px!important;max-width:calc(100vw - var(--cl-rail) - 48px)!important;min-height:115px!important;border-radius:18px!important;margin-left:calc((100vw - var(--cl-rail) - min(706px,100vw - var(--cl-rail) - 48px)) / 2)!important;margin-right:0!important}
+  html[data-cw-v4] body.clawd-welcome #form_sheld #send_form #send_textarea{font-size:16px!important}
+}
+/* 「其他设置」行（各设置页最下面；手机电脑都用） */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row{appearance:none;display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:16px;width:100%;margin:0;padding:12px 0 4px;border:0;border-top:1px solid var(--cw-v4-line,#ebeae6);background:none;color:var(--v4-text,#141413);text-align:left;cursor:pointer;font:inherit}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row>.cw-lo-t{grid-column:1;grid-row:1;font-size:14.5px}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row>.cw-lo-d{grid-column:1;grid-row:2;color:var(--v4-muted,#73726c);font-size:13px;margin-top:2px}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row>.cw-lo-b{grid-column:2;grid-row:1/3;height:32px;padding:0 13px;border:1px solid #e3e2dd;border-radius:8px;display:grid;place-items:center;font-size:13.5px}
+@media(max-width:700px){html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row>.cw-lo-b{border:0;padding:0;color:#2c6fc5;font-size:16px}}
+html[data-cw-v4][data-claude-integrated-theme="night"] body>.cw-desk-win,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder>.cw-desk-tool{color:#dcdad3}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder>.cw-desk-tool .cw-desk-seg{background:#2b2a27}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder>.cw-desk-tool .cw-desk-seg>span.cw-on{background:#3a3936}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.drawer>.drawer-toggle .clawd-rail-label{color:#ece9e2!important}
+@media(min-width:701px){html[data-cw-v4]:not([data-claude-integrated-theme="night"]) body.clawd-welcome .clawd-welcome-hero{color:#141413!important}}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row{border:0!important;border-top:1px solid var(--cw-v4-line,#ebeae6)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;outline:0!important;min-height:56px!important;padding:10px 0!important}
+@media(max-width:700px){
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row{border:0!important;border-radius:12px!important;background:var(--m-card,#fff)!important;padding:12px 16px!important;min-height:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row>.cw-lo-t{font-size:16px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row>.cw-lo-d{font-size:14px!important}
+}
+
+
+/* ---------- 2.0.283（稿 design-desk-align-v5，Lulu 认可）：图标照参考重画 + 加粗；灰色照参考吸色；最近 B ---------- */
+@media(min-width:701px){
+  /* 图标：中灰 #2f2e2c、线 ~1.6px 圆头；工具栏 21、分段 19；右上角幽灵 27 细线、窗口按钮 22 细线 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool{color:#2f2e2c}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool svg{stroke-width:1.9}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool>svg{width:20px;height:20px;margin:0 8px 0 8px}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool>svg.cw-dim,html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-dim{color:#a9a8a3}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg>span{width:36px;height:28px}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg svg{width:19px;height:19px}
+  html[data-cw-v4] body>.cw-desk-win{color:#2f2e2c}
+  html[data-cw-v4] body>.cw-desk-win>svg{width:22px;height:22px;padding:7px 14px;stroke-width:1.1}
+  html[data-cw-v4] body>.cw-desk-win>svg.cw-ghost{width:27px;height:27px;padding:4px 10px 4px 0;margin-right:4px;stroke-width:1.35}
+  /* 「最近」：放大镜 + 新筛选（两条竖线），原来 CSS 画的旧筛选去掉 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label::after{content:none!important;display:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label>.cw-rec-search{width:19px;height:19px;color:#2f2e2c}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label>.cw-rec-search svg{width:19px;height:19px;stroke-width:1.9}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label>.cw-rec-filter{margin-left:0}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label{gap:12px!important;color:#898781!important}
+  /* 灰色照参考：入口、列表的字和图标 #52514e（字重 500 不变） */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .clawd-rail-label{color:#52514e!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .drawer-icon{background-color:#52514e!important;color:#52514e!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName>.characterName,html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-name{color:#52514e!important}
+  /* 最近 B：16 小圆头像；同一角色连着的后几条换成空心小点 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar img{flex:0 0 16px!important;width:16px!important;height:16px!important;min-width:16px!important;border-radius:50%!important;margin:0 1px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.cw-rec-rep>.avatar{position:relative!important;background:none!important;box-shadow:none!important;border:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.cw-rec-rep>.avatar>img{visibility:hidden!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.cw-rec-rep>.avatar::after{content:""!important;position:absolute!important;left:50%!important;top:50%!important;width:6.4px!important;height:6.4px!important;margin:-3.2px 0 0 -3.2px!important;box-sizing:border-box!important;border:1.2px solid #c5c4c0!important;border-radius:50%!important;background:none!important}
+}
+html[data-cw-v4][data-claude-integrated-theme="night"] body>.cw-desk-win,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.cw-desk-tool,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label>.cw-rec-search{color:#d9d7d0}
+@media(min-width:701px){
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .clawd-rail-label,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName>.characterName,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-name{color:#c9c7c0!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .drawer-icon{background-color:#c9c7c0!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.cw-rec-rep>.avatar::after{border-color:#5a5955!important}
 }

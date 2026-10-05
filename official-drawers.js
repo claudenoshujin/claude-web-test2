@@ -3,7 +3,7 @@
  * handlers. Comment markers allow a full return to the native layout.
  * Labels are the design's own Chinese strings; L() looks up the design's
  * English table for other UI languages. */
-import { createExtensionSettings } from './official-extension-settings.js?v=20261005d';
+import { createExtensionSettings } from './official-extension-settings.js?v=20261005i';
 export function actionLabel(node,t){
   const byId={world_backfill_memos:['补全标题','Fill titles'],world_apply_current_sorting:['应用排序','Apply sorting'],world_refresh:['刷新','Refresh'],OpenAllWIEntries:['展开全部','Expand all'],CloseAllWIEntries:['收起全部','Collapse all'],world_popup_name_button:['改名','Rename'],world_duplicate:['复制','Duplicate'],world_popup_delete:['删除','Delete'],bulkEditButton:['批量编辑','Bulk edit'],charListGridToggle:['切换网格视图','Toggle grid view'],rm_button_group_chats:['新建群聊','New group'],external_import_button:['从外部导入','Import externally'],character_import_button:['导入角色','Import character'],world_import_button:['导入','Import'],world_popup_export:['导出','Export'],bg_add_folder_button:['新建文件夹','New folder'],bg_selection_mode_button:['选择背景','Select backgrounds'],bg_group_add_to_folder_button:['移入文件夹','Move to folder'],open_s_preset_menu:['预设工具','Preset tools'],view_connection_profile:['查看配置','View profile'],reload_connection_profile:['重新载入','Reload profile'],personas_backup:['备份','Back up'],personas_restore:['恢复备份','Restore backup'],persona_grid_toggle:['切换网格视图','Toggle grid view']};
   if(byId[node.id])return t(...byId[node.id]);
@@ -46,7 +46,8 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   // asBtn(): a native control drawn as a text button.
   function act(s,n,label,plus,primary){if(!n)return n;n.classList.add('cw-v4-as-btn');if(primary)n.classList.add('cw-v4-primary');const text=make('span','cw-v4-action-label'+(plus?' cw-v4-plus':''),L(label));n.append(text);s.created.push(text);(s.buttons||=[]).push(n);return n;}
   function begin(root){const s=state(root);if(s.page)return null;const page=make('div','cw-v4-drawer-page');s.page=page;root.append(page);s.created.push(page);root.classList.add('cw-v4-reflow');return {s,page};}
-  function finish(s){const root=s.root,page=s.page,more=make('div','cw-v4-leftovers'),rest=make('div','cw-v4-native-rest');for(const n of [...root.childNodes])if(n!==page)rest.append(n);const extra=button('⋯',()=>openEditor(rest,t('其他设置','Additional settings')));extra.setAttribute('aria-label',t('其他设置','Additional settings'));extra.title=t('其他设置','Additional settings');more.append(extra,rest);page.append(more);s.rest=rest;s.more=more;refreshLeftovers(s);}
+  function finish(s){const root=s.root,page=s.page,more=make('div','cw-v4-leftovers'),rest=make('div','cw-v4-native-rest');for(const n of [...root.childNodes])if(n!==page)rest.append(n);// 2.0.281（稿 design-desk-align-v2）：原来只有一个孤零零的 ⋯，改成一行「其他设置 · 说明 · 打开」，点整行打开。
+    const extra=button('',()=>openEditor(rest,t('其他设置','Additional settings')),'cw-v4-leftovers-row');extra.append(make('span','cw-lo-t',t('其他设置','Additional settings')),make('span','cw-lo-d',t('酒馆原来面板里还没排进上面分组的设置','Remaining native settings not placed above')),make('span','cw-lo-b',t('打开','Open')));extra.setAttribute('aria-label',t('其他设置','Additional settings'));extra.title=t('其他设置','Additional settings');more.append(extra,rest);page.append(more);s.rest=rest;s.more=more;refreshLeftovers(s);}
   // The fallback button appears only when real controls remain: panel pins,
   // doc links and icon labels of already-mapped toggles do not count.
   const chrome='[id$="_pin"],.notes-link,a[href],#bg-scroll-top,#rm_button_back,label[for].menu_button,label[for] .menu_button';

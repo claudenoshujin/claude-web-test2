@@ -15,7 +15,7 @@
 
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20261005d";
+import { installOfficialLayout } from "./official-layout.js?v=20261005k";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 import { createClawdPile } from "./clawd-pile.js?v=20261001w";
 
@@ -427,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.278-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.285-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -458,7 +458,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20261005d', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20261005k', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -6067,6 +6067,9 @@ if (CLAUDE_ENABLED) {
     hostDocument.querySelectorAll('.' + HERO_CLASS).forEach(el => el.remove());
     heroPick = -1;
     scheduleRefresh();
+    // 建档窗口到期时也重新判断一次（没有别的变动时没人叫醒它，会一直停在空页面）
+    hostWindow.setTimeout(scheduleRefresh, 15100);
+    hostWindow.setTimeout(scheduleRefresh, 1300);
   }
 
   /* 监听绑在 document 上，不绑 #send_form —— 这个改版部署会重建表单，
@@ -6841,6 +6844,11 @@ if (CLAUDE_ENABLED) {
        real 仍作为欢迎页直接发送临时聊天时的辅助信号。 */
     if (pendingWelcomeCharacter !== null) welcomeStage = 'welcome';
     else if (hasSelectedConversation() || real.length > 0) welcomeStage = 'chat';
+    /* 2.0.282（Lulu：欢迎页发空白消息再按暂停，卡在既不是对话也不是欢迎页的空页面）：
+       生成已经停了 / 结束了，对话却没建起来，也没有消息 → 直接回欢迎页，不等 15 秒。 */
+    else if (welcomeStage === 'leaving' && !generationEventActive && Date.now() - leavingSince > 1200) {
+      welcomeStage = 'welcome';
+    }
     else if (welcomeStage === 'leaving' && Date.now() - leavingSince <= 15000) {
       // 首次发送到角色/临时聊天的短暂建档窗口：保持退出欢迎页，等上下文接上。
     } else {
