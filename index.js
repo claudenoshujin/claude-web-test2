@@ -15,7 +15,7 @@
 
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20261005n";
+import { installOfficialLayout } from "./official-layout.js?v=20261005o";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 import { createClawdPile } from "./clawd-pile.js?v=20261001w";
 
@@ -427,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.288-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.289-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -458,7 +458,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20261005n', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20261005o', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -7100,8 +7100,10 @@ if (CLAUDE_ENABLED) {
     box.append(
       item('pin', pinned ? (cn ? '取消置顶' : 'Unpin') : (cn ? '置顶' : 'Pin'), () => toggleRecentPin(entry)),
       item('pencil', cn ? '重命名' : 'Rename', () => renameRecent(entry)),
-      item('trash', cn ? '删除' : 'Delete', async () => deleteRecentRow(row), true),
     );
+    /* 2.0.289：照 Claude Code 侧栏菜单（Lulu P4），删除前面隔一条线 */
+    if (cwLook) { const sep = hostDocument.createElement('div'); sep.className = 'cw-menu-sep'; box.append(sep); }
+    box.append(item('trash', cn ? '删除' : 'Delete', async () => deleteRecentRow(row), true));
     hostDocument.body.append(menu);
     row.classList.add('cw-recent-menu-open');
     /* 一条横的操作条，放在「⋯」左边、和它同一行居中，不盖住下面几行；左边放不下才放到「⋯」下方 */

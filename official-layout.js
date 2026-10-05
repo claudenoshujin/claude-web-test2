@@ -1,5 +1,5 @@
 import { officialIcons } from './official-icons.js?v=20261002u';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005n';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005o';
 import { tr } from './official-i18n.js?v=20261002t';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
@@ -1163,6 +1163,8 @@ export function installOfficialLayout(win = window) {
       code: '<path d="M8.5 8 4.5 12l4 4M15.5 8l4 4-4 4M13.2 6.5l-2.4 11"/>',
       search: '<circle cx="10.8" cy="10.8" r="6"/><path d="m15.3 15.3 4.2 4.2"/>',
       filter: '<path d="M8.5 4v2.6M8.5 11.4V20M15.5 4v8.6M15.5 17.4V20"/><circle cx="8.5" cy="9" r="2.4"/><circle cx="15.5" cy="15" r="2.4"/>',
+      /* 2.0.289：对话页右上角照 Claude Desktop 换成分享（装饰），放在最后、CSS order 排到最前，不打乱 —□✕ 的 nth-child */
+      share: '<path d="M12 4v10.5M8 8l4-4 4 4"/><path d="M5.5 12.5V18a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-5.5"/>',
       ghost: '<path d="M3.6 20.3V12.05a8.45 8.45 0 0 1 16.9 0V20.3Q17.64 16.1 14.83 20.3 12.02 16.1 9.22 20.3 6.41 16.1 3.6 20.3Z"/><circle cx="8.15" cy="11.9" r="1.25" fill="currentColor" stroke="none"/><circle cx="15.9" cy="11.9" r="1.25" fill="currentColor" stroke="none"/>',
       min: '<path d="M6 12h12"/>', max: '<rect x="6" y="6" width="12" height="12" rx="1"/>', close: '<path d="M6 6l12 12M18 6 6 18"/>',
     };
@@ -1183,7 +1185,7 @@ export function installOfficialLayout(win = window) {
       if (holder && !holder.querySelector(':scope>.cw-desk-tool')) holder.prepend(deco('cw-desk-tool',
         SV(P.menu) + SV(P.panel) + SV(P.back) + SV(P.fwd, 'cw-dim') +
         `<span class="cw-desk-seg"><span class="cw-on">${SV(P.chat)}</span><span>${SV(P.code, 'cw-dim')}</span></span>`));
-      if (!doc.querySelector('body>.cw-desk-win')) doc.body.append(deco('cw-desk-win', SV(P.ghost, 'cw-ghost') + SV(P.min) + SV(P.max) + SV(P.close)));
+      if (!doc.querySelector('body>.cw-desk-win')) doc.body.append(deco('cw-desk-win', SV(P.ghost, 'cw-ghost') + SV(P.min) + SV(P.max) + SV(P.close) + SV(P.share, 'cw-share')));
       const lab = holder?.querySelector('.clawd-rail-recents-label');
       if (lab && !lab.querySelector(':scope>.cw-rec-search')) lab.append(deco('cw-rec-search', SV(P.search)), deco('cw-rec-search cw-rec-filter', SV(P.filter)));
       const slot = holder?.querySelector('.clawd-rail-recents');

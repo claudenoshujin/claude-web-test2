@@ -2847,6 +2847,28 @@ html[data-cw-v4] .cw-recent-menu-list{min-width:180px!important}
 html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg{background:#2b2a27}
 html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg>span.cw-on{background:#3a3936;box-shadow:0 0 0 .5px rgba(255,255,255,.06)}
 
+/* ㊻ 2.0.289（design-flavor-v5，Lulu：都按推荐 + 手机 ⋯ 菜单也窄一点）。放在 ㊴ 前面。
+   电脑对话页右上角分享（装饰）代替幽灵、夜间对话页顶栏和页面同色；夜间分段选择选中格变亮、按钮 / 下拉统一 #30302e + 淡边、
+   用户角色页三个开关和提示词开关夜间关着改深灰（bug）；最近 ⋯ 菜单照 Claude Code（电脑不放图标、行矮、跟字宽，手机 190 宽）；
+   对话页角色头像 34、名字 16、时间 12.5。 */
+.cw-desk-win>svg.cw-share{display:none}
+@media(min-width:701px){
+  html[data-cw-v4] body:not(.clawd-welcome) .cw-desk-win>svg.cw-ghost{display:none!important}
+  html[data-cw-v4] body:not(.clawd-welcome) .cw-desk-win>svg.cw-share.cw-share{display:block;order:-1;box-sizing:content-box;width:24px!important;height:24px!important;padding:6px 10px 6px 0!important;stroke-width:1.25!important}
+  html[data-cw-v4][data-claude-integrated-theme="night"]:not([data-claude-bg-transparent="on"]) body #sheld>.cw-v4-chat-head.cw-v4-chat-head{background:#141413!important}
+  html[data-cw-v4] .cw-menu.cw-recent-menu-list.cw-recent-menu-list{min-width:0!important;width:max-content!important;padding:4px!important;border-radius:10px!important}
+  html[data-cw-v4] .cw-menu.cw-recent-menu-list .cw-recent-ic{display:none!important}
+  html[data-cw-v4] .cw-menu.cw-recent-menu-list .cw-menu-item.cw-menu-item{min-height:28px!important;padding:0 28px 0 10px!important;border-radius:6px!important}
+  html[data-cw-v4] .cw-menu.cw-recent-menu-list .cw-menu-sep{margin:4px 6px!important}
+  html[data-cw-v4][data-claude-avatars="on"] body:not(.clawd-welcome) #chat>.mes.mes[is_user="false"]>.mesAvatarWrapper{width:34px!important;min-width:34px!important;height:34px!important;top:9px!important}html[data-cw-v4][data-claude-avatars="on"] body:not(.clawd-welcome) #chat>.mes.mes[is_user="false"] .mesAvatarWrapper .avatar,html[data-cw-v4][data-claude-avatars="on"] body:not(.clawd-welcome) #chat>.mes.mes[is_user="false"] .mesAvatarWrapper .avatar img{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important}html[data-cw-v4][data-claude-avatars="on"] body:not(.clawd-welcome) #chat>.mes.mes[is_user="false"] .ch_name{padding-left:44px!important;min-height:34px!important}html[data-cw-v4] body #chat .mes.mes[is_user="false"] .ch_name .name_text{font-size:16px!important}html[data-cw-v4] body #chat .mes.mes[is_user="false"] .ch_name .timestamp{font-size:12.5px!important}
+}
+@media(max-width:700px){
+  html[data-cw-v4] .cw-menu.cw-recent-menu-list.cw-recent-menu-list{width:190px!important}
+}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder #PersonaManagement :is(#lock_persona_default,#lock_persona_to_char,#lock_user_name):not(.locked):not(#zz1):not(#zz2):not(#zz3){background:#4a4945!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-prompt-row>.prompt-manager-toggle-action.fa-toggle-off{background:#4a4945!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel.cw-v4-segsel{background:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item.cw-v4-segsel-item{color:#a3a19b!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item.cw-v4-segsel-item[aria-pressed=true]{background:#3d3c39!important;color:#ece9e2!important;border-color:transparent!important;box-shadow:none!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-seg.cw-v4-seg{background:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.menu_button,.cw-v4-button,select):not(.cw-v4-segsel-item):not(#lock_persona_default):not(#lock_persona_to_char):not(#lock_user_name):not(.prompt-manager-toggle-action):not(#zz1):not(#zz2){background-color:#30302e!important;border-color:rgba(255,255,255,.1)!important}
+
 /* ㊴ 2.0.266 扩展设置页（照 design-phone-ext-v1.html）。页面是 official-extension-settings.js 画的 .cwx-page：
    小节 .cwx-sec（灰字 / 电脑粗体标题 .cwx-lab）→ 白卡片 .cwx-card → 一行一项 .cwx-row。控件是酒馆原来的，搬进行里。
    这块由 tools/_tmp/cc-286/apply.cjs 从 block-39.src.css 生成（html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 页面前缀，html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup)  = 外层前缀，html[data-cw-v4][data-claude-integrated-theme="night"] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 夜间页面前缀）。 */
