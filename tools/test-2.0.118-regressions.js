@@ -8,8 +8,8 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const themeCss = ['day-mobile.css','night-mobile.css'].map(n=>fs.readFileSync(path.join(root,'styles',n),'utf8')).join(String.fromCharCode(10));
 
-assert.equal(manifest.version, '2.0.273');
-assert.equal(manifest.js, 'loader-2.0.273.js');
+assert.equal(manifest.version, '2.0.277');
+assert.equal(manifest.js, 'loader-2.0.277.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -280,7 +280,7 @@ assert.match(officialLayout, /doc\.addEventListener\('keydown', pmEsc, true\)/, 
 assert.match(index, /if \(hostDocument\.documentElement\.hasAttribute\('data-cw-v4-settings'\)\) return;/, 'Clawd eye tracking pauses while settings are open');
 for (const f of ['day-mobile.css','night-mobile.css','compat-mobile-day.css','compat-mobile-night.css']) assert.doesNotMatch(fs.readFileSync(path.join(root, 'styles', f), 'utf8'), /\.claude-(pm-open|top-drawer-open)\b/, f + ': root markers are data attributes now');
 /* 2.0.218（Lulu：showModal 有没有别的办法）：手机弹出页 show()+showPopover() 进最上层 + 透明挡板 + 自己接 Escape；设置页 sync 不再每帧自激 */
-assert.match(officialLayout, /win\.HTMLDialogElement\.prototype\.showModal = function \(\) \{ if \(liftable\(this\)\) return liftDialog\(this\);/, 'phone sheet dialogs are lifted without showModal');
+assert.match(officialLayout, /win\.HTMLDialogElement\.prototype\.showModal = function \(\) \{ (?:tagDanger\(this\); )?if \(liftable\(this\)\) return liftDialog\(this\);/, 'phone sheet dialogs are lifted without showModal');
 assert.match(officialLayout, /function shieldUp\(\)/, 'a shield under lifted sheets blocks taps on the page behind');
 assert.match(index, /element\.matches\(':popover-open,\[data-cw-lifted\]'\)/, 'lifted sheets are not treated as external fullscreen modals');
 assert.match(officialLayout, /if \(panel\.classList\.contains\('cw-v4-inactive'\) !== off\) panel\.classList\.toggle\('cw-v4-inactive', off\);/, 'sync only writes panel classes when they change (no per-frame self-triggering loop)');

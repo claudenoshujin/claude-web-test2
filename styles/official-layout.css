@@ -2977,11 +2977,12 @@ html[data-cw-v4][data-claude-integrated-theme="night"] body #toast-container>.to
 html[data-cw-v4][data-claude-integrated-theme="night"] body #toast-container>.toast-success{background-color:#1d3020!important;border-color:#33583a!important;color:#8fd19a!important}
 html[data-cw-v4][data-claude-integrated-theme="night"] body #toast-container>.toast-warning{background-color:#3a2a0b!important;border-color:#6e4d12!important;color:#f0a73a!important}
 html[data-cw-v4][data-claude-integrated-theme="night"] body #toast-container>.toast-error{background-color:#3b1d1a!important;border-color:#74322b!important;color:#f08a7e!important}
-/* 位置：默认的「顶部居中」改到电脑右下角往上叠、手机输入框上面（偏好设置里选了别的位置就照用户选的） */
+/* 位置：默认的「顶部居中」改到电脑右下角往上叠、手机顶栏下面（偏好设置里选了别的位置就照用户选的） */
 html[data-cw-v4] body #toast-container.toast-top-center{top:auto!important;bottom:150px!important;left:auto!important;right:20px!important;width:auto!important;display:flex!important;flex-direction:column-reverse!important;align-items:flex-end!important;pointer-events:none}
 html[data-cw-v4] body #toast-container.toast-top-center>.toast{pointer-events:auto}
 @media(max-width:700px){
-  html[data-cw-v4] body #toast-container.toast-top-center{left:12px!important;right:12px!important;bottom:calc(var(--cl-mobile-composer-height,150px) + 14px)!important;align-items:stretch!important}
+  /* 2.0.275（Lulu）：手机的提示条放顶上（顶栏下面），新的往下叠 */
+  html[data-cw-v4] body #toast-container.toast-top-center{left:12px!important;right:12px!important;top:calc(64px + env(safe-area-inset-top))!important;bottom:auto!important;flex-direction:column!important;align-items:stretch!important}
   html[data-cw-v4] body #toast-container.toast-top-center>.toast{width:auto!important;max-width:none!important}
 }
 /* 取消 / 保存：酒馆原来的 .menu_button 内边距更重，这里加重一级 */
@@ -3099,4 +3100,267 @@ html[data-cw-v4] body #chat>.mes[is_user="true"] .claude-user-message-actions>bu
 }
 @media(max-width:700px) and (hover:hover) and (pointer:fine){
   html[data-cw-v4] body #chat>.mes[is_user="true"]:is(:hover,:focus-within) .claude-user-message-actions{opacity:1!important;visibility:visible!important;pointer-events:auto!important}
+}
+
+/* ---------- 2.0.274「≡」里的浮窗（稿 design-options-menu-v1）：作者注释等放进弹出页 / 弹窗 ---------- */
+/* 酒馆的浮窗还在原处（显示状态留给酒馆判断），只是看不见 */
+html[data-cw-v4] body .cwx-panel-hosted{visibility:hidden!important;pointer-events:none!important}
+/* 分段切换「本聊天 / 角色 / 默认」：灰底槽 + 白色选中块 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder dialog.cw-v4-editor .cwx-page .cwx-seg{display:flex!important;gap:2px!important;margin:4px 0 6px!important;padding:2px!important;border-radius:9px!important;background:rgba(118,118,128,.12)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder dialog.cw-v4-editor .cwx-page .cwx-seg>.cwx-seg-btn{flex:1 1 0!important;appearance:none!important;min-width:0!important;height:30px!important;margin:0!important;padding:0 8px!important;border:0!important;border-radius:7px!important;background:transparent!important;box-shadow:none!important;color:var(--v4-muted)!important;font:500 14px/30px var(--cw-v4-font)!important;cursor:pointer}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder dialog.cw-v4-editor .cwx-page .cwx-seg>.cwx-seg-btn[aria-selected=true]{background:var(--v4-panel,#fff)!important;color:var(--v4-text)!important;font-weight:600!important;box-shadow:0 1px 3px rgba(0,0,0,.1),0 0 0 .5px rgba(0,0,0,.04)!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder dialog.cw-v4-editor .cwx-page .cwx-seg>.cwx-seg-btn[aria-selected=true]{background:#45443f!important}
+@media(min-width:701px){html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder dialog.cw-v4-editor .cwx-page .cwx-seg{max-width:364px!important;margin:0 0 8px!important}}
+/* 只读的一行（距离下一次 · 0 条）：不像输入框 */
+html[data-cw-v4] body .cwx-page .cwx-row input.cwx-readonly{border-color:transparent!important;background:transparent!important;box-shadow:none!important;pointer-events:none!important;color:var(--v4-muted)!important}
+/* 放「≡」浮窗内容的零大小格子（在设置侧栏里，弹窗样式才对得上） */
+html[data-cw-v4] body .cwx-panel-dock{position:absolute!important;left:0!important;top:0!important;width:0!important;height:0!important;overflow:visible!important;display:block!important}
+/* Token 概率（.cwx-logprobs）：上面是回复原文，每个词下面一条虚线，选中的淡蓝底；候选一行「词 · 百分比」，下面一条概率条 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs #logprobs_generation_output{display:block!important;min-height:0!important;height:auto!important;max-height:40vh;overflow:auto;padding:12px 16px!important;font:400 16px/1.9 var(--cw-v4-font)!important;color:var(--v4-text)!important;white-space:pre-wrap;word-break:break-word}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs #logprobs_generation_output .logprobs_output_token{background:none!important;border-bottom:1px dashed color-mix(in srgb,var(--v4-muted) 70%,transparent)!important;border-radius:2px!important;padding:0 0 1px!important;cursor:pointer;color:inherit!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs #logprobs_generation_output .logprobs_output_token:is(:hover,.selected){background:rgba(44,111,197,.12)!important;border-bottom:1.5px solid var(--x-blue,#2c6fc5)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs #logprobs_generation_output .logprobs_output_prefix{opacity:.5;background:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs #logprobs_generation_output .logprobs_empty_state{display:block!important;font-size:15px!important;line-height:1.45!important;color:var(--v4-muted)!important;opacity:1!important;text-align:left!important;padding:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs #logprobs_selected_top_logprobs{display:flex!important;flex-direction:column!important;gap:0!important;padding:0!important;margin:0!important;border:0!important;background:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs .logprobs_top_candidate{position:relative!important;display:grid!important;grid-template-columns:1fr auto!important;align-items:center!important;column-gap:12px!important;width:100%!important;min-height:58px!important;margin:0!important;padding:8px 16px 16px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--v4-text)!important;font:400 16px/1.3 var(--cw-v4-font)!important;text-align:left!important;cursor:pointer}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs .logprobs_top_candidate+.logprobs_top_candidate{border-top:.5px solid var(--v4-line)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs .logprobs_top_candidate>span:last-child{color:var(--v4-muted)!important;font-variant-numeric:tabular-nums}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs .logprobs_top_candidate::after{content:""!important;position:absolute!important;left:16px!important;right:72px!important;bottom:10px!important;height:4px!important;border-radius:2px!important;background:linear-gradient(90deg,var(--x-blue,#2c6fc5) 0 var(--cwx-pct,0%),var(--x-swoff,#e9e9e7) var(--cwx-pct,0%))!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs .logprobs_top_candidate.selected>span:first-child::after{content:"当前";margin-left:6px;color:var(--x-blue,#2c6fc5);font-size:12.5px}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs .logprobs_top_candidate:not([disabled]):hover{background:var(--v4-hover)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-logprobs .logprobs_top_candidate[disabled]{cursor:default;opacity:.7}
+/* 「去偏好设置打开」跳过去时，那一行闪一下 */
+@keyframes cwx-flash{0%,60%{background:rgba(44,111,197,.14)}100%{background:transparent}}
+html[data-cw-v4] body .cwx-flash{animation:cwx-flash 1.6s ease-out}
+/* 管理聊天文件（.cwx-chats）：照 Chats 列表——灰色搜索框；白卡片里一行一条「气泡 · 名字 / 灰字信息 · ⋯」 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-raw:has(>#select_chat_search){background:none!important;box-shadow:none!important;padding:0!important;margin-bottom:12px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats #select_chat_search{display:block!important;box-sizing:border-box!important;width:100%!important;height:36px!important;margin:0!important;padding:0 12px 0 36px!important;border:0!important;border-radius:10px!important;background:rgba(118,118,128,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23848482' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='m16 16 4 4'/%3E%3C/svg%3E") 11px center/17px no-repeat!important;box-shadow:none!important;color:var(--v4-text)!important;font:400 16px/36px var(--cw-v4-font)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats #select_chat_div{display:block!important;max-height:none!important;height:auto!important;overflow:visible!important;padding:0!important;margin:0!important;background:none!important;border:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .select_chat_block_wrapper{display:block!important;margin:0!important;padding:0!important;border:0!important;background:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .select_chat_block_wrapper+.select_chat_block_wrapper .cwx-chatrow{box-shadow:inset 50px .5px 0 -50px var(--v4-line)!important;border-top:.5px solid var(--v4-line)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .select_chat_block{display:block!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;cursor:pointer}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .select_chat_block>:not(.cwx-chatrow){display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-chatrow{display:flex!important;align-items:center!important;gap:12px!important;min-height:62px!important;padding:8px 6px 8px 16px!important;box-sizing:border-box!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .select_chat_block:hover .cwx-chatrow{background:var(--v4-hover)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-chatic{flex:none!important;display:grid!important;place-items:center!important;width:20px!important;color:var(--v4-muted)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-chatic svg{width:18px!important;height:18px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-chatrow>.cwx-t{flex:1 1 auto!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:3px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-chatrow .cwx-title{display:block!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;color:var(--v4-text)!important;font:400 16px/1.3 var(--cw-v4-font)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-chatrow .cwx-desc{display:block!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;color:var(--v4-muted)!important;font:400 13.5px/1.3 var(--cw-v4-font)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-cur{margin-left:6px!important;color:var(--x-blue,#2c6fc5)!important;font-size:12.5px!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder .cwx-chats .cwx-chatrow>.cwx-more-menu{flex:none!important;position:relative!important}
+/* 被接过来的酒馆浮窗内容：去掉它自己的定位、尺寸、底色（#select_chat_popup 原来是绝对定位，会盖住弹出页的标题栏） */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder dialog.cw-v4-editor .cwx-host:is(#select_chat_popup){position:static!important;inset:auto!important;transform:none!important;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;overflow:visible!important}
+
+/* ---------- 2.0.274 删除消息（稿 design-options-menu-v1）：酒馆的删除模式换样子 ---------- */
+html[data-cw-v4][data-cw-delmode] body #dialogue_del_mes{display:none!important}
+html[data-cw-v4][data-cw-delmode] body #chat>.mes{position:relative!important;padding-left:44px!important;cursor:pointer!important;transition:background .12s!important}
+html[data-cw-v4][data-cw-delmode] body #chat>.mes.selected{background:rgba(44,111,197,.07)!important}
+html[data-cw-v4][data-claude-integrated-theme="night"][data-cw-delmode] body #chat>.mes.selected{background:rgba(106,166,239,.12)!important}
+/* 圆勾：没选是灰圈，选中是蓝底白勾 */
+html[data-cw-v4][data-cw-delmode] body #chat>.mes>.del_checkbox{z-index:5!important;appearance:none!important;-webkit-appearance:none!important;position:absolute!important;left:12px!important;top:16px!important;display:block!important;width:22px!important;height:22px!important;margin:0!important;padding:0!important;border:1.5px solid #c4c3be!important;border-radius:50%!important;background:transparent!important;box-shadow:none!important;pointer-events:none!important;opacity:1!important;transform:none!important}
+html[data-cw-v4][data-cw-delmode] body #chat>.mes>.del_checkbox:checked{border-color:#2c6fc5!important;background:#2c6fc5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12.5 4 4 8-9'/%3E%3C/svg%3E") center/14px no-repeat!important}
+html[data-cw-v4][data-cw-delmode] body #chat>.mes>.del_checkbox::before,html[data-cw-v4][data-cw-delmode] body #chat>.mes>.del_checkbox::after{content:none!important;display:none!important}
+/* 选的时候消息下面的按钮先不出来 */
+html[data-cw-v4][data-cw-delmode] body #chat#chat#chat>.mes :is(.mes_buttons,.mes_buttons>*,.claude-user-message-actions,.claude-reroll-button,.mesAvatarWrapper .avatar){visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+/* 操作条 */
+.cw-delbar,.cw-delbar-top{font:400 15px/1 var(--cw-v4-font);color:var(--v4-text,#141413)}
+.cw-delbar .cw-delbar-btn,.cw-delbar-top .cw-delbar-btn{appearance:none;border:0;background:none;font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+@media(min-width:701px){
+  .cw-delbar{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:5000;display:flex;align-items:center;gap:8px;padding:8px 8px 8px 16px;border-radius:12px;background:var(--v4-panel,#fff);box-shadow:0 8px 28px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.08)}
+  .cw-delbar .cw-delbar-count{margin-right:6px;white-space:nowrap}
+  .cw-delbar .cw-delbar-btn{height:32px;padding:0 13px;border:1px solid #e3e2dd;border-radius:8px;background:var(--v4-panel,#fff);white-space:nowrap}
+  .cw-delbar .cw-delbar-btn:hover{background:#f5f5f4}
+  .cw-delbar .cw-delbar-del{border-color:#c63a32;background:#c63a32;color:#fff}
+  .cw-delbar .cw-delbar-del:hover{background:#b0302a}
+  .cw-delbar .cw-delbar-del:disabled{opacity:.45;cursor:default}
+}
+@media(max-width:700px){
+  .cw-delbar-top{position:fixed;left:0;right:0;top:0;z-index:5000;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:56px;padding:0 16px;box-sizing:border-box;background:var(--cl-canvas,#f9f9f7);border-bottom:.5px solid rgba(0,0,0,.1)}
+  .cw-delbar-top .cw-delbar-cancel{justify-self:start;color:#2c6fc5;font-size:17px}
+  .cw-delbar-top .cw-delbar-all{justify-self:end;color:#2c6fc5;font-size:17px}
+  .cw-delbar-top .cw-delbar-count{font-weight:600;font-size:17px;white-space:nowrap}
+  .cw-delbar{position:fixed;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom));z-index:5000;display:flex;justify-content:center;pointer-events:none}
+  .cw-delbar .cw-delbar-del{pointer-events:auto;height:46px;padding:0 26px;border-radius:23px;background:#9a3434;color:#fff;font-weight:600;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+  .cw-delbar .cw-delbar-del:disabled{opacity:.4}
+  html[data-cw-v4][data-cw-delmode] body #send_form{visibility:hidden!important}
+}
+html[data-claude-integrated-theme="night"] .cw-delbar-top{background:#1f1e1d;border-bottom-color:rgba(255,255,255,.08)}
+html[data-claude-integrated-theme="night"] .cw-delbar{--v4-panel:#2b2a28}
+html[data-claude-integrated-theme="night"] .cw-delbar .cw-delbar-btn:not(.cw-delbar-del){border-color:#44433e}
+
+/* ---------- 2.0.275「+」→ 打开数据库（稿 design-composer-tools-v1）---------- */
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw:has(>#attachmentSearch){background:none!important;box-shadow:none!important;padding:0!important;margin-bottom:12px!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank #attachmentSearch{display:block!important;box-sizing:border-box!important;width:100%!important;height:36px!important;margin:0!important;padding:0 12px 0 36px!important;border:0!important;border-radius:10px!important;background:rgba(118,118,128,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23848482' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='m16 16 4 4'/%3E%3C/svg%3E") 11px center/17px no-repeat!important;box-shadow:none!important;color:var(--v4-text)!important;font:400 16px/36px var(--cw-v4-font)!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .attachmentsList{display:block!important;min-height:0!important;height:auto!important;margin:0!important;padding:0!important;border:0!important;background:none!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw[data-cwx-empty]>.attachmentsList::before{content:"还没有文件";display:block;padding:12px 16px;color:var(--v4-muted);font:400 16px/1.3 var(--cw-v4-font)}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .attachmentListItem{display:flex!important;align-items:center!important;gap:0!important;margin:0!important;padding:0 0 0 0!important;border:0!important;border-radius:0!important;background:none!important;opacity:1!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .attachmentListItem+.attachmentListItem{border-top:.5px solid var(--v4-line)!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .attachmentListItem>:not(.cwx-filerow):not(.attachmentListItemCheckboxContainer){display:none!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .attachmentListItemCheckboxContainer{padding-left:14px!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-filerow{flex:1 1 auto!important;min-width:0!important;display:flex!important;align-items:center!important;gap:12px!important;min-height:60px!important;padding:8px 6px 8px 16px!important;box-sizing:border-box!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .attachmentListItem.disabled .cwx-filerow>.cwx-t{opacity:.5}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-fileic{flex:none!important;display:grid!important;place-items:center!important;width:32px!important;height:32px!important;border-radius:8px!important;background:rgba(118,118,128,.1)!important;color:var(--v4-muted)!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-fileic svg{width:17px!important;height:17px!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-filerow>.cwx-t{flex:1 1 auto!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:3px!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-filerow .cwx-title{display:block!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;color:var(--v4-text)!important;font:400 16px/1.3 var(--cw-v4-font)!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-filerow .cwx-desc{display:block!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;color:var(--v4-muted)!important;font:400 13.5px/1.3 var(--cw-v4-font)!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-cur{margin-left:6px!important;color:var(--x-blue,#2c6fc5)!important;font-size:12.5px!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-cur.cwx-off{color:var(--v4-muted)!important}
+/* 「添加」按钮搬进卡片最后一行：蓝字「＋ 添加文件」 */
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw:has(>.openActionModalButton){padding:0!important;background:none!important;box-shadow:none!important;border-top:.5px solid var(--v4-line)!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw>.openActionModalButton{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important;width:100%!important;min-height:44px!important;margin:0!important;padding:0 16px!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;color:var(--x-blue,#2c6fc5)!important;font:400 16px/1 var(--cw-v4-font)!important;filter:none!important;opacity:1!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw>.openActionModalButton>span{font-size:0!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw>.openActionModalButton>span::after{content:"添加文件";font-size:16px}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw>.openActionModalButton>i{font-size:14px!important}
+/* 「添加」弹出的来源菜单（上传、网页、YouTube……）：照小菜单 */
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .cwx-raw:has(>.actionButtonsModal){padding:0!important;background:none!important;box-shadow:none!important;min-height:0!important;height:0!important;overflow:visible!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .actionButtonsModal{z-index:20!important;min-width:200px!important;padding:6px!important;border:1px solid var(--v4-line)!important;border-radius:12px!important;background:var(--v4-panel,#fff)!important;box-shadow:0 4px 18px rgba(0,0,0,.08)!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .actionButtonsModal .actionButton{display:flex!important;align-items:center!important;gap:10px!important;height:36px!important;padding:0 10px!important;border:0!important;border-radius:8px!important;background:none!important;color:var(--v4-text)!important;font:400 14px/1 var(--cw-v4-font)!important;cursor:pointer}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-databank .actionButtonsModal .actionButton:hover{background:var(--v4-hover)!important}
+
+/* ---------- 2.0.275「+」→ 生成图片：电脑右边二级菜单、手机底部操作菜单 ---------- */
+html[data-cw-v4] body #extensionsMenu #sd_gen.cw-on{background:var(--v4-hover)!important}
+@media(min-width:701px){
+  html[data-cw-v4] body #extensionsMenu #sd_gen::after{content:"";flex:none;margin-left:auto;width:14px;height:14px;background:currentColor;opacity:.55;-webkit-mask:var(--cw-v4-icon-chevr) center/contain no-repeat;mask:var(--cw-v4-icon-chevr) center/contain no-repeat}
+}
+html[data-cw-v4] body #sd_dropdown{display:none!important}
+/* 操作菜单（照 Claude App）：暗底；白卡片「灰标题 + 蓝字选项」，下面单独一块粗体「取消」 */
+.cw-asheet{position:fixed;inset:0;z-index:6000;font-family:var(--cw-v4-font)}
+.cw-asheet-dim{position:absolute;inset:0;background:rgba(0,0,0,.2);animation:cw-asheet-fade .2s ease-out}
+.cw-asheet-box{position:absolute;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;animation:cw-asheet-up .26s cubic-bezier(.2,.8,.2,1)}
+.cw-asheet[data-cw-out] .cw-asheet-dim{opacity:0;transition:opacity .18s}
+.cw-asheet[data-cw-out] .cw-asheet-box{transform:translateY(110%);transition:transform .18s ease-in}
+.cw-asheet-card,.cw-asheet-cancel{border-radius:14px;background:#fff;overflow:hidden}
+.cw-asheet-title{display:flex;align-items:center;justify-content:center;min-height:40px;padding:6px 16px;color:#6b6b69;font-size:14px;text-align:center;border-bottom:.5px solid #efefed}
+.cw-asheet-item,.cw-asheet-cancel{appearance:none;display:block;width:100%;min-height:44px;margin:0;padding:0 16px;border:0;background:none;color:#2c6fc5;font:400 17px/44px var(--cw-v4-font);text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cw-asheet-item+.cw-asheet-item{border-top:.5px solid #efefed}
+.cw-asheet-item:active,.cw-asheet-cancel:active{background:rgba(0,0,0,.05)}
+.cw-asheet-item.cw-danger{color:#9a3434}
+.cw-asheet-cancel{font-weight:600;background:#fff}
+html[data-claude-integrated-theme="night"] .cw-asheet-card,html[data-claude-integrated-theme="night"] .cw-asheet-cancel{background:#2b2a28}
+html[data-claude-integrated-theme="night"] .cw-asheet-title{color:#a3a19b;border-bottom-color:rgba(255,255,255,.07)}
+html[data-claude-integrated-theme="night"] .cw-asheet-item{color:#6aa6ef}
+html[data-claude-integrated-theme="night"] .cw-asheet-item+.cw-asheet-item{border-top-color:rgba(255,255,255,.07)}
+html[data-claude-integrated-theme="night"] .cw-asheet-cancel{color:#6aa6ef}
+html[data-claude-integrated-theme="night"] .cw-asheet-dim{background:rgba(0,0,0,.5)}
+@keyframes cw-asheet-up{from{transform:translateY(110%)}to{transform:none}}
+@keyframes cw-asheet-fade{from{opacity:0}to{opacity:1}}
+html[data-cw-v4] body .cw-asheet .cw-asheet-item,html[data-cw-v4] body .cw-asheet .cw-asheet-cancel{appearance:none!important;display:block!important;width:100%!important;min-height:44px!important;height:auto!important;margin:0!important;padding:0 16px!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:none!important;color:#2c6fc5!important;font:400 17px/44px var(--cw-v4-font)!important;text-align:center!important;filter:none!important;transform:none!important;outline:0!important}
+html[data-cw-v4] body .cw-asheet .cw-asheet-item+.cw-asheet-item{border-top:.5px solid #efefed!important}
+html[data-cw-v4] body .cw-asheet .cw-asheet-item.cw-danger{color:#9a3434!important}
+html[data-cw-v4] body .cw-asheet .cw-asheet-cancel{border-radius:14px!important;background:#fff!important;font-weight:600!important}
+html[data-cw-v4] body .cw-asheet .cw-asheet-item:active,html[data-cw-v4] body .cw-asheet .cw-asheet-cancel:active{background:rgba(0,0,0,.05)!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body .cw-asheet .cw-asheet-item,html[data-cw-v4][data-claude-integrated-theme="night"] body .cw-asheet .cw-asheet-cancel{color:#6aa6ef!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body .cw-asheet .cw-asheet-cancel{background:#2b2a28!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body .cw-asheet .cw-asheet-item+.cw-asheet-item{border-top-color:rgba(255,255,255,.07)!important}
+
+/* ---------- 2.0.275「+」→ Token 计数器 ---------- */
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens .cwx-raw:has(>#token_counter_textarea){padding:0!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens #token_counter_textarea{display:block!important;box-sizing:border-box!important;width:100%!important;min-height:140px!important;margin:0!important;padding:12px 16px!important;border:0!important;border-radius:11px!important;background:transparent!important;box-shadow:none!important;color:var(--v4-text)!important;font:400 16px/1.5 var(--cw-v4-font)!important;resize:vertical!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens #tokenized_chunks_display{display:block!important;margin:0!important;padding:12px 16px!important;font:400 15px/1.9 var(--cw-v4-font)!important;color:var(--v4-text)!important;white-space:pre-wrap;word-break:break-word}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens #tokenized_chunks_display>code,html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens #tokenized_chunks_display>span{border-radius:3px!important;padding:1px 0!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens .cwx-raw:has(>#token_counter_ids){padding:0!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens #token_counter_ids{display:block!important;box-sizing:border-box!important;width:100%!important;min-height:0!important;margin:0!important;padding:12px 16px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--v4-text)!important;font:400 13.5px/1.6 ui-monospace,Consolas,monospace!important;resize:none!important;field-sizing:content}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens #tokenized_chunks_display>:is(code,span){font:inherit!important;color:var(--v4-text)!important;border:0!important;box-shadow:none!important;margin:0!important;padding:2px 0!important;border-radius:2px!important}
+html[data-cw-v4] body :is(dialog.cwx-popup,#cwx#cwx#cwx#cwx#cwx) .cwx-tokens .cwx-sec:has([data-cwx-info=tcCount]){margin-top:14px!important}
+/* 接过来的酒馆弹窗（数据库、Token 计数器）：手机弹出页里内容外层不再是一张大灰卡 */
+html[data-cw-v4] body :is(dialog,#cw-spec).cw-st-sheet.cwx-popup .popup-content{background:transparent!important;padding:0!important;border-radius:0!important}
+
+/* ---------- 2.0.275「+」→ 展示图库：酒馆的拖动小窗改成弹出页（手机）/ 居中弹窗（电脑）---------- */
+html[data-cw-v4] body #movingDivs>.cw-gal-dim{position:fixed!important;inset:0!important;z-index:4100!important;background:rgba(0,0,0,.35)!important}
+html[data-cw-v4] body #movingDivs>#gallery.cw-gal{position:fixed!important;z-index:4101!important;display:flex!important;flex-direction:column!important;box-sizing:border-box!important;margin:0!important;padding:0!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;overflow:hidden!important;border:0!important;background:var(--cl-canvas,#f9f9f7)!important;color:var(--v4-text,#141413)!important;opacity:1!important;resize:none!important;font-family:var(--cw-v4-font)!important}
+html[data-cw-v4] body #movingDivs>#gallery.cw-gal>:is(.dragTitle,.panelControlBar,.flex-container){display:none!important}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-head{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:52px;padding:0 10px 0 6px}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-head h2{margin:0;font:600 17px/1 var(--cw-v4-font);color:inherit}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-head button{appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:6px;margin:0;box-shadow:none}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-back{justify-self:start;display:flex;align-items:center;gap:2px;font-size:17px!important}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-back svg{width:24px;height:24px}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-add{justify-self:end;color:#2c6fc5!important;font-weight:600!important;font-size:17px!important}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-x{display:none}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-body{flex:1 1 auto;min-height:0;overflow:auto;padding:4px 16px 40px}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-card{background:#fff;border-radius:11px;overflow:hidden}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-row{position:relative;display:flex;align-items:center;gap:12px;min-height:44px;padding:0 16px;box-sizing:border-box}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-row+.cw-gal-row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid #efefed}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-lab{flex:none;min-width:80px;font-size:16px}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-val{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:6px}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-val>input.gallery-folder-input{flex:1;min-width:0;height:32px!important;margin:0!important;padding:0 4px!important;border:0!important;background:transparent!important;box-shadow:none!important;text-align:right;color:var(--v4-muted,#6b6b69)!important;font:400 16px var(--cw-v4-font)!important}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-val>.right_menu_button{display:grid!important;place-items:center;width:28px;height:28px;margin:0!important;color:#2c6fc5!important;opacity:1!important;font-size:14px!important}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-val>select.gallery-sort-select{appearance:none;max-width:60%;height:32px;margin:0;padding:0 18px 0 4px;border:0;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 13' fill='none' stroke='%2333342e' stroke-width='1.1'%3E%3Cpath d='M1 4.5 4 1.5l3 3M1 8.5l3 3 3-3'/%3E%3C/svg%3E") right center/8px 13px no-repeat;color:var(--v4-muted,#6b6b69);font:400 16px var(--cw-v4-font);text-align:right;text-align-last:right}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-switch{appearance:none;position:relative;flex:none;width:51px;height:31px;margin:0;padding:0;border:0;border-radius:16px;background:#e9e9e7;cursor:pointer}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:left .15s}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-switch[aria-checked=true]{background:#c63a32}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-switch[aria-checked=true]::after{left:22px}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-act{appearance:none;width:100%;border:0;background:none;color:#2c6fc5;font:400 16px var(--cw-v4-font);text-align:left;cursor:pointer}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-lab2{margin:22px 16px 8px;color:var(--v4-muted,#6b6b69);font-size:15px}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-foot{margin:8px 16px 0;color:var(--v4-muted,#6b6b69);font-size:14px;line-height:1.35}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-imgs{padding:4px;min-height:60px}
+html[data-cw-v4] body #gallery.cw-gal #dragGallery{display:block!important;width:100%!important;margin:0!important;padding:0!important;background:none!important;border:0!important}
+html[data-cw-v4] body #gallery.cw-gal #dragGallery :is(.nGY2GThumbnail,.nGY2GThumbnailImage){border-radius:6px!important;border:0!important}
+html[data-cw-v4] body #gallery.cw-gal #dragGallery .nGY2GThumbnail{background:#ececea!important;background-image:none!important}
+html[data-cw-v4] body #gallery.cw-gal #dragGallery .nGY2GThumbnailLabel{display:none!important}
+@media(max-width:700px){
+  html[data-cw-v4] body #movingDivs>#gallery.cw-gal{left:0!important;right:0!important;top:44px!important;bottom:0!important;width:auto!important;height:auto!important;border-radius:12px 12px 0 0!important}
+}
+@media(min-width:701px){
+  html[data-cw-v4] body #movingDivs>#gallery.cw-gal{left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%)!important;width:min(720px,calc(100vw - 40px))!important;height:min(640px,86dvh)!important;border-radius:16px!important;background:#fff!important;box-shadow:0 24px 70px rgba(0,0,0,.25)!important}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-head{grid-template-columns:auto 1fr auto auto;height:56px;padding:0 14px 0 24px;border-bottom:1px solid #ebeae6;gap:8px}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-head h2{grid-column:1;grid-row:1;font:500 16px/1 var(--cw-v4-font)}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-back{display:none!important}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-add{grid-column:3;grid-row:1;height:32px;padding:0 13px!important;border:1px solid #e3e2dd!important;border-radius:8px!important;color:inherit!important;font-weight:400!important;font-size:14px!important}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-x{grid-column:4;grid-row:1;display:grid!important;place-items:center}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-x svg{width:18px;height:18px}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-body{padding:16px 24px 28px}
+  html[data-cw-v4] body #gallery.cw-gal .cw-gal-card{border:1px solid #ebeae6}
+}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #movingDivs>#gallery.cw-gal{background:#1f1e1d!important;color:#ece9e2!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #gallery.cw-gal .cw-gal-card{background:#2b2a28;border-color:#3a3936}
+@media(min-width:701px){html[data-cw-v4][data-claude-integrated-theme="night"] body #movingDivs>#gallery.cw-gal{background:#262624!important}}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #gallery.cw-gal .cw-gal-row+.cw-gal-row::before{border-top-color:rgba(255,255,255,.07)}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #gallery.cw-gal .cw-gal-switch{background:#45443f}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #gallery.cw-gal .cw-gal-val>select.gallery-sort-select{background-color:transparent!important;color:#a3a19b!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 13' fill='none' stroke='%23dcdad3' stroke-width='1.1'%3E%3Cpath d='M1 4.5 4 1.5l3 3M1 8.5l3 3 3-3'/%3E%3C/svg%3E")!important;border:0!important;box-shadow:none!important}
+html[data-cw-v4] body #gallery.cw-gal .cw-gal-val>select.gallery-sort-select{background-color:transparent!important;border:0!important;box-shadow:none!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #gallery.cw-gal .cw-gal-head h2,html[data-cw-v4][data-claude-integrated-theme="night"] body #gallery.cw-gal .cw-gal-back{color:#ece9e2!important}
+
+/* ---------- 2.0.276 载入动画（Lulu）：酒馆的齿轮换成 Claude thinking 动图 ---------- */
+html[data-cw-v4] body #load-spinner{--spinner-size:48px!important;width:48px!important;height:48px!important;font-size:0!important;animation:none!important;transform:none!important;background:url("../icons/claude-thinking.webp") center/contain no-repeat!important;color:transparent!important}
+html[data-cw-v4] body #load-spinner::before,html[data-cw-v4] body #load-spinner::after{content:none!important;display:none!important}
+/* 载入层本身不要卡片：只有动图（酒馆这一层是透明弹窗，被别的弹窗样式套上了白底） */
+html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup:has(#loader){background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup:has(#loader) :is(.popup-body,.popup-content){background:transparent!important;border:0!important;box-shadow:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup:has(#loader)>.cw-st-head{display:none!important}
+
+/* ---------- 2.0.277 侧栏（Lulu 选稿 design-desk-sidebar-v1「新版」，照 Snipaste_2026-10-05_01-44-14 Claude Desktop）---------- */
+@media(min-width:701px){
+  /* 入口：30 高、14 号字、小图标、圆角 7；两组之间 8 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{height:30px!important;min-height:30px!important;padding:0 10px!important;gap:10px!important;border-radius:7px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .clawd-rail-label{font:400 14px/20px var(--cw-v4-font)!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .drawer-icon{width:16px!important;height:16px!important;min-width:16px!important;flex:0 0 16px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button){margin-top:1px!important;margin-bottom:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:has(#user-settings-block){margin-top:9px!important}
+  /* 最近：小标题 13 号；每条一行「小头像 · 名字 · 灰字预览」，30 高；日期、第几幕那行不显示，⋯ 鼠标移上去才出来 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat{display:flex!important;align-items:center!important;gap:10px!important;height:30px!important;min-height:30px!important;padding:0 10px!important;border-radius:7px!important;grid-template-columns:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar img{flex:0 0 18px!important;width:18px!important;height:18px!important;min-width:18px!important;border-radius:5px!important;margin:0!important;align-self:center!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.recentChatInfo{flex:1 1 auto!important;min-width:0!important;display:block!important;margin:0!important;padding:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer{position:relative!important;display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important;grid-template-columns:none!important;grid-template-rows:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName{flex:0 0 auto!important;max-width:62%!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;font:400 14px/20px var(--cw-v4-font)!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName>.characterName{font:inherit!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatPreview{display:block!important;flex:1 1 auto!important;min-width:0!important;margin:0!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;color:var(--v4-muted)!important;font:400 13px/20px var(--cw-v4-font)!important;-webkit-line-clamp:unset!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>:is(.chatDate,.chatMeta){display:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatActions{position:absolute!important;right:-6px!important;top:50%!important;transform:translateY(-50%)!important;opacity:0!important;pointer-events:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat:is(:hover,:focus-within) .chatNameContainer>.chatActions{opacity:1!important;pointer-events:auto!important}
+  /* 用户：一行 48 高，上面细线；「小头像 · 零 · Max plan ⌄」 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button>.drawer-toggle{height:48px!important;min-height:48px!important;margin:0 -8px!important;padding:0 16px!important;gap:9px!important;border-radius:0!important;align-items:center!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-face.clawd-user-face{flex:0 0 22px!important;width:22px!important;min-width:22px!important;max-width:22px!important;height:22px!important;min-height:22px!important;max-height:22px!important;margin:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-meta{display:flex!important;flex-direction:row!important;align-items:baseline!important;gap:0!important;min-width:0!important;margin:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-name{font:400 14px/20px var(--cw-v4-font)!important;white-space:nowrap!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-plan{color:var(--v4-muted)!important;font:400 13px/20px var(--cw-v4-font)!important;white-space:nowrap!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-plan::before{content:" · "}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-more{margin-left:4px!important;position:static!important;font-size:10px!important;color:var(--v4-muted)!important}
+}
+/* 手机（Lulu：近期对话一屏太少）：入口 40→36、组间距收一点；近期每条 46→40、头像 28→24，一屏比 Claude App 多 */
+@media(max-width:700px){
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{min-height:36px!important;height:36px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat{min-height:40px!important;padding-top:4px!important;padding-bottom:4px!important;grid-template-columns:24px minmax(0,1fr)!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar img{width:24px!important;height:24px!important;min-width:24px!important}
 }

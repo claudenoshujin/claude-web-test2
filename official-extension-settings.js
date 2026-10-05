@@ -164,6 +164,7 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
     };
     visit(content);
     P.after?.({s,page,emit,newSec,newCard,foot,content});
+    if(P.tabs)tabs(s);
     root.prepend(page);root.classList.add('cwx-host');
     sync(s);
   }
@@ -197,8 +198,8 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
       const track=make('div','cwx-track');r.append(track);move(s,u.input,track);
       // 没有数字框的滑杆（系统语音的速率、音调）右边写当前值。
       const val=u.counter?null:make('span','cwx-rval');if(u.counter)move(s,u.counter,head);else head.append(val);
-      const n=u.input;u.paint=()=>{const lo=+n.min||0,hi=+n.max||100,p=Math.max(0,Math.min(100,(n.value-lo)/((hi-lo)||1)*100))+'%';if(track.style.getPropertyValue('--p')!==p)track.style.setProperty('--p',p);if(val&&val.textContent!==n.value)val.textContent=n.value;};
-      n.addEventListener('input',u.paint);s.undo.push(()=>n.removeEventListener('input',u.paint));return r;
+      const n=u.input;u.paint=()=>{const lo=+n.min||0,hi=+n.max||100,p=Math.max(0,Math.min(100,(n.value-lo)/((hi-lo)||1)*100))+'%';if(track.style.getPropertyValue('--p')!==p){track.style.setProperty('--p',p);n.style.setProperty('--p',p);n.style.setProperty('--fill',p);}if(val&&val.textContent!==n.value)val.textContent=n.value;};
+      n.addEventListener('input',u.paint);const hadStyle=n.getAttribute('style');s.undo.push(()=>{n.removeEventListener('input',u.paint);n.style.removeProperty('--p');n.style.removeProperty('--fill');if(hadStyle===null&&!n.getAttribute('style'))n.removeAttribute('style');});return r;
     }
     if(u.kind==='color'){const r=make('div','cwx-row cwx-field cwx-color');r.append(make('span','cwx-flab',title(u)));move(s,u.input,r);return r;}
     if(u.kind==='line'){
@@ -226,12 +227,14 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
   function sync(s){
     if(!s.page)return;
     for(const u of s.rows){
-      const self=u.proxy||u.kind==='note'?false:u.kind==='action'?cs(u.button).display==='none'||u.button.hidden:u.kind==='raw'?hiddenSelf(u.node)||(!u.node.hasAttribute('no-scripts-text')&&!u.node.children.length&&!u.node.textContent.trim()):hiddenSelf(u.self);
+      const self=u.proxy||u.kind==='note'?false:u.kind==='action'?cs(u.button).display==='none'||u.button.hidden:u.kind==='raw'?hiddenSelf(u.node)||(!u.node.hasAttribute('no-scripts-text')&&!u.node.matches(FIELD)&&!u.node.children.length&&!u.node.textContent.trim()):hiddenSelf(u.self);
       const off=self||u.gates.some(g=>g.hidden||cs(g).display==='none')||!!u.top&&hiddenSelf(u.top);
       if(u.row.hidden!==off)u.row.hidden=off;
       if(u.kind==='action'){const label=title(u)||L('操作'),span=u.row.querySelector('.cwx-title');if(span&&u.button.matches('input')&&span.textContent!==label)span.textContent=label;}
       u.paint?.();
     }
+    // plan 自己的显隐（作者注释的层数行、数据库的批量操作……）在算空卡片 / 空小节之前做。
+    s.plan.sync?.(s);
     for(const sec of s.secs){
       for(const c of sec.querySelectorAll(':scope>.cwx-card'))c.hidden=![...c.children].some(x=>!x.hidden);
       const any=[...sec.children].some(x=>!x.matches('.cwx-lab,.cwx-foot')&&!x.hidden);
@@ -239,7 +242,7 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
     }
     const first=s.secs.find(x=>!x.hidden);for(const x of s.secs)x.classList.toggle('cwx-first',x===first);
     const rt=s.restSec?.querySelector(':scope>.cwx-lab');if(rt){const v=L(s.plan.restTitle(s.root));if(rt.textContent!==v)rt.textContent=v;}
-    s.plan.sync?.(s);
+    if(s.plan.tabs)applyTab(s);
   }
   function schedule(s,rebuild){
     if(rebuild)s.dirty=true;if(s.frame)return;
@@ -277,6 +280,30 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
       build(s);watchRoot(s);
     }
   });
+
+  /* ---------- 2.0.274「≡」里的浮窗（作者注释 / CFG / Token 概率，稿 design-options-menu-v1）----------
+     酒馆把它们画成能拖的浮窗；这里等它显示出来，就把里面那块（holder）放进我们的弹出页（手机）/ 弹窗（电脑），
+     按 plan 重排；浮窗本身留在原处（显示状态不变，酒馆判断开关靠它），只是看不见。关掉时把浮窗收起。 */
+  const tagTab=key=>({sec})=>{const x=sec();if(x)x.dataset.cwxTab=key;};
+  // 一组单选框画成一行下拉：<select> 是我们新建的，改了就代点对应的单选框；酒馆那边变了，sync 时跟着变。
+  const radioPick=(name,title,labels)=>({emit,s})=>{
+    const radios=[...s.root.querySelectorAll(`input[type=radio][name="${name}"]`)];if(!radios.length)return;
+    const sel=make('select','text_pole cwx-proxy');for(const r of radios){const o=make('option','',L(labels[r.value]??r.value));o.value=r.value;sel.append(o);}
+    sel.addEventListener('change',()=>{const r=radios.find(x=>x.value===sel.value);if(r&&!r.checked)r.click();s.plan.sync?.(s);});
+    const u={kind:'select',input:sel,title,gates:[],self:sel,root:sel,proxy:true,name};
+    u.paint=()=>{const r=radios.find(x=>x.checked);if(r&&sel.value!==r.value)sel.value=r.value;};
+    emit(u);
+  };
+  // 酒馆的控件被包在单选框的 label 里（层数 / 作为），按 ID 直接拿出来排成一行。
+  const pick=(id,kind,title,extra={})=>({emit,s})=>{const n=s.root.querySelector('#'+id);if(n)emit({kind,input:n,title,gates:[],self:n,root:n,...extra});};
+  // 只读的一行（「距离下一次 · 0 条」）：一个只读输入框，值在 sync 里写。
+  const info=(key,title)=>({emit,s})=>{const n=make('input','text_pole cwx-readonly');n.readOnly=true;n.tabIndex=-1;n.dataset.cwxInfo=key;emit({kind:'field',input:n,title,gates:[],self:n,root:n,proxy:true});};
+  const rowOf=(s,n)=>s.rows.find(u=>u.input===n)?.row;
+  const anDepthRows=(s,radio,depth,role)=>{const on=s.root.querySelector(`input[name="${radio}"][value="1"]`)?.checked;for(const id of [depth,role]){const r=rowOf(s,s.root.querySelector('#'+id));if(r&&r.hidden===on)r.hidden=!on;}};
+  const footOf=(s,id)=>rowOf(s,s.root.querySelector('#'+id))?.querySelector('.cwx-foot');
+  const setText=(n,v)=>{if(n&&n.textContent!==v)n.textContent=v;};
+  const charName=()=>{try{const c=win.SillyTavern?.getContext?.();return c?.name2||'';}catch{return '';}};
+  const POS={2:'主提示词之前',0:'主提示词之后',1:'聊天中的某一层'};
 
   /* ---------- 各扩展的排法（标题文字照稿） ---------- */
   const has=sel=>root=>!!root.querySelector(sel);
@@ -365,8 +392,224 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
         {items:[proxy('导出',()=>lastRegexRow?.isConnected&&lastRegexRow.querySelector('.export_regex')),proxy('移到全局正则',()=>lastRegexRow?.isConnected&&!lastRegexRow.closest('#saved_regex_scripts')&&lastRegexRow.querySelector('.move_to_global')),proxy('移到预设正则',()=>lastRegexRow?.isConnected&&!lastRegexRow.closest('#saved_preset_scripts')&&lastRegexRow.querySelector('.move_to_preset')),proxy('移到角色正则',()=>lastRegexRow?.isConnected&&!lastRegexRow.closest('#saved_scoped_scripts')&&lastRegexRow.querySelector('.move_to_scoped'))]},
         {items:[proxy('删除这条正则',()=>lastRegexRow?.isConnected&&lastRegexRow.querySelector('.delete_regex'),true)]}],
       rest:false},
+    // 作者注释：三页「本聊天 / 角色 / 默认」，每页同一套：注释、插入到哪里（位置 · 层数 · 作为）、多久插一次、纳入世界书扫描。
+    an:{content:root=>root,cls:'cwx-tabbed',tabs:[['chat','本聊天'],['char','角色'],['def','默认']],
+      label:{extension_floating_prompt:'注释',extension_floating_allow_wi_scan:'纳入世界书扫描',extension_floating_interval:'每几条用户消息',
+        extension_use_floating_chara:'使用角色注释',extension_floating_chara:'角色的注释',extension_floating_default:'注释',extension_default_interval:'每几条用户消息'},
+      desc:{extension_floating_prompt:' ',extension_floating_allow_wi_scan:'注释里的词也能触发世界书条目',extension_floating_chara:'只存在本地，导出角色卡不会带上。',extension_floating_default:' '},
+      long:['#extension_floating_prompt','#extension_floating_chara','#extension_floating_default'],field:['#extension_floating_interval','#extension_default_interval'],
+      layout:[
+        {title:'',items:[tagTab('chat'),'#extension_floating_prompt']},
+        {title:'插入到哪里',items:[tagTab('chat'),radioPick('extension_floating_position','位置',POS),pick('extension_floating_depth','field','层数'),pick('extension_floating_role','select','作为'),'foot:「层数」是从最新一条消息往上数；0 就是紧贴在最后。']},
+        {title:'多久插一次',items:[tagTab('chat'),'#extension_floating_interval',info('anCounter','距离下一次'),'foot:0 是不插，1 是每条都插。']},
+        {title:'',items:[tagTab('chat'),'#extension_floating_allow_wi_scan']},
+        {title:'',items:[tagTab('char'),'#extension_use_floating_chara',radioPick('extension_floating_char_position','和聊天注释',{0:'替换聊天注释',1:'放在前面',2:'放在后面'})]},
+        {title:'',items:[tagTab('char'),'#extension_floating_chara']},
+        {title:'',items:[tagTab('def'),'#extension_floating_default']},
+        {title:'插入到哪里',items:[tagTab('def'),radioPick('extension_default_position','位置',POS),pick('extension_default_depth','field','层数'),pick('extension_default_role','select','作为'),'foot:「层数」是从最新一条消息往上数；0 就是紧贴在最后。']},
+        {title:'多久插一次',items:[tagTab('def'),'#extension_default_interval','foot:0 是不插，1 是每条都插。']}],
+      rest:false,
+      sync:s=>{
+        anDepthRows(s,'extension_floating_position','extension_floating_depth','extension_floating_role');
+        anDepthRows(s,'extension_default_position','extension_default_depth','extension_default_role');
+        const tk=id=>(s.root.querySelector('#'+id)?.textContent||'0').trim();
+        setText(footOf(s,'extension_floating_prompt'),`${tk('extension_floating_prompt_token_counter')} 个 Token。只对这个聊天生效；检查点会从上一个聊天继承。`);
+        setText(footOf(s,'extension_floating_default'),`${tk('extension_floating_default_token_counter')} 个 Token。新聊天会自动带上这段注释。`);
+        const name=charName();setText(rowOf(s,s.root.querySelector('#extension_floating_chara'))?.querySelector('.cwx-blab'),name?`${name} 的注释`:L('角色的注释'));
+        const c=s.page?.querySelector('[data-cwx-info=anCounter]'),raw=(s.root.querySelector('#extension_floating_counter')?.textContent||'').trim();
+        if(c){const v=/^\d+$/.test(raw)?raw+' 条':L('没开');if(c.value!==v)c.value=v;}
+      }},
+    // CFG 缩放：三页「本聊天 / 角色 / 全局」：缩放比例滑杆、负面 / 正面提示词；「合并」（原来叫 CFG 提示词级联）放在本聊天页。
+    cfg:{content:root=>root,cls:'cwx-tabbed',tabs:[['chat','本聊天'],['char','角色'],['global','全局']],
+      label:{chat_cfg_guidance_scale:'缩放比例',chara_cfg_guidance_scale:'缩放比例',global_cfg_guidance_scale:'缩放比例',chat_cfg_negative_prompt:'负面提示词',chara_cfg_negative_prompt:'负面提示词',global_cfg_negative_prompt:'负面提示词',
+        chat_cfg_positive_prompt:'正面提示词',chara_cfg_positive_prompt:'正面提示词',global_cfg_positive_prompt:'正面提示词',groupchat_cfg_use_chara:'用角色的缩放比例',cfg_prompt_separator:'分隔符',cfg_prompt_insertion_depth:'插入深度'},
+      labelOf:c=>c.name==='cfg_prompt_combine'?({0:'带上本聊天的提示词',1:'带上角色的提示词',2:'带上全局的提示词'}[c.value]||''):'',
+      desc:{chat_cfg_positive_prompt:'只对这个聊天生效。缩放比例 1 是不启用；只有支持 CFG 的后端（如 KoboldCpp、Ooba）会用到。',chara_cfg_positive_prompt:'会自动用在这个角色的聊天里。',global_cfg_positive_prompt:'每个聊天默认用这里的，除非聊天或角色自己设了。'},
+      long:['#chat_cfg_negative_prompt','#chat_cfg_positive_prompt','#chara_cfg_negative_prompt','#chara_cfg_positive_prompt','#global_cfg_negative_prompt','#global_cfg_positive_prompt'],field:['#cfg_prompt_separator','#cfg_prompt_insertion_depth'],
+      layout:[
+        {title:'',items:[tagTab('chat'),'#chat_cfg_guidance_scale','#groupchat_cfg_use_chara']},
+        {title:'',items:[tagTab('chat'),'#chat_cfg_negative_prompt','#chat_cfg_positive_prompt']},
+        {title:'合并',items:[tagTab('chat'),'input[name=cfg_prompt_combine]','#cfg_prompt_separator','#cfg_prompt_insertion_depth','foot:打开后，这几处的提示词会拼在一起发出去。']},
+        {title:'',items:[tagTab('char'),'#chara_cfg_guidance_scale']},
+        {title:'',items:[tagTab('char'),'#chara_cfg_negative_prompt','#chara_cfg_positive_prompt']},
+        {title:'',items:[tagTab('global'),'#global_cfg_guidance_scale']},
+        {title:'',items:[tagTab('global'),'#global_cfg_negative_prompt','#global_cfg_positive_prompt']}],
+      rest:false},
+    // Token 概率：上面「最后一条回复」（酒馆画的每个词，点一个选中），下面「「词」的候选」（每行 词 · 概率条 · 百分比）。
+    // 内容都是酒馆随时重画的，整块原样放进卡片；概率条、中文提示在 sync 里补。
+    logprobs:{content:root=>root,cls:'cwx-logprobs',raw:['#logprobs_generation_output','#logprobs_selected_top_logprobs'],
+      label:{logprobsReroll:'从续写开头重新生成'},
+      layout:[
+        {title:'最后一条回复',items:['#logprobs_generation_output',({emit})=>{const b=make('button','');b.type='button';b.addEventListener('click',goTokenSetting);emit({kind:'action',button:b,title:'去偏好设置打开',gates:[],self:b,root:b,proxy:true,lpGo:true});},'foot:点一个词，下面列出 AI 当时考虑过的其他词。','#logprobsReroll']},
+        {title:'候选',items:['#logprobs_selected_top_logprobs','foot:点一个候选：换成这个词，从这里往后重新续写。']}],
+      rest:false,
+      sync:s=>{
+        const out=s.root.querySelector('#logprobs_generation_output'),empty=out?.querySelector('.logprobs_empty_state');
+        const off=!!empty&&(empty.dataset.cwxOff==='1'||!!empty.querySelector('b'));   // 没打开功能时酒馆写「Enable <b>Request token probabilities</b>…」
+        if(empty&&!empty.dataset.cwx){empty.dataset.cwx='1';if(off)empty.dataset.cwxOff='1';const tx=empty.textContent;
+          empty.textContent=L(off?'Token 概率没打开。打开后，每条回复都能看到 AI 在每个词上考虑过的其他词。':/Smooth Streaming/i.test(tx)?'开着「平滑流式」时看不到 Token 概率。':/in progress/i.test(tx)?'正在生成……':'这条消息没有 Token 概率。');}
+        const go=s.rows.find(u=>u.lpGo);if(go&&go.row.hidden===off)go.row.hidden=!off;
+        // 有内容时那句「点一个词」才有用
+        const sec0=s.secs[0],f0=sec0?.querySelector(':scope>.cwx-foot');if(f0&&f0.hidden!==!!empty)f0.hidden=!!empty;
+        const list=s.root.querySelector('#logprobs_selected_top_logprobs');
+        for(const c of list?.querySelectorAll('.logprobs_top_candidate')||[]){
+          const sp=c.querySelectorAll(':scope>span'),pct=parseFloat(sp[1]?.textContent)||0,w=Math.max(0,Math.min(100,pct))+'%';
+          if(c.style.getPropertyValue('--cwx-pct')!==w)c.style.setProperty('--cwx-pct',w);
+          if(sp[1]&&!sp[1].dataset.cwx){sp[1].dataset.cwx='1';sp[1].textContent=pct.toFixed(1)+'%';}
+          if(sp[0]&&sp[0].textContent==='<others>'){sp[0].textContent=L('其他');}
+        }
+        const sel=s.root.querySelector('.logprobs_output_token.selected')?.textContent?.trim();
+        const lab=s.secs[1]?.querySelector(':scope>.cwx-lab');if(lab)setText(lab,sel?`「${sel}」的候选`:L('候选'));
+      }},
+    // 管理聊天文件（照 Chats 列表）：搜索框、聊天一行一条（气泡 · 名字 · 「几条消息 · 大小 · 日期」· ⋯），正在用的标「当前」；
+    // 原来行右边的改名 / 导出 / 纯文本 / 删除收进 ⋯（代点原按钮）；「新聊天 / 导入聊天 / 备份」放在列表下面的蓝字行。
+    chats:{content:root=>root,cls:'cwx-chats',raw:['#select_chat_search','#select_chat_div'],
+      // 2.0.276（Lulu：点一条聊天，加载完后弹出页又闪一下）：酒馆加载时盖一层转圈，转完才收我们的弹出页；改成点下去就开始收。
+      after:({s,page})=>{const pick=e=>{if(!e.target.closest('.select_chat_block')||e.target.closest('.cwx-more-menu'))return;win.setTimeout(()=>page.closest('dialog.cw-v4-editor')?._cwShut?.(),0);};page.addEventListener('click',pick);s.undo.push(()=>page.removeEventListener('click',pick));},
+      label:{newChatFromManageScreenButton:'新聊天',chat_import_button:'导入聊天'},safe:['#select_chat_cross'],
+      layout:[{title:'',items:['#select_chat_search']},{title:'',items:['#select_chat_div']},
+        {title:'',items:['#newChatFromManageScreenButton','#chat_import_button',({emit,s})=>{for(const b of s.root.querySelectorAll('[name=selectChatPopupHeader]>button.menu_button,[name=selectChatPopupHeader]>.menu_button:not([id])'))emit({kind:'action',button:b,title:textOf(b)||L('操作'),gates:[],self:b,root:b});},'foot:点一条打开；⋯ 里有改名、导出、删除。']}],
+      rest:false,
+      sync:s=>{
+        const q=s.root.querySelector('#select_chat_search');if(q&&q.placeholder!==L('搜索聊天'))q.placeholder=L('搜索聊天');
+        for(const w of s.root.querySelectorAll('#select_chat_div .select_chat_block_wrapper')){
+          const blk=w.querySelector('.select_chat_block');if(!blk||blk.querySelector(':scope>.cwx-chatrow'))continue;
+          const name=blk.querySelector('.select_chat_block_filename')?.textContent.trim()||'';
+          const num=(blk.querySelector('.chat_messages_num')?.textContent.match(/\d+/)||[''])[0];
+          const size=(blk.querySelector('.chat_file_size')?.textContent||'').replace(/[(),\s]/g,'').replace(/([\d.])([KMG]?B)$/i,'$1 $2');
+          const date=blk.querySelector('.chat_messages_date')?.textContent.trim()||'';
+          const row=make('div','cwx-chatrow'),ic=make('span','cwx-chatic');ic.append(icon('chat'));
+          const t=make('span','cwx-t'),nm=make('span','cwx-title',name),meta=make('small','cwx-desc',[num&&`${num} 条消息`,size,date].filter(Boolean).join(' · '));
+          if(blk.getAttribute('highlight')==='true')nm.append(make('span','cwx-cur',L('当前')));
+          t.append(nm,meta);
+          const m=make('details','cwx-more-menu'),sm=make('summary','');sm.append(icon('dots'));sm.setAttribute('aria-label',L('更多'));const list=make('div','cwx-more-list');m.append(sm,list);
+          m.addEventListener('click',e=>e.stopPropagation());
+          for(const [label,sel,red] of [['改名','.renameChatButton'],['导出为 JSONL','.exportRawChatButton'],['导出为纯文本','.exportChatButton'],['删除','.PastChat_cross',true]]){
+            const b=blk.querySelector(sel);if(!b)continue;
+            list.append(button(L(label),e=>{e.stopPropagation();m.open=false;b.click();},'cwx-more-item'+(red?' cwx-red':'')));
+          }
+          row.append(ic,t,m);blk.prepend(row);
+        }
+      }},
+    // 数据库（「+」→ 打开数据库，稿 design-composer-tools-v1）：搜索框、排序、批量编辑；全局 / 角色 / 聊天三组，每组一张卡片，
+    // 文件一行一个（图标 · 名字 · 大小和日期 · ⋯，⋯ 里代点原来那排小图标），卡片最后一行是「添加文件」（就是酒馆原来的「添加」按钮，搬过来，菜单才贴着它）。
+    dataBank:{content:root=>root,cls:'cwx-databank',
+      raw:['#attachmentSearch','.globalAttachmentsList','.characterAttachmentsList','.chatAttachmentsList','.globalAttachmentsTitle .openActionModalButton','.characterAttachmentsTitle .openActionModalButton','.chatAttachmentsTitle .openActionModalButton','.actionButtonsModal'],
+      label:{attachmentSort:'排序'},labelOf:c=>c.matches('.attachmentsBulkEditCheckbox')?'批量编辑':c.matches('.bulkActionSelectAll')?'全选':c.matches('.bulkActionSelectNone')?'全不选':c.matches('.bulkActionDisable')?'停用选中的':c.matches('.bulkActionEnable')?'启用选中的':c.matches('.bulkActionDelete')?'删除选中的':'',
+      layout:[
+        {title:'',items:['#attachmentSearch']},
+        {title:'',items:['#attachmentSort','.attachmentsBulkEditCheckbox','foot:支持纯文本、PDF、Markdown、HTML、EPUB。也可以直接把文件拖进来。']},
+        {title:'',items:['.bulkActionSelectAll','.bulkActionSelectNone','.bulkActionDisable','.bulkActionEnable','|','.bulkActionDelete']},
+        {title:'全局',card:true,items:['.globalAttachmentsList','.globalAttachmentsTitle .openActionModalButton','foot:所有聊天、所有角色都能用。']},
+        {title:'角色',card:true,items:['.characterAttachmentsList','.characterAttachmentsTitle .openActionModalButton','foot:这个角色的所有聊天都能用。只存在本地，导出角色卡不带。']},
+        {title:'聊天',card:true,items:['.chatAttachmentsList','.chatAttachmentsTitle .openActionModalButton','foot:只有这个聊天能用。']},
+        {title:'',items:['.actionButtonsModal']}],
+      rest:false,
+      after:({s,page})=>{const cb=page.querySelector('.attachmentsBulkEditCheckbox')||s.root.querySelector('.attachmentsBulkEditCheckbox');if(cb?.hidden){cb.hidden=false;s.undo.push(()=>{cb.hidden=true;});}},
+      sync:s=>{
+        const q=s.root.querySelector('#attachmentSearch');if(q&&q.placeholder!==L('搜索文件'))q.placeholder=L('搜索文件');
+        const bulk=!!s.root.querySelector('.attachmentsBulkEditCheckbox')?.checked;
+        for(const u of s.rows)if(u.kind==='action'&&u.button.closest('.attachmentBulkActionsContainer')&&u.row.hidden===bulk)u.row.hidden=!bulk;
+        const nm=sel=>(s.root.querySelector(sel)?.textContent||'').trim();
+        const labs=s.secs.map(x=>x.querySelector(':scope>.cwx-lab')).filter(Boolean);
+        for(const lab of labs){if(lab.textContent.startsWith(L('角色'))){const n=nm('.characterAttachmentsName');setText(lab,n?L('角色')+' · '+n:L('角色'));}
+          else if(lab.textContent.startsWith(L('聊天'))){setText(lab,nm('.chatAttachmentsName')?L('聊天 · 当前聊天'):L('聊天'));}}
+        // 空的组也要看得见（「还没有文件」），不然只剩一行「添加文件」
+        for(const u of s.rows)if(u.kind==='raw'&&u.node.matches('.attachmentsList')){const empty=!u.node.children.length;if(u.row.hidden&&empty)u.row.hidden=false;u.row.toggleAttribute('data-cwx-empty',empty);}
+        for(const it of s.root.querySelectorAll('.attachmentsList .attachmentListItem')){
+          if(it.querySelector(':scope>.cwx-filerow'))continue;
+          const row=make('div','cwx-filerow'),ic=make('span','cwx-fileic');ic.append(icon('file'));
+          const t=make('span','cwx-t'),name=make('span','cwx-title',it.querySelector('.attachmentListItemName')?.textContent||'');
+          const meta=make('small','cwx-desc',[it.querySelector('.attachmentListItemSize')?.textContent,it.querySelector('.attachmentListItemCreated')?.textContent].filter(Boolean).join(' · '));
+          if(it.classList.contains('disabled'))name.append(make('span','cwx-cur cwx-off',L('已停用')));
+          t.append(name,meta);
+          const m=make('details','cwx-more-menu'),sm=make('summary','');sm.append(icon('dots'));sm.setAttribute('aria-label',L('更多'));const list=make('div','cwx-more-list');m.append(sm,list);
+          for(const [label,sel,red] of [['查看内容','.viewAttachmentButton'],['编辑','.editAttachmentButton'],['停用','.disableAttachmentButton'],['启用','.enableAttachmentButton'],['移动','.moveAttachmentButton'],['下载','.downloadAttachmentButton'],['删除','.deleteAttachmentButton',true]]){
+            const b=it.querySelector(sel);if(!b||b.style.display==='none')continue;
+            list.append(button(L(label),e=>{e.stopPropagation();m.open=false;b.click();},'cwx-more-item'+(red?' cwx-red':'')));
+          }
+          row.append(ic,t,m);it.append(row);
+        }
+      }},
+    // Token 计数器（「+」，稿 design-composer-tools-v1）：「文本」一张大卡片直接输入；「Token 数 · 分词器」两行；有内容时才出现「分词结果」和「Token IDs」。
+    tokenCounter:{content:root=>root,cls:'cwx-tokens',raw:['#token_counter_textarea','#tokenized_chunks_display','#token_counter_ids'],
+      layout:[
+        {title:'文本',items:['#token_counter_textarea']},
+        {title:'',items:[info('tcCount','Token 数'),info('tcTok','分词器')]},
+        {title:'分词结果',items:['#tokenized_chunks_display','foot:每个色块是一个 Token。']},
+        {title:'Token IDs',items:['#token_counter_ids',({emit})=>{const b=make('button','');b.type='button';b.addEventListener('click',()=>{const v=doc.getElementById('token_counter_ids')?.value||doc.getElementById('token_counter_ids')?.textContent||'';win.navigator.clipboard?.writeText(v).then(()=>win.toastr?.success(L('已复制。')),()=>{});});emit({kind:'action',button:b,title:'复制',gates:[],self:b,root:b,proxy:true});}]}],
+      rest:false,
+      sync:s=>{
+        const c=s.page?.querySelector('[data-cwx-info=tcCount]'),v=(s.root.querySelector('#token_counter_result')?.textContent||'0').trim();if(c&&c.value!==v)c.value=v;
+        const tk=s.page?.querySelector('[data-cwx-info=tcTok]');if(tk&&!tk.value){const p=[...s.root.querySelectorAll('p')].find(x=>/[:：]/.test(x.textContent));const n=(p?.textContent.split(/[:：]/).slice(1).join(':')||'').trim();if(n)tk.value=n;}
+        // 每个 Token 的颜色是酒馆写在行内的，被全局的 code 底色盖掉了：用行内 !important 补回来，淡一点（照稿）。
+        for(const c of s.root.querySelectorAll('#tokenized_chunks_display>code:not([data-cwx])')){c.dataset.cwx='1';const bg=c.style.backgroundColor;if(bg)c.style.setProperty('background-color','color-mix(in srgb, '+bg+' 55%, transparent)','important');}
+        const chunks=s.root.querySelector('#tokenized_chunks_display'),has=!!chunks&&chunks.textContent.trim()!=='—'&&chunks.textContent.trim()!=='';
+        for(const u of s.rows)if(u.kind==='raw'&&u.node.matches('#tokenized_chunks_display,#token_counter_ids')&&u.row.hidden===has)u.row.hidden=!has;
+        for(const u of s.rows)if(u.kind==='action'&&u.title==='复制'&&u.row.hidden===has)u.row.hidden=!has;
+        for(const sec of s.secs)for(const f of sec.querySelectorAll(':scope>.cwx-foot'))if(sec.querySelector('#tokenized_chunks_display')&&f.hidden===has)f.hidden=!has;
+      }},
     generic:{}
   };
+  // 「去偏好设置打开」：关掉这页，打开偏好设置，用设置里的搜索找到「请求 Token 概率」那个开关并滚过去。
+  function goTokenSetting(){
+    const cb=doc.getElementById('request_token_probabilities');
+    for(const [panel,s] of hosted)if(panel.id==='logprobsViewer')s.page?.closest('dialog.cw-v4-editor')?._cwShut?.();
+    const tog=doc.getElementById('user-settings-block')?.closest('.drawer')?.querySelector(':scope>.drawer-toggle');
+    if(!doc.getElementById('user-settings-block')?.classList.contains('openDrawer'))tog?.click();
+    win.setTimeout(()=>{
+      const q=doc.querySelector('.cw-v4-shell:not([hidden]) .cw-v4-search input');
+      if(q){q.value='Token';q.dispatchEvent(new win.Event('input',{bubbles:true}));}
+      win.setTimeout(()=>{const row=cb?.closest('.cw-v4-row,.checkbox_label,label')||cb;row?.scrollIntoView({block:'center'});row?.classList.add('cwx-flash');win.setTimeout(()=>row?.classList.remove('cwx-flash'),1600);},350);
+    },450);
+  }
+  /* 分页（本聊天 / 角色 / 默认）：顶上一个分段切换，只显示那一页的小节（行内 display，外面的通用规则权重太高，CSS 压不过）。 */
+  function applyTab(s){const now=s.page?.dataset.cwxTabNow;if(!now)return;for(const sec of s.secs){const off=!!sec.dataset.cwxTab&&sec.dataset.cwxTab!==now;if(off!==(sec.style.display==="none")){if(off)sec.style.setProperty("display","none","important");else sec.style.removeProperty("display");}}}
+  function tabs(s){
+    const list=s.plan.tabs;if(!list||!s.page)return;
+    const seg=make('div','cwx-seg');seg.setAttribute('role','tablist');
+    const now=s.tab||list[0][0];s.page.dataset.cwxTabNow=now;
+    for(const [key,label] of list){const b=button(L(label),()=>{s.tab=key;s.page.dataset.cwxTabNow=key;applyTab(s);for(const x of seg.children)x.setAttribute('aria-selected',String(x.dataset.key===key));},'cwx-seg-btn');
+      b.dataset.key=key;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(key===now));seg.append(b);}
+    s.page.prepend(seg);
+  }
+  const PANELS=[{panel:'floatingPrompt',holder:'[name=floatingPromptHolder]',title:'作者注释',plan:'an'},{panel:'cfgConfig',holder:'[name=cfgConfigHolder]',title:'CFG 缩放',plan:'cfg'},{panel:'logprobsViewer',holder:'.logprobs_panel_content',title:'Token 概率',plan:'logprobs'},
+    {panel:'shadow_select_chat_popup',holder:'#select_chat_popup',title:()=>{const n=charName();return n?n+' 的聊天':'聊天记录';},plan:'chats'}];
+  const hosted=new Map();
+  function hostPanel(def){
+    const panel=doc.getElementById(def.panel),holder=panel?.querySelector(def.holder);if(!holder||hosted.has(panel))return;
+    const s=session(holder,PLANS[def.plan]);hosted.set(panel,s);panel.classList.add('cwx-panel-hosted');
+    try{build(s);}catch(e){console.error('[Claude Web] panel',e);teardown(s);sessions.delete(s);hosted.delete(panel);panel.classList.remove('cwx-panel-hosted');return;}
+    watchRoot(s);
+    // 酒馆显示浮窗之后才（不发事件地）填值（CFG 滑杆等），晚一点再同步两次。
+    win.requestAnimationFrame(()=>!s.closed&&sync(s));win.setTimeout(()=>!s.closed&&sync(s),300);
+    // 弹出页 / 弹窗的样式都写在设置侧栏（#top-settings-holder）里；浮窗在侧栏外面，先把 holder 挪进侧栏里一个零大小的格子，关的时候放回去。
+    const dock=make('div','cwx-panel-dock'),mark=doc.createComment('cwx-panel-return');holder.before(mark);(doc.getElementById('top-settings-holder')||doc.body).append(dock);dock.append(holder);
+    openEditor(holder,typeof def.title==='function'?def.title():L(def.title),'',{onClose:()=>{close(s);if(mark.parentNode)mark.replaceWith(holder);dock.remove();hosted.delete(panel);
+      // 2.0.276（Lulu：关掉后左上角闪出酒馆原来的浮窗）：酒馆给 display 加了过渡（allow-discrete），设成 none 以后还要显示一会儿；
+      // 先收起，等过渡完了再去掉「藏着」的标记（期间又打开了就不动）。
+      panel.style.display='none';win.setTimeout(()=>{if(!hosted.has(panel))panel.classList.remove('cwx-panel-hosted');},600);}});
+  }
+  // 酒馆显示浮窗（display:flex）就接过来；酒馆自己收起时，我们的弹窗也关。
+  const panelWatch=new win.MutationObserver(()=>{
+    if(!doc.documentElement.hasAttribute('data-cw-v4'))return;
+    for(const def of PANELS){const panel=doc.getElementById(def.panel);if(!panel)continue;
+      const showing=panel.style.display&&panel.style.display!=='none';
+      if(showing&&!hosted.has(panel))hostPanel(def);
+      else if(!showing&&hosted.has(panel))hosted.get(panel).page?.closest('dialog.cw-v4-editor')?._cwShut?.();}
+  });
+  for(const def of PANELS){const panel=doc.getElementById(def.panel);if(panel)panelWatch.observe(panel,{attributes:true,attributeFilter:['style']});}
+  /* 酒馆用 callGenericPopup 弹的整页窗口（数据库……）：Popup 把 <dialog> 直接加在 body 下，这里只看 body 的直接子节点（不看子树，聊天流式输出时不会被叫醒）。 */
+  const POPUP_PLANS=[['.dataBankAttachments','dataBank'],['.wide100p:has(>.justifyLeft>#token_counter_textarea)','tokenCounter']];
+  const bodyWatch=new win.MutationObserver(list=>{
+    for(const [root,s] of popups)if(!root.isConnected){close(s);popups.delete(root);}
+    if(!doc.documentElement.hasAttribute('data-cw-v4'))return;
+    for(const m of list)for(const d of m.addedNodes){if(d.nodeType!==1||!d.matches('dialog'))continue;
+      for(const [sel,plan] of POPUP_PLANS){const root=d.querySelector(sel);if(!root||popups.has(root))continue;
+        const s=session(root,PLANS[plan]);popups.set(root,s);d.classList.add('cwx-popup');
+        try{build(s);}catch(e){console.error('[Claude Web] popup',e);teardown(s);popups.delete(root);continue;}watchRoot(s);}}
+  });
+  bodyWatch.observe(doc.body,{childList:true});
 
   /* 快速回复：每个按钮一行「名字 + 内容预览 · ⋯」，点整行进酒馆自己的编辑页（我们重排过）；左边把手照旧拖动排序。 */
   function li(s,n){if(n.classList.contains('cwx-li'))return;n.classList.add('cwx-li');s.undo.push(()=>n.classList.remove('cwx-li'));}
@@ -423,5 +666,5 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
     watch.observe(doc.body,{childList:true,subtree:true});
     openEditor(root,title,'',{onClose:()=>close(s)});
   }
-  return {open,restore(){watch.disconnect();for(const s of [...sessions])close(s);popups.clear();}};
+  return {open,restore(){watch.disconnect();panelWatch.disconnect();bodyWatch.disconnect();for(const [panel,s] of hosted){s.page?.closest('dialog.cw-v4-editor')?._cwShut?.();panel.classList.remove('cwx-panel-hosted');}hosted.clear();for(const s of [...sessions])close(s);popups.clear();}};
 }

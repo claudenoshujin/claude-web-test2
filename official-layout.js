@@ -1,5 +1,5 @@
 import { officialIcons } from './official-icons.js?v=20261002u';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261004h';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005c';
 import { tr } from './official-i18n.js?v=20261002t';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
@@ -1049,10 +1049,46 @@ export function installOfficialLayout(win = window) {
       mes.toggleAttribute('data-cw-acts');
     });
     disposers.push(() => actsClear(null));
+    // 2.0.274 删除消息（稿 design-options-menu-v1）：酒馆的删除模式照旧（点一条 = 选中它和后面所有的），只换样子：
+    // 每条左边一个圆勾、选中的淡蓝底；手机顶上「取消 · 已选 N 条 · 全选」+ 底部红色「删除 N 条消息」，电脑底部浮一条「已选 N 条 · 全选 · 取消 · 删除」。
+    // 按钮都是代点酒馆原来的「删除 / 取消」；「全选」= 点第一条消息。
+    let delUi = null, delObs = null;
+    const delCount = () => doc.querySelectorAll('#chat > .mes.selected').length;
+    const delPaint = () => {
+      if (!delUi) return;
+      const n = delCount();
+      delUi.count.textContent = n ? L('已选 ') + n + L(' 条') : L('点一条消息，删掉它和后面的');
+      delUi.del.textContent = mobile() ? (n ? L('删除 ') + n + L(' 条消息') : L('删除')) : L('删除');
+      delUi.del.disabled = !n;
+    };
+    const delOpen = () => {
+      if (delUi) return;
+      const top = make('div', 'cw-delbar-top'), bottom = make('div', 'cw-delbar');
+      const count = make('span', 'cw-delbar-count');
+      const all = button(L('全选'), () => doc.querySelector('#chat > .mes')?.click(), 'cw-delbar-btn cw-delbar-all');
+      const cancel = button(L('取消'), () => doc.getElementById('dialogue_del_mes_cancel')?.click(), 'cw-delbar-btn cw-delbar-cancel');
+      const del = button(L('删除'), () => doc.getElementById('dialogue_del_mes_ok')?.click(), 'cw-delbar-btn cw-delbar-del');
+      if (mobile()) { top.append(cancel, count, all); bottom.append(del); doc.body.append(top, bottom); }
+      else { bottom.append(count, all, cancel, del); doc.body.append(bottom); }
+      delUi = { top, bottom, count, del };
+      root.setAttribute('data-cw-delmode', '');
+      const chat = doc.getElementById('chat');
+      delObs = new win.MutationObserver(delPaint);
+      if (chat) delObs.observe(chat, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
+      delPaint();
+    };
+    const delClose = () => { if (!delUi) return; delObs?.disconnect(); delObs = null; delUi.top.remove(); delUi.bottom.remove(); delUi = null; root.removeAttribute('data-cw-delmode'); };
+    const delPanel = doc.getElementById('dialogue_del_mes');
+    if (delPanel) {
+      const delSync = () => { const on = enabled() && delPanel.style.display && delPanel.style.display !== 'none'; on ? delOpen() : delClose(); };
+      const mo = new win.MutationObserver(delSync); mo.observe(delPanel, { attributes: true, attributeFilter: ['style'] });
+      disposers.push(() => { mo.disconnect(); delClose(); });
+      delSync();
+    }
     // 2.0.268 通用小菜单（design-small-menus-v1 ⓪）：贴着按钮弹出；items 每项 {icon,label,value,check,danger,run,sub:[…]} 或 {head} / {sep}。
     // 有 sub 的一项：电脑上鼠标移上去 / 点一下，在右边贴着这一行展开；手机上点了把菜单换成下一级。
     let cwMenu = null;
-    const closeCwMenu = () => { cwMenu?.remove(); cwMenu = null; };
+    const closeCwMenu = () => { if (cwMenu?.classList.contains('cw-sd')) doc.getElementById('sd_gen')?.classList.remove('cw-on'); cwMenu?.remove(); cwMenu = null; };
     function popMenu(anchor, items, {up = false, cls = ''} = {}) {
       closeCwMenu();
       const wrap = make('div', 'cw-menu-wrap' + (cls ? ' ' + cls : ''));
@@ -1106,6 +1142,95 @@ export function installOfficialLayout(win = window) {
       m.style.left = Math.round(x) + 'px'; m.style.top = Math.round(y) + 'px';
       return wrap;
     }
+    // 2.0.275 手机的操作菜单（照 Claude App：灰色标题 + 一列选项 + 单独一块「取消」，从底部升起；点背后的暗处也关）。
+    let cwSheet = null;
+    const closeActionSheet = () => { const s = cwSheet; if (!s) return; cwSheet = null; s.setAttribute('data-cw-out', ''); win.setTimeout(() => s.remove(), 180); };
+    function actionSheet(title, items) {
+      closeActionSheet(); closeCwMenu();
+      const wrap = make('div', 'cw-asheet'), dim = make('div', 'cw-asheet-dim'), box = make('div', 'cw-asheet-box');
+      const card = make('div', 'cw-asheet-card');
+      if (title) card.append(make('div', 'cw-asheet-title', title));
+      for (const it of items) card.append(button(it.label, e => { e.stopPropagation(); closeActionSheet(); it.run?.(); }, 'cw-asheet-item' + (it.danger ? ' cw-danger' : '')));
+      const cancel = button(L('取消'), e => { e.stopPropagation(); closeActionSheet(); }, 'cw-asheet-cancel');
+      dim.addEventListener('click', closeActionSheet);
+      box.append(card, cancel); wrap.append(dim, box); doc.body.append(wrap); cwSheet = wrap;
+      return wrap;
+    }
+    disposers.push(() => { cwSheet?.remove(); cwSheet = null; });
+    // 2.0.275「+」→ 生成图片（稿 design-composer-tools-v1）：酒馆原来在菜单旁边弹一块灰色列表（#sd_dropdown）。
+    // 现在：电脑上在这一行右边贴着展开二级菜单（鼠标移上去 / 点一下），手机上收起「+」菜单、从底部弹操作菜单。每一项代点酒馆原来那一项。
+    const SD_ITEMS = [['sd_you', '角色'], ['sd_face', '角色的脸'], ['sd_me', '用户'], ['sd_world', '整个故事'], ['sd_last', '最后一条消息'], ['sd_raw_last', '最后一条原始消息'], ['sd_background', '背景']];
+    const sdItems = () => SD_ITEMS.filter(([id]) => doc.getElementById(id)).map(([id, label]) => ({ label: L(label), run: () => doc.getElementById(id)?.click() }));
+    const sdOpen = gen => {
+      const items = sdItems(); if (!items.length) return false;
+      if (mobile()) { win.jQuery?.('#extensionsMenu').hide(); actionSheet(L('给我发一张……的照片'), items); return true; }
+      if (cwMenu?.classList.contains('cw-sd')) return true;
+      const w = popMenu(gen, [{ head: L('给我发一张……的照片') }, ...items], { cls: 'cw-sd' });
+      const m = w.firstElementChild, a = gen.getBoundingClientRect(), r = m.getBoundingClientRect();
+      let x = a.right + 4; if (x + r.width > win.innerWidth - 8) x = a.left - 4 - r.width;
+      const y = Math.min(Math.max(8, a.top - 6), win.innerHeight - 8 - r.height);
+      m.style.left = Math.round(x) + 'px'; m.style.top = Math.round(y) + 'px';
+      gen.classList.add('cw-on');
+      return true;
+    };
+    const sdBlock = e => {
+      if (!enabled()) return;
+      const gen = e.target.closest?.('#sd_gen'); if (!gen) return;
+      e.stopPropagation(); e.preventDefault();
+      if (e.type === 'click' || e.type === 'touchend') sdOpen(gen);
+    };
+    on(doc, 'touchend', sdBlock, true);
+    on(doc, 'click', sdBlock, true);
+    // 电脑：鼠标移到「生成图片」就展开；移到菜单里别的项就收起
+    on(doc, 'mouseover', e => {
+      if (!enabled() || mobile()) return;
+      const item = e.target.closest?.('#extensionsMenu .list-group-item'); if (!item) return;
+      if (item.id === 'sd_gen') sdOpen(item);
+      else if (cwMenu?.classList.contains('cw-sd')) closeCwMenu();
+    });
+    // 2.0.275「+」→ 展示图库（稿 design-composer-tools-v1）：酒馆的图库是 #movingDivs 里一个能拖的小窗（#gallery），换排序 / 文件夹会整个重建。
+    // 每次出现就地重排：手机是弹出页「‹ 返回 · 图库 · 添加」，电脑是居中弹窗；下面「文件夹 / 排序 / 删除模式 / 恢复默认文件夹」几行，再下面是图片。
+    // 控件都是酒馆原来的（搬进行里或代点），缩略图照旧由 nanogallery2 排（它在我们排好之后才初始化，量到的就是新尺寸）。
+    const galDecorate = g => {
+      if (g.classList.contains('cw-gal')) return;
+      const title = g.querySelector(':scope>.dragTitle'), close = g.querySelector('.dragClose'), add = title?.querySelector('.menu_button');
+      const sort = title?.querySelector('select.gallery-sort-select'), folder = g.querySelector('.gallery-folder-input');
+      const accept = g.querySelector('.right_menu_button.fa-check'), delMode = g.querySelector('.right_menu_button.fa-trash'), restore = g.querySelector('.right_menu_button.fa-recycle');
+      const gal = g.querySelector('#dragGallery');
+      if (!close || !gal) return;
+      g.classList.add('cw-gal');
+      const head = make('div', 'cw-gal-head');
+      const back = button('', () => close.click(), 'cw-gal-back'); back.append(icon('chevl'), make('span', '', L('返回')));
+      const x = button('', () => close.click(), 'cw-gal-x'); x.append(icon('close')); x.setAttribute('aria-label', L('关闭'));
+      const addB = button(L('添加'), () => add?.click(), 'cw-gal-add');
+      head.append(back, make('h2', '', L('图库')), addB, x);
+      const body = make('div', 'cw-gal-body'), card = make('div', 'cw-gal-card');
+      const row = (label, ...nodes) => { const r = make('div', 'cw-gal-row'); r.append(make('span', 'cw-gal-lab', L(label))); const v = make('span', 'cw-gal-val'); v.append(...nodes.filter(Boolean)); r.append(v); card.append(r); return r; };
+      if (folder) row('文件夹', folder, accept);
+      if (sort) row('排序', sort);
+      if (delMode) {
+        const sw = button('', () => { delMode.click(); paint(); }, 'cw-gal-switch'); sw.setAttribute('role', 'switch');
+        const paint = () => sw.setAttribute('aria-checked', String(delMode.classList.contains('warning')));
+        paint(); row('删除模式', sw);
+      }
+      if (restore) { const r = button(L('恢复默认文件夹'), () => restore.click(), 'cw-gal-row cw-gal-act'); card.append(r); }
+      const imgs = make('div', 'cw-gal-card cw-gal-imgs'); imgs.append(gal);
+      const folderName = folder?.value || '';
+      body.append(card, make('p', 'cw-gal-foot', L('删除模式打开时，点一张图就删掉它。')), make('div', 'cw-gal-lab2', L('图片')), imgs,
+        make('p', 'cw-gal-foot', L('点一张放大；也可以直接把图片拖进来上传。图片存在 user/images/') + folderName + L('。')));
+      g.append(head, body);
+      // 第一次打开时酒馆弹的蓝色提示（拖进来上传）：说明已经写在下面了，不再弹。
+      win.setTimeout(() => doc.querySelectorAll('#toast-container .toast').forEach(t => { if (/Drag and drop images onto the gallery/i.test(t.textContent)) t.remove(); }), 50);
+      let dim = doc.querySelector('.cw-gal-dim'); if (!dim) { dim = make('div', 'cw-gal-dim'); dim.addEventListener('click', () => close.click()); g.before(dim); }
+    };
+    const galSync = () => {
+      const g = doc.querySelector('#movingDivs > #gallery');
+      if (g && enabled()) galDecorate(g);
+      if (!g) doc.querySelector('.cw-gal-dim')?.remove();
+    };
+    const moving = doc.getElementById('movingDivs');
+    if (moving) { const mo = new win.MutationObserver(galSync); mo.observe(moving, { childList: true }); disposers.push(() => { mo.disconnect(); doc.querySelector('#movingDivs > #gallery .dragClose')?.click(); doc.querySelector('.cw-gal-dim')?.remove(); }); }
+    on(doc, 'pointerdown', e => { if (cwSheet && !cwSheet.contains(e.target)) closeActionSheet(); }, true);
     on(doc, 'pointerdown', e => { if (cwMenu && !cwMenu.contains(e.target)) closeCwMenu(); }, true);
     on(doc, 'keydown', e => { if (cwMenu && e.key === 'Escape') { e.stopPropagation(); closeCwMenu(); } }, true);
     on(win, 'resize', closeCwMenu);
@@ -1403,7 +1528,7 @@ export function installOfficialLayout(win = window) {
     const trigText = trig ? (trig.getAttribute('title') || trig.querySelector('span:not(.cw-v4-action-label)')?.textContent || trig.textContent || '').trim() : '';
     const firstHead = dlg.querySelector('.popup-content>:is(h2,h3):first-child, .popup-content>:first-child>:is(h2,h3):first-child');
     // 2.0.256 标签管理 / 其他开场白：触发按钮的 title 是一句提示（「单击以设置其他开场白」），标题写死。
-    const known = dlg.querySelector('#tag_view_list') ? t('标签管理', 'Manage tags') : dlg.querySelector('.alternate_grettings') ? t('其他开场白', 'Alternate greetings') : dlg.querySelector('#qr--modal-label')?.value || dlg.querySelector('.regex_editor input.regex_script_name')?.value || '';
+    const known = dlg.querySelector('#tag_view_list') ? t('标签管理', 'Manage tags') : dlg.querySelector('.dataBankAttachments') ? t('数据库', 'Data Bank') : dlg.querySelector('#token_counter_textarea') ? t('Token 计数器', 'Token Counter') : dlg.querySelector('.alternate_grettings') ? t('其他开场白', 'Alternate greetings') : dlg.querySelector('#qr--modal-label')?.value || dlg.querySelector('.regex_editor input.regex_script_name')?.value || '';
     const title = (known || (trigText && trigText.length <= 24 ? trigText : firstHead?.textContent || '')).trim();
     const label = sheetBackLabel(dlg);
     dlg.dataset.cwSheetTitle = title;
@@ -1463,11 +1588,13 @@ export function installOfficialLayout(win = window) {
     e.preventDefault(); e.stopImmediatePropagation();
     if (top._cwShut) top._cwShut(); else top.dispatchEvent(new win.Event('cancel', {cancelable: true}));
   }
+  // 2.0.275（Lulu：删除确认的按钮先黑一下再变红）：删除类的标记原来在弹窗显示之后才挂；改成打开的那一刻就挂（酒馆这时已经填好内容）。
+  const tagDanger = d => { if (!enabled() || !d.matches?.(SMALL_POPUP)) return; const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || ''); if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger); };
   function installLift() {
-    if (!canPopover) return;
-    win.HTMLDialogElement.prototype.showModal = function () { if (liftable(this)) return liftDialog(this); return nativeShowModal.call(this); };
-    on(doc, 'keydown', onSheetEscape, true);
+    win.HTMLDialogElement.prototype.showModal = function () { tagDanger(this); if (liftable(this)) return liftDialog(this); return nativeShowModal.call(this); };
     disposers.push(() => { win.HTMLDialogElement.prototype.showModal = nativeShowModal; shield?.remove(); shield = null; });
+    if (!canPopover) return;
+    on(doc, 'keydown', onSheetEscape, true);
   }
   function watchSheets() {
     installLift();
