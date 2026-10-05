@@ -64,6 +64,10 @@ d.getElementById('extensions_settings').append(late);
 await new Promise(r=>setTimeout(r,50));
 assert.ok(late.querySelector('.cw-v4-extension-edit'),'late-rendered extension gets an editor');
 late.querySelector('.cw-v4-extension-edit').click();
+const extensionStandIn=d.querySelector('.cw-v4-standin');
+assert.ok(extensionStandIn?.querySelector('.cw-v4-extension-row'),'editing keeps a list row in place');
+assert.equal(extensionStandIn.classList.contains('cw-ext'),false,'list placeholder must not inherit the editor row-hiding class');
+assert.equal(extensionStandIn.inert,true,'placeholder cannot open a second editor');
 assert.ok(d.getElementById('late-test-input').closest('#late-test-extension'),'whole extension ancestor retained');
 late.closest('dialog').close();
 // A pinned native drawer must not make selection oscillate on each observer pass.

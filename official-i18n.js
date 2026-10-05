@@ -80,7 +80,7 @@ export const EN = {
   '小':'Small', '大':'Large', '管理、安装和配置扩展':'Manage, install and configure extensions', '安装扩展':'Install extension', '管理':'Manage',
   '扩展有更新时通知':'Notify about extension updates', '已安装':'Installed', '旧版 Extras API（已弃用）':'Legacy Extras API (deprecated)',
   '只有还在用旧版 Extras 服务器时才需要':'Only needed if you still run the legacy Extras server',
-  '点角色进入编辑；⋯ 里可以直接开始聊天':'Tap a character to edit it; start a chat from ⋯', '开始聊天':'Start chat', '新建角色':'New character',
+  '点角色进入编辑；新建群聊、导入角色在右边 ⋯ 里':'Click a character to edit it; new group chat and import are under ⋯ on the right', '开始聊天':'Start chat', '新建角色':'New character',
   '从文件导入':'Import from file', '从网址导入':'Import from URL', '新建群聊':'New group chat', '批量编辑':'Bulk edit', '网格视图':'Grid view', '全部角色':'All characters',
   '收藏':'Favorite', '复制':'Duplicate', '你在聊天里扮演的身份':'Who you are in the chat', '使用统计':'Usage stats', '备份到文件':'Back up to file',
   '从文件恢复':'Restore from file', '使用中':'In use', '切换':'Switch', '当前用户角色':'Current persona', '名字':'Name', '把所有消息的名字改成这个':'Rename in all messages',

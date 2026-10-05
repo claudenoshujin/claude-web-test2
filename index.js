@@ -13,8 +13,9 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
+import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20261002i";
+import { installOfficialLayout } from "./official-layout.js?v=20261004h";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
 import { createClawdPile } from "./clawd-pile.js?v=20261001w";
 
@@ -426,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.253-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.273-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -457,7 +458,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20261002m', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20261004h', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -2094,6 +2095,7 @@ if (CLAUDE_ENABLED) {
   const PUSH_LIVE_ATTRIBUTE = 'data-cw-push';
   let pushLiveTimer = 0;
   const setMobileMenuOpen = open => {
+    cancelMobileMenuOpenWait();
     mobileNavPanelCleanup?.();
     if (open) mobileMenuCloseToken += 1;
     if (open === isMobileMenuOpen()) return;
@@ -2160,6 +2162,7 @@ if (CLAUDE_ENABLED) {
   let destroyed = false;
   /* 2.0.223：输入框右上角三只叠着睡觉的 Clawd（clawd-pile.js），替换原来的装饰图 #send_form::after。 */
   const clawdPile = createClawdPile({ doc: hostDocument, win: hostWindow });
+  let streamFollow = null;
   let previousTypingActive = false;
   let generationEventActive = false;
   const generationSubscriptions = [];
@@ -4558,6 +4561,7 @@ if (CLAUDE_ENABLED) {
     const source = context?.eventSource;
     const types = context?.eventTypes || context?.event_types || {};
     if (!source?.on) return;
+    streamFollow ??= installStreamFollow({ win: hostWindow, doc: hostDocument, getContext, enabled: () => isMobileLayout() && !frameworkCompatibilityMode });
 
     const seen = new Set();
     const subscribe = (key, fallback, outcome) => {
@@ -4928,7 +4932,7 @@ if (CLAUDE_ENABLED) {
   function createUserEditAction(message) {
     const actions = hostDocument.createElement('div');
     actions.className = USER_ACTIONS_CLASS;
-    actions.dataset.claudeUserActionVersion = 'edit-only';
+    actions.dataset.claudeUserActionVersion = 'edit-delete';
     actions.setAttribute('aria-label', '用户消息操作');
 
     const edit = hostDocument.createElement('button');
@@ -4944,14 +4948,28 @@ if (CLAUDE_ENABLED) {
       else hostWindow.toastr?.warning('没有找到酒馆原生编辑入口。', '无法编辑');
     });
 
-    actions.append(edit);
+    const del = hostDocument.createElement('button');
+    del.type = 'button';
+    del.className = USER_DELETE_CLASS;
+    del.title = '删除消息';
+    del.setAttribute('aria-label', '删除消息');
+    del.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      safelyDeleteMessage(message).catch(error => {
+        console.error('[Claude Clawd] Failed to delete message safely.', error);
+        hostWindow.toastr?.error('删除消息时发生错误，原消息已保留。', '删除失败');
+      });
+    });
+
+    actions.append(edit, del);
     return actions;
   }
 
   function refreshUserActions() {
     /* TT 会把用户消息的 .ch_name 压成零高，里面的原生铅笔因此不可见。
-       这里只做一个可见入口并转发给原生 .mes_edit；不复制编辑实现，也不放
-       快捷删除，删除仍留在酒馆自己的编辑确认流程里。 */
+       这里做可见的编辑 / 删除入口：编辑转发给原生 .mes_edit；删除走
+       safelyDeleteMessage（酒馆 deleteMessage 自带确认弹窗）。 */
     const messages = [...hostDocument.querySelectorAll('#chat > .mes[is_user="true"]')];
     const liveMessages = new Set(messages);
     hostDocument.querySelectorAll(`.${USER_ACTIONS_CLASS}`).forEach(actions => {
@@ -4962,7 +4980,7 @@ if (CLAUDE_ENABLED) {
       const block = message.querySelector(':scope > .mes_block');
       if (!block) return;
       let actions = block.querySelector(`:scope > .${USER_ACTIONS_CLASS}`);
-      if (actions?.dataset.claudeUserActionVersion !== 'edit-only') {
+      if (actions?.dataset.claudeUserActionVersion !== 'edit-delete') {
         actions?.remove();
         actions = null;
       }
@@ -8433,7 +8451,10 @@ if (CLAUDE_ENABLED) {
     search.type = 'search';
     search.className = 'clawd-character-search';
     search.placeholder = ccPrefersChinese() ? '搜索角色卡' : 'Search characters';
-    menu.append(search);
+    const head = hostDocument.createElement('div');
+    head.className = 'clawd-character-head';
+    head.textContent = ccPrefersChinese() ? '快速切换角色卡' : 'Quick switch';
+    menu.append(head, search);
 
     const list = hostDocument.createElement('div');
     list.className = 'clawd-character-list';
@@ -8465,6 +8486,15 @@ if (CLAUDE_ENABLED) {
         const label = hostDocument.createElement('span');
         label.className = 'clawd-character-name';
         label.textContent = name;
+        /* 2.0.268（design-small-menus-v1，照 Mode 菜单）：名字下面一行灰字「上次聊天 几月几日」。 */
+        const last = Number(character?.date_last_chat) || 0;
+        if (last) {
+          const sub = hostDocument.createElement('small');
+          sub.className = 'clawd-character-sub';
+          const d = new Date(last);
+          sub.textContent = ccPrefersChinese() ? `上次聊天 ${d.getMonth() + 1}月${d.getDate()}日` : `Last chat ${d.toLocaleDateString()}`;
+          label.append(sub);
+        }
         item.append(avatar, label);
         if (index === active) {
           const check = hostDocument.createElement('span');
@@ -8666,6 +8696,47 @@ if (CLAUDE_ENABLED) {
     holder.append(button);
   }
 
+  /* 2.0.248.2：键盘开着时点 ≡，Via 的 WebView 要等键盘收完才把页面放回全高，中间约 150ms 页面还按键盘高度排版。
+     这时推开侧栏，就会先看到一截矮侧栏、下面露着键盘和空白，再跳成全高，肉眼是“闪一下”。
+     所以这种情况先让键盘收起，等视口回到全高、那一帧画出来（resize 后再隔两个 rAF）再推开；最多等 700ms。
+     收键盘这段和平时按返回键一样，侧栏一出现就是全高。键盘没开时照旧立即打开。 */
+  let mobileMenuOpenWait = null;
+  function cancelMobileMenuOpenWait() {
+    mobileMenuOpenWait?.();
+    mobileMenuOpenWait = null;
+  }
+  function openMobileMenuAfterKeyboard() {
+    cancelMobileMenuOpenWait();
+    if (!mobileViewportStillShrunk()) {
+      setMobileMenuOpen(true);
+      return;
+    }
+    const active = hostDocument.activeElement;
+    if (isSoftKeyboardTarget(active)) active.blur();
+    let settled = false;
+    let timer = 0;
+    const viewport = hostWindow.visualViewport;
+    const cleanup = () => {
+      settled = true;
+      hostWindow.clearTimeout(timer);
+      hostWindow.removeEventListener('resize', onResize);
+      viewport?.removeEventListener('resize', onResize);
+    };
+    const open = () => {
+      if (settled) return;
+      cleanup();
+      mobileMenuOpenWait = null;
+      if (!destroyed && !isMobileMenuOpen()) setMobileMenuOpen(true);
+    };
+    function onResize() {
+      if (!mobileViewportStillShrunk()) open();
+    }
+    hostWindow.addEventListener('resize', onResize);
+    viewport?.addEventListener('resize', onResize);
+    timer = hostWindow.setTimeout(open, 700);
+    mobileMenuOpenWait = cleanup;
+  }
+
   function refreshMobileChrome() {
     if (!mobileEnabled || !welcomeEnabled) return;
     const narrow = mobileEnabled;
@@ -8687,8 +8758,9 @@ if (CLAUDE_ENABLED) {
     menu.innerHTML = '<span></span><span></span><span></span>';
     menu.addEventListener('click', () => {
       const open = !isMobileMenuOpen();
-      setMobileMenuOpen(open);
       menu.setAttribute('aria-expanded', String(open));
+      if (open) openMobileMenuAfterKeyboard();
+      else setMobileMenuOpen(false);
     });
 
     const scrim = hostDocument.createElement('button');
@@ -10273,6 +10345,7 @@ if (CLAUDE_ENABLED) {
     /* A1：消息末尾不再创建 Clawd，整个角色都在 #send_form 上方那只 composer 实例上，这里只清场。 */
     removeStaleButtons();
     renderClawdTracks();
+    if (generationJustEnded) streamFollow?.afterDecoration();
   }
 
   let lastRefreshAt = 0;
@@ -10765,6 +10838,8 @@ if (CLAUDE_ENABLED) {
         source?.off?.(type, handler);
       } catch { /* no-op */ }
     }
+    streamFollow?.destroy();
+    streamFollow = null;
     generationSubscriptions.length = 0;
     generationEventActive = false;
     scrollHost?.removeEventListener('scroll', handleChatScroll);
@@ -10935,6 +11010,7 @@ if (CLAUDE_ENABLED) {
       settledRound: clawdTracks.settledRound,
       irr: A2.irr,
     }),
+    streamFollowStats: () => streamFollow?.stats(),
     drawerStats: () => ({ ...drawerStats }),
     buildId: KEYBOARD_BUILD.id,
     /* 刷新开销记账。用法：__claudeClawdInteraction.perfStats()
@@ -13340,10 +13416,17 @@ if (CLAUDE_ENABLED) {
      设置本身存在 localStorage 里，不在扩展目录，删了不丢。 */
   async function runReinstall(button, hint) {
     const folder = folderName();
-    if (!window.confirm(
-      `将删除扩展目录 ${folder} 后重新从 GitHub 安装。\n`
-      + '配色和明暗设置存在浏览器里，不会丢失。\n\n继续？',
-    )) return;
+    /* 2.0.272：用酒馆自己的确认弹窗（已照 Claude 排），浏览器原生 confirm 框没法美化；拿不到时才退回原生框。 */
+    const ctx = window.SillyTavern?.getContext?.();
+    const ok = typeof ctx?.callGenericPopup === 'function' && ctx.POPUP_TYPE
+      ? await ctx.callGenericPopup(
+        `<h3>重新安装扩展？</h3><p>将删除扩展目录 ${folder} 后重新从 GitHub 安装。配色和明暗设置存在浏览器里，不会丢失。</p>`,
+        ctx.POPUP_TYPE.CONFIRM, '', { okButton: '重新安装', cancelButton: '取消' })
+      : window.confirm(
+        `将删除扩展目录 ${folder} 后重新从 GitHub 安装。\n`
+        + '配色和明暗设置存在浏览器里，不会丢失。\n\n继续？',
+      );
+    if (!ok) return;
 
     button.disabled = true;
     hint.textContent = '正在定位扩展目录…';

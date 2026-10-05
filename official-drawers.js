@@ -3,14 +3,16 @@
  * handlers. Comment markers allow a full return to the native layout.
  * Labels are the design's own Chinese strings; L() looks up the design's
  * English table for other UI languages. */
+import { createExtensionSettings } from './official-extension-settings.js?v=20261004h';
 export function actionLabel(node,t){
   const byId={world_backfill_memos:['补全标题','Fill titles'],world_apply_current_sorting:['应用排序','Apply sorting'],world_refresh:['刷新','Refresh'],OpenAllWIEntries:['展开全部','Expand all'],CloseAllWIEntries:['收起全部','Collapse all'],world_popup_name_button:['改名','Rename'],world_duplicate:['复制','Duplicate'],world_popup_delete:['删除','Delete'],bulkEditButton:['批量编辑','Bulk edit'],charListGridToggle:['切换网格视图','Toggle grid view'],rm_button_group_chats:['新建群聊','New group'],external_import_button:['从外部导入','Import externally'],character_import_button:['导入角色','Import character'],world_import_button:['导入','Import'],world_popup_export:['导出','Export'],bg_add_folder_button:['新建文件夹','New folder'],bg_selection_mode_button:['选择背景','Select backgrounds'],bg_group_add_to_folder_button:['移入文件夹','Move to folder'],open_s_preset_menu:['预设工具','Preset tools'],view_connection_profile:['查看配置','View profile'],reload_connection_profile:['重新载入','Reload profile'],personas_backup:['备份','Back up'],personas_restore:['恢复备份','Restore backup'],persona_grid_toggle:['切换网格视图','Toggle grid view']};
   if(byId[node.id])return t(...byId[node.id]);
   for(const [key,cn,en] of [['delete','删除','Delete'],['restore','恢复默认','Restore defaults'],['rename','改名','Rename'],['import','导入','Import'],['export','导出','Export'],['new','另存为新的','Save as new'],['create','新建','Create'],['edit','编辑','Edit'],['update','保存','Save']])if(node.id?.includes(key)||[...node.attributes].some(a=>a.name===`data-preset-manager-${key}`))return t(cn,en);
   return (node.getAttribute('aria-label')||node.title||node.textContent||'').trim().split(/[\n.。]/)[0].slice(0,32);
 }
-export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings}) {
+export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu}) {
   const doc=win.document, states=new Map();
+  const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const get=id=>doc.getElementById(id);
   function state(root){let s=states.get(root);if(!s){s={moves:[],created:[],root};states.set(root,s);}return s;}
   function move(s,node,host,before){if(!node||node===host||node.contains(host))return;const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark]);}if(before)host.insertBefore(node,before);else host.append(node);if(companion)move(s,companion,host);}
@@ -70,10 +72,10 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     return r;
   }
   // dialogRow(): a group of settings parked in the row and opened as a dialog.
-  function dialogRow(s,host,label,desc,title,build,btn='配置'){
+  function dialogRow(s,host,label,desc,title,build,btn='配置',opener=openEditor){
     const box=make('div','cw-v4-dialog-box');
     const r=row(s,host,label,desc,[]),park=make('div','cw-v4-park');r.append(park);park.append(box);build(box);
-    r.querySelector('.cw-v4-row-controls').append(button(L(btn),()=>openEditor(box,L(title))));
+    r.querySelector('.cw-v4-row-controls').append(button(L(btn),()=>opener(box,L(title))));
     return r;
   }
   function presetRow(s,host,root,label,desc,select,kind){
@@ -149,7 +151,44 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     b.append(menu(s,[['用关键字填充空标题',get('world_backfill_memos')],['把当前排序写入「顺序」',get('world_apply_current_sorting')],['刷新',get('world_refresh')]]));
     // Entries open in a dialog, so expand / collapse all are kept but not shown.
     const hidden=make('div','cw-v4-park');entries.append(hidden);for(const id of ['OpenAllWIEntries','CloseAllWIEntries'])move(s,get(id),hidden);
-    move(s,get('world_info_pagination'),entries);move(s,get('world_popup_entries_list'),entries);finish(s);
+    move(s,get('world_info_pagination'),entries);move(s,get('world_popup_entries_list'),entries);
+    phoneWorld(s,page,{global,edit,entries,bar:b,picker});
+    finish(s);
+  }
+  /* 2.0.262 手机：世界书首页照 Profile（标题和内容分开、不放 ›），条目单独一页照 Chats（每条一张白卡片、右下角「+ 新建条目」）。
+   * 电脑那三个小节手机上收起来；点「条目」时 openEditor 把电脑的「条目」小节整块搬进弹出页，关了搬回。
+   * 排序从 14 种合成 5 项 + 「倒序」开关（Lulu：功能项太多）；「自定义」（要拖动）、UID、触发概率手机上不放；「刷新」不要；
+   * 「填充空标题」「写入顺序」挪到首页「更多操作」。 */
+  function phoneWorld(s,page,{global,edit,entries,bar:b,picker}){
+    const book=get('world_editor_select'),hasBook=()=>!!book?.value&&book.selectedIndex>0;
+    global.classList.add('cw-v4-desk-only');edit.classList.add('cw-v4-desk-only');entries.classList.add('cw-v4-desk-only','cw-v4-wi-entries');
+    const pg=pfSec(page,'全局');
+    pfField(pg,'已启用的世界书',()=>picker&&openEditor(picker,L('已启用的世界书')),()=>{const n=[...(get('world_info')?.selectedOptions||[])].map(o=>o.textContent.trim());return [n.join('、')||L('无'),!n.length];},'wi-global');
+    const activation=global.querySelector('.cw-v4-row:has(.cw-v4-summary)>.cw-v4-row-controls>button');
+    if(activation)pfText(page,'激活设置',()=>s.summary?.textContent,()=>activation.click(),'wi-activation');
+    const pe=pfSec(page,'编辑');
+    pfField(pe,'世界书',()=>book&&openSelMenu?.(book),()=>[hasBook()?book.selectedOptions[0].textContent.trim():L('选一本'),!hasBook()],'wi-book');
+    const count=()=>{const nav=get('world_info_pagination')?.querySelector('.paginationjs-nav')?.textContent||'',m=nav.match(/\.\.\s*(\d+)/);const n=m?+m[1]:(get('world_popup_entries_list')?.querySelectorAll('.world_entry').length||0);return t(`${n} 条`,String(n));};
+    // 「+ 新建条目」开着条目页时挂到弹出页上（弹出页有 transform，放在里面 fixed 会跟着内容走），关了放回来。
+    let fab=null;
+    const ent=pfField(pe,'编辑条目',()=>{if(!hasBook())return;openEditor(entries,t('条目','Entries'),'',{onClose:()=>{if(fab)entries.append(fab);}});const d=entries.closest('dialog');if(d&&fab)d.append(fab);},()=>[count(),false],'wi-entries');ent.classList.add('cw-v4-pf-go');
+    const pa=pfSec(page,'');
+    for(const [l,id] of [['新建世界书','world_create_button'],['导入','world_import_button']]){const x=pfBtn('cw-v4-pf-blue',()=>get(id)?.click());x.textContent=L(l);pa.append(x);}
+    const pb=pfSec(page,'这本世界书','cw-v4-wi-book');
+    for(const [l,id] of [['改名','world_popup_name_button'],['复制一份','world_duplicate'],['导出','world_popup_export']]){const x=pfBtn('cw-v4-pf-blue',()=>get(id)?.click());x.textContent=L(l);pb.append(x);}
+    const more=sheetMenu('cw-v4-pf-moreops',make('span','',L('更多操作')),ui=>{ui.opt(L('用关键字填充空标题'),false,()=>get('world_backfill_memos')?.click());ui.opt(L('把当前排序写入「顺序」'),false,()=>get('world_apply_current_sorting')?.click());});
+    more.querySelector('summary').setAttribute('aria-label',L('更多操作'));pb.append(more);
+    const del=pfDelete(page,'删除这本世界书',()=>get('world_popup_delete')?.click(),'cw-v4-wi-book');
+    paints.push(()=>{const on=hasBook();setFlag(ent,'cw-v4-hide',!on);setFlag(pb,'cw-v4-hide',!on);setFlag(del,'cw-v4-hide',!on);});
+    // 条目页：搜索框右端调节图标（排序 5 项 + 倒序）；右下角「+ 新建条目」。
+    const so=get('world_info_sort_order'),SORTS=[['优先级','0','0'],['顺序','7','8'],['标题','1','2'],['Token 数','3','4'],['深度','5','6']];
+    const setSort=v=>{if(!so||so.value===v)return;so.value=v;so.dispatchEvent(new win.Event('change',{bubbles:true}));};
+    b.append(sheetMenu('cw-v4-phone-filter',sliders(),ui=>{
+      const v=so?.value,cur=SORTS.find(([,a,d])=>v===a||v===d),desc=!!cur&&cur[1]!==cur[2]&&v===cur[2];
+      ui.head('排序');for(const [l,a,d] of SORTS)ui.opt(L(l),!!cur&&cur[1]===a,()=>setSort(desc&&a!==d?d:a));
+      const rev=ui.keep(L('倒序'),()=>{if(cur&&cur[1]!==cur[2])setSort(desc?cur[1]:cur[2]);},desc);if(!cur||cur[1]===cur[2])rev.classList.add('cw-dis');
+    }));
+    fab=button('',()=>get('world_popup_new')?.click(),'cw-v4-wi-fab cw-v4-phone-only');fab.append(icon('plus'),make('span','',L('新建条目')));entries.append(fab);
   }
   /* World info entries (design wi.js entryRow / editEntry). The row shows
    * read-only text painted from the native fields; the native header inputs
@@ -201,6 +240,8 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       // The header is ST's drawer toggle; the row itself must not expand the inline form.
       line.addEventListener('click',e=>{if(!e.target.closest('[name="entryKillSwitch"]'))e.stopPropagation();});
       line.addEventListener('dblclick',e=>{if(!e.target.closest('button,[name="entryKillSwitch"],summary'))editEntry(entry);});
+      // 2.0.262 手机：点一下整行就进编辑（电脑照旧双击 / 点「配置」）。
+      line.addEventListener('click',e=>{if(phoneWide()&&!e.target.closest('button,[name="entryKillSwitch"],summary,details'))editEntry(entry);});
       const repaint=()=>paintEntry(entry);entry.addEventListener('input',repaint);entry.addEventListener('change',repaint);kill?.addEventListener('click',()=>setTimeout(repaint,0));
       entry._cwV4Row={line,title,state:stateText,dot,pos,ord};entry.classList.add('cw-v4-world-row');
       s.cleanup=()=>{header.classList.remove('cw-v4-entry-head');entry.classList.remove('cw-v4-world-row');entry.removeEventListener('input',repaint);entry.removeEventListener('change',repaint);delete entry._cwV4Row;};
@@ -272,6 +313,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     b.append(searchBox(s,get('bg-filter'),'搜索背景'));move(s,get('bg-sort'),b);
     const zoom=make('div','cw-v4-seg cw-v4-created');b.append(zoom);
     for(const [id,label] of [['bg_thumb_zoom_out','小'],['bg_thumb_zoom_in','大']]){const n=get(id);if(n){n.classList.add('cw-v4-seg-item','cw-v4-size-button');n.dataset.cwSize=L(label);n.setAttribute('aria-label',L(label));move(s,n,zoom);cleanup(s,()=>n.classList.remove('cw-v4-seg-item','cw-v4-size-button'));}}
+    const bgs=sheetMenu('cw-v4-phone-filter',sliders(),ui=>{sortPick(ui,get('bg-sort'),bgs);ui.head('缩略图');ui.keep(L('缩小'),()=>get('bg_thumb_zoom_out')?.click());ui.keep(L('放大'),()=>get('bg_thumb_zoom_in')?.click());});b.append(bgs);
     move(s,get('bg_tabs'),gallery);finish(s);
   }
 
@@ -413,6 +455,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const top=section(page,'');row(s,top,'','你在聊天里扮演的身份',[act(s,get('create_dummy_persona'),'新建',true),menu(s,[['使用统计',stats],['备份到文件',get('personas_backup')],['从文件恢复',get('personas_restore')],['网格视图',get('persona_grid_toggle')]])]);
     const all=section(page,'全部');all.classList.add('cw-v4-entries');const b=bar();all.append(b);
     b.append(searchBox(s,get('persona_search_bar'),'搜索用户角色'));move(s,get('persona_sort_order'),b);
+    b.append(sortButton(get('persona_sort_order')));
     move(s,get('persona_pagination_container'),all);move(s,get('user_avatar_block'),all);
     const current=section(page,'当前用户角色');
     const who=make('span','cw-v4-persona-name');s.who=who;
@@ -433,30 +476,301 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const desc=item.querySelector('.ch_description');if(desc&&/^\[?no description\]?$/i.test(desc.textContent.trim())){desc.classList.add('cw-v4-no-desc');desc.dataset.cwEmpty=L('还没有描述');s.cleanup=()=>desc.classList.remove('cw-v4-no-desc');}
   });}
 
+  /* ---------------- 2.0.260 手机：照 Claude App 的 Profile（Lulu：Claude 是标题和内容分开，酒馆是挤在一起） ----------------
+   * 手机专用的小节（.cw-v4-phone-only，电脑藏；稿 design-phone-batch1-v3.html，数值 手机参考标准-v1.html）：
+   *   字段行 = 灰标签 · 黑值；长文本 = 小节标题在卡片外 + 白卡片一行「…」+ 卡片下面的灰字；不放 ›。
+   * 只点酒馆原来的按钮、用 openEditor 打开原来的输入框，不搬原生节点。电脑那几个小节在手机上收成 1px（.cw-v4-desk-only），
+   * 不用 display:none——openEditor 的弹窗挂在原处旁边，祖先 display:none 弹窗就画不出来。
+   * 值在每次 mount（sync）时按酒馆的状态重画，只在变了才写。 */
+  const paints=[];
+  const setText=(n,v)=>{if(n.textContent!==v)n.textContent=v;};
+  const setFlag=(n,c,on)=>{if(n.classList.contains(c)!==!!on)n.classList.toggle(c,!!on);};
+  function pfSec(host,title,cls=''){const sec=section(host,title);sec.classList.add('cw-v4-phone-only','cw-v4-pf');if(cls)sec.classList.add(...cls.split(' '));return sec;}
+  function pfBtn(cls,fn,key){const b=make('button','cw-v4-pf-row '+cls);b.type='button';if(key)b.dataset.for=key;b.addEventListener('click',e=>{e.stopPropagation();fn();});return b;}
+  // 字段：read() 返回 [值, 是否灰]。
+  function pfField(sec,label,fn,read,key){
+    const b=pfBtn('cw-v4-pf-field',fn,key),v=make('span','cw-v4-pf-value');b.append(make('span','cw-v4-pf-label',L(label)),v);sec.append(b);
+    paints.push(()=>{const [text,dim]=read();setText(v,text);setFlag(v,'cw-v4-pf-dim',dim);});return b;
+  }
+  function pfText(host,label,read,fn,key){
+    const sec=pfSec(host,label,'cw-v4-pf-textsec'),b=pfBtn('cw-v4-pf-text',fn,key);sec.append(b);
+    paints.push(()=>{const v=(read()||'').replace(/\s+/g,' ').trim();setText(b,v||L('（空）'));setFlag(b,'cw-v4-pf-dim',!v);});return sec;
+  }
+  function pfFoot(host,cls=''){const f=make('div','cw-v4-pf-foot cw-v4-phone-only'+(cls?' '+cls:''));host.append(f);return f;}
+  function pfAction(host,label,fn,cls=''){const sec=pfSec(host,'',cls);sec.append(pfBtn('cw-v4-pf-blue',fn));sec.lastChild.textContent=L(label);return sec;}
+  function pfSwitch(host,label,read,fn,cls=''){
+    const sec=pfSec(host,'',cls),b=pfBtn('cw-v4-pf-switchrow',fn),k=make('span','cw-v4-pf-switch');b.setAttribute('role','switch');b.append(make('span','cw-v4-pf-label2',L(label)),k);sec.append(b);
+    paints.push(()=>{const on=!!read();if(b.getAttribute('aria-checked')!==String(on))b.setAttribute('aria-checked',String(on));});return sec;
+  }
+  function pfDelete(host,label,fn,cls=''){const sec=pfSec(host,'','cw-v4-pf-delsec'+(cls?' '+cls:'')),b=pfBtn('cw-v4-pf-del',fn);b.append(icon('trash'),make('span','',L(label)));sec.append(b);return sec;}
+  const tagNames=box=>[...(box?.querySelectorAll('.tag .tag_name')||[])].map(n=>n.textContent.trim()).filter(Boolean);
+  // 当前角色的数据（世界书名、备选开场白数）：getContext 每次都新建对象，限 1 秒读一次。
+  let ctxCache={at:0,ctx:null};
+  function ctxNow(){const now=Date.now();if(now-ctxCache.at>=1000)ctxCache={at:now,ctx:win.SillyTavern?.getContext?.()||null};return ctxCache.ctx;}
+  const charData=()=>{const c=ctxNow();return c?.characters?.[c?.characterId]?.data||null;};
+  // 标签：openEditor 临时把酒馆的标签框（搜索 + 标签块）搬进弹出页，关了搬回。
+  const openTags=box=>{if(box)openEditor(box,t('标签','Tags'));};
+
+  /* 2.0.261 手机：列表页照 Claude App 的 Chats——搜索框右端一个调节图标，点开从底部弹出「排序 / 筛选 / 工具」；
+   * 酒馆的「A-Z」灰框、6 个圆圈筛选按钮手机上不显示（还在原处，电脑照旧）。弹出的内容每次打开时按酒馆当前状态重建。
+   * 选项点了就关；开关、缩放这类「keep」项点了不关、原地重画。 */
+  function sheetMenu(cls,summary,build){
+    const m=make('details','cw-v4-more cw-v4-created cw-v4-phone-only cw-v4-sheet '+cls),sum=make('summary',''),list=make('div','cw-v4-more-list');
+    sum.append(summary);sum.setAttribute('aria-label',L('排序与筛选'));m.append(sum,list);
+    const fill=()=>{list.replaceChildren();build({
+      head:label=>list.append(make('div','cw-v4-sheet-head',L(label))),
+      opt:(label,on,fn)=>{const b=button(label,()=>fn(),'cw-v4-more-item cw-v4-sheet-opt'+(on?' cw-sel':''));list.append(b);return b;},
+      keep:(label,fn,state)=>{const b=button('',e=>{e.stopPropagation();fn();win.setTimeout(fill,60);},'cw-v4-more-item cw-v4-sheet-keep');b.append(make('span','cw-v4-sheet-label',label));
+        if(state!==undefined){b.setAttribute('role','switch');b.setAttribute('aria-checked',String(!!state));b.append(make('span','cw-v4-sheet-switch'));}list.append(b);return b;},
+      chips:items=>{if(!items.length)return;const w=make('div','cw-v4-sheet-chips');for(const [label,on,fn] of items){const c=button(label,e=>{e.stopPropagation();fn();win.setTimeout(fill,60);},'cw-v4-sheet-chip'+(on?' cw-on':''));w.append(c);}list.append(w);},
+    });};
+    m.addEventListener('toggle',()=>{if(m.open)fill();});
+    return m;
+  }
+  const sliders=()=>icon('sliders');
+  // 下拉的每个选项一行，当前项打勾；点了改下拉的值并派发 change（酒馆自己的处理照跑）。
+  function selectOpts(ui,select){if(!select)return;for(const o of [...select.options]){if(o.hidden||o.style.display==='none')continue;ui.opt((o.textContent||'').trim(),o.selected,()=>{if(select.value===o.value)return;select.value=o.value;select.dispatchEvent(new win.Event('input',{bubbles:true}));select.dispatchEvent(new win.Event('change',{bubbles:true}));});}}
+  // 酒馆的三态筛选标签（选中 / 排除 / 不限）：开关只在「选中」和「不限」之间切，点原来的标签直到到达目标状态。
+  const tagState=el=>el?.getAttribute('data-toggle-state')||'UNDEFINED';
+  function setTag(el,on){if(!el)return;for(let i=0;i<3&&(tagState(el)==='SELECTED')!==on;i++)el.click();if(!on)for(let i=0;i<3&&tagState(el)!=='UNDEFINED';i++)el.click();}
+  function filterSheet(ui,controls){
+    if(!controls)return;
+    const sw=[['filterByFavorites','只看收藏'],['filterByGroups','只看群聊'],['filterByFolder','标签当文件夹显示']].map(([c,l])=>[controls.querySelector('.'+c),l]).filter(([el])=>el);
+    if(sw.length){ui.head('筛选');for(const [el,l] of sw)ui.keep(L(l),()=>setTag(el,tagState(el)!=='SELECTED'),tagState(el)==='SELECTED');}
+    const userTags=[...controls.querySelectorAll('.tag:not(.actionable)')].filter(el=>el.querySelector('.tag_name')?.textContent.trim());
+    if(userTags.length){ui.head('按标签');ui.chips(userTags.map(el=>[el.querySelector('.tag_name').textContent.trim(),tagState(el)==='SELECTED',()=>setTag(el,tagState(el)!=='SELECTED')]));}
+  }
+  // 「标签当文件夹显示」酒馆默认就是开的，不算筛选。
+  const filtered=controls=>!!controls?.querySelector(':is(.filterByFavorites,.filterByGroups,.tag:not(.actionable)):is([data-toggle-state="SELECTED"],[data-toggle-state="EXCLUDED"])');
+  // 排序：一行「排序方式 · 当前值 ⌃⌄」，点了关掉这个弹出、开那个下拉自己的底部列表（openSelMenu，和别的下拉一样）。
+  function sortPick(ui,select,menuEl){if(!select)return;const b=ui.opt(L('排序方式'),false,()=>{});b.classList.add('cw-v4-sheet-pick');const v=make('span','cw-v4-sheet-value',(select.selectedOptions[0]?.textContent||'').trim());b.append(v);
+    b.addEventListener('click',e=>{e.stopPropagation();menuEl.open=false;win.setTimeout(()=>openSelMenu?.(select),30);},true);}
+  // 只有排序的列表页（用户角色）：调节图标直接开排序的底部列表。
+  function sortButton(select){const b=button('',e=>{e.stopPropagation();if(select)openSelMenu?.(select);},'cw-v4-phone-filter cw-v4-phone-only');b.append(sliders());b.setAttribute('aria-label',L('排序'));return b;}
+
+  // 页头：头像在左，名字（点了改名）和 Token 一行灰字在中间，收藏 / 开始聊天在右。
+  // 新建角色时酒馆显示 #name_div（输入框），名字按钮让位（CSS）。
+  function charHero(s,host){
+    const hero=created(s,make('div','cw-v4-hero')),who=make('div','cw-v4-hero-who'),meta=make('div','cw-v4-hero-meta'),acts=make('div','cw-v4-hero-acts');
+    host.append(hero);move(s,get('avatar_div_div'),hero);
+    const name=make('button','cw-v4-hero-name');name.type='button';name.title=t('点击改名','Click to rename');
+    const h2=doc.querySelector('#rm_button_selected_ch h2'),paint=()=>{const v=(h2?.textContent||'').trim();if(name.textContent!==v)name.textContent=v;};paint();
+    if(h2){const mo=new win.MutationObserver(paint);mo.observe(h2,{childList:true,characterData:true,subtree:true});cleanup(s,()=>mo.disconnect());}
+    name.addEventListener('click',()=>{const d=get('char-management-dropdown'),o=get('renameCharButton');if(!d||!o)return;d.selectedIndex=[...d.options].indexOf(o);d.dispatchEvent(new win.Event('change',{bubbles:true}));});
+    who.append(name);move(s,get('name_div'),who);who.append(meta);move(s,get('result_info'),meta);
+    const info=get('result_info_text'),stats=get('result_info')?.querySelector('.rm_stats_button');
+    if(info&&stats){const go=()=>stats.click();info.addEventListener('click',go);cleanup(s,()=>info.removeEventListener('click',go));}
+    hero.append(who,acts);move(s,get('favorite_button'),acts);
+    acts.append(button(t('开始聊天','Start chat'),()=>closeSettings?.(),'cw-v4-button cw-v4-hero-chat'));
+    // 2.0.260 手机：头像下面「更换头像」胶囊（照 Profile 的 Edit photo）。
+    hero.append(button(t('更换头像','Edit photo'),e=>{e.stopPropagation();get('add_avatar_button')?.click();},'cw-v4-pf-pill cw-v4-phone-only'));
+    return hero;
+  }
+  // 行里的控件全被酒馆藏起来（新建 / 已有群聊各显示一部分）时，整行一起藏。
+  function autoHide(s,r){
+    const ctrls=[...(r?.querySelector('.cw-v4-row-controls')?.children||[])];if(!ctrls.length)return r;
+    const sync=()=>{const hide=ctrls.every(c=>c.style.display==='none'||c.classList.contains('displayNone'));if(r.hidden!==hide)r.hidden=hide;};
+    const mo=new win.MutationObserver(sync);for(const c of ctrls)mo.observe(c,{attributes:true,attributeFilter:['style','class']});cleanup(s,()=>mo.disconnect());sync();return r;
+  }
+
+  /* ---------------- 群聊编辑（2.0.255，design-content-v1）----------------
+   * 页头（拼贴头像、群名、收藏、新群聊时「创建群聊」）+ 基本 / 发言 / 成员 / 添加成员 / 更多。
+   * 只搬酒馆原来的节点（ID 和事件都在）；剩下的折叠条外壳由 CSS 藏掉。 */
+  function groupEditor(){
+    const root=get('rm_group_chats_block');if(!root)return;const started=begin(root);if(!started)return;const {s,page}=started;
+    root.classList.add('cw-v4-group');cleanup(s,()=>root.classList.remove('cw-v4-group'));
+    root.style.setProperty('--cw-add-label',JSON.stringify(t('加入','Add')));cleanup(s,()=>root.style.removeProperty('--cw-add-label'));
+    const park=created(s,make('div','cw-v4-park'));page.append(park);
+    const hero=created(s,make('div','cw-v4-hero')),who=make('div','cw-v4-hero-who'),acts=make('div','cw-v4-hero-acts');page.append(hero);
+    move(s,root.querySelector('#rm_group_top_bar label.add_avatar'),hero);
+    const nameIn=get('rm_group_chat_name');
+    if(nameIn){const old=nameIn.placeholder;nameIn.placeholder=t('群聊名称','Group name');nameIn.classList.add('cw-v4-hero-input');cleanup(s,()=>{nameIn.placeholder=old;nameIn.classList.remove('cw-v4-hero-input');});move(s,nameIn,who);}
+    hero.append(who,acts);move(s,get('group_favorite_button'),acts);move(s,act(s,get('rm_group_submit'),'创建群聊',false,true),acts);
+    // 2.0.260 手机（照 Profile）：头像下面「更换头像」；群名在 CSS 里画成「名称」字段卡片；收藏 / 开始聊天 / 标签各是手机专用的一行。
+    const avatarLabel=hero.querySelector('label.add_avatar');
+    who.dataset.cwLabel=t('名称','Name');
+    hero.append(button(t('更换头像','Edit photo'),e=>{e.stopPropagation();avatarLabel?.click();},'cw-v4-pf-pill cw-v4-phone-only'));
+    const gfav=get('group_favorite_button'),gtags=get('group_tags_div');
+    const ptags=pfSec(page,'','cw-v4-pf-gtags');
+    pfField(ptags,'标签',()=>openTags(gtags),()=>{const n=tagNames(gtags);return [n.join('、')||L('无'),!n.length];},'gtags');
+    const lore=root.querySelector('#group-metadata-controls .chat_lorebook_button');
+    pfField(ptags,'聊天世界书',()=>lore?.click(),()=>{const w=ctxNow()?.chatMetadata?.world_info;return [w||L('未设置'),!w];},'glore').classList.add('cw-v4-pf-existing');
+    pfAction(page,'开始聊天',()=>closeSettings?.(),'cw-v4-pf-gap cw-v4-pf-existing');
+    pfSwitch(page,'收藏',()=>gfav?.classList.contains('fav_on'),()=>gfav?.click(),'cw-v4-pf-existing');
+    move(s,get('rm_button_back_from_group'),park);move(s,get('groupCurrentMemberPopoutButton'),park);
+    const basic=section(page,'基本');basic.classList.add('cw-v4-desk-only','cw-v4-after-hero');
+    row(s,basic,'聊天世界书','只对这个群聊生效',[act(s,root.querySelector('#group-metadata-controls .chat_lorebook_button'),'设置')]);
+    move(s,get('group-chat-lorebook-dropdown'),park);
+    row(s,basic,'标签','',[gtags]);
+    const talk=section(page,'发言');
+    sel(s,talk,get('rm_group_activation_strategy'),'发言顺序','谁接下一句。「自然」按提到的名字和发言频率来选');
+    sel(s,talk,get('rm_group_generation_mode'),'角色卡处理','「交换」每次只用说话那位的卡；「合并」把所有成员的卡拼在一起');
+    // 前缀 / 后缀只在「合并」模式有用：酒馆按模式切的是文本框父节点（搬过来以后是行里的控件格），整行跟着模式显隐。
+    const mode=get('rm_group_generation_mode');
+    for(const [id,label,desc] of [['rm_group_generation_mode_join_prefix','合并前缀','插在每位成员每段内容的前面'],['rm_group_generation_mode_join_suffix','合并后缀','插在每段内容的后面']]){
+      const r=setting(s,talk,id,label,desc),ctrl=get(id)?.parentElement;if(!r||!mode)continue;
+      const sync=()=>{const hide=mode.value==='0';if(r.hidden!==hide)r.hidden=hide;};sync();
+      mode.addEventListener('change',sync);const mo=new win.MutationObserver(sync);if(ctrl)mo.observe(ctrl,{attributes:true,attributeFilter:['style']});
+      cleanup(s,()=>{mode.removeEventListener('change',sync);mo.disconnect();r.hidden=false;});
+    }
+    setting(s,talk,'rm_group_allow_self_responses','允许自我回复','同一个角色可以连着说两句');
+    const auto=setting(s,talk,'rm_group_automode','自动模式','没人说话时角色自己接着聊，数字是间隔秒数');
+    const delay=get('rm_group_automode_delay'),ac=auto?.querySelector('.cw-v4-row-controls');
+    if(delay&&ac){delay.classList.add('cw-v4-num');cleanup(s,()=>delay.classList.remove('cw-v4-num'));move(s,delay,ac,ac.firstChild);}
+    setting(s,talk,'rm_group_hidemutedsprites','隐藏被禁言成员的立绘');
+    const box=(title,listId,filterId,ph)=>{
+      const sec=section(page,title),b=make('div','cw-v4-gbox'),head=make('div','cw-v4-gbox-head');sec.append(b);b.append(head);
+      head.append(searchBox(s,get(filterId),ph));
+      const list=get(listId),tags=list?.querySelector('.rm_tag_controls');
+      if(tags){tags.classList.add('cw-v4-tags');cleanup(s,()=>tags.classList.remove('cw-v4-tags'));move(s,tags,head);}
+      move(s,list,b);
+    };
+    box('成员','currentGroupMembers','rm_group_members_filter','搜索成员');
+    box('添加成员','unaddedCharList','rm_group_filter','搜索角色');
+    const more=section(page,'更多');
+    autoHide(s,row(s,more,'群聊场景覆盖','替换成员角色卡里的设定，只在这个群聊里生效',[act(s,get('rm_group_scenario'),'编辑')]));
+    autoHide(s,row(s,more,'外部媒体','消息里的外链图片、视频能不能显示',[act(s,get('group_open_media_overrides'),'设置')]));
+    autoHide(s,row(s,more,'头像','点上面的头像可以换图片；这里恢复成成员头像拼贴',[act(s,get('rm_group_restore_avatar'),'恢复拼贴')]));
+    const del=get('rm_group_delete');if(del){del.classList.add('cw-v4-danger');cleanup(s,()=>del.classList.remove('cw-v4-danger'));}
+    autoHide(s,row(s,more,'删除群聊','聊天记录一起删掉，无法恢复',[act(s,del,'删除')])).classList.add('cw-v4-desk-delete');
+    pfDelete(page,'删除群聊',()=>del?.click(),'cw-v4-pf-existing');
+    const df=pfFoot(page,'cw-v4-pf-existing');df.textContent=t('聊天记录会一起删掉，无法恢复。','Chats are deleted too. This cannot be undone.');
+  }
+
+  /* 2.0.260 手机：群聊成员每行右边只留一个 ⋯（底部弹出），里面是酒馆那排小图标的操作；点的是原来的图标（不搬）。
+   * 禁言 / 取消禁言按成员当前状态由 CSS 二选一。电脑不建菜单的显示（CSS 藏），照旧用图标。 */
+  function groupMemberRows(){
+    get('rm_group_members')?.querySelectorAll('.group_member').forEach(item=>{
+      if(item.querySelector(':scope>.cw-v4-gm-more'))return;
+      const s=state(item),hit=a=>()=>item.querySelector(`[data-action="${a}"]`)?.click();
+      const m=menu(s,[['让 TA 说下一句',null,false,hit('speak')],['禁言',null,false,hit('disable')],['取消禁言',null,false,hit('enable')],['上移',null,false,hit('up')],['下移',null,false,hit('down')],['查看角色卡',null,false,hit('view')],['移出群聊',null,true,hit('remove')]]);
+      m.classList.add('cw-v4-gm-more','cw-v4-phone-only');
+      const [, mute,unmute]=m.querySelectorAll('.cw-v4-more-item');mute?.classList.add('cw-v4-gm-mute');unmute?.classList.add('cw-v4-gm-unmute');
+      m.addEventListener('click',e=>e.stopPropagation());
+      item.append(m);s.created.push(m);
+    });
+  }
+  /* 2.0.257 手机（Lulu 选 A）：角色管理不用电脑那一行（原生下拉 + ⋯ 两个菜单），另建一个只在手机显示的小节：
+   * 三行进下一页、改名 / 复制 / 导出 / 更多操作是蓝色操作行、删除单独一张红字卡片。都是点酒馆原来的按钮或下拉选项。
+   * 「更多操作」每次打开时按酒馆下拉里当前有的选项重建（扩展会往里加，比如「展示图库」）。显隐按宽度由 CSS 切。 */
+  function pickOption(id){const d=get('char-management-dropdown'),o=get(id);if(!d||!o)return;d.selectedIndex=[...d.options].indexOf(o);d.dispatchEvent(new win.Event('change',{bubbles:true}));}
+  /* 2.0.260：角色编辑页手机上半部（照 Profile）。名字 / 标签 / 角色世界书是字段，Token 数写在卡片下面；
+   * 开始聊天、收藏各一张单行卡片；描述、开场白、高级定义、创作者注释是「标题 · 白卡片一行 · 说明」。新建角色时藏掉只对已有角色有用的（CSS）。 */
+  function phoneCharTop(s,host,form){
+    const h2=doc.querySelector('#rm_button_selected_ch h2'),fav=get('favorite_button'),tags=get('tags_div'),world=get('world_button');
+    const sec=pfSec(host,'','cw-v4-pf-first');
+    pfField(sec,'名字',()=>pickOption('renameCharButton'),()=>[(h2?.textContent||'').trim(),false],'name').classList.add('cw-v4-pf-existing');
+    pfField(sec,'标签',()=>openTags(tags),()=>{const n=tagNames(tags);return [n.join('、')||L('无'),!n.length];},'tags');
+    pfField(sec,'角色世界书',()=>world?.click(),()=>{const w=charData()?.extensions?.world;return [w||L('未绑定'),!w];},'world');
+    const tok=pfFoot(host,'cw-v4-pf-existing');paints.push(()=>setText(tok,(get('result_info_text')?.textContent||'').replace(/\s+/g,' ').trim()));
+    pfAction(host,'开始聊天',()=>closeSettings?.(),'cw-v4-pf-gap cw-v4-pf-existing');
+    pfSwitch(host,'收藏',()=>fav?.classList.contains('fav_on'),()=>fav?.click(),'cw-v4-pf-existing');
+    const ed=(id,label)=>()=>{const ta=get(id);if(ta)openEditor(ta,L(label));};
+    pfText(host,'描述',()=>get('description_textarea')?.value,ed('description_textarea','描述'),'description_textarea').classList.add('cw-v4-pf-content');
+    pfText(host,'开场白',()=>get('firstmessage_textarea')?.value,ed('firstmessage_textarea','开场白'),'firstmessage_textarea');
+    // 备选开场白：开场白卡片下面一行蓝字，点了开酒馆的备选开场白窗口。
+    const altFoot=pfFoot(host),alt=button('',e=>{e.stopPropagation();form.querySelector('.open_alternate_greetings')?.click();},'cw-v4-pf-link');altFoot.append(alt);
+    paints.push(()=>{const n=charData()?.alternate_greetings?.length||0;setText(alt,n?t(`另有 ${n} 条备选开场白`,`${n} alternate greeting${n>1?'s':''}`):t('添加备选开场白','Add alternate greetings'));});
+    pfText(host,'高级定义',()=>t('性格摘要、场景、示例对话、作者注释','Personality, scenario, examples, author note'),()=>openAdvancedPhone(),'advanced');
+    pfText(host,'创作者注释',()=>get('creator_notes_textarea')?.value,()=>openAdvancedPhone(),'creator_notes');
+  }
+  function phoneManage(s,host){
+    const sec=pfSec(host,'角色管理','cw-v4-phone-manage');
+    pfField(sec,'已绑定的用户角色',()=>get('char_connections_button')?.click(),()=>['',false],'connections');
+    pfField(sec,'角色设置覆盖',()=>pickOption('set_chat_character_settings'),()=>['',false],'overrides');
+    const shown=new Set(['set_chat_character_settings','renameCharButton']);
+    const more=make('details','cw-v4-more cw-v4-created cw-v4-phone-more'),sum=make('summary','',L('更多操作')),list=make('div','cw-v4-more-list');more.append(sum,list);
+    const fill=()=>{list.replaceChildren();const d=get('char-management-dropdown');if(!d)return;
+      for(const o of [...d.options]){if(o.value==='default'||shown.has(o.id)||o.hidden||o.style.display==='none')continue;
+        const b=button((o.textContent||'').trim(),e=>{e.stopPropagation();more.open=false;d.selectedIndex=[...d.options].indexOf(o);d.dispatchEvent(new win.Event('change',{bubbles:true}));},'cw-v4-more-item');
+        if(o.disabled)b.disabled=true;list.append(b);}};
+    more.addEventListener('toggle',()=>{if(more.open)fill();});fill();
+    const acts=pfSec(host,'','cw-v4-phone-manage');
+    for(const [label,fn] of [['复制',()=>get('dupe_button')?.click()],['导出',()=>get('export_button')?.click()]]){const b=pfBtn('cw-v4-pf-blue',fn);b.textContent=L(label);acts.append(b);}
+    acts.append(more);
+    // 删除单独一张卡片：垃圾桶 + 红字（照 Profile 的 Delete account）。
+    pfDelete(host,'删除这个角色',()=>get('delete_button')?.click(),'cw-v4-phone-manage');
+  }
+  /* 2.0.257 手机上点「高级定义」不弹酒馆的浮动面板，开手机弹出页：分组卡片，长文本一行（标题 + 预览，点进去全屏编辑），
+   * 深度 / 身份是下拉，发言频率是滑杆。控件是从 #character_popup 临时搬来的原节点，关掉就搬回去，电脑照旧用面板。 */
+  const phoneWide=()=>win.innerWidth<=700||doc.documentElement.dataset.claudeLayout==='mobile';
+  function advancedPhone(s){
+    const onClick=e=>{
+      if(!(e.target instanceof win.Element)||!e.target.closest('#advanced_div')||!phoneWide())return;
+      e.preventDefault();e.stopImmediatePropagation();openAdvancedPhone();
+    };
+    doc.addEventListener('click',onClick,true);cleanup(s,()=>doc.removeEventListener('click',onClick,true));
+  }
+  function openAdvancedPhone(){
+    const form=get('form_create');if(!form||doc.querySelector('.cw-v4-adv-phone'))return;
+    const tmp={moves:[],created:[],root:form},holder=make('div','cw-v4-park'),box=make('div','cw-v4-adv-phone');
+    form.append(holder);holder.append(box);
+    const g=id=>get(id);
+    let x=section(box,'角色');
+    textRow(tmp,x,g('personality_textarea'),'性格摘要');textRow(tmp,x,g('scenario_pole'),'情景');textRow(tmp,x,g('mes_example_textarea'),'示例对话','决定角色的文风，很重要');
+    x=section(box,'角色备注');
+    textRow(tmp,x,g('depth_prompt_prompt'),'内容','按指定身份插进聊天的指定深度');num(tmp,x,g('depth_prompt_depth'),'插入深度');sel(tmp,x,g('depth_prompt_role'),'身份');
+    x=section(box,'群聊');rng(tmp,x,g('talkativeness_slider'),null,'发言频率','群聊里这个角色多久说一次话');
+    x=section(box,'提示词覆盖');
+    textRow(tmp,x,g('system_prompt_textarea'),'主提示词');textRow(tmp,x,g('post_history_instructions_textarea'),'历史后置指令');
+    x.append(created(tmp,make('p','cw-v4-adv-note',t('对话补全和指令模式才用。写 {{original}} 可以保留系统设置里的默认提示词。','Chat Completion and Instruct mode only. Write {{original}} to keep the default prompt from system settings.'))));
+    x=section(box,t('创作者信息（不会发给 AI）','Creator info (not sent to the AI)'));
+    textRow(tmp,x,g('creator_textarea'),'作者');textRow(tmp,x,g('character_version_textarea'),'版本');textRow(tmp,x,g('creator_notes_textarea'),'创作者注释');textRow(tmp,x,g('tags_textarea'),'嵌入标签');
+    openEditor(box,t('高级定义','Advanced definitions'),'',{onClose:()=>{
+      tmp.cleanups?.forEach(fn=>fn());
+      for(const [node,mark] of [...tmp.moves].reverse())if(mark.parentNode)mark.replaceWith(node);
+      tmp.created.forEach(n=>n.remove());holder.remove();
+    }});
+  }
+
   /* ---------------- 角色卡 ---------------- */
   function characters(panel){const list=get('rm_characters_block');if(!list)return;const started=begin(list);if(!started)return;const {s,page}=started;
     // In the edit view the native list button is the way back to the list.
     const back=get('rm_button_characters');if(back&&!back.querySelector('.cw-v4-action-label')){const label=make('span','cw-v4-action-label',t('全部角色','All characters'));back.append(label);s.created.push(label);back.classList.add('cw-v4-back');s.cleanup=()=>back.classList.remove('cw-v4-back');}
-    const sec=section(page,'');row(s,sec,'','点角色进入编辑；⋯ 里可以直接开始聊天',[act(s,get('rm_button_create'),'新建角色',true),menu(s,[['从文件导入',get('character_import_button')],['从网址导入',get('external_import_button')],['新建群聊',get('rm_button_group_chats')],['批量编辑',get('bulkEditButton')],['网格视图',get('charListGridToggle')]])]);
-    const all=section(page,'全部角色');all.classList.add('cw-v4-entries');const b=bar();all.append(b);
+    const sec=section(page,'');sec.classList.add('cw-v4-desk-only');row(s,sec,'','点角色进入编辑；新建群聊、导入角色在右边 ⋯ 里',[act(s,get('rm_button_create'),'新建角色',true),menu(s,[['新建群聊',get('rm_button_group_chats')],['从文件导入',get('character_import_button')],['从网址导入',get('external_import_button')],['批量编辑',get('bulkEditButton')]])]);
+    // 2.0.263：网格视图不要了（Claude 的列表没有网格；开着也照列表排）。按钮收起来，免得掉进「其他设置」。
+    {const gp=make('div','cw-v4-park');sec.append(gp);move(s,get('charListGridToggle'),gp);}
+    const all=section(page,'全部角色');all.classList.add('cw-v4-entries','cw-v4-chatlist');const b=bar();all.append(b);
     b.append(searchBox(s,get('character_search_bar'),'搜索角色'));move(s,get('character_sort_order'),b);
     const tags=list.querySelector('#charListFixedTop .rm_tag_controls');
     if(tags){tags.classList.add('cw-v4-tags');move(s,tags,all);cleanup(s,()=>tags.classList.remove('cw-v4-tags'));}
+    // 2.0.263：批量编辑时酒馆的「已选 N / 全选 / 删除」原来落在「其他设置」里看不见；改成列表上方一条操作栏（电脑手机都用），点的还是原来的按钮。
+    const bulk=make('div','cw-v4-bulkbar'),bcount=make('span','cw-v4-bulk-count');bulk.append(bcount,
+      button(L('全选'),()=>get('bulkSelectAllButton')?.click(),'cw-v4-bulk-btn'),button(L('删除'),()=>get('bulkDeleteButton')?.click(),'cw-v4-bulk-btn cw-v4-bulk-del'),button(L('完成'),()=>get('bulkEditButton')?.click(),'cw-v4-bulk-btn cw-v4-bulk-done'));
+    b.after(bulk);paints.push(()=>{const n=parseInt(get('bulkSelectedCount')?.textContent||'0',10)||0;setText(bcount,n?t(`已选 ${n} 个`,`${n} selected`):t('点角色选中','Tap to select'));});
+    // 2.0.261 手机（照 Chats）：搜索框右端调节图标 → 排序 / 筛选 / 工具；右下角悬浮「+ 新建」。
+    const click=id=>()=>get(id)?.click();
+    const flt=sheetMenu('cw-v4-phone-filter',sliders(),ui=>{
+      sortPick(ui,get('character_sort_order'),flt);
+      filterSheet(ui,tags);
+      ui.head('工具');ui.opt(L('管理标签'),false,()=>tags?.querySelector('.manageTags')?.click());ui.opt(L('批量编辑'),false,click('bulkEditButton'));
+      if(filtered(tags))ui.opt(L('清除筛选'),false,()=>tags?.querySelector('.clearAllFilters')?.click()).classList.add('cw-v4-sheet-clear');
+    });
+    b.append(flt);paints.push(()=>setFlag(flt,'cw-v4-dot',filtered(tags)));
+    const fab=sheetMenu('cw-v4-phone-fab',make('span','',L('新建')),ui=>{
+      ui.opt(L('新建角色'),false,click('rm_button_create'));ui.opt(L('新建群聊'),false,click('rm_button_group_chats'));
+      ui.opt(L('从文件导入'),false,click('character_import_button'));ui.opt(L('从网址导入'),false,click('external_import_button'));
+    });
+    fab.querySelector('summary').prepend(icon('plus'));fab.querySelector('summary').setAttribute('aria-label',L('新建'));page.append(fab);
     move(s,get('rm_print_characters_pagination'),all);move(s,get('rm_print_characters_block'),all);finish(s);
     // Keep the real form and its conditional wrappers, including create-only
     // name/submit controls. Editing an existing name still uses ST's Rename.
     const form=get('form_create'),adapted=form&&begin(form);if(adapted){
-      const fs=adapted.s,body=adapted.page,general=section(body,'');
-      row(fs,general,'名字','',[get('name_div')]).classList.add('cw-v4-character-name');
-      row(fs,general,t('头像','Avatar'),'',[get('avatar_div_div'),get('favorite_button')]);
+      const fs=adapted.s,body=adapted.page;
+      // 2.0.255（design-content-v1）：头像 + 名字 + Token 合成页头；原来空着的「名字」行和单独的「头像」行去掉。
+      charHero(fs,body);
+      phoneCharTop(fs,body,form);
+      const general=section(body,'');general.classList.add('cw-v4-desk-only','cw-v4-after-hero');
       row(fs,general,'标签','',[get('tags_div')]);
-      const content=section(body,'内容');
+      const content=section(body,'内容');content.classList.add('cw-v4-desk-only');
       textRow(fs,content,get('description_textarea'),'描述','外貌、性格、背景……');
       textRow(fs,content,get('firstmessage_textarea'),'开场白','聊天开始时角色说的第一句');
-      const more=section(body,'更多');row(fs,more,'高级定义','性格摘要、场景、示例对话、作者注释等',[act(fs,get('advanced_div'),'打开')]);
+      const more=section(body,'更多');more.classList.add('cw-v4-desk-more');row(fs,more,'高级定义','性格摘要、场景、示例对话、作者注释等',[act(fs,get('advanced_div'),'打开')]);
       const alt=form.querySelector('.open_alternate_greetings');if(alt)row(fs,more,'备选开场白','',[act(fs,alt,'管理')]);
       const notes=get('spoiler_free_desc');if(notes){const r=row(fs,more,t('创作者注释','Creator notes'),'',[]),park=make('div','cw-v4-park');r.append(park);move(fs,notes,park);r.querySelector('.cw-v4-row-controls').append(button(L('配置'),()=>openEditor(notes,t('创作者注释','Creator notes'))));}
-      row(fs,more,t('角色管理','Character management'),'',[get('char-management-dropdown'),get('create_button_label'),menu(fs,[['角色世界书',get('world_button')],['已绑定的用户角色',get('char_connections_button')],['导出',get('export_button')],['复制',get('dupe_button')],['删除这个角色',get('delete_button'),true]])]);
+      const deskManage=row(fs,more,t('角色管理','Character management'),'',[get('char-management-dropdown'),get('create_button_label'),menu(fs,[['角色世界书',get('world_button')],['已绑定的用户角色',get('char_connections_button')],['导出',get('export_button')],['复制',get('dupe_button')],['删除这个角色',get('delete_button'),true]])]);
+      deskManage.classList.add('cw-v4-desk-manage');
+      phoneManage(fs,body);advancedPhone(fs);
       finish(fs);
     }
   }
@@ -524,7 +838,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       tg(s,top,get('extensions_notify_updates'),'扩展有更新时通知');
       const list=section(page,'已安装');list.classList.add('cw-v4-entries');for(const id of ['extensions_settings','extensions_settings2'])move(s,get(id),list);
       const extras=panel.querySelector('.extensions_url_block');
-      if(extras){const legacy=section(page,'旧版 Extras API（已弃用）');dialogRow(s,legacy,'Extras API','只有还在用旧版 Extras 服务器时才需要','Extras API',box=>move(s,extras,box));}
+      if(extras){const legacy=section(page,'旧版 Extras API（已弃用）');dialogRow(s,legacy,'Extras API','只有还在用旧版 Extras 服务器时才需要','Extras API',box=>move(s,extras,box),'配置',extensionSettings.open);}
       finish(s);
     }
     panel.querySelectorAll('#extensions_settings > div,#extensions_settings2 > div').forEach(c=>{
@@ -533,7 +847,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       const name=head.querySelector('b,strong')?.textContent.trim()||head.textContent.trim();if(!name)return;
       c.dataset.cwV4Extension='1';c.classList.add('cw-v4-extension-item');
       const s=state(c),r=make('div','cw-v4-extension-row'),ic=make('span','cw-v4-extension-icon');
-      r.append(ic,make('span','cw-v4-extension-name',name),button(L('配置'),e=>{e.stopPropagation();openEditor(c,name);},'cw-v4-button cw-v4-extension-edit'));
+      r.append(ic,make('span','cw-v4-extension-name',name),button(L('配置'),e=>{e.stopPropagation();extensionSettings.open(c,name);},'cw-v4-button cw-v4-extension-edit'));
       c.prepend(r);s.created.push(r);
     });
   }
@@ -542,7 +856,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       ({WorldInfo:world,Backgrounds:backgrounds,AdvancedFormatting:formatting,'left-nav-panel':presets,PersonaManagement:personas,'right-nav-panel':characters,rm_api_block:api,rm_extensions_block:extensions})[panel.id]?.(panel);
       if(panel.id==='PersonaManagement'){personaRows(panel);personaName(state(panel));}
       if(panel.id==='left-nav-panel')promptRows(panel);
-      if(panel.id==='right-nav-panel')characterRows(panel);
+      if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
       if(panel.id==='WorldInfo'){
         const s=state(panel);worldChips(s);worldSummary(s);
         const select=get('world_editor_select'),visible=get('select2-world_editor_select-container')?.closest('.select2-container');
@@ -550,7 +864,8 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         worldEntries(panel);
       }
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
+      for(const f of paints)f();
     },
-    restore(){for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
+    restore(){extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
   };
 }

@@ -1,6 +1,6 @@
-import { officialIcons } from './official-icons.js?v=20261001a';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261002d';
-import { tr } from './official-i18n.js?v=20261001q';
+import { officialIcons } from './official-icons.js?v=20261002u';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261004h';
+import { tr } from './official-i18n.js?v=20261002t';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -85,6 +85,16 @@ export function installOfficialLayout(win = window) {
     ]},
   ];
   const L = s => tr(zh(), s);
+  // 2.0.268 菜单里每一项的字（design-small-menus-v1）：认识的按钮写自己的短名，插件按钮用它自己的 title 第一行。CSS 用 attr(data-cw-label)。
+  const MES_MORE_LABELS = {mes_translate:'翻译',sd_message_gen:'生成图片',mes_narrate:'朗读',mes_prompt:'查看发出的提示词',mes_hide:'不发给 AI',mes_unhide:'重新发给 AI',mes_media_gallery:'切换图片显示方式',mes_media_list:'切换图片显示方式',mes_embed:'附加文件',mes_swipe_picker:'滑动记录',mes_create_bookmark:'创建检查点',mes_create_branch:'创建分支',mes_copy:'复制',mes_ghost:'幽灵消息'};
+  const EDIT_LABELS = {mes_edit_done:'保存',mes_edit_cancel:'取消',mes_edit_copy:'复制成一条新消息',mes_edit_add_reasoning:'添加思考过程',mes_edit_up:'上移',mes_edit_down:'下移',mes_edit_delete:'删除这条消息'};
+  function labelMenu(menu, map) {
+    for (const b of menu.children) {
+      const k = [...b.classList].find(c => map[c]);
+      const label = k ? L(map[k]) : (b.getAttribute('title') || b.textContent || '').split('\n')[0].trim();
+      if (label && b.dataset.cwLabel !== label) b.dataset.cwLabel = label;
+    }
+  }
   let prefPage = 'look', searchQuery = '', prefPanel = null;
   const prefMoves = [], prefParts = [], prefClasses = [];
   const chatMoves=[];
@@ -123,7 +133,7 @@ export function installOfficialLayout(win = window) {
     color(id){const el=take(id);if(!el)return null;return prow(textOf(el.nextElementSibling),'',[el]);},
     area(id,label,desc,cls='cw-v4-area'){const el=take(id);if(!el)return null;addClass(el,...cls.split(' '));el.dataset.cwV4Text='1';let lab=el.previousElementSibling;while(lab&&!/^(SMALL|SPAN|LABEL)$/.test(lab.tagName))lab=lab.previousElementSibling;if(!lab)lab=el.parentElement?.previousElementSibling;return prow(label||textOf(lab),desc,[el],'cw-v4-stack');},
   };
-  const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings});
+  const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu});
   function restorePrefs() {
     const panel = panels.get('user-settings-block'), pages = panel?.querySelector('.cw-v4-pref-pages');
     if (!pages) return;
@@ -309,7 +319,7 @@ export function installOfficialLayout(win = window) {
     // 整块搬进弹出页时行也跟着走。搬走期间原处放一份行的拷贝（不能点），搬回来再拿掉。
     const standRow = node.querySelector?.(':scope>.cw-v4-extension-row');
     let standIn = null;
-    if (standRow) { standIn = make('div', node.className + ' cw-v4-standin'); standIn.inert = true; standIn.setAttribute('aria-hidden', 'true'); standIn.append(standRow.cloneNode(true)); anchor.before(standIn); }
+    if (standRow) { standIn = make('div', node.className + ' cw-v4-standin'); standIn.classList.remove('cwx-host', 'cw-v4-editing'); standIn.inert = true; standIn.setAttribute('aria-hidden', 'true'); standIn.append(standRow.cloneNode(true)); anchor.before(standIn); }
     const dialog = make('dialog', 'cw-v4-editor popup');
     const head = make('header', 'cw-v4-editor-head'); head.append(opts.head || make('h2', '', title));
     // 手机上弹窗是从底下升起的弹出页：× / 完成 先播下滑（data-cw-closing），播完再关；电脑和 Escape 直接关。
@@ -331,7 +341,7 @@ export function installOfficialLayout(win = window) {
     // 2.0.209：弹窗放到我们自己包的行外面（仍在原来的表单 / 分区里）。放在行里时，手机按行类型排版的规则
     // （[data-cw-kind=nav] 里的按钮铺满整行等）会套到弹窗和它的按钮上，弹窗飘到左上角、「完成」跑出去。
     let host = null;
-    for (let n = anchor.parentElement?.closest('.cw-v4-row,.cw-v4-api-row'); n; n = n.parentElement?.closest('.cw-v4-row,.cw-v4-api-row')) host = n;
+    for (let n = anchor.parentElement?.closest('.cw-v4-row,.cw-v4-api-row,.cwx-row,.cwx-block'); n; n = n.parentElement?.closest('.cw-v4-row,.cw-v4-api-row,.cwx-row,.cwx-block')) host = n;
     // 2.0.214：要编辑的东西在收起的 <details> 里（Claude Web「自定义配色」）时，放在 details 里面的 <dialog> 画不出来；挪到最外层收起的 details 后面。
     let place = host || anchor;
     for (let d = place.parentElement?.closest('details:not([open])'); d; d = d.parentElement?.closest('details:not([open])')) place = d;
@@ -407,7 +417,8 @@ export function installOfficialLayout(win = window) {
      列表是 popover（最上层）；下拉在模态的编辑弹窗里时，列表挂在那个弹窗里面（挂在外面会被模态弄成不能点）。
      键盘：Enter / 空格 / Alt+↓ 打开，↑↓ 移动，Enter 选，Esc 只关列表（不关设置）。点外面、滚动、改窗口大小都会关。手机不用这个。 */
   let selMenu = null, selFor = null, selActive = -1, selItems = [];
-  const selTarget = el => !mobile() && el instanceof win.HTMLSelectElement && !el.multiple && !el.disabled
+  // 2.0.257 手机也接管（Lulu：手机上的原生下拉列表不好看），CSS ㉞ 画成从底部弹出的列表。
+  const selTarget = el => el instanceof win.HTMLSelectElement && !el.multiple && !el.disabled
     && !el.classList.contains('select2-hidden-accessible') && !el.classList.contains('cw-v4-has-seg') && !!el.closest('.cw-v4-panel,dialog.cw-v4-editor');
   function closeSelMenu(refocus) {
     if (!selMenu) return;
@@ -446,8 +457,15 @@ export function installOfficialLayout(win = window) {
     for (const t of ['mousedown', 'touchstart']) m.addEventListener(t, e => e.stopPropagation(), {passive: true});
     const opts = [...sel.options].filter(o => !o.hidden && o.style.display !== 'none');
     let search = null;
+    // 手机：顶上一行灰字写这个下拉是干什么的（行标题），底下一个「取消」；背景压暗，点暗处也关。
+    if (mobile()) {
+      const title = (sel.closest('.cw-v4-row,.cw-v4-mapped-setting')?.querySelector('.cw-v4-row-title')?.textContent || labelFor(sel) || '').trim();
+      if (title && title.length <= 30) m.append(make('div', 'cw-v4-selmenu-title', title));
+      m.addEventListener('click', e => { if (e.target === m) closeSelMenu(); });
+    }
     if (opts.length > 10) { search = make('input', 'cw-v4-selmenu-search'); search.type = 'text'; search.placeholder = L('搜索'); search.setAttribute('aria-label', L('搜索')); m.append(search); }
     m.append(list);
+    if (mobile()) { const c = button(t('取消', 'Cancel'), e => { e.stopPropagation(); closeSelMenu(); }, 'cw-v4-selmenu-cancel'); m.append(c); }
     const build = q => {
       list.replaceChildren(); selItems = []; let group = null;
       for (const o of opts) {
@@ -483,7 +501,7 @@ export function installOfficialLayout(win = window) {
     markSel(cur >= 0 ? cur : selItems.findIndex(it => !it.disabled));
     if (search) {
       search.addEventListener('input', () => { build(search.value.trim().toLocaleLowerCase()); const c = selItems.findIndex(it => it.el.classList.contains('cw-sel')); markSel(c >= 0 ? c : selItems.findIndex(it => !it.disabled)); });
-      search.focus({preventScroll: true});
+      if (!mobile()) search.focus({preventScroll: true});
     }
   }
   const segSel = new Map();
@@ -535,8 +553,8 @@ export function installOfficialLayout(win = window) {
       });
     }
     // Keep source-specific and plugin ancestors: ST toggles their visibility.
-    panel.querySelectorAll('label.checkbox_label:not([data-v-app] *):not(:has(.sr-only))').forEach(n => n.classList.add('cw-v4-setting-row'));
-    panel.querySelectorAll('.range-block').forEach(n => n.classList.add('cw-v4-range-row'));
+    panel.querySelectorAll('label.checkbox_label:not([data-v-app] *):not(:has(.sr-only))').forEach(n => { if (!n.classList.contains('cw-v4-setting-row')) n.classList.add('cw-v4-setting-row'); });
+    panel.querySelectorAll('.range-block').forEach(n => { if (!n.classList.contains('cw-v4-range-row')) n.classList.add('cw-v4-range-row'); });
     // Move real buttons, including data attributes and their visibility state.
     // Menus remain inside each original action group for delegated listeners.
     const moreSelector = '[data-preset-manager-new],[data-preset-manager-rename],[data-preset-manager-import],[data-preset-manager-export],[data-preset-manager-restore],[data-preset-manager-delete],#new_oai_preset,#import_oai_preset,#export_oai_preset,#delete_oai_preset,#create_connection_profile,#view_connection_profile,#edit_connection_profile,#reload_connection_profile,#delete_connection_profile,#personas_backup,#personas_restore';
@@ -564,9 +582,12 @@ export function installOfficialLayout(win = window) {
       const list=menu.querySelector(':scope>.cw-v4-more-list'),summary=menu.querySelector('summary');
       if(!list||!list.showPopover)return;
       list.setAttribute('popover','manual');
+      // 2.0.257 手机：从底部弹出（CSS ㉞），末尾一个「取消」，点压暗的地方也关。
+      const cancel=button(t('取消','Cancel'),e=>{e.stopPropagation();menu.open=false;},'cw-v4-more-cancel');
       on(menu,'toggle',()=>{
         if(!menu.open){if(list.matches(':popover-open'))list.hidePopover();return;}
         doc.querySelectorAll('.cw-v4-more[open]').forEach(other=>{if(other!==menu)other.open=false;});
+        if(mobile())list.append(cancel);else cancel.remove();
         list.showPopover();
         const anchor=summary.getBoundingClientRect(),box=list.getBoundingClientRect();
         list.style.left=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8))+'px';
@@ -574,7 +595,7 @@ export function installOfficialLayout(win = window) {
       });
       on(doc,'click',e=>{if(menu.open&&!menu.contains(e.target))menu.open=false;});
       on(doc,'keydown',e=>{if(e.key==='Escape'&&menu.open){menu.open=false;e.preventDefault();e.stopPropagation();}},true);
-      on(list,'click',e=>{if(e.target.closest('.menu_button,button'))menu.open=false;});
+      on(list,'click',e=>{if(e.target===list||e.target.closest('.menu_button,button'))menu.open=false;});
       disposers.push(()=>{if(list.matches(':popover-open'))list.hidePopover();});
     });
     // Native textareas continue to save using their original input handlers.
@@ -755,7 +776,7 @@ export function installOfficialLayout(win = window) {
     if (p) {
       if (!current) { previousFocus = doc.activeElement; if (!mobile() && !calm()) deskAnim('in', DESK_BD_IN + 60); }
       if (current !== p) { current = p; shell.classList.remove('cw-v4-show-nav'); }
-      root.setAttribute('data-cw-v4-settings','open'); shell.hidden = false;
+      if (root.getAttribute('data-cw-v4-settings') !== 'open') root.setAttribute('data-cw-v4-settings','open'); shell.hidden = false;
       if (shell.dataset.panel !== p.id) shell.dataset.panel = p.id;
       const spec = ids.find(([id]) => id === p.id);
       // Phones show every preference page on one screen titled "Preferences" (design mpage).
@@ -846,7 +867,17 @@ export function installOfficialLayout(win = window) {
       const t = e.target;
       if (t instanceof win.Element && !t.closest('#top-settings-holder')) e.stopPropagation();
     }, {passive: true});
-    on(win, 'resize', () => closeSelMenu());
+    on(win, 'resize', () => { if (!mobile()) closeSelMenu(); });
+    // 2.0.257 手机：轻点下拉（没滑动）时在 touchend 截住，原生列表不出来，开我们的底部列表。滑动照常滚页面。
+    let touchSel = null, touchY = 0;
+    on(doc, 'touchstart', e => { const t = e.target; touchSel = t instanceof win.HTMLSelectElement && selTarget(t) ? t : null; touchY = e.touches[0]?.clientY || 0; }, {capture: true, passive: true});
+    on(doc, 'touchend', e => {
+      const t = touchSel; touchSel = null;
+      if (!t || e.target !== t || Math.abs((e.changedTouches[0]?.clientY || 0) - touchY) > 10) return;
+      e.preventDefault();
+      if (selFor === t) { closeSelMenu(true); return; }
+      openSelMenu(t);
+    }, {capture: true, passive: false});
     on(win, 'keydown', e => {
       if (!selMenu) {
         const a = doc.activeElement;
@@ -919,7 +950,15 @@ export function installOfficialLayout(win = window) {
     // the block's origin is measured instead of assuming the viewport.
     const moreOpen = new Map();   // menu -> {since, x, y, max} while opening / open
     let moreFrame = 0;
-    const moreClear = menu => { moreOpen.delete(menu); for (const v of ['--cw-more-x','--cw-more-y','--cw-more-max']) menu.style.removeProperty(v); delete menu.dataset.cwMore; };
+    // 2.0.271（Lulu：滚动时菜单钉在屏幕上）：有些手机浏览器在手指甩动时停掉页面脚本，逐帧算位置就跟不上。
+    // 支持 CSS 锚点定位时，位置交给浏览器（菜单锚在这条消息的「…」上，滚动由合成线程跟随）；JS 只决定往上/往下、横向偏移和限高。
+    const moreAnchor = !!win.CSS?.supports?.('anchor-name: --cw-more');
+    const moreClear = menu => {
+      moreOpen.delete(menu);
+      for (const v of ['--cw-more-x','--cw-more-y','--cw-more-max','--cw-more-maxh','--cw-more-dx']) menu.style.removeProperty(v);
+      delete menu.dataset.cwMore; delete menu.dataset.cwMoreAnchor;
+      const hint = menu.parentElement?.querySelector(':scope > .extraMesButtonsHint'); if (hint) delete hint.dataset.cwMoreAnchor;
+    };
     const morePlace = () => {
       moreFrame = 0;
       if (destroyed) return;
@@ -930,7 +969,13 @@ export function installOfficialLayout(win = window) {
         // The #chat that holds this message: a page can carry a second, empty #chat (seen after
         // toggling the extension), and measuring that one collapses the popup to zero width.
         const chat = menu.closest('#chat')?.getBoundingClientRect();
-        const minX = (chat?.left || 0) + 8, maxX = (chat?.width ? chat.right : win.innerWidth) - 8, minY = (chat?.top || 0) + 2;
+        // 2.0.271：上面让开顶栏（手机 #top-bar、电脑聊天标题行）再空 10px；下面让开输入框和它上方的快速回复条。
+        let topEdge = chat?.top || 0;
+        for (const el of doc.querySelectorAll('#top-bar, .cw-v4-chat-head')) {
+          const r = el.getClientRects().length ? el.getBoundingClientRect() : null;
+          if (r && r.height && r.bottom < win.innerHeight / 2) topEdge = Math.max(topEdge, r.bottom);
+        }
+        const minX = (chat?.left || 0) + 8, maxX = (chat?.width ? chat.right : win.innerWidth) - 8, minY = topEdge + 10;
         if (!menu.classList.contains('visible')) {
           // ST adds .visible only after the …'s fade; give it a moment, then drop the entry.
           if (st.placed || win.performance.now() - st.since > 1500) moreClear(menu);
@@ -941,10 +986,31 @@ export function installOfficialLayout(win = window) {
         const h = hint.getBoundingClientRect(), m = menu.getBoundingClientRect();
         // Where the containing block starts on screen: current rect minus the offsets we set.
         const ox = m.left - st.x, oy = m.top - st.y;
-        let x = phone ? h.right - m.width : h.left + h.width / 2 - m.width / 2;
+        // 2.0.270（Lulu：菜单盖在按钮上、滚动时钉死）：贴着「…」弹出，绝不盖住它。电脑先往下、手机先往上（上面是消息正文，地方大）；
+        // 两边都放不下就放在地方大的那边，菜单自己限高、里面滚。位置每帧跟着「…」走。
+        let x = h.left - 4;
         x = Math.min(Math.max(x, minX), Math.max(minX, maxX - m.width));
-        let y = h.top - 6 - m.height;
-        if (y < minY) y = h.bottom + 6;                   // no room above: open below the …
+        let bottomEdge = win.innerHeight;
+        for (const el of doc.querySelectorAll('#send_form, #qr--bar')) {
+          const r = el.getClientRects().length ? el.getBoundingClientRect() : null;
+          if (r && r.height && r.top > win.innerHeight / 2) bottomEdge = Math.min(bottomEdge, r.top);
+        }
+        const maxY = bottomEdge - 8;
+        const roomUp = h.top - 6 - minY, roomDown = maxY - (h.bottom + 6);
+        const full = menu.scrollHeight;
+        let up = phone ? (roomUp >= full || roomUp >= roomDown) : !(roomDown >= full || roomDown >= roomUp);
+        const cap = Math.max(120, Math.floor(up ? roomUp : roomDown));
+        const capPx = Math.min(full, cap) + 'px'; if (menu.style.getPropertyValue('--cw-more-maxh') !== capPx) menu.style.setProperty('--cw-more-maxh', capPx);
+        const mh = Math.min(full, cap);
+        let y = up ? h.top - 6 - mh : h.bottom + 6;
+        if (moreAnchor) {
+          const dir = up ? 'up' : 'down', dx = Math.round(x - h.left) + 'px';
+          if (menu.dataset.cwMoreAnchor !== dir) menu.dataset.cwMoreAnchor = dir;
+          if (hint.dataset.cwMoreAnchor !== '1') hint.dataset.cwMoreAnchor = '1';
+          if (menu.style.getPropertyValue('--cw-more-dx') !== dx) menu.style.setProperty('--cw-more-dx', dx);
+          if (!st.placed) { st.placed = true; menu.dataset.cwMore = 'placed'; }
+          continue;
+        }
         const nx = Math.round(x - ox), ny = Math.round(y - oy);
         if (nx !== st.x || !st.placed) { st.x = nx; menu.style.setProperty('--cw-more-x', nx + 'px'); }
         if (ny !== st.y || !st.placed) { st.y = ny; menu.style.setProperty('--cw-more-y', ny + 'px'); }
@@ -964,10 +1030,146 @@ export function installOfficialLayout(win = window) {
         doc.body.click();                                 // ST: a click outside closes every open menu
         return;
       }
+      labelMenu(menu, MES_MORE_LABELS);
       moreOpen.set(menu, { since: win.performance.now(), x: 0, y: 0, max: -1, placed: false });
       if (!moreFrame) moreFrame = win.requestAnimationFrame(morePlace);
     }, true);
     disposers.push(() => { if (moreFrame) win.cancelAnimationFrame(moreFrame); for (const menu of [...moreOpen.keys()]) moreClear(menu); });
+    // 2.0.273（稿 design-composer-edge-user-actions-v1 ② B）：手机上自己消息的编辑 / 删除平时收起，点一下气泡出现、再点收起；
+    // 点别处收起。选字、点链接、正在编辑时不动。显隐由 CSS 按 data-cw-acts 决定（只在手机宽度生效）。
+    const actsClear = keep => { for (const m of doc.querySelectorAll('#chat > .mes[data-cw-acts]')) if (m !== keep) m.removeAttribute('data-cw-acts'); };
+    on(doc, 'click', e => {
+      if (!enabled()) return;
+      const t = e.target;
+      if (t.closest?.('.claude-user-message-actions')) return;
+      const text = t.closest?.('#chat > .mes[is_user="true"] .mes_text');
+      const mes = text?.closest('.mes');
+      if (!mes || t.closest('a, button, input, textarea, summary, #curEditTextarea') || mes.querySelector('#curEditTextarea') || String(win.getSelection?.() || '')) { actsClear(null); return; }
+      actsClear(mes);
+      mes.toggleAttribute('data-cw-acts');
+    });
+    disposers.push(() => actsClear(null));
+    // 2.0.268 通用小菜单（design-small-menus-v1 ⓪）：贴着按钮弹出；items 每项 {icon,label,value,check,danger,run,sub:[…]} 或 {head} / {sep}。
+    // 有 sub 的一项：电脑上鼠标移上去 / 点一下，在右边贴着这一行展开；手机上点了把菜单换成下一级。
+    let cwMenu = null;
+    const closeCwMenu = () => { cwMenu?.remove(); cwMenu = null; };
+    function popMenu(anchor, items, {up = false, cls = ''} = {}) {
+      closeCwMenu();
+      const wrap = make('div', 'cw-menu-wrap' + (cls ? ' ' + cls : ''));
+      const build = (list, level) => {
+        const m = make('div', 'cw-menu');
+        for (const it of list) {
+          if (it.sep) { m.append(make('div', 'cw-menu-sep')); continue; }
+          if (it.head) { m.append(make('div', 'cw-menu-head', it.head)); continue; }
+          const b = button('', e => {
+            e.stopPropagation();
+            if (it.sub) { openSub(b, it.sub, level); return; }
+            if (it.disabled) return;
+            closeCwMenu(); it.run?.();
+          }, 'cw-menu-item' + (it.danger ? ' cw-danger' : '') + (it.disabled ? ' cw-disabled' : ''));
+          if (it.icon) b.append(icon(it.icon));
+          b.append(make('span', 'cw-menu-label', it.label));
+          const r = make('span', 'cw-menu-right');
+          if (it.value) r.append(make('span', 'cw-menu-value', it.value));
+          if (it.sub) r.append(icon('chevr'));
+          if (it.check) { const c = icon('check'); c.classList.add('cw-menu-check'); if (mobile()) b.prepend(c); else r.append(c); }
+          if (mobile() && !it.check && list.some(x => x && x.check)) b.prepend(make('span', 'cw-menu-ckpad'));
+          if (r.childNodes.length) b.append(r);
+          if (!mobile()) b.addEventListener('mouseenter', () => { if (it.sub) openSub(b, it.sub, level); else closeSubs(level, m); });
+          m.append(b);
+        }
+        return m;
+      };
+      const closeSubs = (level, m) => { wrap.querySelectorAll('.cw-menu').forEach((x, i) => { if (i > level) x.remove(); }); m?.querySelectorAll('.cw-menu-item.cw-on').forEach(n => n.classList.remove('cw-on')); };
+      const openSub = (row, sub, level, label) => {
+        wrap.querySelectorAll('.cw-menu').forEach((m, i) => { if (i > level) m.remove(); });
+        row.parentElement.querySelectorAll('.cw-menu-item.cw-on').forEach(n => n.classList.remove('cw-on'));
+        row.classList.add('cw-on');
+        const m = build(sub, level + 1); wrap.append(m);
+        if (mobile()) {
+          const f = wrap.firstElementChild, fr = f.getBoundingClientRect();
+          const back = button('', e => { e.stopPropagation(); m.remove(); f.hidden = false; row.classList.remove('cw-on'); }, 'cw-menu-item cw-menu-back');
+          back.append(icon('chevl'), make('span', 'cw-menu-label', row.querySelector('.cw-menu-label')?.textContent || L('返回'))); m.prepend(back);
+          f.hidden = true; m.style.left = f.style.left;
+          m.style.top = Math.round(Math.max(8, fr.bottom - m.getBoundingClientRect().height)) + 'px'; return;
+        }
+        const rr = row.getBoundingClientRect(), mr = m.getBoundingClientRect();
+        let x = rr.right + 4; if (x + mr.width > win.innerWidth - 8) x = rr.left - 4 - mr.width;
+        const y = Math.min(Math.max(8, rr.top - 6), win.innerHeight - 8 - mr.height);
+        m.style.left = Math.round(x) + 'px'; m.style.top = Math.round(y) + 'px';
+      };
+      wrap.append(build(items, 0)); doc.body.append(wrap); cwMenu = wrap;
+      const m = wrap.firstElementChild, a = anchor.getBoundingClientRect(), r = m.getBoundingClientRect();
+      let x = Math.min(Math.max(8, a.left), win.innerWidth - 8 - r.width);
+      let y = up ? a.top - 6 - r.height : a.bottom + 6;
+      if (y < 8) y = a.bottom + 6; if (y + r.height > win.innerHeight - 8) y = Math.max(8, a.top - 6 - r.height);
+      m.style.left = Math.round(x) + 'px'; m.style.top = Math.round(y) + 'px';
+      return wrap;
+    }
+    on(doc, 'pointerdown', e => { if (cwMenu && !cwMenu.contains(e.target)) closeCwMenu(); }, true);
+    on(doc, 'keydown', e => { if (cwMenu && e.key === 'Escape') { e.stopPropagation(); closeCwMenu(); } }, true);
+    on(win, 'resize', closeCwMenu);
+    disposers.push(closeCwMenu);
+    // 账户菜单（侧栏左下「零」）：原来点了直接开用户角色页。只放酒馆本来就有的：切换用户角色、用户角色设置、设置、主题。
+    let acctBypass = false;
+    const openDrawerById = id => { const t = doc.querySelector('#' + id + ' > .drawer-toggle'); if (!t) return; acctBypass = true; t.click(); acctBypass = false; };
+    on(doc, 'click', e => {
+      if (acctBypass || !enabled()) return;
+      const t = e.target.closest?.('#persona-management-button > .drawer-toggle');
+      if (!t || !t.querySelector('.clawd-user-face')) return;
+      if (doc.getElementById('persona-management-button')?.querySelector('.drawer-content.openDrawer')) return; // 已经开着：照原样（关上）
+      e.stopPropagation(); e.preventDefault();
+      if (cwMenu?.classList.contains('cw-acct')) { closeCwMenu(); return; }
+      const ctx = win.SillyTavern?.getContext?.(), pu = ctx?.powerUserSettings || {}, personas = pu.personas || {};
+      const me = ctx?.name1 || '', cur = (win.user_avatar || doc.querySelector('#user_avatar_block .avatar-container.selected .avatar')?.getAttribute('imgfile') || '');
+      const pick = (file, name) => {
+        const c = doc.querySelector(`#user_avatar_block .avatar-container:has(.avatar[imgfile="${win.CSS.escape(file)}"])`);
+        if (c) { c.click(); return; }
+        ctx?.executeSlashCommandsWithOptions?.('/persona-set ' + JSON.stringify(name));
+      };
+      const list = Object.entries(personas).slice(0, 12).map(([file, name]) => ({label: name, check: name === me && (!cur || cur === file), run: () => pick(file, name)}));
+      const vs = doc.getElementById('claude-web-variant'), variant = root.dataset.claudeIntegratedTheme === 'night' ? 'night' : 'day';
+      const setVariant = v => { if (!vs || vs.disabled) return; vs.value = v; vs.dispatchEvent(new win.Event('change', {bubbles: true})); };
+      const themeItems = [{label: L('日间'), check: variant === 'day', run: () => setVariant('day')}, {label: L('夜间'), check: variant === 'night', run: () => setVariant('night')}];
+      popMenu(t, [
+        {head: (me ? me + ' · ' : '') + L('你在聊天里扮演的身份')},
+        list.length ? {icon: 'user', label: L('切换用户角色'), sub: list} : null,
+        {icon: 'card', label: L('用户角色设置'), run: () => openDrawerById('persona-management-button')},
+        {icon: 'gear', label: L('设置'), run: () => openDrawerById('user-settings-button')},
+        {sep: 1},
+        vs ? {icon: 'sun', label: L('主题'), value: vs.disabled ? L('跟随时间') : (variant === 'night' ? L('夜间') : L('日间')), sub: vs.disabled ? null : themeItems, disabled: vs.disabled} : null,
+      ].filter(Boolean).filter(it => !(it.sub === null && it.disabled === undefined)), {up: true, cls: 'cw-acct'});
+    }, true);
+    // 2.0.268 编辑消息（design-small-menus-v1）：酒馆的 ✓ / ✕ 画成「保存 / 取消」，其余五个收进左边一个 ⋯ 下拉。
+    // 按钮都是酒馆原来的（事件不动），只加 data-cw-label 和一个 ⋯；CSS 在 ㊵。
+    const editMore = () => {
+      if (!enabled()) return;
+      for (const bar of doc.querySelectorAll('#chat .mes .mes_edit_buttons')) {
+        labelMenu(bar, EDIT_LABELS);
+        if (bar.querySelector(':scope>.cw-edit-more')) continue;
+        // 按钮条贴在卡片（.mes_text）底边里面：量出 .mes_text 底边相对按钮条定位容器的位置（消息块下面还有别的留白，不能用 bottom）。
+        const text = bar.closest('.mes')?.querySelector('.mes_text'), ta = text?.querySelector('textarea');
+        const place = () => { if (!bar.isConnected || !text) return; const box = bar.offsetParent?.getBoundingClientRect(), r = text.getBoundingClientRect(); if (!box) return; const top = Math.round(r.bottom - box.top - 44) + 'px'; if (bar.style.getPropertyValue('--cw-edit-top') !== top) bar.style.setProperty('--cw-edit-top', top); };
+        place(); win.requestAnimationFrame(place); ta?.addEventListener('input', place);
+        if (text && win.ResizeObserver) { const ro = new win.ResizeObserver(place); ro.observe(text); const stop = new win.MutationObserver(() => { if (!bar.isConnected) { ro.disconnect(); stop.disconnect(); } }); stop.observe(doc.getElementById('chat') || doc.body, {childList: true, subtree: true}); }
+        // 2.0.270（Lulu：下拉被消息外层截断）：⋯ 打开通用小菜单（挂在 body 上），每一项代点酒馆原来的按钮。
+        const more = button('', e => {
+          e.stopPropagation(); place();
+          if (cwMenu?.classList.contains('cw-editmenu')) { closeCwMenu(); return; }
+          const items = [];
+          for (const [cls, ic, sep] of [['mes_edit_copy','copy'],['mes_edit_add_reasoning','bulb'],['mes_edit_up','chevu',1],['mes_edit_down','chevd'],['mes_edit_delete','trash',1]]) {
+            const native = bar.querySelector(':scope>.' + cls); if (!native || win.getComputedStyle(native).visibility === 'hidden') continue;
+            if (sep && items.length) items.push({sep: 1});
+            items.push({icon: ic, label: native.dataset.cwLabel || '', danger: cls === 'mes_edit_delete', run: () => native.click()});
+          }
+          popMenu(more, items, {cls: 'cw-editmenu'});
+        }, 'cw-edit-more');
+        more.append(icon('dots')); more.setAttribute('aria-label', L('更多')); bar.prepend(more);
+      }
+    };
+    const editObs = new win.MutationObserver(list => { if (cwMenu?.classList.contains('cw-editmenu') && !doc.getElementById('curEditTextarea')) closeCwMenu(); if (list.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.id === 'curEditTextarea' || n.querySelector?.('#curEditTextarea'))))) editMore(); });
+    const chatEl = doc.getElementById('chat'); if (chatEl) editObs.observe(chatEl, {childList: true, subtree: true});
+    disposers.push(() => { editObs.disconnect(); doc.querySelectorAll('.cw-edit-more').forEach(n => n.remove()); doc.querySelectorAll('.cw-edit-open').forEach(n => n.classList.remove('cw-edit-open')); });
     // Input menus (+ and ≡, 2026-09-29): ST pins each to its own button with Popper
     // (top-start) and sizes it to its own text, so they open 40px apart with different
     // widths. On either button click (before ST shows the menu), measure both menus'
@@ -1012,6 +1214,60 @@ export function installOfficialLayout(win = window) {
   const SHEET_POPUP = 'dialog.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup)';
   const SMALL_POPUP = 'dialog.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor)';
   const DANGER_TEXT = /删除|移除|清空|永久|Delete|Remove|permanently/i;
+  // 2.0.255 标签管理 / 其他开场白（design-content-v1，只在电脑尺寸；CSS ㉜）。弹窗每次打开都是新的，装饰一次就行；
+  // 标签列表酒馆会重画（新建 / 删除 / 排序），盯着列表补装饰。原来的按钮只是搬位置，事件都在。
+  function decorateTagView(d) {
+    if (d.dataset.cwTv) return; d.dataset.cwTv = '1'; d.classList.add('cw-tv');
+    d.style.setProperty('--cw-tv-unit', JSON.stringify(t(' 个角色', ' characters')));
+    d.style.setProperty('--cw-tv-unused', JSON.stringify(t('未使用', 'Unused')));
+    d.style.setProperty('--cw-tv-empty', JSON.stringify(t('还没有标签。点「新建标签」，或在角色页的「标签」里直接输入。', 'No tags yet. Click New tag, or type one in a character\'s Tags field.')));
+    const label = (sel, text) => { const n = d.querySelector(sel); if (n) n.textContent = text; };
+    label('.tag_view_create span', t('新建标签', 'New tag'));
+    const sortLabel = d.querySelector('#tag_sort_mode_select')?.previousElementSibling; if (sortLabel) sortLabel.textContent = t('排序', 'Sort');
+    const hint = d.querySelector('#tag_view_list .justifyLeft > small');
+    if (hint) hint.textContent = t('拖动左边的点阵调整顺序，点名字改名，点「Aa」改颜色，点文件夹图标把标签当成文件夹。', 'Drag the handle to reorder, click a name to rename, click Aa to change colors, click the folder icon to use the tag as a folder.');
+    const bar = d.querySelector('.tag_view_create')?.parentElement;
+    if (bar) {
+      const wrap = doc.createElement('div'), tog = doc.createElement('div'), menu = doc.createElement('div');
+      wrap.className = 'cw-tv-more'; tog.className = 'menu_button cw-tv-more-btn'; tog.title = t('更多', 'More'); tog.setAttribute('role', 'button'); menu.className = 'cw-tv-menu'; menu.hidden = true;
+      for (const [cls, text, sep] of [['tag_view_prune', t('删除未使用的标签', 'Delete unused tags'), true], ['tag_view_backup', t('备份到文件', 'Back up to file')], ['tag_view_restore', t('从文件恢复', 'Restore from file')]]) {
+        const b = d.querySelector('.' + cls); if (!b) continue; b.dataset.cwLabel = text; menu.append(b);
+        if (sep) { const hr = doc.createElement('div'); hr.className = 'cw-tv-sep'; menu.append(hr); }
+      }
+      // 酒馆打开弹窗后会按 data-i18n 再翻一遍，把字改回「精简 / 备份 / 恢复」；每次打开菜单时再写一次。
+      tog.addEventListener('click', e => { e.stopPropagation(); for (const b of menu.querySelectorAll('[data-cw-label]')) { const sp = b.querySelector('span'); if (sp && sp.textContent !== b.dataset.cwLabel) sp.textContent = b.dataset.cwLabel; } menu.hidden = !menu.hidden; });
+      menu.addEventListener('click', () => win.setTimeout(() => { menu.hidden = true; }));
+      wrap.append(tog, menu); bar.append(wrap);
+    }
+    d.addEventListener('mousedown', e => {
+      const m = d.querySelector('.cw-tv-menu'); if (m && !m.hidden && !e.target.closest?.('.cw-tv-more')) m.hidden = true;
+      for (const p of d.querySelectorAll('.cw-tv-pop:not([hidden])')) if (!p.parentElement.contains(e.target)) p.hidden = true;
+    });
+    const list = d.querySelector('#tag_view_list .tag_view_list_tags');
+    decorateTagItems(d);
+    if (list) new win.MutationObserver(() => decorateTagItems(d)).observe(list, {childList: true});
+  }
+  // 每个标签：两块调色器收进「Aa」色样的小浮层（底色 / 字色），色样跟着标签名的颜色变。
+  function decorateTagItems(d) {
+    for (const item of d.querySelectorAll('.tag_view_item:not([data-cw-tv])')) {
+      item.setAttribute('data-cw-tv', '');
+      const name = item.querySelector('.tag_view_name'), pickers = [...item.querySelectorAll('.tag_view_color_picker')];
+      if (!name || !pickers.length) continue;
+      const holder = doc.createElement('div'), sw = doc.createElement('div'), pop = doc.createElement('div');
+      holder.className = 'cw-tv-color'; sw.className = 'cw-tv-sw'; sw.textContent = 'Aa'; sw.title = t('颜色', 'Colors'); pop.className = 'cw-tv-pop'; pop.hidden = true;
+      pickers.forEach((p, i) => { const r = doc.createElement('div'), l = doc.createElement('span'); r.className = 'cw-tv-poprow'; l.textContent = i ? t('字色', 'Text') : t('底色', 'Background'); r.append(l, p); pop.append(r); });
+      for (const tc of pop.querySelectorAll('toolcool-color-picker')) { tc.setAttribute('button-width', '22px'); tc.setAttribute('button-height', '22px'); tc.setAttribute('button-padding', '0'); }
+      const paint = () => { sw.style.backgroundColor = name.style.backgroundColor; sw.style.color = name.style.color; };
+      paint(); new win.MutationObserver(paint).observe(name, {attributes: true, attributeFilter: ['style']});
+      sw.addEventListener('click', e => { e.stopPropagation(); pop.hidden = !pop.hidden; });
+      holder.append(sw, pop); name.before(holder);
+    }
+  }
+  function decorateGreetings(d) {
+    if (d.dataset.cwAg) return; d.dataset.cwAg = '1'; d.classList.add('cw-ag');
+    d.style.setProperty('--cw-ag-empty', JSON.stringify(t('还没有其他开场白。点「添加」写第一条。', 'No alternate greetings yet. Click Add to write one.')));
+    d.style.setProperty('--cw-ag-title', JSON.stringify(t('开场白 ', 'Greeting ')));
+  }
   const SHEET_MS = 280, BACK_S = .93; // 2.0.220：Lulu 定 0.28 秒（原 0.38），和 CSS --cw-sheet-dur 一起改
   let sheetAnimTimer = 0, sheetStack = [], dimEl = null, lastTrigger = null, pmWasOpen = false, pmCloseTimer = 0, pmHost = null, pmAnchor = null, pmPickers = [], pmEsc = null;
   /* 2.0.214：提示词编辑页本来是 body 里的一块，后面那页（body）缩小时它要反向放大、body 还不能裁——于是侧栏等屏幕外的东西
@@ -1067,6 +1323,10 @@ export function installOfficialLayout(win = window) {
     if (pm && !pmOpen && !pm.hasAttribute('data-cw-closing')) unhostPm();
     pmWasOpen = pmOpen;
     // 2.0.247 普通尺寸的酒馆弹窗（改名 / 另存为 / 删除确认……）照 Claude Desktop 排（CSS ㉗）；删除类的「确定」画成红色。只在变化时写属性。
+    // 2.0.256 手机也装饰（排法见 CSS ㉝，照扩展页的弹出页：灰标题在卡片外、操作是蓝色行）。
+    if (enabled()) for (const d of doc.querySelectorAll('dialog.popup[open]')) {
+      if (d.querySelector('#tag_view_list')) decorateTagView(d); else if (d.querySelector('.alternate_grettings')) decorateGreetings(d);
+    }
     for (const d of doc.querySelectorAll(SMALL_POPUP + '[open]')) {
       const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || '');
       if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger);
@@ -1142,7 +1402,9 @@ export function installOfficialLayout(win = window) {
     const trig = lastTrigger && Date.now() - lastTrigger.at < 2000 ? lastTrigger.el : null;
     const trigText = trig ? (trig.getAttribute('title') || trig.querySelector('span:not(.cw-v4-action-label)')?.textContent || trig.textContent || '').trim() : '';
     const firstHead = dlg.querySelector('.popup-content>:is(h2,h3):first-child, .popup-content>:first-child>:is(h2,h3):first-child');
-    const title = (trigText && trigText.length <= 24 ? trigText : firstHead?.textContent || '').trim();
+    // 2.0.256 标签管理 / 其他开场白：触发按钮的 title 是一句提示（「单击以设置其他开场白」），标题写死。
+    const known = dlg.querySelector('#tag_view_list') ? t('标签管理', 'Manage tags') : dlg.querySelector('.alternate_grettings') ? t('其他开场白', 'Alternate greetings') : dlg.querySelector('#qr--modal-label')?.value || dlg.querySelector('.regex_editor input.regex_script_name')?.value || '';
+    const title = (known || (trigText && trigText.length <= 24 ? trigText : firstHead?.textContent || '')).trim();
     const label = sheetBackLabel(dlg);
     dlg.dataset.cwSheetTitle = title;
     dlg.classList.add('cw-st-sheet');

@@ -129,7 +129,7 @@ body {
   background-image:none !important;
   padding:20px clamp(8px,2vw,28px) 6px !important;
   backdrop-filter:none !important;
-  scroll-behavior:smooth;
+  scroll-behavior:auto;
 }
 #chat .mes {
   background:transparent !important;
@@ -5053,17 +5053,17 @@ html body #form_sheld {
 @media (max-width:700px) {
   html body.clawd-mobile-layout:not(.clawd-welcome) #chat {
     height:calc(
-      var(--cl-mobile-viewport-height, 100dvh)
+      var(--cl-mobile-chat-viewport-height, var(--cl-mobile-viewport-height, 100dvh))
       - var(--cl-mobile-top)
       - var(--cl-mobile-composer-height, 132px)
     ) !important;
     min-height:calc(
-      var(--cl-mobile-viewport-height, 100dvh)
+      var(--cl-mobile-chat-viewport-height, var(--cl-mobile-viewport-height, 100dvh))
       - var(--cl-mobile-top)
       - var(--cl-mobile-composer-height, 132px)
     ) !important;
     max-height:calc(
-      var(--cl-mobile-viewport-height, 100dvh)
+      var(--cl-mobile-chat-viewport-height, var(--cl-mobile-viewport-height, 100dvh))
       - var(--cl-mobile-top)
       - var(--cl-mobile-composer-height, 132px)
     ) !important;
