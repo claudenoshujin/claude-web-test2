@@ -3364,3 +3364,29 @@ html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup:has(#loader
   html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat{min-height:40px!important;padding-top:4px!important;padding-bottom:4px!important;grid-template-columns:24px minmax(0,1fr)!important}
   html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat>.avatar img{width:24px!important;height:24px!important;min-width:24px!important}
 }
+
+/* ---------- 2.0.278 侧栏（Lulu）：去掉描边加粗；中文比英文小一点、图标不大过字；「最近」上面的空行收掉 ---------- */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.clawd-rail-label,.clawd-rail-recents,.clawd-rail-recents *,.clawd-user-meta,.clawd-user-meta *,.clawd-mobile-new-chat){-webkit-text-stroke:0!important}
+@media(min-width:701px){
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .clawd-rail-label{font:400 13.5px/20px var(--cw-v4-font)!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .drawer-icon{width:15px!important;height:15px!important;min-width:15px!important;flex:0 0 15px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle{gap:11px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents{margin-top:0!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label{margin:16px 8px 4px 10px!important;font-size:12.5px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatName{font-size:13.5px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatNameContainer>.chatPreview{font-size:12.5px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-name{font-size:13.5px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-plan{font-size:12.5px!important}
+}
+@media(max-width:700px){
+  /* 入口 17→16、不加粗；图标 22→20 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle .clawd-rail-label{font-size:16px!important;font-weight:400!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle>.drawer-icon{width:20px!important;height:20px!important;min-width:20px!important;flex:0 0 20px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatName,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .chatName .characterName{font-size:15px!important;font-weight:400!important}
+  /* 「最近」右边的小图标只是装饰（电脑版照 Claude Desktop 有），Claude App 手机上没有 */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents-label::after{content:none!important;display:none!important}
+  /* 底部照 Claude App：只留圆头像 + 黑色「新对话」，名字和 Max plan 不放（点头像照旧开账户菜单） */
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-meta,html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-more{display:none!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder>#persona-management-button .clawd-user-face.clawd-user-face{flex:0 0 32px!important;width:32px!important;min-width:32px!important;max-width:32px!important;height:32px!important;min-height:32px!important;max-height:32px!important;border-radius:50%!important}
+  html[data-cw-v4] body .clawd-mobile-new-chat.clawd-mobile-new-chat{height:44px!important;min-height:44px!important;padding:0 20px!important;border-radius:22px!important;font:500 16px/44px var(--cw-v4-font)!important;-webkit-text-stroke:0!important}
+}
