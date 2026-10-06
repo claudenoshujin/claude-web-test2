@@ -427,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.295-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.296-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2250,6 +2250,7 @@ if (CLAUDE_ENABLED) {
   const A2_DRAG_THRESHOLD = 5;   // 位移超过这么多像素才算拖，否则算戳
   const A2_EDGE = 6;             // 离边界留的空隙
   const A2_DECOR_RESERVE = 12;   // 靠近归位线时，跟右上角装饰 Clawd 之间的空隙
+  const A2_FORM_INSET = 8;       // 2.0.296：站在地上时离输入框左右两头至少这么远
   /* 兜底上限：量不到容器时才用。正常路径按真实可视区算，不再有硬编码高度。 */
   const A2_FALLBACK_CEILING = 240;
   /* 预热过的边界能用多久。
@@ -2271,7 +2272,7 @@ if (CLAUDE_ENABLED) {
     bndReady: false, bndRaf: 0,
     sx: 0, sy: 0, ox: 0, oy: 0, vx: 0, vy: 0, lx: 0, ly: 0, lt: 0,
     rot: 0, sqx: 1, sqy: 1,
-    bnd: { minx: -9e9, maxx: 9e9, maxxHome: 9e9, miny: -A2_FALLBACK_CEILING, maxy: 0 },
+    bnd: { minx: -9e9, maxx: 9e9, maxxHome: 9e9, minxHome: -9e9, miny: -A2_FALLBACK_CEILING, maxy: 0 },
     bndAt: 0,
     tookPointer: false,
     squashTimer: 0,
@@ -3780,7 +3781,7 @@ if (CLAUDE_ENABLED) {
       A2.bndAt = now;
       A2.bndReady = true;
     }
-    const left = A2.x - A2.bnd.minx, right = A2.bnd.maxxHome - A2.x;
+    const left = A2.x - Math.max(A2.bnd.minx, A2.bnd.minxHome), right = A2.bnd.maxxHome - A2.x;
     const over = (l, r) => Math.max(0, r * CLAWD_RIG_CELL - right) + Math.max(0, l * CLAWD_RIG_CELL - left);
     return over(ext.r, ext.l) < over(ext.l, ext.r);
   }
@@ -4371,13 +4372,16 @@ if (CLAUDE_ENABLED) {
       A2.bndAt = now;
       A2.bndReady = true;
     }
-    const lo = A2.bnd.minx, hi = A2.bnd.maxxHome;
+    const lo = Math.max(A2.bnd.minx, A2.bnd.minxHome), hi = A2.bnd.maxxHome;
     if (!(hi - lo > 40 && hi - lo < 1e5)) return 0;
     const roomL = A2.x - lo, roomR = hi - A2.x;
     const want = (hi - lo) * (.2 + Math.random() * .2);
     let dir = roomR > roomL + 20 ? 1 : roomL > roomR + 20 ? -1 : (Math.random() < .5 ? -1 : 1);
     let dist = Math.min(want, dir > 0 ? roomR : roomL);
     if (dist < 24) { dir = -dir; dist = Math.min(want, dir > 0 ? roomR : roomL); }
+    /* 2.0.296：人在输入框外面（输入框变窄了之类）：这一趟就往输入框上走，走进去再多走一点 */
+    if (roomL < 0) { dir = 1; dist = Math.min(hi - A2.x, -roomL + want / 2); }
+    else if (roomR < 0) { dir = -1; dist = Math.min(A2.x - lo, -roomR + want / 2); }
     if (dist < 24) return 0;
     const steps = Math.max(2, Math.floor(dist / CLAWD_RIG_CELL));
     const walkMs = steps * 300;
@@ -5257,7 +5261,7 @@ if (CLAUDE_ENABLED) {
     const container = hostDocument.querySelector('#sheld')
       || hostDocument.querySelector('#chat')
       || hostDocument.querySelector('#form_sheld');
-    const fallback = { minx: -9e9, maxx: 9e9, maxxHome: 9e9, miny: -A2_FALLBACK_CEILING, maxy: 0 };
+    const fallback = { minx: -9e9, maxx: 9e9, maxxHome: 9e9, minxHome: -9e9, miny: -A2_FALLBACK_CEILING, maxy: 0 };
     if (!container) return fallback;
     const pr = button.getBoundingClientRect();
     const fr = container.getBoundingClientRect();
@@ -5305,8 +5309,12 @@ if (CLAUDE_ENABLED) {
        飞高了就不用让——那时候两者根本不在一条线上。 */
     const form = hostDocument.querySelector('#send_form');
     let decorLeft = limitRight;
+    /* 2.0.296（Lulu：大 Clawd 会走出输入框）：站在地上时只在输入框上面——左右各收 A2_FORM_INSET，脚别踩在圆角上。
+       飞着、拖着、抛着都不拦（拦了手感像撞墙），只管走路的范围和落地以后滑回来。 */
+    let formLeft = limitLeft, formRight = limitRight;
     if (form) {
       const sf = form.getBoundingClientRect();
+      if (sf.width > pr.width + 2 * A2_FORM_INSET) { formLeft = Math.max(limitLeft, sf.left + A2_FORM_INSET); formRight = Math.min(limitRight, sf.right - A2_FORM_INSET); }
       /* 2.0.223：右上角换成三只一堆（约 60 宽），按它实际的左边让。 */
       const pileLeft = clawdPile.left();
       if (pileLeft != null) decorLeft = pileLeft - A2_DECOR_RESERVE;
@@ -5319,7 +5327,8 @@ if (CLAUDE_ENABLED) {
       maxx,
       /* maxxHome 只用来判断「停稳之后有没有盖住装饰 Clawd」，不参与拖拽和抛掷的
          夹取——拿它当墙的话手感上就是拖到一半推不动，读起来像卡了。 */
-      maxxHome: Math.min(maxx, A2.x + (decorLeft - pr.right)),
+      maxxHome: Math.min(maxx, A2.x + (decorLeft - pr.right), A2.x + (formRight - pr.right)),
+      minxHome: Math.max(A2.x + (limitLeft + A2_EDGE - pr.left), A2.x + (formLeft - pr.left)),
       miny: A2.fy + (limitTop + A2_EDGE - pr.top),
       maxy: 0,
     };
@@ -5563,10 +5572,11 @@ if (CLAUDE_ENABLED) {
              拖和抛全程都不拦，只在这里收一下。上一行刚把 transition 还回去
              （样式表里那条是 transform 240ms），所以下一帧改 x 会自己走缓动，
              不用另写动画。 */
-          if (A2.x > A2.bnd.maxxHome) {
+          /* 2.0.296：落在输入框外面（左边那块空地上）也一样滑回输入框上。 */
+          if (A2.x > A2.bnd.maxxHome || A2.x < A2.bnd.minxHome) {
             hostWindow.requestAnimationFrame(() => {
               if (my !== A2.flying) return;
-              A2.x = A2.bnd.maxxHome;
+              A2.x = Math.max(A2.bnd.minxHome, Math.min(A2.bnd.maxxHome, A2.x));
               A2.homeX = A2.x;
               a2Place(button);
             });
