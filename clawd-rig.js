@@ -5,6 +5,7 @@
    - 选择器挂在输入框那只 Clawd 按钮上（data-clawd-clip），层用 clr- 前缀，免得和酒馆撞名；
    - 眼睛、描边颜色跟现网主题变量走；
    - 躲进输入框的剪切挂在 .clawd-rig 上；
+   - 实色像素画成小图挂在每层的 ::before 上（最近邻放大，不糊不漏缝），只有跟变量走的颜色还用 box-shadow（2.0.297）；
    - 动作的 CSS 按需生成：一次全生成约 500KB，改成播到哪个才生成哪个（cssFor；id 加 -m 是镜像版）。 */
 
 const RB = 'button.clawd-signoff-button.clawd-composer-clawd';
@@ -349,6 +350,53 @@ export function buildClawdRig() {
     return v;
   }
 
+  /* 实色像素画成小图（见 make-rig.js 2.0.297 的说明） */
+  const BMP_CACHE = new Map();
+  let BMP_CV = null;
+  const isVarColor = ch => ch !== 'o' && /var\(|color-mix/.test(PAL[ch]);
+  const solidColor = ch => (ch === 'o' ? '#000' : PAL[ch]);   // 眼睛的 --cl-clawd-eye 四套主题都是 #000
+  const PART_WIN = {};
+  function partWin(part) {
+    if (PART_WIN[part]) return PART_WIN[part];
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const name of Object.keys(SPR[SHEET[part]])) for (const m of part === 'sym' ? [false] : [false, true]) {
+      for (const [x, y] of pixelsOf(part, name)) { const cx = (m ? 15 - x : x) + BOX[0], cy = y + BOX[1]; x0 = Math.min(x0, cx); y0 = Math.min(y0, cy); x1 = Math.max(x1, cx); y1 = Math.max(y1, cy); }
+    }
+    if (x0 > x1) { x0 = y0 = 0; x1 = y1 = 0; }
+    return (PART_WIN[part] = { x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+  }
+  function canvas2d() {
+    if (BMP_CV === null) { try { const c = typeof document !== 'undefined' ? document.createElement('canvas') : null; BMP_CV = c && c.getContext && c.getContext('2d') ? c : false; } catch (e) { BMP_CV = false; } }
+    return BMP_CV || null;
+  }
+  function pxDecl(part, name, mirror = false) {
+    const key = part + ':' + name + (mirror ? ':m' : '');
+    if (BMP_CACHE.has(key)) return BMP_CACHE.get(key);
+    const px = pixelsOf(part, name), cv = canvas2d();
+    const at = ([x, y, ch]) => [(mirror ? 15 - x : x) + BOX[0], y + BOX[1], ch];
+    const shadowOf = list => (list.length ? list.map(([cx, cy, ch]) => `${cx * PX}px ${cy * PX}px 0 .3px ${PAL[ch]}`).join(',') : 'none');
+    let v;
+    if (!cv || !px.length) v = `box-shadow:${shadowOf(px.map(at))};--clr-bmp:none`;
+    else {
+      const win = partWin(part), cells = px.map(at);
+      cv.width = win.w; cv.height = win.h;
+      const g = cv.getContext('2d'); g.clearRect(0, 0, win.w, win.h);
+      for (const [cx, cy, ch] of cells) if (!isVarColor(ch)) { g.fillStyle = solidColor(ch); g.fillRect(cx - win.x0, cy - win.y0, 1, 1); }
+      const solid = cells.some(([, , ch]) => !isVarColor(ch));
+      v = `box-shadow:${shadowOf(cells.filter(([, , ch]) => isVarColor(ch)))};--clr-bmp:${solid ? `url("${cv.toDataURL()}")` : 'none'}`;
+    }
+    BMP_CACHE.set(key, v);
+    return v;
+  }
+  function pxBeforeCSS() {
+    let css = '';
+    for (const part of PARTS) {
+      const w = partWin(part);
+      css += `${RB} .clr-p-${part}::before{content:"";position:absolute;left:${w.x0 * PX}px;top:${w.y0 * PX}px;width:${w.w * PX}px;height:${w.h * PX}px;background:var(--clr-bmp,none) no-repeat 0 0/100% 100%;image-rendering:pixelated;pointer-events:none}\n`;
+    }
+    return css;
+  }
+
   /* ════════════════════════════════════════════════════════════════════
      4. 动作 = 时间轴数据
         at(t, 层, {x, y, f, z, att})  在 t 毫秒时设定（默认直接跳到，像素动画的常态）
@@ -601,7 +649,7 @@ export function buildClawdRig() {
       // 肉眼看就是「从左上角飞进来」（Lulu 2026-09-24 看到的伸懒腰眼泪）。left / top 和 box-shadow 同一次样式计算里生效。
       // 符号的缩放、旋转仍然用独立的 scale / rotate 属性，围着符号自己的中心转。
       if (tc.pos) emit('t', q => `left:${px(q.dx)}px;top:${px(q.dy)}px`, sm, true);
-      if (tc.f) emit('f', st => `box-shadow:${boxShadow(part, st.f, M && part !== 'sym')}`);
+      if (tc.f) emit('f', st => pxDecl(part, st.f, M && part !== 'sym'));
       if (tc.z) emit('z', st => `z-index:${st.z}`);
       // 缩放、旋转、不透明度：都是平滑变化（它们不改像素网格上的图，只是整张图的大小、角度、深浅）
       if (tc.sc) emit('s', st => `scale:${st.sc}`, true);
@@ -651,11 +699,12 @@ export function buildClawdRig() {
   function genRestCSS() {
     let css = `${RB}{--clr-ink:color-mix(in srgb, var(--cl-ink, #121212) 60%, #7a6a5c)}\n`;
     for (const part of PARTS) {
-      css += `${RB} .clr-p-${part}{z-index:${REST_Z[part]};box-shadow:${boxShadow(part, REST_F[part])}}\n`;
+      css += `${RB} .clr-p-${part}{z-index:${REST_Z[part]};${pxDecl(part, REST_F[part])}}\n`;
     }
+    css += pxBeforeCSS();
     // 基础眨眼：4.4 秒一轮，不被动作占用眼睛帧的时候一直在跑
-    const o = boxShadow('eyes', 'open'), h = boxShadow('eyes', 'half'), s = boxShadow('eyes', 'shut');
-    css += `@keyframes clr-blink{0%{box-shadow:${o}}${pct(4000, 4400)}{box-shadow:${h}}${pct(4100, 4400)}{box-shadow:${s}}${pct(4200, 4400)}{box-shadow:${h}}${pct(4300, 4400)}{box-shadow:${o}}100%{box-shadow:${o}}}\n`;
+    const o = pxDecl('eyes', 'open'), h = pxDecl('eyes', 'half'), s = pxDecl('eyes', 'shut');
+    css += `@keyframes clr-blink{0%{${o}}${pct(4000, 4400)}{${h}}${pct(4100, 4400)}{${s}}${pct(4200, 4400)}{${h}}${pct(4300, 4400)}{${o}}100%{${o}}}\n`;
     // 待机呼吸：只有两只钳子起伏，平滑地抬 1 格再放下，身体和眼睛不动（Lulu 2026-09-24 定）。
     //   整只上下沉一格像深蹲；整只细微缩放在输入框那个尺寸下不到 1 屏幕像素，看不出来，所以都不用。
     //   钳子以前是一格一格跳（step-end），看着卡，现在走平滑缓动；代价是中途落在半格上，边缘会略虚。

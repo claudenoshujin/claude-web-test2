@@ -16,7 +16,7 @@
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=20261005w";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.157-rig16";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.298-rig17";
 import { createClawdPile } from "./clawd-pile.js?v=20261005s";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -427,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.297-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.298-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -3663,11 +3663,14 @@ if (CLAUDE_ENABLED) {
     const RB = `#send_form > button.${BUTTON_CLASS}.${COMPOSER_CLAWD_CLASS}`;
     const style = hostDocument.createElement('style');
     style.id = CLAWD_RIG_STYLE_ID;
-    /* 骨架的位置、缩放、缩放原点和现网 ::before 完全一样（left:-4px; top:-14px; scale(.85); 原点 24px 48px），
-       A2 的抓起 / 抛出挪的是按钮本身，骨架跟着一起走。 */
+    /* 骨架的位置、缩放原点和现网 ::before 一样（left:-4px; top:-14px; 原点 24px 48px = 脚底中点），
+       A2 的抓起 / 抛出挪的是按钮本身，骨架跟着一起走。
+       2.0.298（Lulu：大 Clawd 有点糊，小 Clawd 清楚很多；选了一格 3px）：原来整体 scale(.85)，一格 2.55px，
+       格子边永远落在半个屏幕像素上，怎么画都糊。去掉缩放，一格正好 3px（比原来大 18%，脚底位置不变）；
+       停稳时再用 translate 把骨架对齐到整屏幕像素（clawdRigPixelSnap）。 */
     style.textContent = `
       ${RB} > .clawd-rig { display: none; position: absolute; left: -4px; top: -14px; width: 3px; height: 3px;
-        transform: scale(.85); transform-origin: 24px 48px; pointer-events: none; }
+        transform-origin: 24px 48px; pointer-events: none; }
       ${RB}[data-clawd-rig="on"] > .clawd-rig { display: block; }
       ${RB} .clr-root { position: absolute; left: 0; top: 0; }
       ${RB} .clr-p { position: absolute; left: 0; top: 0; width: 3px; height: 3px; }
@@ -3771,7 +3774,7 @@ if (CLAUDE_ENABLED) {
   }
 
   /* 靠边时换镜像版（分配方案 §1）：动作朝右伸出去的部分放不下、朝左放得下，就用左右翻过来的版本 */
-  const CLAWD_RIG_CELL = 3 * .85;              // 一格美术像素在屏幕上多宽（骨架整体缩放 .85）
+  const CLAWD_RIG_CELL = 3;                    // 一格美术像素在屏幕上多宽（2.0.298 起骨架不再缩放）
   function clawdRigShouldMirror(button, base) {
     const ext = CLAWD_RIG.extentFor(base);
     if (!ext.l && !ext.r) return false;
@@ -3884,7 +3887,7 @@ if (CLAUDE_ENABLED) {
     const [ox, oy] = data.origin;
     const kind = CLAWD_RIG_INTERRUPT[clipBase] || 'drop';
     const mid = 8 * 3;                           // Clawd 框中线（骨架坐标，未缩放）
-    const scale = rect.width / 3 || .85;          // .clawd-rig 本身 3×3px，量出来的宽 / 3 = 屏幕上实际缩放
+    const scale = rect.width / 3 || 1;            // .clawd-rig 本身 3×3px，量出来的宽 / 3 = 屏幕上实际缩放
     const host = clawdRigGhostHostFor(button);
     // ② 再写：整组一次插进去
     const layer = hostDocument.createElement('span');
@@ -4392,7 +4395,7 @@ if (CLAUDE_ENABLED) {
     setClawdB(state, intro + walkMs + 50);
     button.style.setProperty('transition', 'none', 'important');
     const t0 = Date.now() + intro;
-    const end = () => { A2.homeX = A2.x; button.style.removeProperty('transition'); };
+    const end = () => { A2.homeX = A2.x; button.style.removeProperty('transition'); scheduleA2BoundsWarm(button); };
     const step = () => {
       if (run !== clawdWalkRun || destroyed) return;
       if (clawdTracks.B !== state || clawdTracks.A || clawdTracks.C || A2.held || A2.fy !== 0) { end(); return; }
@@ -5351,7 +5354,25 @@ if (CLAUDE_ENABLED) {
       A2.bnd = a2Walls(button);
       A2.bndAt = Date.now();
       A2.bndReady = true;
+      clawdRigPixelSnap(button);
     });
+  }
+
+  /* 2.0.298：骨架左上角对齐到整屏幕像素。输入框居中时按钮常落在半个像素上，一格 3px 的格子边就全落在半像素上、发糊。
+     只在停稳的时候量（建好、落地、走完、输入框变大小——都走 scheduleA2BoundsWarm），走路 / 拖着的时候不量，不逐帧读布局。
+     对齐量写在骨架的 translate 上（动作的 CSS 不碰骨架外框的 translate；躲进输入框的 clip-path 跟着一起挪，差不到 1px）。 */
+  function clawdRigPixelSnap(button = composerClawd()) {
+    const rig = button?.querySelector(':scope > .clawd-rig');
+    if (!rig || A2.held || A2.fy !== 0) return;
+    const r = rig.getBoundingClientRect();
+    if (!r.width) return;
+    const dpr = hostWindow.devicePixelRatio || 1;
+    const fx = r.left * dpr - Math.round(r.left * dpr), fy = r.top * dpr - Math.round(r.top * dpr);
+    if (Math.abs(fx) < .02 && Math.abs(fy) < .02) return;
+    const cur = rig._cwSnap || [0, 0];
+    const nx = cur[0] - fx / dpr, ny = cur[1] - fy / dpr;
+    rig._cwSnap = [nx, ny];
+    rig.style.setProperty('translate', `${nx.toFixed(3)}px ${ny.toFixed(3)}px`);
   }
 
   /* 抓、拖、丢、戳都算「人还在」。
@@ -5579,6 +5600,7 @@ if (CLAUDE_ENABLED) {
               A2.x = Math.max(A2.bnd.minxHome, Math.min(A2.bnd.maxxHome, A2.x));
               A2.homeX = A2.x;
               a2Place(button);
+              hostWindow.setTimeout(() => clawdRigPixelSnap(button), 300);
             });
           }
           /* 落定之后顺手重量一次，下一次抓取大概率还能走快路径。 */
