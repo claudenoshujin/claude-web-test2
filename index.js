@@ -427,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.301-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.302-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4205,8 +4205,10 @@ if (CLAUDE_ENABLED) {
   }
 
   /* 2.0.300：大 Clawd 头上坐着小 Clawd 时，只做安静的（眨眼、走路、东张西望、指、挠、扶额，滚动时扒边）。
-     要做别的动作、开始写字、被戳——头上的先跳开。被拎起来走 a2Move 那条（降下来）。 */
-  const CLAWD_QUIET_WITH_RIDERS = new Set(['idle', 'peek', 'peekOut', 'walkLoop', 'around', 'point', 'scratch', 'facepalm', 'press']);
+     要做别的动作、开始写字、被戳——头上的先跳开。被拎起来走 a2Move 那条（降下来）。
+     2.0.302（Lulu：小 Clawd 放不上大 Clawd）：待机状态每 200ms 刷新一次（syncClawdBState），被冷落 / 犯困 / 睡着 / 看你打字
+     都不在名单里，刚放上去下一次刷新就把它抖下来了。这四个身子基本不动，也算安静的；而且只在换成新动作的那一刻判断，同一个状态的刷新不算。 */
+  const CLAWD_QUIET_WITH_RIDERS = new Set(['idle', 'peek', 'peekOut', 'walkLoop', 'around', 'point', 'scratch', 'facepalm', 'press', 'neglected', 'drowsy', 'sleep', 'compose']);
   function clawdShakeRiders(value) {
     if (!value) return;
     const base = String(value).replace(/^rig:/, '').replace(/-m$/, '');
@@ -4227,7 +4229,7 @@ if (CLAUDE_ENABLED) {
   function setClawdA(value, duration = 0) {
     /* 生成永远优先：它能取消 A2 的生气序列。反过来不行——序列锁只挡 C 轨。 */
     a2CancelSeq();
-    clawdShakeRiders(value);
+    if (value !== clawdTracks.A) clawdShakeRiders(value);
     if (value) clawdCancelTransientB();
     const now = Date.now();
     clawdTracks.A = value || null;
@@ -4239,7 +4241,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function setClawdB(value, duration = 0) {
-    clawdShakeRiders(value);
+    if ((value || 'idle') !== clawdTracks.B) clawdShakeRiders(value);
     clawdTracks.B = value || 'idle';
     clawdTracks.bUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();
@@ -4250,7 +4252,7 @@ if (CLAUDE_ENABLED) {
   function setClawdC(value, duration = 0) {
     if (a2Locked() && !A2.seqOwned) return;
     if (value) clawdCancelTransientB();
-    if (value !== 'grab' && value !== 'drag') clawdShakeRiders(value);   // 拎起来那条已经让头上的降下来了
+    if (value !== 'grab' && value !== 'drag' && value !== clawdTracks.C) clawdShakeRiders(value);   // 拎起来那条已经让头上的降下来了
     clawdTracks.C = value || null;
     clawdTracks.cUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();
