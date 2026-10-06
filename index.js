@@ -17,7 +17,7 @@ import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=20261006s";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.298-rig17";
-import { createClawdPile } from "./clawd-pile.js?v=20261006d";
+import { createClawdPile } from "./clawd-pile.js?v=20261006e";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -429,7 +429,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.308-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.309-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4009,9 +4009,19 @@ if (CLAUDE_ENABLED) {
   }
 
   /* 从长动作池里抽一个；抽不到（都在冷却）返回 null */
+  /* 2.0.309（Lulu）：要把东西放在 / 种在输入框上的动作（Rickroll 的话筒架、种节点），只在大 Clawd 站在输入框上方时抽：
+     坐在小 Clawd 头上、或者人在输入框左右两边外面（输入框变窄了还没走回来）时不抽。 */
+  const CLAWD_RIG_ON_COMPOSER_ONLY = new Set(['rickroll', 'plant']);
+  function clawdOverComposer() {
+    if (A2.floor || A2.held || Math.abs(A2.fy) > .5) return false;
+    if (!A2.bndReady) return true;
+    return A2.x >= A2.bnd.minxHome - 1 && A2.x <= A2.bnd.maxxHome + 1;
+  }
   function pickClawdRigClip(now) {
     const meal = clawdMealTime();
+    const overComposer = clawdOverComposer();
     const ok = CLAWD_RIG_POOL
+      .filter(item => overComposer || !CLAWD_RIG_ON_COMPOSER_ONLY.has(item.id))
       .filter(item => !(clawdRigLastPlayed[item.id] && now - clawdRigLastPlayed[item.id] < item.cool))
       .map(item => ({ ...item, w: meal && item.mealWeight ? item.mealWeight : item.weight }));
     const total = ok.reduce((sum, item) => sum + item.w, 0);
@@ -6158,15 +6168,12 @@ if (CLAUDE_ENABLED) {
     const button = composerClawd();
     const bigPeeks = !!button && !(clawdTracks.C || a2Locked() || A2.held || Math.abs(A2.fy - A2.floor) > .5)
       && !(idleAsleep || ccSleeping || ccDrowsy || bBase === 'sleep' || bBase === 'drowsy');
-    clawdPile.peek(true, bigPeeks ? (A2.floor ? 8 : 12) : 0);
+    /* 2.0.309（Lulu）：大 Clawd 坐在小 Clawd 头上时，滚动不做任何动作——它不动，垫着它的、坐它头上的也不缩（第三个参数），别的小 Clawd 照常扒边 */
+    clawdPile.peek(true, bigPeeks && !A2.floor ? 12 : 0, !!A2.floor);
     if (clawdPileRestTimer) hostWindow.clearTimeout(clawdPileRestTimer);
     clawdPileRestTimer = hostWindow.setTimeout(() => { clawdPileRestTimer = 0; clawdPile.peek(false); }, CLAWD_SCROLL_REST_MS);
-    if (!bigPeeks) return;
+    if (!bigPeeks || A2.floor) return;
 
-    /* 2.0.300：坐在小 Clawd 头上：下面那只缩 8px，它跟着往下 8px，不播扒边 */
-    if (A2.floor) {
-      if (!clawdScrollHolding) { clawdScrollHolding = true; button.style.setProperty('translate', '0 8px'); }
-    } else
     /* 开始扒住：一次滚动只切这一次，中间的滚动事件都走不到这里。 */
     if (!clawdScrollHolding) {
       clawdScrollHolding = true;

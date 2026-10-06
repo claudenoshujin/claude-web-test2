@@ -445,6 +445,9 @@ html[data-claude-integrated-theme="night"] .clawd-pile{--clawd-pile-ink:#bdb7ae;
 .clawd-pile>.clawd-pile-c:not(.clawd-pile-held):not(.clawd-pile-up){clip-path:inset(-60px -60px 0 -60px)}
 .clawd-pile[data-paused]>.clawd-pile-c:not(.clawd-pile-held)>.clawd-pile-b{translate:0 ${4 * PX}px;transition-duration:.12s;transition-timing-function:ease-out}
 .clawd-pile[data-paused]>.clawd-pile-c.clawd-pile-onbig:not(.clawd-pile-held)>.clawd-pile-b{translate:0 var(--clawd-pile-bigdrop,12px)}
+/* 2.0.309：大 Clawd 坐在小 Clawd 头上时，和它叠在一起的那几只（垫着的、坐它头上的）滚动时不缩 */
+.clawd-pile[data-paused]>.clawd-pile-c.clawd-pile-still:not(.clawd-pile-held)>.clawd-pile-b{translate:none}
+.clawd-pile[data-paused]>.clawd-pile-shadow.clawd-pile-still{opacity:1}
 .clawd-pile>.clawd-pile-shadow{transition:opacity .2s}
 .clawd-pile[data-paused]>.clawd-pile-shadow{opacity:0}
 .clawd-pile .clawd-pile-s{position:absolute;inset:0;background-repeat:no-repeat;image-rendering:pixelated;pointer-events:none}
@@ -470,7 +473,7 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
      别的面板 / 下拉滚，都会让它们缩下去。现在不自己听了，由 index.js 告诉这边：
      · hush()：对话区每次滚动都调，只暂停走路 / 飘 Z / 腿的动画（性能，2.0.235 那条），样子不变；
      · peek(on, bigDrop)：和大 Clawd 同一个判断（手动滚、过了速度死区、没在打字、没在生成）才缩下去扒边。
-       bigDrop：坐在大 Clawd 头上的跟着往下多少（大 Clawd 扒边 12、它坐在小的头上跟着下面那只 8、它不动 0）。 */
+       bigDrop：坐在大 Clawd 头上的跟着往下多少（大 Clawd 扒边 12、它不动 0）。bigSeated（2.0.309）：大 Clawd 坐在小的头上，和它叠着的都不缩。 */
   let pausedAt = 0, resumeTimer = 0, peeking = false;
   const allAnims = () => [...zs, ...NAMES.map(n => K[n]).flatMap(k => (k ? k.legAnims : []))].flatMap(x => (x.getAnimations ? x.getAnimations() : [x]));
   function setPaused(on) {
@@ -483,10 +486,14 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     }
   }
   const hush = () => setPaused(true);
-  function peek(on, bigDrop = 12) {
+  // bigSeated：大 Clawd 坐在小的头上——它不动，和它叠在一起的（垫着它的那一串、坐它头上的）也不缩
+  function peek(on, bigDrop = 12, bigSeated = false) {
     if (!pile) return;
     if (on) {
       pile.style.setProperty('--clawd-pile-bigdrop', `${bigDrop}px`);
+      const still = new Set();
+      if (bigSeated && bigOn) { const down = n => { if (n === 'big' || still.has(n)) return; still.add(n); K[n].on.forEach(down); }; down(bigOn); }
+      for (const n of NAMES) { const k = K[n]; if (!k) continue; const s = bigSeated && (still.has(n) || onBig(k)); k.el.classList.toggle('clawd-pile-still', s); k.sh.classList.toggle('clawd-pile-still', s); }
       if (!peeking) { peeking = true; pile.setAttribute('data-paused', ''); }
       setPaused(true);
     } else if (peeking) {
