@@ -444,7 +444,7 @@ html[data-claude-integrated-theme="night"] .clawd-pile{--clawd-pile-ink:#bdb7ae;
    叠在别人头上的不切、跟着一起往下。拎着的不动。只切换一个属性，不逐帧算。 */
 .clawd-pile>.clawd-pile-c:not(.clawd-pile-held):not(.clawd-pile-up){clip-path:inset(-60px -60px 0 -60px)}
 .clawd-pile[data-paused]>.clawd-pile-c:not(.clawd-pile-held)>.clawd-pile-b{translate:0 ${4 * PX}px;transition-duration:.12s;transition-timing-function:ease-out}
-.clawd-pile[data-paused]>.clawd-pile-c.clawd-pile-onbig:not(.clawd-pile-held)>.clawd-pile-b{translate:0 12px}
+.clawd-pile[data-paused]>.clawd-pile-c.clawd-pile-onbig:not(.clawd-pile-held)>.clawd-pile-b{translate:0 var(--clawd-pile-bigdrop,12px)}
 .clawd-pile>.clawd-pile-shadow{transition:opacity .2s}
 .clawd-pile[data-paused]>.clawd-pile-shadow{opacity:0}
 .clawd-pile .clawd-pile-s{position:absolute;inset:0;background-repeat:no-repeat;image-rendering:pixelated;pointer-events:none}
@@ -465,20 +465,34 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
 .clawd-pile[data-unlaid]{visibility:hidden}`;
 
   /* 2.0.235（Lulu：更新后滚动对话变卡）：滚动时先把这一层的呼吸、飘 Z、走路暂停，停下来 0.4 秒后再接着动。
-     暂停只改这一层自己的属性，不碰 html / body。 */
-  let pausedAt = 0, resumeTimer = 0;
+     暂停只改这一层自己的属性，不碰 html / body。
+     2.0.304（Lulu：小 Clawd 有时莫名缩下去扒着输入框）：以前在整页上听 scroll（capture），输入框文字多了自己滚、
+     别的面板 / 下拉滚，都会让它们缩下去。现在不自己听了，由 index.js 告诉这边：
+     · hush()：对话区每次滚动都调，只暂停走路 / 飘 Z / 腿的动画（性能，2.0.235 那条），样子不变；
+     · peek(on, bigDrop)：和大 Clawd 同一个判断（手动滚、过了速度死区、没在打字、没在生成）才缩下去扒边。
+       bigDrop：坐在大 Clawd 头上的跟着往下多少（大 Clawd 扒边 12、它坐在小的头上跟着下面那只 8、它不动 0）。 */
+  let pausedAt = 0, resumeTimer = 0, peeking = false;
   const allAnims = () => [...zs, ...NAMES.map(n => K[n]).flatMap(k => (k ? k.legAnims : []))].flatMap(x => (x.getAnimations ? x.getAnimations() : [x]));
   function setPaused(on) {
     if (!pile) return;
     if (on) {
-      if (!pausedAt) { pausedAt = Date.now(); pile.setAttribute('data-paused', ''); for (const a of allAnims()) a.pause?.(); }
+      if (!pausedAt) { pausedAt = Date.now(); for (const a of allAnims()) a.pause?.(); }
       win.clearTimeout(resumeTimer); resumeTimer = win.setTimeout(() => setPaused(false), 400);
-    } else if (pausedAt) {
-      pausedAt = 0; pile.removeAttribute('data-paused'); for (const a of allAnims()) a.play?.();
+    } else if (pausedAt && !peeking) {
+      pausedAt = 0; for (const a of allAnims()) a.play?.();
     }
   }
-  const onScroll = e => { if (pile && !(e.target instanceof win.Node && pile.contains(e.target))) setPaused(true); };
-  doc.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  const hush = () => setPaused(true);
+  function peek(on, bigDrop = 12) {
+    if (!pile) return;
+    if (on) {
+      pile.style.setProperty('--clawd-pile-bigdrop', `${bigDrop}px`);
+      if (!peeking) { peeking = true; pile.setAttribute('data-paused', ''); }
+      setPaused(true);
+    } else if (peeking) {
+      peeking = false; pile.removeAttribute('data-paused'); setPaused(false);
+    }
+  }
 
   /* 输入框变宽变窄（窗口缩放、欢迎页和对话页的输入框不一样宽）：按中线平移（两边一样宽地变），屏幕上原地不动；超出两头的收进来，收进来重叠就挤开。
      只看宽度——打多行字时输入框会变高，那不算。拎着的不动；走到一半的停在原地再挪。
@@ -512,13 +526,18 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     if (atHome) { const h = homeLayout(); for (const n of NAMES) { K[n].x = h[n].x; K[n].on = h[n].on; } stackX(); for (const n of NAMES) place(K[n]); return; }
     const d = Math.round((w - old) / 2 / PX) * PX;
     const moved = [];
+    /* 2.0.304（Lulu：欢迎页摆好进对话，大 Clawd 浮在半空、下面那只不见了）：大 Clawd 跟着输入框左边走（index.js 的 A2 坐标），
+       不按中线。它坐着的那只要是还按中线挪，就从它屁股底下溜走了。这只改成摆回大 Clawd 正下方；摆不回去（被收进来）就让大 Clawd 降下来。 */
+    const bl = bigOn ? bigLeft() : null;
     for (const n of NAMES) {
       const k = K[n]; if (k.mode === 'held' || k.on.length) continue;
       const wk = endWalk(k);
-      const want = k.x + d; k.x = clampX(want); if (k.x !== want) moved.push(k);
+      const want = n === bigOn && bl != null ? Math.round((bl + BIG_W / 2 - BODY_W / 2) / PX) * PX : k.x + d;
+      k.x = clampX(want); if (k.x !== want) moved.push(k);
       if (wk) arrive(k, wk.done);
     }
     unstack(moved); stackX();
+    if (bigOn && (bl == null || moved.includes(K[bigOn]))) { bigOn = null; big?.lower?.(); }
     for (const n of NAMES) place(K[n]);
     save(true);
   }
@@ -537,7 +556,7 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     if (!style || !style.isConnected) { style = doc.createElement('style'); style.id = 'clawd-pile-style'; style.textContent = CSS; doc.head.append(style); }
     if (!pile || !f.contains(pile)) {
       for (const n of NAMES) if (K[n]) { clear(K[n]); endWalk(K[n]); }
-      pile?.remove(); form = f;
+      pile?.remove(); form = f; peeking = false;
       pile = doc.createElement('div'); pile.className = 'clawd-pile'; pile.setAttribute('aria-hidden', 'true');
       f.append(pile); build();
       ro?.disconnect(); ro = win.ResizeObserver ? new win.ResizeObserver(() => relayout()) : null; ro?.observe(f);
@@ -557,7 +576,6 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
   }
   function destroy() {
     destroyed = true; win.clearInterval(zTimer); zTimer = 0; win.clearTimeout(resumeTimer);
-    doc.removeEventListener('scroll', onScroll, { capture: true });
     ro?.disconnect(); ro = null;
     for (const n of NAMES) if (K[n]?.walk) win.clearTimeout(K[n].walk.t);
     for (const t of timers) win.clearTimeout(t); timers.clear();
@@ -606,5 +624,5 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     for (const n of NAMES) if (K[n]) K[n].el.style.translate = '';
     stackX(); for (const n of NAMES) place(K[n]); save(true);
   }
-  return { ensure, left, destroy, seats, bigSat, blocks, riderCount, unloadBig, follow, followEnd };
+  return { ensure, left, destroy, hush, peek, seats, bigSat, blocks, riderCount, unloadBig, follow, followEnd };
 }
