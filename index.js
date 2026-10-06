@@ -15,7 +15,7 @@
 
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20261006s";
+import { installOfficialLayout } from "./official-layout.js?v=20261006u";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.310-rig18";
 import { createClawdPile } from "./clawd-pile.js?v=20261006g";
 
@@ -460,7 +460,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20261006s', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20261006u', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -9053,7 +9053,9 @@ if (CLAUDE_ENABLED) {
     // 刚手动上翻的这一小段时间内，即使离底部还在阈值内，也别把它吸回去——
     // 不然翻页跟被按住弹簧一样一顿一顿。
     const recentlyScrolledManually = Date.now() - lastManualScrollAt < 500;
-    const keepAtBottom = bottomDistance <= 72 && !recentlyScrolledManually;
+    // 空聊天和欢迎页不补滚；历史加载后的定位交给原生。
+    const keepAtBottom = bottomDistance <= 72 && !recentlyScrolledManually
+      && !hostDocument.body.classList.contains('clawd-welcome') && Boolean(chat?.querySelector(':scope > .mes'));
     lastComposerHeight = height;
     const value = `${height}px`;
     if (root.style.getPropertyValue(MOBILE_COMPOSER_HEIGHT_PROPERTY) !== value) {
@@ -9063,7 +9065,7 @@ if (CLAUDE_ENABLED) {
       if (composerBottomRaf) hostWindow.cancelAnimationFrame(composerBottomRaf);
       composerBottomRaf = hostWindow.requestAnimationFrame(() => {
         composerBottomRaf = 0;
-        if (destroyed || !chat.isConnected) return;
+        if (destroyed || !chat.isConnected || hostDocument.body.classList.contains('clawd-welcome') || !chat.querySelector(':scope > .mes')) return;
         // 接下来这一下是程序自己滚的，短暂遮住，别被当成"用户又手动滚了一次"
         suppressManualScrollUntil = Date.now() + 250;
         chat.scrollTop = chat.scrollHeight;

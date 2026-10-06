@@ -56,7 +56,7 @@ body {
   background-image:none !important;
   padding:20px clamp(8px,2vw,28px) 6px !important;
   backdrop-filter:none !important;
-  scroll-behavior:smooth;
+  scroll-behavior:auto;
 }
 #chat .mes {
   background:transparent !important;
