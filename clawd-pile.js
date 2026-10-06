@@ -31,7 +31,7 @@ export function createClawdPile({ doc, win }) {
   const BODY_W = 16 * PX, LIFT = 7 * PX, GAP = 2 * PX, EDGE = 14;   // 叠上去抬高 7 格；两只之间至少空 GAP；离输入框左右边 EDGE
   const STEP_MS = 160;                                              // 走路一步 160ms、1 格
   const LEG_X = [3, 5, 10, 12];                                     // 0、2 近侧；1、3 远侧（暗一号）
-  const STORE = 'claude-web-clawd-pile-v2';
+  const STORE = 'claude-web-clawd-pile-v3';   // v3：存离输入框中线多远（v2 存比例，换格式就换名字）
 
   const grid = (rows, ox = 0, oy = 0) => { const o = []; rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') o.push([x + ox, y + oy, ch]); })); return o; };
   const spans = (l, ox = 0, oy = 0) => { const o = []; for (const [x, y, s] of l) [...s].forEach((ch, i) => { if (ch !== '.') o.push([x + i + ox, y + oy, ch]); }); return o; };
@@ -79,15 +79,18 @@ export function createClawdPile({ doc, win }) {
   function bounds() { return { min: EDGE, max: Math.max(EDGE, width() - EDGE - BODY_W) }; }
   function clampX(x) { const b = bounds(); return Math.round(Math.min(b.max, Math.max(b.min, x)) / PX) * PX; }
   function homeLayout() { const r = width() - EDGE - 60; return { cowboy: { x: r, on: [] }, shades: { x: r + 28, on: [] }, wizard: { x: r + 14, on: ['cowboy', 'shades'] } }; }
-  function save() {
+  /* 2.0.292（Lulu：欢迎页摆好，进对话就位移）：位置存「离输入框中线多远」。欢迎页和对话页的输入框都居中、只是宽度不同，
+     按中线算，换页面时小 Clawd 在屏幕上原地不动，间距也不变（以前按比例算，会左右跑、那一堆还会被挤扁）。 */
+  function save(keepHome) {
+    if (!keepHome) atHome = false;
     const w = width(); if (!w) return;
-    try { win.localStorage.setItem(STORE, JSON.stringify(Object.fromEntries(NAMES.map(n => [n, { f: (K[n].x - EDGE) / Math.max(1, w - EDGE), on: K[n].on }])))); } catch { /* 存不了就不记 */ }
+    try { win.localStorage.setItem(STORE, JSON.stringify(Object.fromEntries(NAMES.map(n => [n, { dx: Math.round(K[n].x - w / 2), on: K[n].on }])))); } catch { /* 存不了就不记 */ }
   }
   function load() {
     const w = width(); if (!w) return null;
     try {
       const s = JSON.parse(win.localStorage.getItem(STORE) || 'null'); if (!s) return null;
-      return Object.fromEntries(NAMES.map(n => [n, { x: clampX(EDGE + (+s[n]?.f || 0) * (w - EDGE)), on: Array.isArray(s[n]?.on) ? s[n].on.filter(m => NAMES.includes(m) && m !== n) : [] }]));
+      return Object.fromEntries(NAMES.map(n => [n, { x: clampX(w / 2 + (+s[n]?.dx || 0)), on: Array.isArray(s[n]?.on) ? s[n].on.filter(m => NAMES.includes(m) && m !== n) : [] }]));
     } catch { return null; }
   }
   const lift = k => (k.on.length ? LIFT + Math.max(...k.on.map(n => lift(K[n]))) : 0);
@@ -202,7 +205,7 @@ export function createClawdPile({ doc, win }) {
   /* ===== 走路：一步一步走，每步先看前面一格 =====
      left 不动，只累加 translate（fill:forwards，每步取消上一段），停下时再把位置写回 left。走的时候不改 DOM。 */
   function walkTo(k, target, done) {
-    endWalk(k);
+    endWalk(k); atHome = false;   // 一动就不再是默认那一堆
     k.mode = 'walk'; k.eyes = 'open'; k.face = Math.sign(target - k.x) || 1;
     const standing = k.pose === 'stand';
     if (!standing) { k.pose = 'crouch'; look(k); }   // 先坐着转过去，再站起来
@@ -313,6 +316,7 @@ export function createClawdPile({ doc, win }) {
     k.el.addEventListener('click', stop);
   }
   function pickUp(k) {
+    atHome = false;
     clear(k); endWalk(k); k.el.getAnimations?.().forEach(a => a.cancel()); k.sh.getAnimations?.().forEach(a => a.cancel());
     for (const n of carriers(k)) fallOff(K[n], k);   // 背上的掉下来（或滑到另一只头上）
     k.on = []; k.mode = 'held'; k.pose = 'dangle'; k.eyes = 'open'; k.face = 0;
@@ -412,7 +416,8 @@ html[data-claude-integrated-theme="night"] .clawd-pile{--clawd-pile-ink:#bdb7ae;
 html[data-claude-motion="off"] .clawd-pile *{animation:none!important}
 .clawd-pile[data-paused] *{animation:none!important}   /* 缩下去时呼吸停掉回原样，不冻在半截 */
 @media (prefers-reduced-motion:reduce){.clawd-pile *{animation:none!important}}
-html[data-claude-decorations="off"] .clawd-pile{display:none!important}`;
+html[data-claude-decorations="off"] .clawd-pile{display:none!important}
+.clawd-pile[data-unlaid]{visibility:hidden}`;
 
   /* 2.0.235（Lulu：更新后滚动对话变卡）：滚动时先把这一层的呼吸、飘 Z、走路暂停，停下来 0.4 秒后再接着动。
      暂停只改这一层自己的属性，不碰 html / body。 */
@@ -430,24 +435,52 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}`;
   const onScroll = e => { if (pile && !(e.target instanceof win.Node && pile.contains(e.target))) setPaused(true); };
   doc.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
-  /* 输入框变宽变窄（窗口缩放、欢迎页和对话页的输入框不一样宽）：按比例挪。只看宽度——打多行字时输入框会变高，那不算。
-     走路中 / 拎着的不动。 */
-  let lastW = 0;
+  /* 输入框变宽变窄（窗口缩放、欢迎页和对话页的输入框不一样宽）：按中线平移（两边一样宽地变），屏幕上原地不动；超出两头的收进来，收进来重叠就挤开。
+     只看宽度——打多行字时输入框会变高，那不算。拎着的不动；走到一半的停在原地再挪。
+     刚建好时输入框可能还没排版（宽 0），那时先不摆，等第一次量到宽度再摆。 */
+  let lastW = 0, laid = false, atHome = false;   // atHome：还是默认那一堆、谁都没动过
+  // 叠着的从下往上摆：上面的落在下面那只（骑两只的取中点）正上方
+  function stackX() {
+    const depth = k => (k.on.length ? 1 + Math.max(...k.on.map(n => depth(K[n]))) : 0);
+    for (const k of NAMES.map(n => K[n]).filter(k => k.on.length).sort((p, q) => depth(p) - depth(q)))
+      k.x = Math.round(k.on.reduce((t, m) => t + K[m].x, 0) / k.on.length / PX) * PX;
+  }
+  function unstack(moved) {   // 被收进来的那几只跟别人重叠：挤开（原来那一堆本来就挨着，不动它）
+    for (const k of moved) { const t = nearestFree(k.x, k.name); if (t != null) k.x = t; }
+  }
   function relayout() {
-    const w = width(); if (!pile || !w || w === lastW) return;
-    const old = lastW; lastW = w; if (!old) return;
-    for (const n of NAMES) { const k = K[n]; if (!k || k.walk || k.mode === 'held' || k.on.length) continue; k.x = clampX(EDGE + (k.x - EDGE) * (w - EDGE) / Math.max(1, old - EDGE)); }
-    // 叠在上面的跟着下面挪：骑在两只中间的取中点（原来那一堆的巫师）
-    for (const n of NAMES) if (K[n]) { const on = K[n].on; if (on.length) K[n].x = Math.round(on.reduce((t, m) => t + K[m].x, 0) / on.length / PX) * PX; place(K[n]); }
+    const w = width(); if (!pile || !w) return;
+    if (!laid) {
+      const saved = load(); atHome = !saved;
+      const s = saved || homeLayout();
+      for (const n of NAMES) { K[n].x = s[n].x; K[n].on = s[n].on; }
+      stackX(); for (const n of NAMES) place(K[n]);
+      laid = true; lastW = w; pile.removeAttribute('data-unlaid'); return;
+    }
+    if (w === lastW) return;
+    const old = lastW;
+    lastW = w;
+    // 还是默认那一堆：照当前宽度重新摆在右边角上（页面刚启动时输入框会先后变几次宽，按第一次的宽度摆会偏）
+    if (atHome) { const h = homeLayout(); for (const n of NAMES) { K[n].x = h[n].x; K[n].on = h[n].on; } stackX(); for (const n of NAMES) place(K[n]); return; }
+    const d = Math.round((w - old) / 2 / PX) * PX;
+    const moved = [];
+    for (const n of NAMES) {
+      const k = K[n]; if (k.mode === 'held' || k.on.length) continue;
+      const wk = endWalk(k);
+      const want = k.x + d; k.x = clampX(want); if (k.x !== want) moved.push(k);
+      if (wk) arrive(k, wk.done);
+    }
+    unstack(moved); stackX();
+    for (const n of NAMES) place(K[n]);
+    save(true);
   }
   function build() {
     pile.querySelectorAll(':scope>*').forEach(n => n.remove());
     for (const n of NAMES) make(n);
     buildFx();
-    const s = load() || homeLayout();
-    for (const n of NAMES) { K[n].x = s[n].x; K[n].on = s[n].on; }
-    for (const n of NAMES) { place(K[n]); sleep(K[n], true); }
-    lastW = width();
+    laid = false; lastW = 0; pile.setAttribute('data-unlaid', '');   // 量到宽度、摆好之前先藏着，免得在角上闪一下
+    for (const n of NAMES) sleep(K[n], true);
+    relayout();
   }
   function ensure() {
     if (destroyed) return null;
