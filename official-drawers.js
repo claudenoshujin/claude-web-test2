@@ -536,13 +536,14 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   function setTag(el,on){if(!el)return;for(let i=0;i<3&&(tagState(el)==='SELECTED')!==on;i++)el.click();if(!on)for(let i=0;i<3&&tagState(el)!=='UNDEFINED';i++)el.click();}
   function filterSheet(ui,controls){
     if(!controls)return;
-    const sw=[['filterByFavorites','只看收藏'],['filterByGroups','只看群聊'],['filterByFolder','标签当文件夹显示']].map(([c,l])=>[controls.querySelector('.'+c),l]).filter(([el])=>el);
+    const sw=[['filterByFavorites','只看收藏'],['filterByGroups','只看群聊'],['filterByFolder','只看文件夹']].map(([c,l])=>[controls.querySelector('.'+c),l]).filter(([el])=>el);
     if(sw.length){ui.head('筛选');for(const [el,l] of sw)ui.keep(L(l),()=>setTag(el,tagState(el)!=='SELECTED'),tagState(el)==='SELECTED');}
     const userTags=[...controls.querySelectorAll('.tag:not(.actionable)')].filter(el=>el.querySelector('.tag_name')?.textContent.trim());
     if(userTags.length){ui.head('按标签');ui.chips(userTags.map(el=>[el.querySelector('.tag_name').textContent.trim(),tagState(el)==='SELECTED',()=>setTag(el,tagState(el)!=='SELECTED')]));}
   }
-  // 「标签当文件夹显示」酒馆默认就是开的，不算筛选。
-  const filtered=controls=>!!controls?.querySelector(':is(.filterByFavorites,.filterByGroups,.tag:not(.actionable)):is([data-toggle-state="SELECTED"],[data-toggle-state="EXCLUDED"])');
+  // 2.0.299：filterByFolder 是酒馆的「Show only folders」（只看文件夹），开着时角色只剩文件夹、其余算「已被隐藏」。
+  // 以前误标成「标签当文件夹显示」还当成默认开着、不算筛选——Lulu 手机上角色全被藏了。现在名字改对，也算进筛选（调节图标会亮）。
+  const filtered=controls=>!!controls?.querySelector(':is(.filterByFavorites,.filterByGroups,.filterByFolder,.tag:not(.actionable)):is([data-toggle-state="SELECTED"],[data-toggle-state="EXCLUDED"])');
   // 排序：一行「排序方式 · 当前值 ⌃⌄」，点了关掉这个弹出、开那个下拉自己的底部列表（openSelMenu，和别的下拉一样）。
   function sortPick(ui,select,menuEl){if(!select)return;const b=ui.opt(L('排序方式'),false,()=>{});b.classList.add('cw-v4-sheet-pick');const v=make('span','cw-v4-sheet-value',(select.selectedOptions[0]?.textContent||'').trim());b.append(v);
     b.addEventListener('click',e=>{e.stopPropagation();menuEl.open=false;win.setTimeout(()=>openSelMenu?.(select),30);},true);}
