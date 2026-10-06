@@ -429,7 +429,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.310-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.311-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4223,7 +4223,10 @@ if (CLAUDE_ENABLED) {
      要做别的动作、开始写字、被戳——头上的先跳开。被拎起来走 a2Move 那条（降下来）。
      2.0.302（Lulu：小 Clawd 放不上大 Clawd）：待机状态每 200ms 刷新一次（syncClawdBState），被冷落 / 犯困 / 睡着 / 看你打字
      都不在名单里，刚放上去下一次刷新就把它抖下来了。这四个身子基本不动，也算安静的；而且只在换成新动作的那一刻判断，同一个状态的刷新不算。 */
-  const CLAWD_QUIET_WITH_RIDERS = new Set(['idle', 'peek', 'peekOut', 'walkLoop', 'around', 'point', 'scratch', 'facepalm', 'press', 'neglected', 'drowsy', 'sleep', 'compose']);
+  /* 2.0.311（Lulu：它写的时候会把上面的挤掉，不用挤掉）：写字（think / stream / sit）身子不动、纸笔在身前，头上的接着坐；
+     停止、出错两种结尾也只是钳子耷拉一下。完成要举钳蹦一下，那个照旧让头上的先跳开。 */
+  const CLAWD_QUIET_WITH_RIDERS = new Set(['idle', 'peek', 'peekOut', 'walkLoop', 'around', 'point', 'scratch', 'facepalm', 'press', 'neglected', 'drowsy', 'sleep', 'compose',
+    'think', 'stream', 'sit', 'stopped', 'error']);
   function clawdShakeRiders(value) {
     if (!value) return;
     const base = String(value).replace(/^rig:/, '').replace(/-m$/, '');
