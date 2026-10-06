@@ -2867,13 +2867,18 @@ html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder
 }
 html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder #PersonaManagement :is(#lock_persona_default,#lock_persona_to_char,#lock_user_name):not(.locked):not(#zz1):not(#zz2):not(#zz3){background:#4a4945!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-prompt-row>.prompt-manager-toggle-action.fa-toggle-off{background:#4a4945!important}
 html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel.cw-v4-segsel{background:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item.cw-v4-segsel-item{color:#a3a19b!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-segsel>button.cw-v4-segsel-item.cw-v4-segsel-item[aria-pressed=true]{background:#3d3c39!important;color:#ece9e2!important;border-color:transparent!important;box-shadow:none!important}html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-seg.cw-v4-seg{background:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)!important}
-html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.menu_button,.cw-v4-button,select):not(.cw-v4-segsel-item):not(#lock_persona_default):not(#lock_persona_to_char):not(#lock_user_name):not(.prompt-manager-toggle-action):not(#zz1):not(#zz2){background-color:#30302e!important;border-color:rgba(255,255,255,.1)!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .cw-v4-panel :is(.menu_button,.cw-v4-button,select):not(.cw-v4-segsel-item):not(.cw-v4-primary):not(#lock_persona_default):not(#lock_persona_to_char):not(#lock_user_name):not(.prompt-manager-toggle-action):not(#zz1):not(#zz2){background-color:#30302e!important;border-color:rgba(255,255,255,.1)!important}
 
 /* ㊼ 2.0.290 bug：
    ① 设置里的 ⋯（.cw-v4-more>summary）偏左 3.3px：summary 里藏着一个 0 字号的「⋯」文字也算一个 flex 项，加上 gap 7px，把点点挤偏。gap 归 0。
    ② 夜间「其他设置 · 打开」按钮还是日间的浅色细框、没有底：补夜间，和其他按钮一样 #30302e + 淡边。 */
 html[data-cw-v4] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) .cw-v4-more>summary{gap:0!important}
 @media(min-width:701px){html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-leftovers>button.cw-v4-leftovers-row>.cw-lo-b.cw-lo-b{background:#30302e;border-color:rgba(255,255,255,.1)}}
+
+/* ㊽ 2.0.293 bug：API 连接「状态」行三个空按钮——连接 / 附加参数 / 发送测试消息。酒馆换语言时重写了按钮文字，把我们加的 .cw-v4-action-label 冲掉，
+   原生文字又被 .cw-v4-as-btn 的 font-size:0 藏着，只剩空框。没有 label 的就直接显示原生文字。
+   另：2.0.289 夜间按钮统一那条把主按钮（.cw-v4-primary，比如「连接」）也压成深底，字看不见 → 那条排除主按钮。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-as-btn.cw-v4-as-btn:not(:has(>.cw-v4-action-label)){font:400 14px/1 var(--cw-v4-font)!important;letter-spacing:0!important;padding:0 13px!important;width:auto!important}
 
 /* ㊴ 2.0.266 扩展设置页（照 design-phone-ext-v1.html）。页面是 official-extension-settings.js 画的 .cwx-page：
    小节 .cwx-sec（灰字 / 电脑粗体标题 .cwx-lab）→ 白卡片 .cwx-card → 一行一项 .cwx-row。控件是酒馆原来的，搬进行里。
