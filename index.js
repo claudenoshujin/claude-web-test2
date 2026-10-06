@@ -17,7 +17,7 @@ import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=20261006s";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.310-rig18";
-import { createClawdPile } from "./clawd-pile.js?v=20261006e";
+import { createClawdPile } from "./clawd-pile.js?v=20261006f";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -429,7 +429,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.311-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.312-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4233,16 +4233,26 @@ if (CLAUDE_ENABLED) {
     if (CLAWD_QUIET_WITH_RIDERS.has(base)) return;
     clawdPile.unloadBig('hop');
   }
-  /* 它坐着的那只小 Clawd 被拿走：平滑地降回输入框上 */
+  /* 它坐着的那只小 Clawd 被拿走：平滑地降下来。2.0.312：正下方还有别的小 Clawd 就坐到它头上（挪正），没有才降回输入框上。
+     返回坐到了谁头上（给 clawd-pile.js），降到输入框上返回 null。 */
   function clawdBigLower() {
     const button = composerClawd();
     A2.floor = 0;
-    if (clawdTracks.A) renderClawdTracks();   // 2.0.310：正在写字：举着便签 → 换回铺在输入框上写
-    if (!button || A2.held) return;
+    let seat = null, cx = 0;
+    const rig = button?.querySelector(':scope > .clawd-rig')?.getBoundingClientRect();
+    if (rig?.width && !A2.held) {
+      cx = rig.left + 24;
+      seat = clawdPile.seats().filter(st => Math.abs(cx - st.cx) < Math.max(48, st.w) * .5).sort((a, b) => b.h - a.h)[0] || null;
+    }
+    if (seat) A2.floor = -seat.h;
+    if (clawdTracks.A) renderClawdTracks();   // 2.0.310：写字时坐着 / 不坐着换不同的写法
+    if (!button || A2.held) return null;
     button.style.setProperty('transition', 'transform .4s cubic-bezier(.4,0,.2,1)', 'important');
-    A2.fy = 0;
+    A2.fy = A2.floor;
+    if (seat) { A2.x += seat.cx - cx; A2.homeX = A2.x; }
     a2Place(button);
     hostWindow.setTimeout(() => { if (!A2.held) { button.style.removeProperty('transition'); scheduleA2BoundsWarm(button); } }, 420);
+    return seat ? seat.name : null;
   }
 
   function setClawdA(value, duration = 0) {
@@ -5642,9 +5652,17 @@ if (CLAUDE_ENABLED) {
        小 Clawd 的位置只在这里量一次（屏幕坐标），飞行中按 A2.x 换算大 Clawd 身子中心，逐帧不读布局。 */
     if (A2.floor) { A2.floor = 0; clawdPile.bigSat(null); }
     const rig0 = button.querySelector(':scope > .clawd-rig')?.getBoundingClientRect();
-    const seatList = rig0?.width ? clawdPile.seats() : [];
+    let seatList = rig0?.width ? clawdPile.seats() : [], seatsFresh = false;
     const x0 = A2.x, centerAt = x => rig0.left + (x - x0) + 24;   // 丢出去那一刻的位置做基准
-    const seatUnder = x => (seatList.length ? seatList.find(st => Math.abs(centerAt(x) - st.cx) < Math.max(48, st.w) * .5) : null);
+    /* 2.0.312（Lulu：拿开小 Clawd 时大 Clawd 浮空）：头顶的位置是丢出去那一刻量的，弹跳的那一秒里那只可能已经被拎走了。
+       每一帧问一下它还在不在、现在多高（不读布局），不在了就当没有，接着掉到输入框上。 */
+    const seatUnder = x => {
+      const find = () => (seatList.length ? seatList.find(q => Math.abs(centerAt(x) - q.cx) < Math.max(48, q.w) * .5) : null);
+      let st = find(), h = st ? clawdPile.seatLive(st.name) : null;
+      /* 要坐的那只没了：下面那几只可能刚空出来（它们原来驮着被拎走的那只），重新量一次（只量这一次） */
+      if (st && h == null && !seatsFresh) { seatsFresh = true; seatList = clawdPile.seats(); st = find(); h = st ? clawdPile.seatLive(st.name) : null; }
+      return h == null ? null : { ...st, h };
+    };
 
     /* 逐帧推进改成按真实经过时间推进。
        原来每帧固定 vy += g、v *= drag，等于把「一帧」当成时间单位：

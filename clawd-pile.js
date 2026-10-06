@@ -333,11 +333,22 @@ export function createClawdPile({ doc, win, big = null }) {
     clear(k); endWalk(k); k.el.getAnimations?.().forEach(a => a.cancel()); k.sh.getAnimations?.().forEach(a => a.cancel());
     k.mode = 'held';   // 先标成拎着：下面落下来的不用躲它原来的位置
     const above = carriers(k);
-    if (above.includes('big')) { bigOn = null; big?.lower?.(); }   // 大 Clawd 坐在它头上：大 Clawd 降回输入框上（index.js 做动画）
     lowerFrom(above.filter(n => n !== 'big').map(n => K[n]), k.name);
-    if (above.includes('big') && NAMES.some(n => onBig(K[n]))) relayoutFlip(400);   // 大 Clawd 头上的跟着它一起降下来
-    k.on = []; k.pose = 'dangle'; k.eyes = 'open'; k.face = 0;
+    k.on = [];   // 先从下面那几只头上下来，下面的才算空出来，大 Clawd 能降到它们头上
+    if (above.includes('big')) lowerBig();   // 大 Clawd 坐在它头上：降下来（index.js 做动画）
+    k.pose = 'dangle'; k.eyes = 'open'; k.face = 0;
     k.el.classList.add('clawd-pile-held'); k.el.style.zIndex = '9'; k.sh.style.display = 'none'; look(k);
+  }
+  /* 2.0.312（Lulu：把 Clawd 拿开的时候大 Clawd 会浮空）：大 Clawd 坐着的那只没了——它降下来；正下方还有别的小 Clawd 就坐到它头上
+     （以前一律降到输入框上，会和下面那几只叠在一起）。坐到谁头上由 index.js 量（big.lower() 返回名字）；头上的跟着平滑地降。 */
+  function lowerBig() {
+    bigOn = null;
+    const name = big?.lower?.() || null;
+    if (name && K[name] && K[name].mode !== 'held') {
+      bigOn = name; atHome = false;
+      const s = K[name]; if (s.walk) { endWalk(s); clear(s); arrive(s, () => doze(s)); }
+    }
+    if (NAMES.some(n => onBig(K[n]))) relayoutFlip(400); else for (const n of NAMES) if (K[n].mode !== 'held') place(K[n]);
   }
   /* 下面那只被拿走（或大 Clawd 要干别的）：上面的平滑地降下来补位——还有别的撑着就落到它头上，没有就落回输入框上
      （重叠的话挪开一点）。睡着的照样睡，不醒（以前是掉下来、醒一下）。hop = true：跳开（大 Clawd 要做别的动作时）。 */
@@ -546,7 +557,7 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
       if (wk) arrive(k, wk.done);
     }
     unstack(moved); stackX();
-    if (bigOn && Math.abs(K[bigOn].x - (seatX0 + d)) > PX) { bigOn = null; big?.lower?.(); }
+    if (bigOn && Math.abs(K[bigOn].x - (seatX0 + d)) > PX) lowerBig();
     for (const n of NAMES) place(K[n]);
     save(true);
   }
@@ -599,6 +610,11 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     return NAMES.map(n => K[n]).filter(k => k.mode !== 'held' && !carriers(k).length && !onBig(k))
       .map(k => ({ name: k.name, cx: p.left + posX(k) + BODY_W / 2, w: BODY_W, h: lift(k) + LIFT }));
   }
+  // 2.0.312：大 Clawd 掉下来时每一帧确认它要坐的那只还在（没被拎走、头上没别人）——在就返回现在的高度，不在返回 null
+  function seatLive(name) {
+    const k = K[name]; if (!k || k.mode === 'held' || carriers(k).length || onBig(k)) return null;
+    return lift(k) + LIFT;
+  }
   // 大 Clawd 坐到某只头上（name）/ 落回地上（null）
   function bigSat(name) {
     bigOn = name && K[name] ? name : null;
@@ -636,5 +652,5 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     for (const n of NAMES) if (K[n]) K[n].el.style.translate = '';
     stackX(); for (const n of NAMES) place(K[n]); save(true);
   }
-  return { ensure, left, destroy, hush, peek, seats, bigSat, blocks, riderCount, unloadBig, follow, followEnd, restack };
+  return { ensure, left, destroy, hush, peek, seats, seatLive, bigSat, blocks, riderCount, unloadBig, follow, followEnd, restack };
 }
