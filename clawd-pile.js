@@ -330,12 +330,15 @@ export function createClawdPile({ doc, win, big = null }) {
   }
   function pickUp(k) {
     atHome = false;
+    const bigHeight = bigOn ? supportTop(bigOn) : null;
+    const bigSeatX = bigOn ? K[bigOn].x : null;
     clear(k); endWalk(k); k.el.getAnimations?.().forEach(a => a.cancel()); k.sh.getAnimations?.().forEach(a => a.cancel());
     k.mode = 'held';   // 先标成拎着：下面落下来的不用躲它原来的位置
     const above = carriers(k);
     lowerFrom(above.filter(n => n !== 'big').map(n => K[n]), k.name);
     k.on = [];   // 先从下面那几只头上下来，下面的才算空出来，大 Clawd 能降到它们头上
-    if (above.includes('big')) lowerBig();   // 大 Clawd 坐在它头上：降下来（index.js 做动画）
+    // 支撑被抽走后，座位可能变矮，也可能从两只的中点移到剩下那只上面。
+    if (above.includes('big') || (bigOn && (supportTop(bigOn) !== bigHeight || K[bigOn].x !== bigSeatX))) lowerBig();
     k.pose = 'dangle'; k.eyes = 'open'; k.face = 0;
     k.el.classList.add('clawd-pile-held'); k.el.style.zIndex = '9'; k.sh.style.display = 'none'; look(k);
   }
@@ -604,11 +607,17 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
   }
   /* ===== 2.0.300 给 index.js（大 Clawd）用的 ===== */
   // 大 Clawd 被丢 / 放下时，哪些小 Clawd 头上能坐：屏幕上的中心 x、身宽，和坐上去离地多高
-  function seats() {
+  function seats(origin = null) {
     if (!pile) return [];
-    const p = pile.getBoundingClientRect();
+    const left = origin ?? pile.getBoundingClientRect().left;
     return NAMES.map(n => K[n]).filter(k => k.mode !== 'held' && !carriers(k).length && !onBig(k))
-      .map(k => ({ name: k.name, cx: p.left + posX(k) + BODY_W / 2, w: BODY_W, h: lift(k) + LIFT }));
+      .map(k => ({ name: k.name, cx: left + posX(k) + BODY_W / 2, w: BODY_W, h: lift(k) + LIFT }));
+  }
+  // 一次量坐标原点，飞行逐帧从当前支撑图/位置取座位，不再沿用松手时的候选和横坐标。
+  function trackSeats() {
+    if (!pile) return () => [];
+    const origin = pile.getBoundingClientRect().left;
+    return () => seats(origin);
   }
   // 2.0.312：大 Clawd 掉下来时每一帧确认它要坐的那只还在（没被拎走、头上没别人）——在就返回现在的高度，不在返回 null
   function seatLive(name) {
@@ -652,5 +661,5 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     for (const n of NAMES) if (K[n]) K[n].el.style.translate = '';
     stackX(); for (const n of NAMES) place(K[n]); save(true);
   }
-  return { ensure, left, destroy, hush, peek, seats, seatLive, bigSat, blocks, riderCount, unloadBig, follow, followEnd, restack };
+  return { ensure, left, destroy, hush, peek, seats, trackSeats, seatLive, bigSat, blocks, riderCount, unloadBig, follow, followEnd, restack };
 }

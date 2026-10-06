@@ -17,7 +17,7 @@ import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=20261006s";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.310-rig18";
-import { createClawdPile } from "./clawd-pile.js?v=20261006f";
+import { createClawdPile } from "./clawd-pile.js?v=20261006g";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -4246,7 +4246,13 @@ if (CLAUDE_ENABLED) {
     }
     if (seat) A2.floor = -seat.h;
     if (clawdTracks.A) renderClawdTracks();   // 2.0.310：写字时坐着 / 不坐着换不同的写法
-    if (!button || A2.held) return null;
+    if (!button) return null;
+    if (A2.held) {
+      // 支撑撤走时还被手指按着：位置仍交给手势，松手必须走无支撑回落，不能停在旧座位上。
+      A2.petting = false;
+      hostWindow.clearTimeout(A2.petTimer);
+      return null;
+    }
     button.style.setProperty('transition', 'transform .4s cubic-bezier(.4,0,.2,1)', 'important');
     A2.fy = A2.floor;
     if (seat) { A2.x += seat.cx - cx; A2.homeX = A2.x; }
@@ -5649,20 +5655,15 @@ if (CLAUDE_ENABLED) {
     a2NoteInteraction();
     setClawdC('fly', 0);
     /* 2.0.300：地面不一定是输入框上沿——正好落在某只小 Clawd 头顶上方，就坐在它头上。
-       小 Clawd 的位置只在这里量一次（屏幕坐标），飞行中按 A2.x 换算大 Clawd 身子中心，逐帧不读布局。 */
+       这里只量一次坐标原点，飞行中按当前支撑图选座位、按 A2.x 换算大 Clawd 身子中心，逐帧不读布局。 */
     if (A2.floor) { A2.floor = 0; clawdPile.bigSat(null); }
     const rig0 = button.querySelector(':scope > .clawd-rig')?.getBoundingClientRect();
-    let seatList = rig0?.width ? clawdPile.seats() : [], seatsFresh = false;
+    const liveSeats = rig0?.width ? clawdPile.trackSeats() : () => [];
     const x0 = A2.x, centerAt = x => rig0.left + (x - x0) + 24;   // 丢出去那一刻的位置做基准
-    /* 2.0.312（Lulu：拿开小 Clawd 时大 Clawd 浮空）：头顶的位置是丢出去那一刻量的，弹跳的那一秒里那只可能已经被拎走了。
-       每一帧问一下它还在不在、现在多高（不读布局），不在了就当没有，接着掉到输入框上。 */
-    const seatUnder = x => {
-      const find = () => (seatList.length ? seatList.find(q => Math.abs(centerAt(x) - q.cx) < Math.max(48, q.w) * .5) : null);
-      let st = find(), h = st ? clawdPile.seatLive(st.name) : null;
-      /* 要坐的那只没了：下面那几只可能刚空出来（它们原来驮着被拎走的那只），重新量一次（只量这一次） */
-      if (st && h == null && !seatsFresh) { seatsFresh = true; seatList = clawdPile.seats(); st = find(); h = st ? clawdPile.seatLive(st.name) : null; }
-      return h == null ? null : { ...st, h };
-    };
+    /* 每帧读取三个小 Clawd 的当前逻辑位置/支撑关系，不读布局。
+       旧版只验证旧候选的高度：支撑在两帧之间被拖走又放下，仍会使用它原来的横坐标；只刷新一次也会漏掉第二次抽走。 */
+    const seatUnder = x => liveSeats().filter(st => Math.abs(centerAt(x) - st.cx) < Math.max(48, st.w) * .5)
+      .sort((a, b) => b.h - a.h)[0] || null;
 
     /* 逐帧推进改成按真实经过时间推进。
        原来每帧固定 vy += g、v *= drag，等于把「一帧」当成时间单位：
