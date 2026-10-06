@@ -1,5 +1,5 @@
 import { officialIcons } from './official-icons.js?v=20261002u';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005u';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261005w';
 import { tr } from './official-i18n.js?v=20261002t';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
@@ -601,6 +601,8 @@ export function installOfficialLayout(win = window) {
     // Native textareas continue to save using their original input handlers.
     // 2.0.214：色块都在行的最右边，取色器默认往右展开会跑出屏幕；改成往左展开。
     panel.querySelectorAll('toolcool-color-picker:not([popup-position])').forEach(c => c.setAttribute('popup-position', 'right'));
+    /* 2.0.297 bug：颜色选择器自带的色块按钮 48×24，比我们 34 的框宽，露在框外成了两层。让它画成 22 的方块，居中在框里。 */
+    panel.querySelectorAll('toolcool-color-picker:not([button-width])').forEach(c => { c.setAttribute('button-width', '22px'); c.setAttribute('button-height', '22px'); c.setAttribute('button-padding', '0'); });
     panel.querySelectorAll('textarea').forEach(ta => {
       if (ta.dataset.cwV4Text || ta.matches('.select2-search__field') || ta.closest('.select2-container,[data-v-app],#extensions_settings,#extensions_settings2,.world_entry,dialog') || ta.id === 'settingsSearch' || ta.classList.contains('displayNone') || ta.style.display === 'none') return;
       ta.dataset.cwV4Text = '1';

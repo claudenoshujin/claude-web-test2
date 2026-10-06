@@ -2890,6 +2890,34 @@ html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v
    对话页去掉这个右内边距，输入框中心 = 内容区中心 = 消息栏中心（1393 宽时都是 843.5）。另一个会话的小 Clawd 按输入框宽度比例记位置，不受影响。 */
 @media(min-width:701px){html[data-cw-v4] body:not(.clawd-welcome) #form_sheld#form_sheld{padding-right:0!important}}
 
+/* 51 2.0.297（design-flavor-v7，Lulu：确定键不改，其他按推荐）+ bug：
+   ① 酒馆助手的提示词查看器 / 变量管理器 / 日志查看器（.dialog-teleported）改成我们的面板样子：主题变量在窗口里重定义，标题条去橙色。
+   ② 图库格子底色透明（原 #ececea 露成白边）。
+   ③ bug：只放一个 .cw-v4-icon 的图标按钮偏右 3.5px（0 宽 ::before + gap 7px）→ gap 0。
+   ④ bug：颜色选择器两层框——JS 设 button-width/height 22px，这里居中 + 内框淡边。
+   ⑤ bug：夜间侧栏入口悬停 / 打开时、最近悬停还是日间的 #edece8 亮条 → 夜间 rgba(255,255,255,.07)。 */
+/* Tavern Helper floating dialogs (提示词查看器 / 变量管理器 / 日志查看器) → Claude-style panel */
+html[data-cw-v4] .dialog-teleported{--th-panel:#fff;--th-text:#141413;--th-muted:#73726c;--th-line:rgba(20,20,19,.1);--th-fill:#f3f3f1;--th-accent:#c96442;
+  --SmartThemeQuoteColor:var(--th-text);--SmartThemeBlurTintColor:var(--th-panel);--SmartThemeBorderColor:var(--th-line);--SmartThemeBodyColor:var(--th-text);--mainTextColor:var(--th-text);--grey5020a:var(--th-fill);--SmartThemeEmColor:var(--th-muted)}
+html[data-cw-v4][data-claude-integrated-theme="night"] .dialog-teleported{--th-panel:#262624;--th-text:#ece9e2;--th-muted:#a3a19b;--th-line:rgba(255,255,255,.1);--th-fill:#30302e;--th-accent:#d97757}
+html[data-cw-v4] .dialog-teleported>.TH-custom-tailwind[role=dialog]{border:1px solid var(--th-line);border-radius:12px!important;box-shadow:0 12px 40px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08)!important;font-family:var(--cw-v4-font)}
+html[data-cw-v4] .dialog-teleported>.TH-custom-tailwind[role=dialog]>div:first-child{height:46px;padding:0 10px 0 16px!important;background:transparent!important;border-bottom:1px solid var(--th-line)}
+html[data-cw-v4] .dialog-teleported>.TH-custom-tailwind[role=dialog]>div:first-child>div:first-child{color:var(--th-text)!important;font:500 14.5px var(--cw-v4-font)!important}
+html[data-cw-v4] .dialog-teleported>.TH-custom-tailwind[role=dialog]>div:first-child>div:last-child{color:var(--th-muted)!important;gap:2px!important}
+html[data-cw-v4] .dialog-teleported>.TH-custom-tailwind[role=dialog]>div:first-child>div:last-child>*{width:30px;height:30px;font-size:14px!important;border-radius:8px}
+html[data-cw-v4] .dialog-teleported>.TH-custom-tailwind[role=dialog]>div:first-child>div:last-child>*:hover{background:var(--th-fill)!important;color:var(--th-text)}
+html[data-cw-v4] .dialog-teleported .text-\(--SmartThemeQuoteColor\).font-bold{font-weight:500!important}
+html[data-cw-v4] .dialog-teleported .bg-\(--grey5020a\){border-radius:10px}
+html[data-cw-v4] .dialog-teleported .text_pole{background:var(--th-panel)!important;border:1px solid var(--th-line)!important;border-radius:8px!important;color:var(--th-text)!important}
+html[data-cw-v4] .dialog-teleported .rounded-md.border{border-radius:10px!important}
+html[data-cw-v4] .dialog-teleported .fa-solid{color:var(--th-muted)}
+html[data-cw-v4] .dialog-teleported .fa-solid:hover{color:var(--th-text)}
+/* gallery thumbnails: no light frame */
+html[data-cw-v4] body #gallery.cw-gal #dragGallery .nGY2GThumbnail.nGY2GThumbnail{background:transparent!important;border-radius:8px!important;overflow:hidden!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(.menu_button,.right_menu_button,.fa-solid,.fa-regular):has(>.cw-v4-icon:only-child){gap:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row-controls>toolcool-color-picker{display:grid!important;place-items:center!important;box-sizing:border-box!important;padding-top:5px!important;overflow:hidden!important;--tool-cool-color-picker-btn-border-color:transparent;--tool-cool-color-picker-btn-border-color-inner:rgba(127,127,127,.35);--tool-cool-color-picker-btn-border-radius:6px;--tool-cool-color-picker-btn-border-radius-inner:5px}
+html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle:hover,html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.drawer:not(#persona-management-button)>.drawer-toggle:has(+.openDrawer),html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat:hover{background:rgba(255,255,255,.07)!important}
+
 /* ㊴ 2.0.266 扩展设置页（照 design-phone-ext-v1.html）。页面是 official-extension-settings.js 画的 .cwx-page：
    小节 .cwx-sec（灰字 / 电脑粗体标题 .cwx-lab）→ 白卡片 .cwx-card → 一行一项 .cwx-row。控件是酒馆原来的，搬进行里。
    这块由 tools/_tmp/cc-286/apply.cjs 从 block-39.src.css 生成（html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 页面前缀，html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup)  = 外层前缀，html[data-cw-v4][data-claude-integrated-theme="night"] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 夜间页面前缀）。 */
