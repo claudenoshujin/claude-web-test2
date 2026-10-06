@@ -16,7 +16,7 @@
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=20261006s";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.298-rig17";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.310-rig18";
 import { createClawdPile } from "./clawd-pile.js?v=20261006e";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -429,7 +429,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.309-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.310-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2219,6 +2219,9 @@ if (CLAUDE_ENABLED) {
   });
   /* 三轨状态 → 骨架动作。「思考」去掉了（Lulu 2026-09-24）：一按发送就进写字，写字自带「拿出纸笔」的进场 */
   const CLAWD_RIG_A = Object.freeze({ think: 'write', stream: 'write', sit: 'sitWrite', done: 'done', stopped: 'stopped', error: 'error' });
+  /* 2.0.310（稿 Claude outputs/design-clawd-write-held-v1.html，Lulu 2026-10-06 认可）：坐在小 Clawd 头上时脚下没有输入框铺纸，
+     改成左钳举着便签、右钳在上面写；结尾三种也换成举着的版本。不坐下（坐下是坐在输入框上的样子）。 */
+  const CLAWD_RIG_A_HELD = Object.freeze({ think: 'writeHeld', stream: 'writeHeld', sit: 'writeHeld', done: 'doneHeld', stopped: 'stoppedHeld', error: 'errorHeld' });
   const CLAWD_RIG_B = Object.freeze({
     compose: 'compose', tilt: 'tilt', wow: 'wow', wake: 'wake', drowsy: 'drowsy', sleep: 'sleep', neglected: 'neglected',
     around: 'around', spin: 'spin', lean: 'lean', hide: 'hide', tramp: 'tramp',
@@ -3763,7 +3766,7 @@ if (CLAUDE_ENABLED) {
       if (clawdTracks.C in clawdRigVariant) return clawdRigVariant[clawdTracks.C];
       return CLAWD_RIG_C[clawdTracks.C] || '';
     }
-    if (owner === 'A') return CLAWD_RIG_A[clawdTracks.A] || '';
+    if (owner === 'A') return (A2.floor ? CLAWD_RIG_A_HELD : CLAWD_RIG_A)[clawdTracks.A] || '';
     const b = clawdTracks.B || 'idle';
     if (b.startsWith('rig:')) {
       const id = b.slice(4);
@@ -4231,6 +4234,7 @@ if (CLAUDE_ENABLED) {
   function clawdBigLower() {
     const button = composerClawd();
     A2.floor = 0;
+    if (clawdTracks.A) renderClawdTracks();   // 2.0.310：正在写字：举着便签 → 换回铺在输入框上写
     if (!button || A2.held) return;
     button.style.setProperty('transition', 'transform .4s cubic-bezier(.4,0,.2,1)', 'important');
     A2.fy = 0;

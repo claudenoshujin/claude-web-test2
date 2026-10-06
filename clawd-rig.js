@@ -1829,6 +1829,120 @@ export function buildClawdRig() {
     c.flex(1300, {});
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+     坐在小 Clawd 头上时举着纸写（稿 Claude outputs/design-clawd-write-held-v1.html，Lulu 2026-10-06 认可）
+     脚下没有输入框可以铺纸：左钳把一张小便签举在身前（眼睛下面），右钳拿笔在上面写；下面那只小 Clawd 接着睡。
+     结尾三种照站着写的版本，各换成举着的样子。
+     ════════════════════════════════════════════════════════════════════ */
+  (() => {
+    // 便签 6×6：灰边、米色底，两行字（第 1、3 行）逐格写满；换页 = pad0
+    const blank = ['dddddd', 'dccccd', 'dccccd', 'dccccd', 'dccccd', 'dddddd'];
+    const fill = (n) => {
+      const r = blank.map(s => s.split(''));
+      const ink = [[1, 1], [2, 1], [3, 1], [4, 1], [1, 3], [2, 3], [3, 3]];
+      const pat = 'eeceece';   // 断开一格，像字不像横线
+      for (let i = 0; i < n; i++) { const [x, y] = ink[i]; r[y][x] = pat[i]; }
+      return r.map(a => a.join(''));
+    };
+    for (let i = 0; i <= 7; i++) SPR.prop['pad' + i] = F(fill(i));
+    SPR.prop.padErr = F(['dddddd', 'dreerd', 'dcrrcd', 'dcrrcd', 'drccrd', 'dddddd']);
+    SPR.prop.padFly = F(['ddddd', 'dcecd', 'dcccd', 'ddddd']);
+  })();
+
+  // 举纸的姿势：便签挂在上半身（跟着身子沉 / 晃），左钳捏着左边，右钳拿笔尖点在纸上
+  const PAD = { x: 5, y: 5 };
+  const HELD_POSE = c => t => {
+    c.at(t, 'eyes', { f: 'open', x: -1, y: 1 });
+    c.at(t, 'clawL', { f: 'front', x: 4, y: 1 });
+    c.at(t, 'clawR', { f: 'front', x: -4, y: 1 });
+    c.at(t, 'propB', { f: 'pad0', x: PAD.x, y: PAD.y, z: 6, a: 1, att: 'upper' });
+    // 笔尖 = 笔的位置 + 右钳的偏移：(13-4, 6+1) = (9,7)，落在便签第 1 行；笔杆往右上斜，眼睛往左下看，笔毛不挡右眼
+    c.at(t, 'propA', { f: 'quill', x: 13, y: 6, att: 'clawR' });
+  };
+  const HELD_IN = 600;
+  {
+    const O = HELD_IN;
+    const c = def(new Clip('writeHeld', '举着纸写', O + 3600, { loop: true, intro: O, track: 'A', group: 'gen' }));
+    c.beat(0, '一按发送：从身后摸出一张小便签，左钳举到身前').beat(300, '右钳摸出笔').beat(O, '在便签上写（循环）').beat(O + 3000, '写满一张，点下头，换一张');
+    c.at(100, 'eyes', { x: -1, y: 1 });
+    c.at(100, 'propB', { f: 'pad0', x: PAD.x, y: PAD.y + 3, z: 6, a: 0, att: 'upper' }).to(100, 400, 'propB', { y: PAD.y, a: 1 });
+    c.to(100, 400, 'clawL', { x: 4, y: 1 }).at(100, 'clawL', { f: 'front' });
+    c.to(200, 450, 'clawR', { x: -4, y: 1 }).at(200, 'clawR', { f: 'front' });
+    c.at(350, 'propA', { f: 'quill', x: 13, y: 6, att: 'clawR' });
+    const setPose = HELD_POSE(c);
+    setPose(O);
+    const wig = [{ x: -4, y: 1 }, { x: -3, y: 1 }, { x: -3, y: 2 }, { x: -4, y: 2 }];
+    for (let i = 0; i < 15; i++) c.at(O + i * 200, 'clawR', wig[i % 4]);
+    for (let i = 1; i <= 7; i++) c.at(O + i * 400 - 200, 'propB', { f: 'pad' + i });
+    // 换页：撕掉这张（往下一沉）、新的一张
+    c.at(O + 3000, 'clawR', { x: -4, y: 1 }).at(O + 3000, 'eyes', { f: 'shut' }).at(O + 3000, 'upper', { y: 1 }).at(O + 3200, 'upper', { y: 0 });
+    c.at(O + 3000, 'propB', { y: PAD.y + 1, a: .4 }).at(O + 3200, 'propB', { f: 'pad0', y: PAD.y, a: 1 });
+    c.at(O + 3300, 'eyes', { f: 'open' });
+    setPose(O + 3600);
+  }
+  // 收尾：钳子从身前回到两边
+  const HELD_BACK = (c, t) => {
+    c.to(t, t + 200, 'clawL', { x: 0, y: 0 }).at(t + 200, 'clawL', { f: 'stub' });
+    c.to(t, t + 200, 'clawR', { x: 0, y: 0 }).at(t + 200, 'clawR', { f: 'stub' });
+  };
+  function heldEnd(id, name, dur, beats, body) {
+    const c = def(new Clip(id, name, dur, { track: 'A', from: 'writeHeld', group: 'gen', smooth: ['root', 'shadow', 'propA', 'propB'] }));
+    beats.forEach(([t, text]) => c.beat(t, text));
+    HELD_POSE(c)(0);
+    body(c);
+  }
+  heldEnd('doneHeld', '完成（举着）', 1800,
+    [[0, '写完了'], [150, '笔往右上一抛，便签往左上扬走'], [300, '双钳举起，原地（在小 Clawd 头上）蹦一下，闪光']],
+    c => {
+      c.at(0, 'propB', { f: 'pad7' });
+      c.at(100, 'eyes', { f: 'happy', x: 0, y: 0 });
+      c.at(150, 'propA', { f: 'quillFly', x: 9, y: 4, att: null }).to(150, 600, 'propA', { x: 20, y: -10 }, 'out');
+      c.seq(250, 100, 'propA', [{ f: 'quill' }, { f: 'quillFly' }, { f: 'quill' }, { f: 'quillFly' }]);
+      fadeOut(c, 'propA', 400, 700);
+      c.at(200, 'propB', { f: 'padFly', x: 5, y: 3, att: null }).to(200, 700, 'propB', { x: -6, y: -8 }, 'out');
+      fadeOut(c, 'propB', 450, 800);
+      c.at(200, 'clawL', { f: 'stub', x: 0, y: -3 }).at(300, 'clawL', { f: 'up', x: 0, y: 0 });
+      c.at(200, 'clawR', { f: 'stub', x: 0, y: -3 }).at(300, 'clawR', { f: 'up', x: 0, y: 0 });
+      hop(c, 400);
+      sym(c, 300, 'spark', { dur: 700 });
+      lower(c, 1000, 'clawL'); lower(c, 1000, 'clawR');
+      c.at(1500, 'eyes', { f: 'open' });
+    });
+  heldEnd('stoppedHeld', '停止（举着）', 1700,
+    [[0, '写到一半被叫停'], [100, '抬头'], [200, '手一松，笔往下掉，掉到一半就淡没了（不落在小 Clawd 头上）'], [300, '「…」'], [500, '便签放下来、淡出，钳子回到两边，叹口气'], [1300, '眨眼，回到待机']],
+    c => {
+      c.at(0, 'propB', { f: 'pad4' });
+      c.at(100, 'eyes', { x: 0, y: 0 });
+      c.at(200, 'propA', { f: 'quillDown', x: 7, y: 7, att: null }).to(200, 500, 'propA', { y: 11 }, 'in');
+      fadeOut(c, 'propA', 300, 500);
+      c.to(500, 800, 'propB', { y: PAD.y + 2 });
+      fadeOut(c, 'propB', 500, 800);
+      sym(c, 300, 'dots', { x: 5, dur: 1000 });
+      c.at(400, 'eyes', { f: 'half' });
+      HELD_BACK(c, 600);
+      c.at(900, 'clawL', { y: 1 }).at(900, 'clawR', { y: 1 }).at(1200, 'clawL', { y: 0 }).at(1200, 'clawR', { y: 0 });
+      c.at(1100, 'eyes', { f: 'open' });
+      blink(c, 1300);
+    });
+  heldEnd('errorHeld', '出错（举着）', 2200,
+    [[0, '写着写着'], [100, '「！」一哆嗦，笔脱手往右飞出去、淡没'], [200, '便签上出现红叉'], [500, '低头看'], [600, '冒汗'], [1300, '便签淡出，钳子回到两边'], [1600, '叹气，回到待机']],
+    c => {
+      c.at(0, 'propB', { f: 'pad3' });
+      sym(c, 100, 'bang', { x: 6, y: 2, dur: 800 });
+      c.at(100, 'eyes', { x: 0, y: -1 });
+      c.flex(0, {}).flex(100, { sx: .94, sy: 1.08 }).flex(200, { sx: 1.06, sy: .95 }).flex(300, {});
+      c.at(100, 'propA', { f: 'quillFly', x: 9, y: 5, att: null }).to(100, 300, 'propA', { x: 15, y: 1 }, 'out').to(300, 600, 'propA', { x: 17, y: 8 }, 'in');
+      fadeOut(c, 'propA', 400, 700);
+      c.at(200, 'propB', { f: 'padErr' });
+      c.at(500, 'eyes', { x: 0, y: 2 });
+      sym(c, 600, 'sweat', { x: 8, y: 4, dur: 1000 });
+      fadeOut(c, 'propB', 1300, 1600);
+      HELD_BACK(c, 1300);
+      c.at(1500, 'eyes', { f: 'half', x: 0, y: 0 });
+      c.at(1600, 'clawL', { y: 1 }).at(1600, 'clawR', { y: 1 }).at(1900, 'clawL', { y: 0 }).at(1900, 'clawR', { y: 0 });
+      c.at(2000, 'eyes', { f: 'open' });
+    });
+
   const pool = {};
   for (const c of Object.values(CLIPS)) {
     pool[c.id] = { id: c.id, name: c.name, dur: c.dur, loop: c.loop, intro: c.intro, track: c.track, group: c.group, next: c.next, hold: c.hold, after: c.after, from: c.from };
