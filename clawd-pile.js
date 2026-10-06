@@ -335,6 +335,7 @@ export function createClawdPile({ doc, win, big = null }) {
     const above = carriers(k);
     if (above.includes('big')) { bigOn = null; big?.lower?.(); }   // 大 Clawd 坐在它头上：大 Clawd 降回输入框上（index.js 做动画）
     lowerFrom(above.filter(n => n !== 'big').map(n => K[n]), k.name);
+    if (above.includes('big') && NAMES.some(n => onBig(K[n]))) relayoutFlip(400);   // 大 Clawd 头上的跟着它一起降下来
     k.on = []; k.pose = 'dangle'; k.eyes = 'open'; k.face = 0;
     k.el.classList.add('clawd-pile-held'); k.el.style.zIndex = '9'; k.sh.style.display = 'none'; look(k);
   }
@@ -375,9 +376,11 @@ export function createClawdPile({ doc, win, big = null }) {
     const below = NAMES.map(n => K[n]).filter(o => o !== k && o.mode !== 'held' && !carriers(o).length && Math.abs(posX(o) - cx) < BODY_W * .6)
       .sort((a, b) => Math.abs(posX(a) - cx) - Math.abs(posX(b) - cx))[0];
     const fromX = parseFloat(k.el.style.left) || k.x, fromY = parseFloat(k.el.style.top) || 0;
-    // 2.0.300：大 Clawd 站在输入框上、头顶没人时，也能放到它头上
-    const bl = bigX(), bigFree = bl != null && !NAMES.some(n => K[n].on.includes('big'));
-    const onBigHead = bigFree && Math.abs(bl + BIG_W / 2 - (cx + BODY_W / 2)) < BIG_W * .55 && py < -BIG_REST + 6
+    // 2.0.300：大 Clawd 停稳、头顶没人时，也能放到它头上
+    // 2.0.303（Lulu：大 Clawd 坐在小 Clawd 头上时放不上去，直接穿过去）：以前用 bigX() 判断，它只认站在输入框上的大 Clawd；
+    // 坐在别人头上的也要算，头顶高度按它实际坐的位置算（supportTop('big')）。
+    const bl = bigState()?.grounded ? bigLeft() : null, bigFree = bl != null && !NAMES.some(n => K[n].on.includes('big'));
+    const onBigHead = bigFree && Math.abs(bl + BIG_W / 2 - (cx + BODY_W / 2)) < BIG_W * .55 && py < -supportTop('big') + 6
       && (!below || Math.abs(bl + BIG_W / 2 - px) < Math.abs(posX(below) + BODY_W / 2 - px));
     if (onBigHead) { k.on = ['big']; stackX(); }
     else if (below && py < -H * PX * .5 - lift(below)) {
