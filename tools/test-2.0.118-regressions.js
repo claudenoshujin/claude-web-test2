@@ -8,8 +8,8 @@ const index = fs.readFileSync(indexPath, 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const themeCss = ['day-mobile.css','night-mobile.css'].map(n=>fs.readFileSync(path.join(root,'styles',n),'utf8')).join(String.fromCharCode(10));
 
-assert.equal(manifest.version, '2.0.300');
-assert.equal(manifest.js, 'loader-2.0.300.js');
+assert.equal(manifest.version, '2.0.301');
+assert.equal(manifest.js, 'loader-2.0.301.js');
 assert.equal(manifest.loading_order, 101, 'the test build must load after an installed baseline copy and own the runtime singleton');
 /* 版本号从 manifest 里读，不再写死 —— 写死的话每次升版都要记得改这里，
    而它是个带转义点的正则（2\.0\.155），全文搜 "2.0.155" 搜不到，
@@ -105,7 +105,7 @@ assert.match(index, /if \(button\.classList\.contains\(COMPOSER_CLAWD_CLASS\)\) 
 assert.doesNotMatch(index, /data-claude-decorations="off"[^\n]*COMPOSER_CLAWD_CLASS/, 'the decorations toggle must not hide Clawd itself');
 assert.match(index, /const clawdEnabled = hostDocument\.documentElement\.dataset\.claudeClawd !== 'off'/, 'the Clawd switch must own final node visibility');
 assert.match(index, /COMPOSER_CLAWD_CLASS[\s\S]{0,900}?touch-action: none !important/, 'draggable Clawd must reject Android panning before pointerdown');
-assert.match(index, /function a2Down[\s\S]*setClawdC\(A2\.fy < 0 \? 'grab' : 'press', 0\)/, 'pointerdown must give feedback immediately (pressed on the ground, grabbed in mid-air)');
+assert.match(index, /function a2Down[\s\S]*setClawdC\(A2\.fy < A2\.floor - \.5 \? 'grab' : 'press', 0\)/, 'pointerdown must give feedback immediately (pressed on the ground, grabbed in mid-air)');
 assert.match(index, /function a2Move[\s\S]*?a2Place\(button\);/, 'the first drag writes the position straight away');
 assert.doesNotMatch(index, /a2DeferGrabFeedback|createParticle|showCcToast/, 'old ::before-era bubbles and particles are gone; dragging must not read layout for them');
 

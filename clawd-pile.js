@@ -11,8 +11,11 @@
    · 碰撞：站在输入框上的（没叠在别人头上、没被拎着）互相挡，大 Clawd 也算一个会动的障碍。
      每走一步先看前面一格，碰到就停、退一格；放下时重叠就往旁边挤开。大 Clawd 走路时按 left() 给最左边那只让。
    · 位置记在 localStorage（按输入框宽度的比例），刷新以后还在原处。
+   2.0.300 照原型 Claude outputs/design-clawd-stack-v2.html（Lulu 2026-10-05 认可）：大 Clawd 不再给小 Clawd 让位，大小互相叠——
+     小的能坐到大 Clawd 头上（大 Clawd 走路时驮着走），大 Clawd 也能被丢 / 放到小的头上坐着。拿起下面那只时，上面的平滑地降下来补位，
+     睡着的照样睡（以前是掉下来醒一下）。大 Clawd 头上有人时只做安静的小动作；要做别的动作、开始写字、被戳被拎，头上的先跳下来 / 降下来（index.js）。
    像素画和 Clawd 骨架同一套调色板（壳体 #d97757，暗部 #bf684c）。 */
-export function createClawdPile({ doc, win }) {
+export function createClawdPile({ doc, win, big = null }) {
   const PX = 2, W = 22, H = 18, TOP = 3;            // 每只一张 22×18 格的图，地面在图的下边
   const PAL = { '#': '#d97757', 's': '#bf684c', 'o': '#2b1d17', 'Z': '#1f1d1b', 'w': '#fbf8f1', 'B': '#5b8fb9', 'b': '#3f6f99',
     'y': '#e8b64a', 'Y': '#fff3c4', 'n': '#8b5e3c', 'l': '#cc4f45', 'k': 'var(--clawd-pile-ink)' };
@@ -29,6 +32,7 @@ export function createClawdPile({ doc, win }) {
     shine: [[0, 3, 'n'], [1, 2, 'n'], [2, 1, 'n'], [2, -1, '.Y.'], [2, 0, 'YwY'], [2, 1, '.Y.']] };
   const NAMES = ['cowboy', 'shades', 'wizard'];
   const BODY_W = 16 * PX, LIFT = 7 * PX, GAP = 2 * PX, EDGE = 14;   // 叠上去抬高 7 格；两只之间至少空 GAP；离输入框左右边 EDGE
+  const BIG_W = 48, BIG_REST = 27;   // 大 Clawd：一格 3px，身子 16 格宽；站着头顶离脚底 30px，叠上去的坐在 27px（压进去一格）
   const STEP_MS = 160;                                              // 走路一步 160ms、1 格
   const LEG_X = [3, 5, 10, 12];                                     // 0、2 近侧；1、3 远侧（暗一号）
   const STORE = 'claude-web-clawd-pile-v3';   // v3：存离输入框中线多远（v2 存比例，换格式就换名字）
@@ -90,22 +94,30 @@ export function createClawdPile({ doc, win }) {
     const w = width(); if (!w) return null;
     try {
       const s = JSON.parse(win.localStorage.getItem(STORE) || 'null'); if (!s) return null;
-      return Object.fromEntries(NAMES.map(n => [n, { x: clampX(w / 2 + (+s[n]?.dx || 0)), on: Array.isArray(s[n]?.on) ? s[n].on.filter(m => NAMES.includes(m) && m !== n) : [] }]));
+      return Object.fromEntries(NAMES.map(n => [n, { x: clampX(w / 2 + (+s[n]?.dx || 0)), on: Array.isArray(s[n]?.on) ? s[n].on.filter(m => (NAMES.includes(m) || m === 'big') && m !== n) : [] }]));
     } catch { return null; }
   }
-  const lift = k => (k.on.length ? LIFT + Math.max(...k.on.map(n => lift(K[n]))) : 0);
-  const carriers = k => NAMES.filter(n => K[n].on.includes(k.name));
+  /* 大 Clawd 在这里只是一个「支撑」：它坐在哪只头上（bigOn）由 index.js 落地时告诉这边（bigSat），位置从页面上量。 */
+  let bigOn = null;
+  const bigState = () => big?.state?.() || null;
+  function bigLeft() {   // 大 Clawd 身子左边（骨架外框左上角 = 身子左边，一格 3px）在这一层里的 x；不在 / 没骨架时 null
+    const r = doc.querySelector('#send_form .clawd-composer-clawd > .clawd-rig')?.getBoundingClientRect(); if (!r?.width || !pile) return null;
+    return r.left - pile.getBoundingClientRect().left;
+  }
+  const supportTop = n => (n === 'big' ? (bigOn ? supportTop(bigOn) : 0) + BIG_REST : lift(K[n]) + LIFT);   // 坐在 n 头上时离地多高
+  const lift = k => (k.on.length ? Math.max(...k.on.map(supportTop)) : 0);
+  const carriers = k => NAMES.filter(n => K[n].on.includes(k.name)).concat(bigOn === k.name ? ['big'] : []);
+  const onBig = k => k.on.some(n => n === 'big' || onBig(K[n]));   // 直接或间接坐在大 Clawd 头上
   const posX = o => (o.walk ? o.walk.base + o.walk.off : o.x);
   const grounded = except => NAMES.map(n => K[n]).filter(o => o.name !== except && !o.on.length && o.mode !== 'held');
   /* 大 Clawd（输入框上那只能抓能丢的）：按它此刻在屏幕上的位置换算成这一层里的 x，当一个会动的障碍。
      它飞起来（离输入框上沿远）时不算。只在要判断的时候读一次布局。 */
+  /* 2.0.300：大 Clawd 站在输入框上（没被拎着、没飞着、没坐在小的头上）才算障碍；它身子 48 宽。 */
   function bigX() {
-    const b = doc.querySelector('#send_form .clawd-composer-clawd'); if (!b || !pile) return null;
-    const r = b.getBoundingClientRect(), p = pile.getBoundingClientRect();
-    if (!r.width || r.bottom < p.top - 40) return null;
-    return r.left + (r.width - BODY_W) / 2 - p.left;
+    const st = bigState(); if (!st?.grounded || bigOn) return null;
+    return bigLeft();
   }
-  const clashBig = (x, bx) => bx != null && Math.abs(bx - x) < BODY_W + GAP;
+  const clashBig = (x, bx) => bx != null && x < bx + BIG_W + GAP && bx < x + BODY_W + GAP;
   function freeAt(x, except, bx = bigX()) {
     const b = bounds(); if (x < b.min || x > b.max || clashBig(x, bx)) return false;
     return grounded(except).every(o => Math.abs(posX(o) - x) >= BODY_W + GAP);
@@ -116,8 +128,8 @@ export function createClawdPile({ doc, win }) {
     return null;
   }
   function clearPath(a, b, except, bx) {
-    const lo = Math.min(a, b), hi = Math.max(a, b), apart = o => o + BODY_W + GAP <= lo || o >= hi + BODY_W + GAP;
-    return (bx == null || apart(bx)) && grounded(except).every(o => apart(posX(o)));
+    const lo = Math.min(a, b), hi = Math.max(a, b), apart = (o, w = BODY_W) => o + w + GAP <= lo || o >= hi + BODY_W + GAP;
+    return (bx == null || apart(bx, BIG_W)) && grounded(except).every(o => apart(posX(o)));
   }
 
   /* ===== 画 ===== */
@@ -147,6 +159,7 @@ export function createClawdPile({ doc, win }) {
     const l = lift(k);
     k.el.style.left = `${k.x}px`; k.el.style.top = `${-H * PX - l}px`; k.el.style.zIndex = String(1 + Math.round(l / LIFT));
     k.el.classList.toggle('clawd-pile-up', !!k.on.length);   // 叠在别人头上的：滚动时跟着往下，不切
+    k.el.classList.toggle('clawd-pile-onbig', !bigOn && onBig(k));   // 坐在大 Clawd 头上的：滚动时跟着它缩 12px
     k.sh.style.left = `${k.x + 1.5 * PX}px`; k.sh.style.display = k.on.length ? 'none' : '';
   }
   function make(name) {
@@ -181,7 +194,7 @@ export function createClawdPile({ doc, win }) {
   function stroll(k) {
     clear(k);
     if (carriers(k).length) { k.mode = 'sit'; k.eyes = 'open'; look(k); blink(k, 3); later(k, () => doze(k), rnd(5000, 9000)); return; }
-    if (k.on.length) { hopDown(k, () => stroll(k)); return; }
+    if (k.on.length) { if (onBig(k) && bigState()?.walking) { later(k, () => stroll(k), 1500); return; } hopDown(k, () => stroll(k)); return; }
     wander(k, 2 + ((Math.random() * 3) | 0));
   }
   function wander(k, n) {
@@ -318,19 +331,42 @@ export function createClawdPile({ doc, win }) {
   function pickUp(k) {
     atHome = false;
     clear(k); endWalk(k); k.el.getAnimations?.().forEach(a => a.cancel()); k.sh.getAnimations?.().forEach(a => a.cancel());
-    for (const n of carriers(k)) fallOff(K[n], k);   // 背上的掉下来（或滑到另一只头上）
-    k.on = []; k.mode = 'held'; k.pose = 'dangle'; k.eyes = 'open'; k.face = 0;
+    k.mode = 'held';   // 先标成拎着：下面落下来的不用躲它原来的位置
+    const above = carriers(k);
+    if (above.includes('big')) { bigOn = null; big?.lower?.(); }   // 大 Clawd 坐在它头上：大 Clawd 降回输入框上（index.js 做动画）
+    lowerFrom(above.filter(n => n !== 'big').map(n => K[n]), k.name);
+    k.on = []; k.pose = 'dangle'; k.eyes = 'open'; k.face = 0;
     k.el.classList.add('clawd-pile-held'); k.el.style.zIndex = '9'; k.sh.style.display = 'none'; look(k);
   }
-  function fallOff(top, from) {
-    const fromY = -lift(top), fromX = top.x;
-    top.on = top.on.filter(n => n !== from.name);
-    if (top.on.length) { const to = K[top.on[0]].x; slide(top, to, 260, () => { squash(top); save(); }); return; }   // 还有一只撑着：滑过去坐稳
-    top.x = clampX(top.x); place(top);
-    clear(top); top.mode = 'sit'; top.eyes = 'open'; top.pose = 'crouch'; top.face = 0; look(top);
-    const a = top.el.animate?.([{ translate: `${fromX - top.x}px ${fromY}px` }, { translate: '0 0' }], { duration: 300, easing: 'cubic-bezier(.5,0,1,1)' });
-    const land = () => { squash(top); settle(top, () => { save(); later(top, () => doze(top), 2200); }); };
-    if (a) a.onfinish = land; else land();
+  /* 下面那只被拿走（或大 Clawd 要干别的）：上面的平滑地降下来补位——还有别的撑着就落到它头上，没有就落回输入框上
+     （重叠的话挪开一点）。睡着的照样睡，不醒（以前是掉下来、醒一下）。hop = true：跳开（大 Clawd 要做别的动作时）。 */
+  function lowerFrom(list, gone, hop = false) {
+    if (!list.length) return;
+    for (const t of list) {
+      t.on = t.on.filter(n => n !== gone);
+      if (!t.on.length) {
+        endWalk(t);
+        const side = hop ? (Math.random() < .5 ? -1 : 1) * (BIG_W / 2 + BODY_W) : 0;
+        t.x = nearestFree(t.x + side, t.name) ?? clampX(t.x + side);
+      }
+    }
+    relayoutFlip(hop ? 520 : 400, hop);
+    save();
+  }
+  /* 摆位变了：每只从原来的地方平滑地滑 / 降到新地方（FLIP）。hop：中间往上跳一下。 */
+  function relayoutFlip(ms, hop = false) {
+    const before = new Map(NAMES.map(n => [n, { l: parseFloat(K[n].el.style.left) || 0, t: parseFloat(K[n].el.style.top) || 0 }]));
+    stackX();
+    for (const n of NAMES) if (K[n].mode !== 'held') place(K[n]);
+    for (const n of NAMES) {
+      const k = K[n]; if (k.mode === 'held') continue;
+      const b = before.get(n), dx = b.l - k.x, dy = b.t - (parseFloat(k.el.style.top) || 0);
+      if (Math.abs(dx) < .5 && Math.abs(dy) < .5) continue;
+      const kf = hop ? [{ translate: `${dx}px ${dy}px` }, { offset: .35, translate: `${dx * .55}px ${dy - 14}px` }, { translate: '0 0' }] : [{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }];
+      const a = k.el.animate?.(kf, { duration: ms, easing: hop ? 'cubic-bezier(.3,0,.6,1)' : 'cubic-bezier(.4,0,.2,1)' });
+      if (!k.on.length) k.sh.animate?.([{ translate: `${dx}px 0` }, { translate: '0 0' }], { duration: ms, easing: 'cubic-bezier(.4,0,.2,1)' });
+      if (a && hop) a.onfinish = () => squash(k);
+    }
   }
   function drop(k, px, py) {
     k.el.classList.remove('clawd-pile-held');
@@ -339,7 +375,12 @@ export function createClawdPile({ doc, win }) {
     const below = NAMES.map(n => K[n]).filter(o => o !== k && o.mode !== 'held' && !carriers(o).length && Math.abs(posX(o) - cx) < BODY_W * .6)
       .sort((a, b) => Math.abs(posX(a) - cx) - Math.abs(posX(b) - cx))[0];
     const fromX = parseFloat(k.el.style.left) || k.x, fromY = parseFloat(k.el.style.top) || 0;
-    if (below && py < -H * PX * .5 - lift(below)) {
+    // 2.0.300：大 Clawd 站在输入框上、头顶没人时，也能放到它头上
+    const bl = bigX(), bigFree = bl != null && !NAMES.some(n => K[n].on.includes('big'));
+    const onBigHead = bigFree && Math.abs(bl + BIG_W / 2 - (cx + BODY_W / 2)) < BIG_W * .55 && py < -BIG_REST + 6
+      && (!below || Math.abs(bl + BIG_W / 2 - px) < Math.abs(posX(below) + BODY_W / 2 - px));
+    if (onBigHead) { k.on = ['big']; stackX(); }
+    else if (below && py < -H * PX * .5 - lift(below)) {
       if (below.walk) { endWalk(below); clear(below); below.mode = 'sit'; below.pose = 'crouch'; below.face = 0; look(below); later(below, () => doze(below), 2500); }
       k.x = below.x; k.on = [below.name];
     } else { k.x = clampX(cx); k.on = []; }
@@ -400,6 +441,7 @@ html[data-claude-integrated-theme="night"] .clawd-pile{--clawd-pile-ink:#bdb7ae;
    叠在别人头上的不切、跟着一起往下。拎着的不动。只切换一个属性，不逐帧算。 */
 .clawd-pile>.clawd-pile-c:not(.clawd-pile-held):not(.clawd-pile-up){clip-path:inset(-60px -60px 0 -60px)}
 .clawd-pile[data-paused]>.clawd-pile-c:not(.clawd-pile-held)>.clawd-pile-b{translate:0 ${4 * PX}px;transition-duration:.12s;transition-timing-function:ease-out}
+.clawd-pile[data-paused]>.clawd-pile-c.clawd-pile-onbig:not(.clawd-pile-held)>.clawd-pile-b{translate:0 12px}
 .clawd-pile>.clawd-pile-shadow{transition:opacity .2s}
 .clawd-pile[data-paused]>.clawd-pile-shadow{opacity:0}
 .clawd-pile .clawd-pile-s{position:absolute;inset:0;background-repeat:no-repeat;image-rendering:pixelated;pointer-events:none}
@@ -441,9 +483,12 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
   let lastW = 0, laid = false, atHome = false;   // atHome：还是默认那一堆、谁都没动过
   // 叠着的从下往上摆：上面的落在下面那只（骑两只的取中点）正上方
   function stackX() {
-    const depth = k => (k.on.length ? 1 + Math.max(...k.on.map(n => depth(K[n]))) : 0);
+    const bl = NAMES.some(n => K[n].on.includes('big')) ? bigLeft() : null;
+    if (bl == null) for (const n of NAMES) if (K[n].on.includes('big')) K[n].on = K[n].on.filter(m => m !== 'big');   // 大 Clawd 不在（关了 / 没骨架）：落回地上
+    const depth = k => (k.on.length ? 1 + Math.max(...k.on.map(n => (n === 'big' ? 0 : depth(K[n])))) : 0);
+    const cxOf = m => (m === 'big' ? bl + BIG_W / 2 : K[m].x + BODY_W / 2);
     for (const k of NAMES.map(n => K[n]).filter(k => k.on.length).sort((p, q) => depth(p) - depth(q)))
-      k.x = Math.round(k.on.reduce((t, m) => t + K[m].x, 0) / k.on.length / PX) * PX;
+      k.x = Math.round((k.on.reduce((t, m) => t + cxOf(m), 0) / k.on.length - BODY_W / 2) / PX) * PX;
   }
   function unstack(moved) {   // 被收进来的那几只跟别人重叠：挤开（原来那一堆本来就挨着，不动它）
     for (const k of moved) { const t = nearestFree(k.x, k.name); if (t != null) k.x = t; }
@@ -516,5 +561,47 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     form?.classList.remove('clawd-has-pile');
     pile?.remove(); pile = null; style?.remove(); style = null;
   }
-  return { ensure, left, destroy };
+  /* ===== 2.0.300 给 index.js（大 Clawd）用的 ===== */
+  // 大 Clawd 被丢 / 放下时，哪些小 Clawd 头上能坐：屏幕上的中心 x、身宽，和坐上去离地多高
+  function seats() {
+    if (!pile) return [];
+    const p = pile.getBoundingClientRect();
+    return NAMES.map(n => K[n]).filter(k => k.mode !== 'held' && !carriers(k).length && !onBig(k))
+      .map(k => ({ name: k.name, cx: p.left + posX(k) + BODY_W / 2, w: BODY_W, h: lift(k) + LIFT }));
+  }
+  // 大 Clawd 坐到某只头上（name）/ 落回地上（null）
+  function bigSat(name) {
+    bigOn = name && K[name] ? name : null;
+    if (bigOn) { const k = K[bigOn]; if (k.walk) { endWalk(k); clear(k); arrive(k, () => doze(k)); } }
+    for (const n of NAMES) place(K[n]);
+  }
+  // 大 Clawd 走路时要停在谁前面：站在输入框上的小 Clawd，屏幕上的左右边
+  function blocks() {
+    if (!pile) return [];
+    const p = pile.getBoundingClientRect();
+    return grounded('').map(k => ({ l: p.left + posX(k), r: p.left + posX(k) + BODY_W }));
+  }
+  const riderCount = () => NAMES.filter(n => K[n]?.on.includes('big')).length;
+  // 大 Clawd 被拎起来（lower：头上的降下来）/ 要做别的动作（hop：头上的跳开）
+  function unloadBig(kind = 'hop') {
+    const list = NAMES.map(n => K[n]).filter(k => k.on.includes('big'));
+    if (!list.length) return 0;
+    for (const k of list) clear(k);
+    lowerFrom(list, 'big', kind === 'hop');
+    for (const k of list) if (k.mode !== 'sleep') later(k, () => doze(k), 1600); else sleep(k);
+    return list.length;
+  }
+  // 大 Clawd 走路：头上的跟着挪（只写 translate，不读布局）；走完再按页面重新摆
+  let followDx = 0;
+  function follow(dx) {
+    followDx = dx;
+    for (const n of NAMES) { const k = K[n]; if (k && onBig(k)) k.el.style.translate = `${dx}px 0`; }
+  }
+  function followEnd() {
+    if (!followDx && !NAMES.some(n => K[n]?.el.style.translate)) return;
+    followDx = 0;
+    for (const n of NAMES) if (K[n]) K[n].el.style.translate = '';
+    stackX(); for (const n of NAMES) place(K[n]); save(true);
+  }
+  return { ensure, left, destroy, seats, bigSat, blocks, riderCount, unloadBig, follow, followEnd };
 }

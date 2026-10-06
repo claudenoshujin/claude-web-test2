@@ -17,7 +17,7 @@ import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=20261005z";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.298-rig17";
-import { createClawdPile } from "./clawd-pile.js?v=20261005s";
+import { createClawdPile } from "./clawd-pile.js?v=20261006a";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -427,7 +427,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.300-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.301-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -2161,7 +2161,12 @@ if (CLAUDE_ENABLED) {
   let frameId = 0;
   let destroyed = false;
   /* 2.0.223：输入框右上角三只叠着睡觉的 Clawd（clawd-pile.js），替换原来的装饰图 #send_form::after。 */
-  const clawdPile = createClawdPile({ doc: hostDocument, win: hostWindow });
+  /* 2.0.300：大小 Clawd 互相叠。小 Clawd 那边要知道大 Clawd 站没站在输入框上、在不在走路，
+     还要能叫大 Clawd 降回地上（它坐着的那只小 Clawd 被拿走时）。A2 在后面才定义，这里只是闭包，用的时候已经有了。 */
+  const clawdPile = createClawdPile({ doc: hostDocument, win: hostWindow, big: {
+    state: () => ({ grounded: !A2.held && Math.abs(A2.fy - A2.floor) < .5, walking: /^rig:walkLoop/.test(String(clawdTracks.B || '')) }),
+    lower: () => clawdBigLower(),
+  } });
   let streamFollow = null;
   let previousTypingActive = false;
   let generationEventActive = false;
@@ -2265,6 +2270,7 @@ if (CLAUDE_ENABLED) {
     petTimer: 0,        // 按住不动计时：到点算轻抚
     petting: false,     // 这一次按住已经变成轻抚了，松手不算戳
     x: 0, fy: 0, homeX: 0,
+    floor: 0,           // 2.0.300：站的地方离输入框上沿多高（负数往上）。坐在小 Clawd 头上时不是 0
     feel: 0.64,                  // 手感总调，0~1，喂给 a2Phys()
     irr: 0, throws: 0, lastThrow: 0, lastDec: 0,
     lockUntil: 0, lockName: '', seqRun: 0, seqOwned: false,
@@ -4198,9 +4204,30 @@ if (CLAUDE_ENABLED) {
     clawdTracks.bUntil = 0;
   }
 
+  /* 2.0.300：大 Clawd 头上坐着小 Clawd 时，只做安静的（眨眼、走路、东张西望、指、挠、扶额，滚动时扒边）。
+     要做别的动作、开始写字、被戳——头上的先跳开。被拎起来走 a2Move 那条（降下来）。 */
+  const CLAWD_QUIET_WITH_RIDERS = new Set(['idle', 'peek', 'peekOut', 'walkLoop', 'around', 'point', 'scratch', 'facepalm', 'press']);
+  function clawdShakeRiders(value) {
+    if (!value) return;
+    const base = String(value).replace(/^rig:/, '').replace(/-m$/, '');
+    if (CLAWD_QUIET_WITH_RIDERS.has(base)) return;
+    clawdPile.unloadBig('hop');
+  }
+  /* 它坐着的那只小 Clawd 被拿走：平滑地降回输入框上 */
+  function clawdBigLower() {
+    const button = composerClawd();
+    A2.floor = 0;
+    if (!button || A2.held) return;
+    button.style.setProperty('transition', 'transform .4s cubic-bezier(.4,0,.2,1)', 'important');
+    A2.fy = 0;
+    a2Place(button);
+    hostWindow.setTimeout(() => { if (!A2.held) { button.style.removeProperty('transition'); scheduleA2BoundsWarm(button); } }, 420);
+  }
+
   function setClawdA(value, duration = 0) {
     /* 生成永远优先：它能取消 A2 的生气序列。反过来不行——序列锁只挡 C 轨。 */
     a2CancelSeq();
+    clawdShakeRiders(value);
     if (value) clawdCancelTransientB();
     const now = Date.now();
     clawdTracks.A = value || null;
@@ -4212,6 +4239,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function setClawdB(value, duration = 0) {
+    clawdShakeRiders(value);
     clawdTracks.B = value || 'idle';
     clawdTracks.bUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();
@@ -4222,6 +4250,7 @@ if (CLAUDE_ENABLED) {
   function setClawdC(value, duration = 0) {
     if (a2Locked() && !A2.seqOwned) return;
     if (value) clawdCancelTransientB();
+    if (value !== 'grab' && value !== 'drag') clawdShakeRiders(value);   // 拎起来那条已经让头上的降下来了
     clawdTracks.C = value || null;
     clawdTracks.cUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();
@@ -4331,6 +4360,15 @@ if (CLAUDE_ENABLED) {
       return;
     }
 
+    /* 2.0.300：头上坐着小 Clawd：只走路或做安静的小动作 */
+    if (clawdPile.riderCount()) {
+      if (Math.random() < .35 && clawdWalk(now)) { clawdBLastAmbient = 'rig:walk'; scheduleClawdBAmbient(now + 6000); return; }
+      const quiet = CLAWD_B_AMBIENT_POSES.filter(pose => ['around', 'point', 'scratch', 'facepalm'].includes(pose.state) && pose.state !== clawdBLastAmbient);
+      const pose = quiet[Math.floor(Math.random() * quiet.length)];
+      if (pose) { clawdBLastAmbient = pose.state; setClawdB(pose.state, pose.duration); }
+      scheduleClawdBAmbient(now);
+      return;
+    }
     /* C1b：约三成的轮次抽长的复合动作（带冷却），其余照旧抽短的填空小动作 */
     if (Math.random() < 0.3) {
       const id = pickClawdRigClip(now);
@@ -4369,7 +4407,7 @@ if (CLAUDE_ENABLED) {
   let clawdWalkRun = 0;
   function clawdWalk(now = Date.now()) {
     const button = composerClawd();
-    if (!button || A2.held || A2.fy !== 0) return 0;
+    if (!button || A2.held || A2.fy !== 0 || A2.floor !== 0) return 0;   // 坐在小 Clawd 头上时不走（走就掉下去了）
     if (!A2.bndReady || now - A2.bndAt > A2_BOUNDS_TTL) {
       A2.bnd = a2Walls(button);
       A2.bndAt = now;
@@ -4385,6 +4423,15 @@ if (CLAUDE_ENABLED) {
     /* 2.0.296：人在输入框外面（输入框变窄了之类）：这一趟就往输入框上走，走进去再多走一点 */
     if (roomL < 0) { dir = 1; dist = Math.min(hi - A2.x, -roomL + want / 2); }
     else if (roomR < 0) { dir = -1; dist = Math.min(A2.x - lo, -roomR + want / 2); }
+    /* 2.0.300：走过去碰到站在输入框上的小 Clawd 就停在它前面（大 Clawd 不再给它们让位，也不推它们） */
+    const rigR = button.querySelector(':scope > .clawd-rig')?.getBoundingClientRect();
+    if (rigR?.width) {
+      const bl = rigR.left, br = rigR.left + 48;
+      for (const b of clawdPile.blocks()) {
+        if (dir > 0 && b.l >= br - 1) dist = Math.min(dist, b.l - br - 4);
+        if (dir < 0 && b.r <= bl + 1) dist = Math.min(dist, bl - b.r - 4);
+      }
+    }
     if (dist < 24) return 0;
     const steps = Math.max(2, Math.floor(dist / CLAWD_RIG_CELL));
     const walkMs = steps * 300;
@@ -4395,10 +4442,11 @@ if (CLAUDE_ENABLED) {
     setClawdB(state, intro + walkMs + 50);
     button.style.setProperty('transition', 'none', 'important');
     const t0 = Date.now() + intro;
-    const end = () => { A2.homeX = A2.x; button.style.removeProperty('transition'); scheduleA2BoundsWarm(button); };
+    const end = () => { A2.homeX = A2.x; button.style.removeProperty('transition'); clawdPile.followEnd(); scheduleA2BoundsWarm(button); };
     const step = () => {
       if (run !== clawdWalkRun || destroyed) return;
       if (clawdTracks.B !== state || clawdTracks.A || clawdTracks.C || A2.held || A2.fy !== 0) { end(); return; }
+      clawdPile.follow(A2.x - from);   // 头上的小 Clawd 跟着挪
       const k = Math.min(1, Math.max(0, (Date.now() - t0) / walkMs));
       A2.x = from + (to - from) * k;
       a2Place(button);
@@ -5318,10 +5366,7 @@ if (CLAUDE_ENABLED) {
     if (form) {
       const sf = form.getBoundingClientRect();
       if (sf.width > pr.width + 2 * A2_FORM_INSET) { formLeft = Math.max(limitLeft, sf.left + A2_FORM_INSET); formRight = Math.min(limitRight, sf.right - A2_FORM_INSET); }
-      /* 2.0.223：右上角换成三只一堆（约 60 宽），按它实际的左边让。 */
-      const pileLeft = clawdPile.left();
-      if (pileLeft != null) decorLeft = pileLeft - A2_DECOR_RESERVE;
-      else if (sf.width) decorLeft = sf.right - 18 - 36 - A2_DECOR_RESERVE;
+      /* 2.0.300（Lulu：大 Clawd 被小 Clawd 挤走不好，手机上很容易被挤）：不再给小 Clawd 让位，改成能互相叠。 */
     }
 
     const maxx = A2.x + (limitRight - A2_EDGE - pr.right);
@@ -5363,7 +5408,7 @@ if (CLAUDE_ENABLED) {
      对齐量写在骨架的 translate 上（动作的 CSS 不碰骨架外框的 translate；躲进输入框的 clip-path 跟着一起挪，差不到 1px）。 */
   function clawdRigPixelSnap(button = composerClawd()) {
     const rig = button?.querySelector(':scope > .clawd-rig');
-    if (!rig || A2.held || A2.fy !== 0) return;
+    if (!rig || A2.held || Math.abs(A2.fy - A2.floor) > .5) return;
     const r = rig.getBoundingClientRect();
     if (!r.width) return;
     const dpr = hostWindow.devicePixelRatio || 1;
@@ -5433,14 +5478,14 @@ if (CLAUDE_ENABLED) {
        在半空中被接住的，直接就是拎着。 */
     /* 2.0.229：睡着时按下不放「被按住」——它会把刚开始的醒来（B 轨短动作）取消掉，松手后直接回待机。
        睡着时这一下只叫醒它；真拖起来（挪动超过 5px）照常拎起。 */
-    if (!A2.wokeOnDown) setClawdC(A2.fy < 0 ? 'grab' : 'press', 0);
+    if (!A2.wokeOnDown) setClawdC(A2.fy < A2.floor - .5 ? 'grab' : 'press', 0);
     /* 轻抚（Lulu 2026-09-24）：按住不动 0.6 秒。手机没有悬停，只能靠这个；电脑上按住也一样算。
        挪动超过 5px 就是拖，0.6 秒内松手还是戳，三者分得开。 */
     hostWindow.clearTimeout(A2.petTimer);
     A2.petting = false;
     A2.petTimer = hostWindow.setTimeout(() => {
       A2.petTimer = 0;
-      if (!A2.held || A2.moved || A2.fy < 0) return;
+      if (!A2.held || A2.moved || A2.fy < A2.floor - .5) return;
       A2.petting = clawdPet(button);
     }, CLAWD_PET_HOLD_MS);
   }
@@ -5456,6 +5501,8 @@ if (CLAUDE_ENABLED) {
       dragStarted = true;
       hostWindow.clearTimeout(A2.petTimer);
       A2.petting = false;
+      clawdPile.unloadBig('lower');            // 2.0.300：头上的小 Clawd 平滑地降下来
+      if (A2.floor) { A2.floor = 0; clawdPile.bigSat(null); }
       setClawdC('grab', 0);                    // 挪动超过阈值才真的拎起来（按住 / 摸着摸着拖动都一样）
       hostWindow.setTimeout(() => { if (A2.dragging) { clawdRigPickVariant('drag'); setClawdC('drag', 0); } }, 350);
     }
@@ -5488,10 +5535,10 @@ if (CLAUDE_ENABLED) {
       return;
     }
     A2.petting = false;
-    if (A2.moved || A2.fy < 0) A2.wokeOnDown = false;   // 拖了 / 半空接住：不是戳，醒来标记作废
+    if (A2.moved || A2.fy < A2.floor - .5) A2.wokeOnDown = false;   // 拖了 / 半空接住：不是戳，醒来标记作废
     if (A2.moved) {
       a2Ballistic(button);                     // 拖过就是抛
-    } else if (A2.fy < 0) {
+    } else if (A2.fy < A2.floor - .5) {
       /* 在半空中把它抓住、又原地松手：让它自己掉下去，别悬在空中。
          这既不算抛掷（不加烦躁、不计次数），也不算戳。 */
       A2.rot = 0;
@@ -5536,6 +5583,13 @@ if (CLAUDE_ENABLED) {
     A2.dragging = false;
     a2NoteInteraction();
     setClawdC('fly', 0);
+    /* 2.0.300：地面不一定是输入框上沿——正好落在某只小 Clawd 头顶上方，就坐在它头上。
+       小 Clawd 的位置只在这里量一次（屏幕坐标），飞行中按 A2.x 换算大 Clawd 身子中心，逐帧不读布局。 */
+    if (A2.floor) { A2.floor = 0; clawdPile.bigSat(null); }
+    const rig0 = button.querySelector(':scope > .clawd-rig')?.getBoundingClientRect();
+    const seatList = rig0?.width ? clawdPile.seats() : [];
+    const x0 = A2.x, centerAt = x => rig0.left + (x - x0) + 24;   // 丢出去那一刻的位置做基准
+    const seatUnder = x => (seatList.length ? seatList.find(st => Math.abs(centerAt(x) - st.cx) < Math.max(48, st.w) * .5) : null);
 
     /* 逐帧推进改成按真实经过时间推进。
        原来每帧固定 vy += g、v *= drag，等于把「一帧」当成时间单位：
@@ -5561,8 +5615,10 @@ if (CLAUDE_ENABLED) {
       if (clamped !== A2.x) { A2.x = clamped; bx = -bx * .45; }
       /* 天花板。原来只夹了左右和地面，用力往上一甩就飞出屏幕了。 */
       if (A2.fy < A2.bnd.miny) { A2.fy = A2.bnd.miny; by = -by * .45; }
-      if (A2.fy >= 0) {
-        A2.fy = 0;
+      const seat = by > 0 ? seatUnder(A2.x) : null;   // 往下掉的时候才认头顶（往上飞时穿过去）
+      const ground = seat ? -seat.h : 0;
+      if (A2.fy >= ground) {
+        A2.fy = ground;
         /* 第一次砸到地面就演落地，不等它弹完——等弹完看着像落地之后又落了一次 */
         if (bounces === 0) setClawdC('land', 0);
         if (Math.abs(by) > .7 && bounces < 6) {
@@ -5586,15 +5642,26 @@ if (CLAUDE_ENABLED) {
           A2.rot = 0;
           A2.sqx = 1;
           A2.sqy = 1;
+          A2.floor = ground;
+          clawdPile.bigSat(seat ? seat.name : null);
           a2Place(button);
           A2.homeX = A2.x;
           button.style.removeProperty('transition');
+          /* 2.0.301：坐到小 Clawd 头上：滑到它正上方坐正（落下时允许左右偏一点，不挪正看着像浮在旁边） */
+          if (seat && rig0?.width) A2.x += seat.cx - centerAt(A2.x);
+          /* 2.0.300：落在输入框上、但跟站着的小 Clawd 重叠：大 Clawd 自己挪开一点（谁被放下谁挪，不推小的） */
+          if (!seat && rig0?.width) {
+            const bl = centerAt(A2.x) - 24;
+            for (const b of clawdPile.blocks()) {
+              if (bl < b.r + 4 && b.l < bl + 48 + 4) { A2.x += (bl + 24 < (b.l + b.r) / 2) ? b.l - 4 - (bl + 48) : b.r + 4 - bl; break; }
+            }
+          }
           /* 停稳之后如果正好盖住右上角那只装饰 Clawd，就让它轻轻滑开一点。
              拖和抛全程都不拦，只在这里收一下。上一行刚把 transition 还回去
              （样式表里那条是 transform 240ms），所以下一帧改 x 会自己走缓动，
              不用另写动画。 */
           /* 2.0.296：落在输入框外面（左边那块空地上）也一样滑回输入框上。 */
-          if (A2.x > A2.bnd.maxxHome || A2.x < A2.bnd.minxHome) {
+          if (seat ? A2.x !== A2.homeX : (A2.x > A2.bnd.maxxHome || A2.x < A2.bnd.minxHome || A2.x !== A2.homeX)) {
             hostWindow.requestAnimationFrame(() => {
               if (my !== A2.flying) return;
               A2.x = Math.max(A2.bnd.minxHome, Math.min(A2.bnd.maxxHome, A2.x));
@@ -5724,7 +5791,7 @@ if (CLAUDE_ENABLED) {
     A2.tookPointer = true;
     A2.dragging = false;
     A2.rot = 0;
-    if (A2.moved || A2.fy < 0) {
+    if (A2.moved || A2.fy < A2.floor - .5) {
       a2Ballistic(button, true);               // drop：不计抛掷次数、不加烦躁
     } else {
       button.style.removeProperty('transition');
@@ -6025,6 +6092,7 @@ if (CLAUDE_ENABLED) {
   /* 松手：骨架播「从输入框里出来」。以前还给按钮挂 clawd-scroll-hold / -release 两个 class 驱动旧的 ::before 精灵，已删 */
   function clawdScrollRelease() {
     clawdScrollHolding = false;
+    composerClawd()?.style.removeProperty('translate');
     if (clawdTracks.B === 'peek') setClawdB('rig:peekOut', CLAWD_RIG.clips.peekOut.dur);
   }
 
@@ -6042,13 +6110,17 @@ if (CLAUDE_ENABLED) {
     const mag = Math.abs(clawdScrollVel);
     if (mag < 2.2) return;                       // 死区
     /* fy 不为 0 就是还在空中或者被举着，那时候不该再叠一层歪。 */
-    if (clawdTracks.A || clawdTracks.C || a2Locked() || A2.held || A2.fy !== 0) return;
+    if (clawdTracks.A || clawdTracks.C || a2Locked() || A2.held || Math.abs(A2.fy - A2.floor) > .5) return;
     /* 睡着、犯困（包括调试菜单点的睡觉 / 犯困）时不扒，接着睡（Lulu 2026-09-25：菜单点了睡觉，一滚就被打断） */
     const bBase = String(clawdTracks.B || '').replace(/^rig:/, '').replace(/-m$/, '');
     if (idleAsleep || ccSleeping || ccDrowsy || bBase === 'sleep' || bBase === 'drowsy') return;
     const button = composerClawd();
     if (!button) return;
 
+    /* 2.0.300：坐在小 Clawd 头上：下面那只缩 8px，它跟着往下 8px，不播扒边 */
+    if (A2.floor) {
+      if (!clawdScrollHolding) { clawdScrollHolding = true; button.style.setProperty('translate', '0 8px'); }
+    } else
     /* 开始扒住：一次滚动只切这一次，中间的滚动事件都走不到这里。 */
     if (!clawdScrollHolding) {
       clawdScrollHolding = true;
