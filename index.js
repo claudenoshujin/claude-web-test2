@@ -15,7 +15,7 @@
 
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=20261006r";
+import { installOfficialLayout } from "./official-layout.js?v=20261006s";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.298-rig17";
 import { createClawdPile } from "./clawd-pile.js?v=20261006c";
 
@@ -240,8 +240,8 @@ document.documentElement.dataset.claudeFont = CLAUDE_FONT;
 document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');
 document.documentElement.dataset.claudeClawd = claudeReadSetting('clawd', ['on','off'], 'on');
 document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['on','off'], 'on');
-/* 侧栏「最近」大小（design-flavor-v8，Lulu 2026-10-06）：s 紧凑 / m 标准（默认 = 原来的样子）/ l 大 / xl 特大。CSS 在 official-layout.css「53」块。 */
-document.documentElement.dataset.claudeRecents = claudeReadSetting('recents-size', ['s','m','l','xl'], 'm');
+/* 侧栏「最近」大小（design-flavor-v8，Lulu 2026-10-06）：s 紧凑 / m 标准 / l 大 / xl 特大（默认，Lulu 2026-10-06 定）。CSS 在 official-layout.css「53」块。 */
+document.documentElement.dataset.claudeRecents = claudeReadSetting('recents-size', ['s','m','l','xl'], 'xl');
 /* 最新回复两侧的左右切换 / 重新生成箭头（扩展自己加的，不是酒馆原生按钮）。手机上容易误触，可以关掉；
    回复下方操作栏里的 ‹ › 不受影响。 */
 document.documentElement.dataset.claudeSideSwipe = claudeReadSetting('side-swipe', ['on','off'], 'on');
@@ -429,7 +429,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.305-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.307-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -460,7 +460,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=20261006r', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=20261006s', import.meta.url).href;
 document.head.append(officialStyle);
 const startOfficialLayout = () => {
   document.head.append(officialStyle);
@@ -13990,7 +13990,7 @@ if (CLAUDE_ENABLED) {
     });
 
     const recentsSel = panel.querySelector('#claude-web-recents-size');
-    recentsSel.value = read('recents-size', ['s', 'm', 'l', 'xl'], 'm');
+    recentsSel.value = read('recents-size', ['s', 'm', 'l', 'xl'], 'xl');
     recentsSel.addEventListener('change', () => {
       if (!write('recents-size', recentsSel.value)) return;
       document.documentElement.dataset.claudeRecents = recentsSel.value;
