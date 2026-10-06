@@ -501,7 +501,9 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
   // 叠着的从下往上摆：上面的落在下面那只（骑两只的取中点）正上方
   function stackX() {
     const bl = NAMES.some(n => K[n].on.includes('big')) ? bigLeft() : null;
-    if (bl == null) for (const n of NAMES) if (K[n].on.includes('big')) K[n].on = K[n].on.filter(m => m !== 'big');   // 大 Clawd 不在（关了 / 没骨架）：落回地上
+    const fell = [];
+    if (bl == null) for (const n of NAMES) if (K[n].on.includes('big')) { K[n].on = K[n].on.filter(m => m !== 'big'); if (!K[n].on.length) fell.push(K[n]); }   // 大 Clawd 不在（关了 / 没骨架 / 刚刷新还没建好）：落回地上
+    unstack(fell);   // 2.0.306：落下来别和原来垫着大 Clawd 的那只重叠（刷新后两只叠在同一个位置）
     const depth = k => (k.on.length ? 1 + Math.max(...k.on.map(n => (n === 'big' ? 0 : depth(K[n])))) : 0);
     const cxOf = m => (m === 'big' ? bl + BIG_W / 2 : K[m].x + BODY_W / 2);
     for (const k of NAMES.map(n => K[n]).filter(k => k.on.length).sort((p, q) => depth(p) - depth(q)))
@@ -526,18 +528,18 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     if (atHome) { const h = homeLayout(); for (const n of NAMES) { K[n].x = h[n].x; K[n].on = h[n].on; } stackX(); for (const n of NAMES) place(K[n]); return; }
     const d = Math.round((w - old) / 2 / PX) * PX;
     const moved = [];
-    /* 2.0.304（Lulu：欢迎页摆好进对话，大 Clawd 浮在半空、下面那只不见了）：大 Clawd 跟着输入框左边走（index.js 的 A2 坐标），
-       不按中线。它坐着的那只要是还按中线挪，就从它屁股底下溜走了。这只改成摆回大 Clawd 正下方；摆不回去（被收进来）就让大 Clawd 降下来。 */
-    const bl = bigOn ? bigLeft() : null;
+    /* 2.0.306（Lulu：大 Clawd 放在中间还是会位移）：大 Clawd 现在也按中线跟着输入框走（index.js watchClawdFormWidth），
+       两边挪的量一样，叠着的自然对得上，不用再把它坐着的那只往它底下摆。只有那只被收进来（离开了中线平移的位置）时，
+       大 Clawd 就降下来。 */
+    const seatX0 = bigOn ? K[bigOn].x : null;
     for (const n of NAMES) {
       const k = K[n]; if (k.mode === 'held' || k.on.length) continue;
       const wk = endWalk(k);
-      const want = n === bigOn && bl != null ? Math.round((bl + BIG_W / 2 - BODY_W / 2) / PX) * PX : k.x + d;
-      k.x = clampX(want); if (k.x !== want) moved.push(k);
+      const want = k.x + d; k.x = clampX(want); if (k.x !== want) moved.push(k);
       if (wk) arrive(k, wk.done);
     }
     unstack(moved); stackX();
-    if (bigOn && (bl == null || moved.includes(K[bigOn]))) { bigOn = null; big?.lower?.(); }
+    if (bigOn && Math.abs(K[bigOn].x - (seatX0 + d)) > PX) { bigOn = null; big?.lower?.(); }
     for (const n of NAMES) place(K[n]);
     save(true);
   }
@@ -593,6 +595,7 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
   // 大 Clawd 坐到某只头上（name）/ 落回地上（null）
   function bigSat(name) {
     bigOn = name && K[name] ? name : null;
+    if (bigOn) atHome = false;   // 2.0.306：大 Clawd 坐上默认那一堆，就不再是「谁都没动过」（不然换宽度时那一堆会被重新摆回角上）
     if (bigOn) { const k = K[bigOn]; if (k.walk) { endWalk(k); clear(k); arrive(k, () => doze(k)); } }
     for (const n of NAMES) place(K[n]);
   }
@@ -618,11 +621,13 @@ html[data-claude-decorations="off"] .clawd-pile{display:none!important}
     followDx = dx;
     for (const n of NAMES) { const k = K[n]; if (k && onBig(k)) k.el.style.translate = `${dx}px 0`; }
   }
+  // 2.0.306：大 Clawd 被 index.js 挪了（输入框宽度变了）：头上的按它的新位置重新摆
+  function restack() { if (!pile || !laid) return; stackX(); for (const n of NAMES) place(K[n]); }
   function followEnd() {
     if (!followDx && !NAMES.some(n => K[n]?.el.style.translate)) return;
     followDx = 0;
     for (const n of NAMES) if (K[n]) K[n].el.style.translate = '';
     stackX(); for (const n of NAMES) place(K[n]); save(true);
   }
-  return { ensure, left, destroy, hush, peek, seats, bigSat, blocks, riderCount, unloadBig, follow, followEnd };
+  return { ensure, left, destroy, hush, peek, seats, bigSat, blocks, riderCount, unloadBig, follow, followEnd, restack };
 }

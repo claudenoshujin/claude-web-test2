@@ -17,7 +17,7 @@ import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=20261006s";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.298-rig17";
-import { createClawdPile } from "./clawd-pile.js?v=20261006c";
+import { createClawdPile } from "./clawd-pile.js?v=20261006d";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -429,7 +429,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.307-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.308-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -4409,6 +4409,7 @@ if (CLAUDE_ENABLED) {
      一步 300ms 走 1 格，和原型里的踱步同速。走整条范围的 20%–40%，往空间大的那边走。
      半路被抓 / 被戳 / 开始生成：就停在当时的位置。返回这次走多久（毫秒），走不了返回 0。 */
   let clawdWalkRun = 0;
+  let clawdWalkNudge = null;   // 2.0.306：走到一半输入框变宽变窄，整段路跟着挪（watchClawdFormWidth）
   function clawdWalk(now = Date.now()) {
     const button = composerClawd();
     if (!button || A2.held || A2.fy !== 0 || A2.floor !== 0) return 0;   // 坐在小 Clawd 头上时不走（走就掉下去了）
@@ -4440,13 +4441,14 @@ if (CLAUDE_ENABLED) {
     const steps = Math.max(2, Math.floor(dist / CLAWD_RIG_CELL));
     const walkMs = steps * 300;
     const intro = CLAWD_RIG.clips.walkLoop.intro || 0;
-    const from = A2.x, to = from + dir * steps * CLAWD_RIG_CELL;
+    let from = A2.x, to = from + dir * steps * CLAWD_RIG_CELL;
     const state = dir > 0 ? 'rig:walkLoop-m' : 'rig:walkLoop';
     const run = ++clawdWalkRun;
     setClawdB(state, intro + walkMs + 50);
     button.style.setProperty('transition', 'none', 'important');
     const t0 = Date.now() + intro;
-    const end = () => { A2.homeX = A2.x; button.style.removeProperty('transition'); clawdPile.followEnd(); scheduleA2BoundsWarm(button); };
+    const end = () => { clawdWalkNudge = null; A2.homeX = A2.x; button.style.removeProperty('transition'); clawdPile.followEnd(); scheduleA2BoundsWarm(button); };
+    clawdWalkNudge = d => { from += d; to += d; };
     const step = () => {
       if (run !== clawdWalkRun || destroyed) return;
       if (clawdTracks.B !== state || clawdTracks.A || clawdTracks.C || A2.held || A2.fy !== 0) { end(); return; }
@@ -4461,6 +4463,37 @@ if (CLAUDE_ENABLED) {
     return intro + walkMs + 50;
   }
 
+  /* 2.0.306（Lulu：大 Clawd 放在小 Clawd 中间，换页面以后还是会错开）：大 Clawd 的按钮挂在输入框左边，
+     以前输入框变宽变窄（欢迎页 706 ↔ 对话页 847、窗口缩放）时它跟着左边走，小 Clawd 按中线走（2.0.292），叠着的就错开了。
+     现在大 Clawd 也按中线：宽度每变一次，A2.x 挪半个差值，屏幕上原地不动；还在默认位置、没动过的照旧待在左边。
+     挪完让小 Clawd 按它的新位置重新摆头上那几只（两个 ResizeObserver 谁先到都对得上）。 */
+  let clawdFormRO = null, clawdFormObserved = null, clawdFormW = 0;
+  function watchClawdFormWidth(form) {
+    if (clawdFormObserved === form || !hostWindow.ResizeObserver) return;
+    clawdFormRO?.disconnect();
+    clawdFormObserved = form; clawdFormW = 0;
+    clawdFormRO = new hostWindow.ResizeObserver(() => {
+      const w = form.clientWidth; if (!w) return;
+      const old = clawdFormW; clawdFormW = w;
+      if (old && w !== old) clawdShiftWithForm((w - old) / 2);
+    });
+    clawdFormRO.observe(form);
+  }
+  function clawdShiftWithForm(d) {
+    const button = composerClawd();
+    if (!button || (!A2.x && !A2.floor && !A2.held)) return;   // 还在默认位置：不挪
+    A2.x += d; A2.homeX += d;
+    if (A2.held) A2.ox += d;   // 拎着：按住的地方不变
+    clawdWalkNudge?.(d);
+    /* 按钮自己有 .15s 的 transform 过渡：这一下要瞬间到位（屏幕上本来就该不动），不然小 Clawd 量到的还是半路的位置 */
+    const walking = !!clawdWalkNudge;
+    if (!walking) button.style.setProperty('transition', 'none', 'important');
+    a2Place(button);
+    clawdPile.restack();
+    if (!walking) hostWindow.requestAnimationFrame(() => { if (!clawdWalkNudge && !A2.held) button.style.removeProperty('transition'); });
+    scheduleA2BoundsWarm(button);
+  }
+
   function ensureComposerClawd() {
     const form = hostDocument.querySelector('#send_form');
     if (!form) return null;
@@ -4470,6 +4503,7 @@ if (CLAUDE_ENABLED) {
       form.append(button);
       scheduleA2BoundsWarm(button);
     }
+    watchClawdFormWidth(form);
     clawdPile.ensure();
     syncClawdBState();
     return button;
@@ -11025,6 +11059,7 @@ if (CLAUDE_ENABLED) {
     A2.bndReady = false;
     composerResizeObserver?.disconnect();
     composerResizeObserver = null;
+    clawdFormRO?.disconnect(); clawdFormRO = null; clawdFormObserved = null;
     observedComposerShell?.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);
     observedComposerShell = null;
     lastComposerHeight = 0;
