@@ -2880,6 +2880,12 @@ html[data-cw-v4] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-editor) .cw-v
    另：2.0.289 夜间按钮统一那条把主按钮（.cw-v4-primary，比如「连接」）也压成深底，字看不见 → 那条排除主按钮。 */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel .cw-v4-as-btn.cw-v4-as-btn:not(:has(>.cw-v4-action-label)){font:400 14px/1 var(--cw-v4-font)!important;letter-spacing:0!important;padding:0 13px!important;width:auto!important}
 
+/* ㊾ 2.0.294（design-flavor-v6，Lulu 选 20）：电脑侧栏「最近」头像 16→20，从靠上的位置裁（缩略图 2:3），行高不变。 */
+@media(min-width:701px){
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat:not(#zz1)>.avatar,html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat:not(#zz1)>.avatar img{flex:0 0 20px!important;width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;max-height:20px!important}
+  html[data-cw-v4] body #top-settings-holder#top-settings-holder .clawd-rail-recents .recentChat.recentChat:not(#zz1)>.avatar img{object-position:50% 15%!important}
+}
+
 /* ㊴ 2.0.266 扩展设置页（照 design-phone-ext-v1.html）。页面是 official-extension-settings.js 画的 .cwx-page：
    小节 .cwx-sec（灰字 / 电脑粗体标题 .cwx-lab）→ 白卡片 .cwx-card → 一行一项 .cwx-row。控件是酒馆原来的，搬进行里。
    这块由 tools/_tmp/cc-286/apply.cjs 从 block-39.src.css 生成（html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 页面前缀，html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup)  = 外层前缀，html[data-cw-v4][data-claude-integrated-theme="night"] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page = 夜间页面前缀）。 */
