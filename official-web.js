@@ -2,16 +2,16 @@
  * 电脑端从 Claude Desktop 的样子改成照 claude.ai 网页版。只在 rail + classic 的电脑布局里生效，
  * 手机不动。这里只加装饰和入口，不碰酒馆原生节点；样式全在 styles/official-web.css，
  * 靠 html[data-cw-web] 开关——条件不满足时摘掉属性、删掉自己加的节点，什么都不留。
- * 「项目 / 作品 / 更多 / 首页项目⌄ / 分享 / 搜索框 / 底部图标」现在只是样子（Lulu：先做个样子）；
- * 「新建对话」真能用，等于侧栏原有的新对话按钮。 */
+ * 「首页项目⌄ / 分享 / 搜索框 / 底部图标」现在只是样子（Lulu：先做个样子）；
+ * 「新建对话」真能用，等于侧栏原有的新对话按钮。
+ * 2.0.316（Lulu 看了 315）：去掉「项目 / 作品」；「更多」做成真的折叠——收起时把「背景」「扩展」藏到它下面，
+ * 状态记在 localStorage；日期分组一律英文（Today / Yesterday / Oct 8 / Older），照官网。 */
 export function installOfficialWeb(win = window) {
   const doc = win.document, root = doc.documentElement;
   const SV = (p, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
   const P = {
     plus: '<path d="M12 5v14M5 12h14"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
-    projects: '<path d="M5 7h14M6.5 4h11M4.5 10h15v9a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1z"/>',
-    artifacts: '<circle cx="8" cy="15.5" r="4"/><path d="m13 4 4.5 7.5h-9z"/><rect x="13.5" y="13" width="6.5" height="6.5" rx="1"/>',
     chev: '<path d="m9 6 6 6-6 6"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
     filter: '<path d="M7 4v6M7 14v6M17 4v2M17 10v10"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="8" r="2"/>',
@@ -29,17 +29,27 @@ export function installOfficialWeb(win = window) {
     && root.dataset.claudeLayout !== 'mobile' && win.innerWidth > 700;
 
   const mine = () => doc.querySelectorAll('.cw-web-x');
-  const teardown = () => { mine().forEach(n => n.remove()); delete root.dataset.cwWeb; };
+  const teardown = () => { mine().forEach(n => n.remove()); delete root.dataset.cwWeb; delete root.dataset.cwWebMore; };
+  // 「更多」：收起时 CSS 把背景、扩展两行压成 0 高（不 display:none 整个 .drawer——它们的设置页是 fixed 的、挂在里面，
+  // 开着的页不能跟着消失）。展开 / 收起记住。
+  const MORE_KEY = 'claude-web:web-more';
+  const moreOpen = () => { try { return win.localStorage.getItem(MORE_KEY) === 'open'; } catch { return false; } };
+  const syncMore = () => {
+    const open = moreOpen();
+    if ((root.dataset.cwWebMore === 'open') !== open) { if (open) root.dataset.cwWebMore = 'open'; else delete root.dataset.cwWebMore; }
+    const m = doc.querySelector('#top-settings-holder > .cw-web-more'); if (m && m.getAttribute('aria-expanded') !== String(open)) m.setAttribute('aria-expanded', String(open));
+  };
+  const toggleMore = () => { try { win.localStorage.setItem(MORE_KEY, moreOpen() ? 'closed' : 'open'); } catch {} syncMore(); };
 
   // 最近对话按日期分组：一组「角色 + 它下面的重复行」跟着这组第一行的日期走，不拆开。
   const dayLabel = iso => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const d = new Date(iso); if (isNaN(d)) return null; d.setHours(0, 0, 0, 0);
     const days = Math.round((today - d) / 864e5);
-    if (days <= 0) return t('今天', 'Today');
-    if (days === 1) return t('昨天', 'Yesterday');
-    if (days < 7) return zh() ? `${d.getMonth() + 1}月${d.getDate()}日` : d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
-    return t('更早', 'Older');
+    if (days <= 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+    return 'Older';
   };
   const groupRecents = list => {
     const want = []; let last = null;
@@ -79,13 +89,18 @@ export function installOfficialWeb(win = window) {
       };
       fresh.addEventListener('click', go);
       fresh.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
-      const proj = deco(row('cw-web-x', P.projects, t('项目', 'Projects'), '<span class="cw-web-badge">New</span>'));
-      const art = deco(row('cw-web-x', P.artifacts, t('作品', 'Artifacts')));
-      search.after(fresh); fresh.after(proj); proj.after(art);
+      search.after(fresh);
     }
     const chars = doc.getElementById('rightNavHolder');
     let more = holder.querySelector(':scope > .cw-web-more');
-    if (chars && !more) { more = deco(row('cw-web-more cw-web-x', P.chev, t('更多', 'More'))); chars.after(more); }
+    if (chars && !more) {
+      more = row('cw-web-more cw-web-x', P.chev, t('更多', 'More'));
+      more.setAttribute('role', 'button'); more.tabIndex = 0;
+      more.addEventListener('click', toggleMore);
+      more.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMore(); } });
+      chars.after(more);
+    }
+    syncMore();
     // 侧栏各项靠 CSS order 排；「更多」跟角色卡同一个 order、DOM 紧跟其后，就排在它下面。样式表晚到时 order 会变，每次对一遍。
     const order = chars && win.getComputedStyle(chars).order;
     if (more && order && more.style.order !== order) more.style.order = order;
@@ -100,7 +115,7 @@ export function installOfficialWeb(win = window) {
 
   if (!doc.getElementById('cw-web-style')) {
     const link = doc.createElement('link'); link.id = 'cw-web-style'; link.rel = 'stylesheet';
-    link.href = new URL('styles/official-web.css?v=2.0.315', import.meta.url).href; doc.head.append(link);
+    link.href = new URL('styles/official-web.css?v=2.0.316', import.meta.url).href; doc.head.append(link);
   }
   let raf = 0;
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; ensure(); }); };

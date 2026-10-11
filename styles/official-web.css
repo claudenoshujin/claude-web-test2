@@ -1,4 +1,6 @@
-/* 2.0.315 电脑端照 claude.ai 网页版（Lulu 2026-10-11 定，预览 Claude outputs/design-web-v1/design-web-v3.html）。
+/* 2.0.316：菜单字和图标照官网取色（夜 #c3c2b7 / 日 #52514e），图标 22px，顶行、搜索、各行图标中心对齐；
+   对话页「新建对话」的 + 有圆形灰底；「更多」真折叠。
+   2.0.315 电脑端照 claude.ai 网页版（Lulu 2026-10-11 定，预览 Claude outputs/design-web-v1/design-web-v3.html）。
    只在 html[data-cw-web] 上生效（official-web.js 只在 rail + classic 电脑布局挂这个属性），手机不受影响。
    官方 CSS 里很多规则是 #top-settings-holder#top-settings-holder + :not(#zz1):not(#zz2) + !important，
    所以这里统一加三个 :not(#cwN) 抬权重。颜色是从官网截图逐点取的。 */
@@ -7,11 +9,13 @@ html[data-cw-web] {
   --w-side: #f8f8f6; --w-main: #fcfcfb; --w-pill: #edece8; --w-hover: #f1f0ec; --w-line: #e4e3df;
   --w-sbg: #fff; --w-sbd: #e2e1dc; --w-cbg: #fff; --w-cbd: #e0dfda; --w-text: #1f1e1d; --w-dim: #8a8983;
   --w-sub: #7d7b74; --w-bubble: #f0f0ee; --w-shadow: 0 1px 4px rgba(0,0,0,.04); --w-btn: #fff;
+  --w-nav: #52514e; --w-strong: #1f1e1d; --w-newbg: #eae9e4; --w-toggle: #73726c;
 }
 html[data-cw-web][data-claude-integrated-theme="night"] {
-  --w-side: #111111; --w-main: #151515; --w-pill: #2b2b2a; --w-hover: #1f1f1e; --w-line: #292929;
-  --w-sbg: #1b1b1a; --w-sbd: #2e2e2d; --w-cbg: #20201f; --w-cbd: #4d4d4c; --w-text: #e9e8e3; --w-dim: #82817b;
+  --w-side: #111111; --w-main: #151515; --w-pill: #343434; --w-hover: #1f1f1e; --w-line: #292929;
+  --w-sbg: #1b1b1a; --w-sbd: #2e2e2d; --w-cbg: #20201f; --w-cbd: #4d4d4c; --w-text: #e9e8e3; --w-dim: #898781;
   --w-sub: #9c9a93; --w-bubble: #242423; --w-shadow: none; --w-btn: #1b1b1a;
+  --w-nav: #c3c2b7; --w-strong: #f0efec; --w-newbg: #2c2c2a; --w-toggle: #8d8d85;
 }
 
 /* 底色：侧栏和正文分开，中间一条细线 */
@@ -25,14 +29,15 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder { back
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(1),
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(3),
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(4) { display: none !important; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool { display: flex !important; align-items: center !important; gap: 10px !important; padding: 0 4px 0 10px !important; height: 52px !important; min-height: 52px !important; flex: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool { display: flex !important; align-items: center !important; gap: 13px !important; padding: 0 4px 0 13px !important; height: 52px !important; min-height: 52px !important; flex: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(2) { width: 20px !important; height: 20px !important; flex: none !important; margin: 0 !important; color: var(--w-toggle) !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool .cw-desk-seg { margin-left: auto !important; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-brand { font-family: "Newsreader", Georgia, serif; font-size: 21px; font-weight: 500; color: var(--w-text); letter-spacing: -.01em; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-brand { font-family: "Newsreader", Georgia, serif; font-size: 21px; font-weight: 500; color: var(--w-strong); letter-spacing: -.01em; }
 
 /* 搜索框（样子） */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search { flex: none; box-sizing: border-box; margin: 4px 0 8px; height: 36px; min-height: 36px; border-radius: 9px;
-  border: 1px solid var(--w-sbd); background: var(--w-sbg); display: flex; align-items: center; gap: 10px; padding: 0 12px; color: var(--w-dim); font-size: 15px; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search svg { width: 16px; height: 16px; }
+  border: 1px solid var(--w-sbd); background: var(--w-sbg); display: flex; align-items: center; gap: 15px; padding: 0 12px; color: var(--w-dim); font-size: 15px; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search svg { width: 16px; height: 16px; flex: none; }
 
 /* 入口行：新建对话 / 项目 / 作品 / 酒馆 8 个菜单 / 更多，一律 36px、15px 常规字重 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer:not(#persona-management-button) { height: 36px !important; margin: 0 !important; flex: none !important; }
@@ -40,15 +45,31 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .dra
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row { box-sizing: border-box !important; height: 36px !important; min-height: 36px !important; border-radius: 9px !important; padding: 0 10px !important;
   display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important; flex: none !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder .clawd-rail-label,
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row .cw-web-label { font-size: 15px !important; font-weight: 400 !important; color: var(--w-text) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row .cw-web-label { font-size: 15px !important; font-weight: 400 !important; color: var(--w-nav) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer:not(#persona-management-button) > .drawer-toggle > .drawer-icon { flex: 0 0 22px !important; width: 22px !important; height: 22px !important; min-width: 22px !important; max-width: 22px !important; min-height: 22px !important; max-height: 22px !important; background-color: var(--w-nav) !important; }
+/* 扩展 = 官网的 Customize（公文包） */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > #extensions-settings-button > .drawer-toggle > .drawer-icon {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='7' width='17' height='12.5' rx='2'/%3E%3Cpath d='M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3.5 12.5h17'/%3E%3C/svg%3E") !important;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='7' width='17' height='12.5' rx='2'/%3E%3Cpath d='M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3.5 12.5h17'/%3E%3C/svg%3E") !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer > .drawer-toggle:hover,
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-new:hover { background: var(--w-hover) !important; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row { color: var(--w-text); }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row svg { width: 18px; height: 18px; flex: none; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row { color: var(--w-nav); }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row svg { width: 22px; height: 22px; flex: none; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body.clawd-welcome .cw-web-new .cw-web-label { color: var(--w-strong) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body.clawd-welcome .cw-web-new svg { color: var(--w-strong); }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) .cw-web-new svg { width: 24px; height: 24px; margin: 0 -1px; padding: 5px; box-sizing: border-box; border-radius: 50%; background: var(--w-newbg); color: var(--w-strong); }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-new { cursor: pointer; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body.clawd-welcome .cw-web-new { background: var(--w-pill) !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-badge { font-size: 11.5px; padding: 1px 6px; border-radius: 6px; background: var(--w-pill); color: var(--w-sub); margin-left: -4px; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more, html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more .cw-web-label { color: var(--w-sub) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more, html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more .cw-web-label { color: var(--w-dim) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more { cursor: pointer; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more:hover { background: var(--w-hover) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more svg { transition: transform .15s ease; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more[aria-expanded="true"] svg { transform: rotate(90deg); }
+/* 「更多」收着：背景、扩展这两行排到它下面，平时压成 0 高 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#backgrounds-button, #extensions-settings-button) { order: 4 !important; }
+html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#backgrounds-button, #extensions-settings-button) { height: 0 !important; min-height: 0 !important; }
+html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#backgrounds-button, #extensions-settings-button) > .drawer-toggle { display: none !important; }
 
 /* 最近：按日期分组，「最近」标题和它的放大镜不要了（搜索在顶上），排序图标挪到第一组标题右边 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents { margin-top: 18px !important; }
@@ -59,7 +80,7 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-date:first-child { margi
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-date > span { grid-column: auto !important; font-weight: 400 !important; color: var(--w-dim) !important; padding: 0 !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-date > .cw-web-filter { grid-column: auto !important; width: 16px !important; height: 16px !important; color: var(--w-sub) !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat { min-height: 36px !important; height: 36px !important; border-radius: 9px !important; padding: 0 10px !important; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat .characterName { font-size: 15px !important; font-weight: 500 !important; color: var(--w-text) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat .characterName { font-size: 15px !important; font-weight: 500 !important; color: var(--w-nav) !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat .chatPreview { font-size: 14px !important; color: var(--w-sub) !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat:hover { background: var(--w-hover) !important; }
 
