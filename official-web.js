@@ -7,7 +7,10 @@
  * 2.0.316（Lulu 看了 315）：去掉「项目 / 作品」；「更多」做成真的折叠——收起时把「背景」「扩展」藏到它下面，
  * 状态记在 localStorage；日期分组一律英文（Today / Yesterday / Oct 8 / Older），照官网。
  * 2.0.317（Lulu）：「更多」收格式化、偏好设置、背景、扩展四项（留预设、API、世界书、角色卡）；
- * 搜索框变成真输入框——按角色名、聊天名、预览筛最近对话，Esc 清空。 */
+ * 搜索框变成真输入框——按角色名、聊天名、预览筛最近对话，Esc 清空。
+ * 2.0.318（Lulu：只筛侧栏没什么用）：停手 350ms 后再用酒馆自己的 /api/chats/search 把每个角色和群组的
+ * 全部聊天搜一遍（正文 + 文件名，多个词要全中），结果放在侧栏下面「All chats」，去掉上面已经列出的；
+ * 点一条就打开那段聊天。同时最多 4 个请求，换了关键词旧的作废。 */
 export function installOfficialWeb(win = window) {
   const doc = win.document, root = doc.documentElement;
   const SV = (p, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -31,7 +34,7 @@ export function installOfficialWeb(win = window) {
     && root.dataset.claudeLayout !== 'mobile' && win.innerWidth > 700;
 
   const mine = () => doc.querySelectorAll('.cw-web-x');
-  const teardown = () => { mine().forEach(n => n.remove()); delete root.dataset.cwWeb; delete root.dataset.cwWebMore; };
+  const teardown = () => { searchGen++; win.clearTimeout(searchTimer); mine().forEach(n => n.remove()); delete root.dataset.cwWeb; delete root.dataset.cwWebMore; };
   // 「更多」：收起时 CSS 把背景、扩展两行压成 0 高（不 display:none 整个 .drawer——它们的设置页是 fixed 的、挂在里面，
   // 开着的页不能跟着消失）。展开 / 收起记住。
   const MORE_KEY = 'claude-web:web-more';
@@ -72,6 +75,100 @@ export function installOfficialWeb(win = window) {
     }
     flushHeader();
   };
+  // ---- 全部聊天搜索 ----
+  let searchGen = 0, searchTimer = 0, results = null;   // results: { q, items, done, total }
+  const ctx = () => win.SillyTavern?.getContext?.();
+  const stripExt = f => String(f || '').replace(/\.jsonl$/, '');
+  const stamp = v => { if (typeof v === 'number') return v; const n = Date.parse(v); return isNaN(n) ? 0 : n; };
+  const recentsSlot = () => doc.querySelector('#top-settings-holder .clawd-rail-recents');
+  const keyOf = i => (i.group ? 'g:' + i.group : 'c:' + i.avatar) + '|' + i.file;
+  const shownKeys = () => new Set([...doc.querySelectorAll('#top-settings-holder .recentChatList > .recentChat:not(.cw-web-miss)')]
+    .map(r => (r.dataset.group ? 'g:' + r.dataset.group : 'c:' + r.dataset.avatar) + '|' + r.dataset.file));
+  const openResult = async item => {
+    const c = ctx(); if (!c) return;
+    try {
+      if (item.group) {
+        // 照酒馆自己的 openRecentGroupChat：先选中群组（openGroupById，不在 getContext 里，从同一个模块 URL 取），
+        // 再切到那段聊天。只调 openGroupChat 会在没选中群组时清掉聊天、页面半切换。
+        const groups = await import(new URL('/scripts/group-chats.js', doc.baseURI).href);
+        if (await groups.openGroupById(item.group) === false) return;
+        if (c.getCurrentChatId?.() !== item.file) await groups.openGroupChat(item.group, item.file);
+        return;
+      }
+      const id = c.characters.findIndex(x => x.avatar === item.avatar);
+      if (id < 0) { win.toastr?.error?.(t('找不到这个角色。', 'Character not found.')); return; }
+      await c.selectCharacterById(id);
+      if (c.getCurrentChatId?.() !== item.file) await c.openCharacterChat(item.file);
+    } catch (error) { console.error('[Claude Web] 打开搜索结果失败:', error); win.toastr?.error?.(t('无法打开这段聊天。', 'Could not open this chat.')); }
+  };
+  const resultRow = item => {
+    const r = make('div', 'cw-web-result'); r.setAttribute('role', 'button'); r.tabIndex = 0;
+    const av = make('span', 'cw-web-result-av');
+    if (item.avatar) { const img = doc.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.src = ctx()?.getThumbnailUrl?.('avatar', item.avatar) || ''; av.append(img); }
+    else av.textContent = (item.name || '?').slice(0, 1);
+    const name = make('span', 'cw-web-result-name'); name.textContent = item.name || '';
+    const prev = make('span', 'cw-web-result-prev'); prev.textContent = item.preview || item.file;
+    r.title = item.file; r.append(av, name, prev);
+    r.addEventListener('click', () => openResult(item));
+    r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openResult(item); } });
+    return r;
+  };
+  const renderResults = () => {
+    const slot = recentsSlot(); if (!slot) return;
+    let box = slot.querySelector(':scope > .cw-web-results');
+    const q = query.trim();
+    if (!q || !results || results.q !== q) { box?.remove(); return; }
+    const shown = shownKeys();
+    const items = results.items.filter(i => !shown.has(keyOf(i))).sort((a, b) => b.last - a.last).slice(0, 50);
+    const busy = results.done < results.total;
+    // 只在内容变了时重画：结果框挂在最近列表的观察范围里，每次重画都会再触发一次 ensure。
+    const sig = [q, results.done, results.total, items.map(keyOf).join(',')].join('#');
+    if (box?.dataset.sig === sig) return;
+    if (!box) { box = make('div', 'cw-web-results cw-web-x'); slot.append(box); }
+    box.dataset.sig = sig; box.replaceChildren();
+    const head = make('div', 'cw-web-date cw-web-results-head');
+    const label = make('span'); label.textContent = 'All chats';
+    const state = make('span', 'cw-web-results-state'); state.textContent = busy ? results.done + '/' + results.total : '';
+    head.append(label, state); box.append(head);
+    items.forEach(i => box.append(resultRow(i)));
+    if (!busy && !items.length) { const none = make('div', 'cw-web-results-none'); none.textContent = t('没有找到其他聊天', 'No other chats found'); box.append(none); }
+  };
+  const runSearch = async q => {
+    const gen = ++searchGen, c = ctx(); if (!c) return;
+    const targets = [
+      ...(c.characters || []).filter(x => x?.avatar).map(x => ({ avatar: x.avatar, name: x.name })),
+      ...(c.groups || []).filter(g => g?.id).map(g => ({ group: g.id, name: g.name })),
+    ];
+    results = { q, items: [], done: 0, total: targets.length };
+    renderResults();
+    let next = 0, paint = 0;
+    const repaint = () => { if (!paint) paint = win.requestAnimationFrame(() => { paint = 0; if (gen === searchGen) renderResults(); }); };
+    const worker = async () => {
+      while (next < targets.length && gen === searchGen) {
+        const tg = targets[next++];
+        try {
+          const res = await win.fetch('/api/chats/search', { method: 'POST', headers: c.getRequestHeaders(),
+            body: JSON.stringify(tg.group ? { query: q, group_id: tg.group } : { query: q, avatar_url: tg.avatar }) });
+          const list = res.ok ? await res.json() : [];
+          if (gen !== searchGen) return;
+          for (const r of Array.isArray(list) ? list : []) {
+            results.items.push({ ...tg, file: stripExt(r.file_name), preview: r.preview_message || '', last: stamp(r.last_mes) });
+          }
+        } catch (error) { console.warn('[Claude Web] 搜索聊天失败', tg.name, error); }
+        if (gen !== searchGen) return;
+        results.done++; repaint();
+      }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+  };
+  const scheduleSearch = () => {
+    win.clearTimeout(searchTimer);
+    const q = query.trim();
+    if (!q) { searchGen++; results = null; renderResults(); return; }
+    if (results?.q === q) return;
+    searchGen++;   // 旧关键词还在跑的请求作废
+    searchTimer = win.setTimeout(() => runSearch(q), 350);
+  };
   const groupRecents = list => {
     const want = []; let last = null;
     for (const r of list.children) {
@@ -100,9 +197,9 @@ export function installOfficialWeb(win = window) {
       search = make('label', 'cw-web-search cw-web-x', SV(P.search));
       const input = doc.createElement('input');
       input.type = 'search'; input.className = 'cw-web-search-input'; input.placeholder = t('搜索', 'Search');
-      input.setAttribute('aria-label', t('搜索最近对话', 'Search recent chats')); input.autocomplete = 'off'; input.spellcheck = false;
+      input.setAttribute('aria-label', t('搜索聊天', 'Search chats')); input.autocomplete = 'off'; input.spellcheck = false;
       input.value = query;
-      const apply = () => { query = input.value; const l = doc.querySelector('#top-settings-holder .clawd-rail-recents .recentChatList'); if (l) filterRecents(l); };
+      const apply = () => { query = input.value; const l = doc.querySelector('#top-settings-holder .clawd-rail-recents .recentChatList'); if (l) filterRecents(l); scheduleSearch(); renderResults(); };
       input.addEventListener('input', apply);
       input.addEventListener('keydown', e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; apply(); } });
       search.append(input);
@@ -137,6 +234,7 @@ export function installOfficialWeb(win = window) {
     if (persona && !persona.querySelector('.cw-web-apps')) persona.append(deco(make('span', 'cw-web-apps cw-web-x', SV(P.apps))));
     const list = holder.querySelector('.clawd-rail-recents .recentChatList');
     if (list) { groupRecents(list); filterRecents(list); }
+    if (query.trim()) renderResults();
     const form = doc.getElementById('send_form');
     if (form && !form.querySelector(':scope > .cw-web-proj')) form.append(deco(make('div', 'cw-web-proj cw-web-x', `<span>${t('项目', 'Project')}</span>` + SV(P.down))));
     if (!doc.querySelector('body > .cw-web-share')) doc.body.append(deco(make('div', 'cw-web-share cw-web-x', SV(P.file) + `<b>${t('分享', 'Share')}</b>`)));
@@ -144,7 +242,7 @@ export function installOfficialWeb(win = window) {
 
   if (!doc.getElementById('cw-web-style')) {
     const link = doc.createElement('link'); link.id = 'cw-web-style'; link.rel = 'stylesheet';
-    link.href = new URL('styles/official-web.css?v=2.0.317', import.meta.url).href; doc.head.append(link);
+    link.href = new URL('styles/official-web.css?v=2.0.318', import.meta.url).href; doc.head.append(link);
   }
   let raf = 0;
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; ensure(); }); };

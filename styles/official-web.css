@@ -44,6 +44,18 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search .cw-web-search-in
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search .cw-web-search-input::placeholder { color: var(--w-dim); opacity: 1; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search .cw-web-search-input::-webkit-search-cancel-button { filter: grayscale(1); opacity: .6; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents .cw-web-miss { display: none !important; }
+/* 2.0.318 全部聊天搜索结果（在最近对话下面）。.clawd-rail-recents 的子孙有一批 grid 规则，这里全部压回去。 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents > .cw-web-results { display: block !important; padding: 16px 0 0 !important; margin: 0 !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-results > .cw-web-results-head { margin-top: 16px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-results-head > .cw-web-results-state { font-size: 12px !important; color: var(--w-dim) !important; grid-column: auto !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-results > .cw-web-result { display: flex !important; align-items: center !important; gap: 10px !important; height: 36px !important; min-height: 36px !important; padding: 0 10px !important; margin: 0 !important; border-radius: 9px !important; cursor: pointer; grid-template-columns: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-results > .cw-web-result:hover, html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-results > .cw-web-result:focus-visible { background: var(--w-hover) !important; outline: 0; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-result > * { grid-column: auto !important; padding: 0 !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-result > .cw-web-result-av { flex: 0 0 28px !important; width: 28px !important; height: 28px !important; border-radius: 50% !important; overflow: hidden !important; display: grid !important; place-items: center !important; background: var(--w-pill) !important; color: var(--w-nav) !important; font-size: 13px !important; font-weight: 400 !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-result-av img { width: 100% !important; height: 100% !important; object-fit: cover !important; object-position: 50% 15% !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-result > .cw-web-result-name { flex: none !important; max-width: 45% !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; font-size: 15px !important; font-weight: 500 !important; color: var(--w-nav) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-result > .cw-web-result-prev { flex: 1 1 auto !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; font-size: 14px !important; font-weight: 400 !important; color: var(--w-sub) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-results > .cw-web-results-none { display: block !important; padding: 6px 10px !important; font-size: 13.5px !important; color: var(--w-dim) !important; }
 
 /* 入口行：新建对话 / 项目 / 作品 / 酒馆 8 个菜单 / 更多，一律 36px、15px 常规字重 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer:not(#persona-management-button) { height: 36px !important; margin: 0 !important; flex: none !important; }
