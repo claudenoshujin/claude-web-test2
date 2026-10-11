@@ -5,7 +5,9 @@
  * 「首页项目⌄ / 分享 / 搜索框 / 底部图标」现在只是样子（Lulu：先做个样子）；
  * 「新建对话」真能用，等于侧栏原有的新对话按钮。
  * 2.0.316（Lulu 看了 315）：去掉「项目 / 作品」；「更多」做成真的折叠——收起时把「背景」「扩展」藏到它下面，
- * 状态记在 localStorage；日期分组一律英文（Today / Yesterday / Oct 8 / Older），照官网。 */
+ * 状态记在 localStorage；日期分组一律英文（Today / Yesterday / Oct 8 / Older），照官网。
+ * 2.0.317（Lulu）：「更多」收格式化、偏好设置、背景、扩展四项（留预设、API、世界书、角色卡）；
+ * 搜索框变成真输入框——按角色名、聊天名、预览筛最近对话，Esc 清空。 */
 export function installOfficialWeb(win = window) {
   const doc = win.document, root = doc.documentElement;
   const SV = (p, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -51,6 +53,25 @@ export function installOfficialWeb(win = window) {
     if (days < 7) return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
     return 'Older';
   };
+  // 搜索：一组（角色行 + 它下面的重复行）里只要有一行对上，就留下这组的头一行；对上的行都留；
+  // 整组都没对上就连同日期标题一起藏。筛的是侧栏里已经列出来的最近对话。
+  let query = '';
+  const rowText = r => [r.querySelector('.characterName')?.textContent, r.querySelector('.chatName')?.title, r.querySelector('.chatMeta')?.textContent, r.querySelector('.chatPreview')?.textContent].join(' ').toLowerCase();
+  const filterRecents = list => {
+    const q = query.trim().toLowerCase();
+    const kids = [...list.children];
+    let header = null, headerHits = 0, head = null, headHit = false, groupHit = false;
+    const flushGroup = () => { if (head) { const keep = headHit || groupHit; head.classList.toggle('cw-web-miss', !keep); if (keep) headerHits++; } head = null; headHit = groupHit = false; };
+    const flushHeader = () => { flushGroup(); if (header) header.classList.toggle('cw-web-miss', !!q && !headerHits); header = null; headerHits = 0; };
+    for (const n of kids) {
+      if (n.classList.contains('cw-web-date')) { flushHeader(); header = n; continue; }
+      if (!n.classList.contains('recentChat')) continue;
+      const hit = !q || rowText(n).includes(q);
+      if (n.classList.contains('cw-rec-rep')) { n.classList.toggle('cw-web-miss', !hit); if (hit) groupHit = true; continue; }
+      flushGroup(); head = n; headHit = hit;
+    }
+    flushHeader();
+  };
   const groupRecents = list => {
     const want = []; let last = null;
     for (const r of list.children) {
@@ -76,7 +97,15 @@ export function installOfficialWeb(win = window) {
     if (tool && !tool.querySelector('.cw-web-brand')) tool.querySelector(':scope > svg:nth-of-type(2)')?.after(deco(make('span', 'cw-web-brand cw-web-x', 'Claude')));
     let search = holder.querySelector(':scope > .cw-web-search');
     if (!search) {
-      search = deco(make('div', 'cw-web-search cw-web-x', SV(P.search) + `<span>${t('搜索', 'Search')}</span>`));
+      search = make('label', 'cw-web-search cw-web-x', SV(P.search));
+      const input = doc.createElement('input');
+      input.type = 'search'; input.className = 'cw-web-search-input'; input.placeholder = t('搜索', 'Search');
+      input.setAttribute('aria-label', t('搜索最近对话', 'Search recent chats')); input.autocomplete = 'off'; input.spellcheck = false;
+      input.value = query;
+      const apply = () => { query = input.value; const l = doc.querySelector('#top-settings-holder .clawd-rail-recents .recentChatList'); if (l) filterRecents(l); };
+      input.addEventListener('input', apply);
+      input.addEventListener('keydown', e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; apply(); } });
+      search.append(input);
       (tool || holder.firstElementChild)?.after(search);
       const fresh = row('cw-web-new cw-web-x', P.plus, t('新建对话', 'New chat'));
       fresh.setAttribute('role', 'button'); fresh.tabIndex = 0;
@@ -107,7 +136,7 @@ export function installOfficialWeb(win = window) {
     const persona = doc.querySelector('#persona-management-button > .drawer-toggle');
     if (persona && !persona.querySelector('.cw-web-apps')) persona.append(deco(make('span', 'cw-web-apps cw-web-x', SV(P.apps))));
     const list = holder.querySelector('.clawd-rail-recents .recentChatList');
-    if (list) groupRecents(list);
+    if (list) { groupRecents(list); filterRecents(list); }
     const form = doc.getElementById('send_form');
     if (form && !form.querySelector(':scope > .cw-web-proj')) form.append(deco(make('div', 'cw-web-proj cw-web-x', `<span>${t('项目', 'Project')}</span>` + SV(P.down))));
     if (!doc.querySelector('body > .cw-web-share')) doc.body.append(deco(make('div', 'cw-web-share cw-web-x', SV(P.file) + `<b>${t('分享', 'Share')}</b>`)));
@@ -115,7 +144,7 @@ export function installOfficialWeb(win = window) {
 
   if (!doc.getElementById('cw-web-style')) {
     const link = doc.createElement('link'); link.id = 'cw-web-style'; link.rel = 'stylesheet';
-    link.href = new URL('styles/official-web.css?v=2.0.316', import.meta.url).href; doc.head.append(link);
+    link.href = new URL('styles/official-web.css?v=2.0.317', import.meta.url).href; doc.head.append(link);
   }
   let raf = 0;
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; ensure(); }); };

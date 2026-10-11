@@ -32,12 +32,18 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool { display: flex !important; align-items: center !important; gap: 13px !important; padding: 0 4px 0 13px !important; height: 52px !important; min-height: 52px !important; flex: none !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(2) { width: 20px !important; height: 20px !important; flex: none !important; margin: 0 !important; color: var(--w-toggle) !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool .cw-desk-seg { margin-left: auto !important; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-brand { font-family: "Newsreader", Georgia, serif; font-size: 21px; font-weight: 500; color: var(--w-strong); letter-spacing: -.01em; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-brand { font-family: "Newsreader", Georgia, serif; font-size: 21px; font-weight: 500; color: var(--w-strong); letter-spacing: -.01em; position: relative; top: 2px; }
 
 /* 搜索框（样子） */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search { flex: none; box-sizing: border-box; margin: 4px 0 8px; height: 36px; min-height: 36px; border-radius: 9px;
   border: 1px solid var(--w-sbd); background: var(--w-sbg); display: flex; align-items: center; gap: 15px; padding: 0 12px; color: var(--w-dim); font-size: 15px; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search svg { width: 16px; height: 16px; flex: none; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search { cursor: text; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search:focus-within { border-color: var(--w-cbd); }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search .cw-web-search-input { flex: 1 1 auto; min-width: 0; height: 100%; margin: 0; padding: 0; border: 0; outline: 0; box-shadow: none; background: transparent; color: var(--w-strong); font: inherit; font-size: 15px; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search .cw-web-search-input::placeholder { color: var(--w-dim); opacity: 1; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search .cw-web-search-input::-webkit-search-cancel-button { filter: grayscale(1); opacity: .6; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents .cw-web-miss { display: none !important; }
 
 /* 入口行：新建对话 / 项目 / 作品 / 酒馆 8 个菜单 / 更多，一律 36px、15px 常规字重 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer:not(#persona-management-button) { height: 36px !important; margin: 0 !important; flex: none !important; }
@@ -67,9 +73,9 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more:hover { background:
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more svg { transition: transform .15s ease; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more[aria-expanded="true"] svg { transform: rotate(90deg); }
 /* 「更多」收着：背景、扩展这两行排到它下面，平时压成 0 高 */
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#backgrounds-button, #extensions-settings-button) { order: 4 !important; }
-html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#backgrounds-button, #extensions-settings-button) { height: 0 !important; min-height: 0 !important; }
-html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#backgrounds-button, #extensions-settings-button) > .drawer-toggle { display: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) { order: 4 !important; }
+html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) { height: 0 !important; min-height: 0 !important; }
+html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) > .drawer-toggle { display: none !important; }
 
 /* 最近：按日期分组，「最近」标题和它的放大镜不要了（搜索在顶上），排序图标挪到第一组标题右边 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents { margin-top: 18px !important; }
