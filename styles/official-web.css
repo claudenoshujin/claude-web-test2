@@ -1,0 +1,108 @@
+/* 2.0.315 电脑端照 claude.ai 网页版（Lulu 2026-10-11 定，预览 Claude outputs/design-web-v1/design-web-v3.html）。
+   只在 html[data-cw-web] 上生效（official-web.js 只在 rail + classic 电脑布局挂这个属性），手机不受影响。
+   官方 CSS 里很多规则是 #top-settings-holder#top-settings-holder + :not(#zz1):not(#zz2) + !important，
+   所以这里统一加三个 :not(#cwN) 抬权重。颜色是从官网截图逐点取的。 */
+@media (min-width: 701px) {
+html[data-cw-web] {
+  --w-side: #f8f8f6; --w-main: #fcfcfb; --w-pill: #edece8; --w-hover: #f1f0ec; --w-line: #e4e3df;
+  --w-sbg: #fff; --w-sbd: #e2e1dc; --w-cbg: #fff; --w-cbd: #e0dfda; --w-text: #1f1e1d; --w-dim: #8a8983;
+  --w-sub: #7d7b74; --w-bubble: #f0f0ee; --w-shadow: 0 1px 4px rgba(0,0,0,.04); --w-btn: #fff;
+}
+html[data-cw-web][data-claude-integrated-theme="night"] {
+  --w-side: #111111; --w-main: #151515; --w-pill: #2b2b2a; --w-hover: #1f1f1e; --w-line: #292929;
+  --w-sbg: #1b1b1a; --w-sbd: #2e2e2d; --w-cbg: #20201f; --w-cbd: #4d4d4c; --w-text: #e9e8e3; --w-dim: #82817b;
+  --w-sub: #9c9a93; --w-bubble: #242423; --w-shadow: none; --w-btn: #1b1b1a;
+}
+
+/* 底色：侧栏和正文分开，中间一条细线 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3), html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body,
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #sheld, html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #chat,
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #form_sheld, html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-v4-chat-head { background-color: var(--w-main) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #chat::before { background-color: var(--w-main) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder { background: var(--w-side) !important; border-right: 1px solid var(--w-line) !important; box-shadow: none !important; }
+
+/* 顶行：侧栏开关 · Claude · 对话/代码（去掉 ≡ 和前进后退） */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(1),
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(3),
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool > svg:nth-of-type(4) { display: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool { display: flex !important; align-items: center !important; gap: 10px !important; padding: 0 4px 0 10px !important; height: 52px !important; min-height: 52px !important; flex: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-tool .cw-desk-seg { margin-left: auto !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-brand { font-family: "Newsreader", Georgia, serif; font-size: 21px; font-weight: 500; color: var(--w-text); letter-spacing: -.01em; }
+
+/* 搜索框（样子） */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search { flex: none; box-sizing: border-box; margin: 4px 0 8px; height: 36px; min-height: 36px; border-radius: 9px;
+  border: 1px solid var(--w-sbd); background: var(--w-sbg); display: flex; align-items: center; gap: 10px; padding: 0 12px; color: var(--w-dim); font-size: 15px; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-search svg { width: 16px; height: 16px; }
+
+/* 入口行：新建对话 / 项目 / 作品 / 酒馆 8 个菜单 / 更多，一律 36px、15px 常规字重 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer:not(#persona-management-button) { height: 36px !important; margin: 0 !important; flex: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer:not(#persona-management-button) > .drawer-toggle,
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row { box-sizing: border-box !important; height: 36px !important; min-height: 36px !important; border-radius: 9px !important; padding: 0 10px !important;
+  display: flex !important; align-items: center !important; gap: 12px !important; margin: 0 !important; flex: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder .clawd-rail-label,
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row .cw-web-label { font-size: 15px !important; font-weight: 400 !important; color: var(--w-text) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > .drawer > .drawer-toggle:hover,
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-new:hover { background: var(--w-hover) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row { color: var(--w-text); }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-row svg { width: 18px; height: 18px; flex: none; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-new { cursor: pointer; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body.clawd-welcome .cw-web-new { background: var(--w-pill) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-badge { font-size: 11.5px; padding: 1px 6px; border-radius: 6px; background: var(--w-pill); color: var(--w-sub); margin-left: -4px; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more, html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more .cw-web-label { color: var(--w-sub) !important; }
+
+/* 最近：按日期分组，「最近」标题和它的放大镜不要了（搜索在顶上），排序图标挪到第一组标题右边 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents { margin-top: 18px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents-label { display: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-date { display: flex !important; align-items: center !important; justify-content: space-between !important; height: 30px !important;
+  padding: 0 10px !important; margin-top: 16px !important; font-size: 13.5px !important; color: var(--w-dim) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-date:first-child { margin-top: 0 !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-date > span { grid-column: auto !important; font-weight: 400 !important; color: var(--w-dim) !important; padding: 0 !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-date > .cw-web-filter { grid-column: auto !important; width: 16px !important; height: 16px !important; color: var(--w-sub) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat { min-height: 36px !important; height: 36px !important; border-radius: 9px !important; padding: 0 10px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat .characterName { font-size: 15px !important; font-weight: 500 !important; color: var(--w-text) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat .chatPreview { font-size: 14px !important; color: var(--w-sub) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .recentChat:hover { background: var(--w-hover) !important; }
+
+/* 底部用户行：头像和最近对话的头像左边对齐；右边加一个图标（样子） */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > #persona-management-button > .drawer-toggle { padding-left: 19px !important; padding-right: 16px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #persona-management-button .clawd-user-face { flex: 0 0 28px !important; width: 28px !important; min-width: 28px !important; max-width: 28px !important; height: 28px !important; min-height: 28px !important; max-height: 28px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-apps { order: 99; margin-left: auto; display: flex; color: var(--w-sub); }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-apps svg { width: 18px; height: 18px; }
+
+/* 右上角：只留幽灵；对话页换成 文件图标 +「分享」 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-win > svg:not(.cw-ghost) { display: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-share { position: fixed; top: 9px; right: 14px; z-index: 50; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-share svg { width: 18px; height: 18px; color: var(--w-text); }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-share b { font-weight: 400; font-size: 14.5px; color: var(--w-text); border: 1px solid var(--w-sbd); border-radius: 9px; padding: 4px 11px; background: var(--w-btn); }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body.clawd-welcome > .cw-web-share { display: none; }
+
+/* 输入框：细边、大圆角；框下一行 左「项目 ⌄」/ 右角色和档位，对齐框的内边距 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #send_form { background: var(--w-cbg) !important; border: 1px solid var(--w-cbd) !important; border-radius: 18px !important; box-shadow: var(--w-shadow) !important; overflow: visible !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #send_textarea::placeholder { color: var(--w-dim) !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #nonQRFormItems { position: static !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-character-switcher { position: absolute !important; right: 14px !important; left: auto !important; top: calc(100% + 7px) !important; bottom: auto !important; height: 24px !important; font-size: 13.5px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-character-switcher * { font-size: 13.5px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-proj { position: absolute !important; left: 16px !important; top: calc(100% + 7px) !important; height: 24px !important; display: flex !important;
+  align-items: center; gap: 4px; font-size: 13.5px; color: var(--w-sub); pointer-events: none; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-proj svg { width: 12px; height: 12px; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-welcome-hero { font-size: 34px !important; line-height: 1.3 !important; }
+
+/* 对话页：框里只剩一行输入 + 回车键；+ 和列表挪到框下左边（麦克风不要），提示句居中，角色/档位在右，三者一条线 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) .cw-web-proj { display: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #send_form { padding: 4px 10px !important; min-height: 52px !important; border-radius: 16px !important; margin-bottom: 30px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #nonQRFormItems { align-items: center !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #leftSendForm { position: absolute !important; left: 6px !important; top: calc(100% + 6px) !important; height: 26px !important; gap: 0 !important; align-items: center !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #leftSendForm > * { transform: scale(.82); margin: 0 -3px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) .clawd-fake-mic { display: none !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #send_textarea { padding-left: 6px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #send_form::after { left: 0 !important; right: 0 !important; width: auto !important; text-align: center !important; top: calc(100% + 11px) !important; bottom: auto !important; font-size: 12.5px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) .clawd-character-switcher { top: calc(100% + 5px) !important; translate: 0 -6px !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #send_but::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 5v6.5a3 3 0 0 1-3 3H5.5'/%3E%3Cpath d='M9.5 10.5 5.5 14.5l4 4'/%3E%3C/svg%3E") !important;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 5v6.5a3 3 0 0 1-3 3H5.5'/%3E%3Cpath d='M9.5 10.5 5.5 14.5l4 4'/%3E%3C/svg%3E") !important;
+  background-color: var(--w-sub) !important; }
+
+/* F02 字号：正文 17.5 → 16、行高 1.65；侧栏 15。和侧栏只差 1px。 */
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #chat .mes_text { font-size: 16px !important; line-height: 1.65 !important; }
+html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #chat .mes[is_user="true"] .mes_text { font-size: 15.5px !important; background: var(--w-bubble) !important; border-radius: 14px !important; }
+}
