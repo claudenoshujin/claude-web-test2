@@ -10,7 +10,11 @@
  * 搜索框变成真输入框——按角色名、聊天名、预览筛最近对话，Esc 清空。
  * 2.0.318（Lulu：只筛侧栏没什么用）：停手 350ms 后再用酒馆自己的 /api/chats/search 把每个角色和群组的
  * 全部聊天搜一遍（正文 + 文件名，多个词要全中），结果放在侧栏下面「All chats」，去掉上面已经列出的；
- * 点一条就打开那段聊天。同时最多 4 个请求，换了关键词旧的作废。 */
+ * 点一条就打开那段聊天。同时最多 4 个请求，换了关键词旧的作废。
+ * 2.0.319（Lulu：搜索效果奇怪）：酒馆默认的聊天文件名带日期时间（xx - 2026-09-23@23h52m…），
+ * 搜数字几乎全中，所以本地筛选和结果都不再拿这种自动文件名去比；结果行改成显示「命中的那句」+ 最后消息日期——
+ * 以前显示的是最后一条消息，同一段对话的几个分支长得一模一样。前 30 条结果读一遍聊天内容找命中句，
+ * 只靠自动文件名命中的那条丢掉。同一角色、命中句一模一样的几条（同一段对话的分支）并成一行，标 ×N，点开最新的那条。 */
 export function installOfficialWeb(win = window) {
   const doc = win.document, root = doc.documentElement;
   const SV = (p, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -59,7 +63,10 @@ export function installOfficialWeb(win = window) {
   // 搜索：一组（角色行 + 它下面的重复行）里只要有一行对上，就留下这组的头一行；对上的行都留；
   // 整组都没对上就连同日期标题一起藏。筛的是侧栏里已经列出来的最近对话。
   let query = '';
-  const rowText = r => [r.querySelector('.characterName')?.textContent, r.querySelector('.chatName')?.title, r.querySelector('.chatMeta')?.textContent, r.querySelector('.chatPreview')?.textContent].join(' ').toLowerCase();
+  // 酒馆自动起的聊天名：「角色 - 2026-9-23@23h52m25s748ms」或群组的「2026-10-02@08h09m37s996ms」。改过名的才算标题。
+  const AUTO_NAME = /\d{4}-\d{1,2}-\d{1,2} ?@ ?\d{1,2}h ?\d{1,2}m/;
+  const fileText = f => (f && !AUTO_NAME.test(f)) ? f : '';
+  const rowText = r => [r.querySelector('.characterName')?.textContent, fileText(r.querySelector('.chatName')?.title), r.querySelector('.chatMeta')?.textContent, r.querySelector('.chatPreview')?.textContent].join(' ').toLowerCase();
   const filterRecents = list => {
     const q = query.trim().toLowerCase();
     const kids = [...list.children];
@@ -101,14 +108,52 @@ export function installOfficialWeb(win = window) {
       if (c.getCurrentChatId?.() !== item.file) await c.openCharacterChat(item.file);
     } catch (error) { console.error('[Claude Web] 打开搜索结果失败:', error); win.toastr?.error?.(t('无法打开这段聊天。', 'Could not open this chat.')); }
   };
+  // 命中句：去掉标签和 markdown 符号，找第一条包含全部关键词的消息，从第一个词前 4 个字开始截。
+  const fragsOf = q => q.toLowerCase().split(/\s+/).filter(Boolean);
+  const plain = v => String(v || '').replace(/<[^>]*>/g, ' ').replace(/[*_`#>~]+/g, '').replace(/\s+/g, ' ').trim();
+  const findSnippet = (messages, frags) => {
+    let fallback = null;
+    for (const m of Array.isArray(messages) ? messages : []) {
+      if (!m || typeof m.mes !== 'string') continue;
+      const txt = plain(m.mes), low = txt.toLowerCase();
+      const at = low.indexOf(frags[0]); if (at < 0) continue;
+      const start = Math.max(0, at - 4), end = at + frags[0].length;
+      const snip = { pre: (start > 0 ? '…' : '') + txt.slice(start, at), hit: txt.slice(at, end), post: txt.slice(end, end + 60) };
+      if (frags.every(f => low.includes(f))) return snip;
+      fallback ??= snip;
+    }
+    return fallback;
+  };
+  const fetchChat = async item => {
+    const c = ctx();
+    const res = await win.fetch(item.group ? '/api/chats/group/get' : '/api/chats/get', { method: 'POST', headers: c.getRequestHeaders(),
+      body: JSON.stringify(item.group ? { id: item.file } : { ch_name: item.name, file_name: item.file, avatar_url: item.avatar }) });
+    return res.ok ? res.json() : [];
+  };
+  const shortDate = ms => {
+    if (!ms) return '';
+    const d = new Date(ms), now = new Date();
+    return d.getFullYear() === now.getFullYear() ? (d.getMonth() + 1) + '/' + d.getDate() : d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+  };
   const resultRow = item => {
     const r = make('div', 'cw-web-result'); r.setAttribute('role', 'button'); r.tabIndex = 0;
     const av = make('span', 'cw-web-result-av');
     if (item.avatar) { const img = doc.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.src = ctx()?.getThumbnailUrl?.('avatar', item.avatar) || ''; av.append(img); }
     else av.textContent = (item.name || '?').slice(0, 1);
     const name = make('span', 'cw-web-result-name'); name.textContent = item.name || '';
-    const prev = make('span', 'cw-web-result-prev'); prev.textContent = item.preview || item.file;
-    r.title = item.file; r.append(av, name, prev);
+    const prev = make('span', 'cw-web-result-prev');
+    if (item.snip) {
+      const hit = make('b', 'cw-web-hit'); hit.textContent = item.snip.hit;
+      prev.append(item.snip.pre, hit, item.snip.post);
+    } else prev.textContent = item.checked ? fileText(item.file) || item.preview : '…';
+    const date = make('span', 'cw-web-result-date'); date.textContent = shortDate(item.last);
+    const twins = item.twins || [item.file];
+    // 两行：上面 名字 · ×N · 日期，下面整行命中句（一行放不下时命中的字会被省略号吃掉）。
+    const top = make('span', 'cw-web-result-top'); top.append(name);
+    if (twins.length > 1) { const n = make('span', 'cw-web-result-count'); n.textContent = '×' + twins.length; top.append(n); }
+    top.append(date);
+    const body = make('span', 'cw-web-result-body'); body.append(top, prev);
+    r.title = twins.join('\n'); r.append(av, body);
     r.addEventListener('click', () => openResult(item));
     r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openResult(item); } });
     return r;
@@ -119,10 +164,17 @@ export function installOfficialWeb(win = window) {
     const q = query.trim();
     if (!q || !results || results.q !== q) { box?.remove(); return; }
     const shown = shownKeys();
-    const items = results.items.filter(i => !shown.has(keyOf(i))).sort((a, b) => b.last - a.last).slice(0, 50);
-    const busy = results.done < results.total;
+    const merged = new Map();
+    for (const i of results.items.filter(i => !i.drop && !shown.has(keyOf(i))).sort((a, b) => b.last - a.last)) {
+      const same = i.snip ? (i.group || i.avatar) + '|' + i.snip.pre + i.snip.hit + i.snip.post : keyOf(i);
+      const first = merged.get(same);
+      if (first) { first.twins.push(i.file); continue; }
+      merged.set(same, Object.assign(i, { twins: [i.file] }));
+    }
+    const items = [...merged.values()].slice(0, 50);
+    const busy = results.done < results.total || results.checking;
     // 只在内容变了时重画：结果框挂在最近列表的观察范围里，每次重画都会再触发一次 ensure。
-    const sig = [q, results.done, results.total, items.map(keyOf).join(',')].join('#');
+    const sig = [q, results.done, results.total, results.checked, items.map(i => keyOf(i) + '*' + i.twins.length).join(',')].join('#');
     if (box?.dataset.sig === sig) return;
     if (!box) { box = make('div', 'cw-web-results cw-web-x'); slot.append(box); }
     box.dataset.sig = sig; box.replaceChildren();
@@ -139,7 +191,7 @@ export function installOfficialWeb(win = window) {
       ...(c.characters || []).filter(x => x?.avatar).map(x => ({ avatar: x.avatar, name: x.name })),
       ...(c.groups || []).filter(g => g?.id).map(g => ({ group: g.id, name: g.name })),
     ];
-    results = { q, items: [], done: 0, total: targets.length };
+    results = { q, items: [], done: 0, total: targets.length, checked: 0, checking: false };
     renderResults();
     let next = 0, paint = 0;
     const repaint = () => { if (!paint) paint = win.requestAnimationFrame(() => { paint = 0; if (gen === searchGen) renderResults(); }); };
@@ -160,6 +212,25 @@ export function installOfficialWeb(win = window) {
       }
     };
     await Promise.all(Array.from({ length: 4 }, worker));
+    if (gen !== searchGen) return;
+    // 第二步：给排在前面的 30 条找命中句（同时 3 个），只靠自动文件名命中的丢掉。
+    const frags = fragsOf(q), shown = shownKeys();
+    const todo = results.items.filter(i => !shown.has(keyOf(i))).sort((a, b) => b.last - a.last).slice(0, 30);
+    results.checking = todo.length > 0; repaint();
+    let k = 0;
+    const checker = async () => {
+      while (k < todo.length && gen === searchGen) {
+        const item = todo[k++];
+        try {
+          item.snip = findSnippet(await fetchChat(item), frags);
+          if (!item.snip && !fileText(item.file).toLowerCase().includes(frags[0])) item.drop = true;
+        } catch (error) { console.warn('[Claude Web] 读取聊天失败', item.file, error); }
+        if (gen !== searchGen) return;
+        item.checked = true; results.checked++; repaint();
+      }
+    };
+    await Promise.all(Array.from({ length: 3 }, checker));
+    if (gen === searchGen) { results.checking = false; repaint(); }
   };
   const scheduleSearch = () => {
     win.clearTimeout(searchTimer);
@@ -242,7 +313,7 @@ export function installOfficialWeb(win = window) {
 
   if (!doc.getElementById('cw-web-style')) {
     const link = doc.createElement('link'); link.id = 'cw-web-style'; link.rel = 'stylesheet';
-    link.href = new URL('styles/official-web.css?v=2.0.318', import.meta.url).href; doc.head.append(link);
+    link.href = new URL('styles/official-web.css?v=2.0.319', import.meta.url).href; doc.head.append(link);
   }
   let raf = 0;
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; ensure(); }); };
