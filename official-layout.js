@@ -19,8 +19,10 @@ export function installOfficialLayout(win = window) {
   const make = (tag, cls, text) => { const n = doc.createElement(tag); n.className = cls; if (text != null) n.textContent = text; return n; };
   const button = (text, fn, cls = 'cw-v4-button') => { const n = make('button', cls, text); n.type = 'button'; n.addEventListener('click', fn); return n; };
   const icon = name => { const n=make('span','cw-v4-icon'); n.setAttribute('aria-hidden','true'); n.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${officialIcons[name] || officialIcons.gear}</svg>`; return n; };
+  const iconProperties = Object.keys(officialIcons).map(name => { const key = '--cw-v4-icon-' + name; return [key, root.style.getPropertyValue(key), root.style.getPropertyPriority(key)]; });
   for (const [name,path] of Object.entries(officialIcons)) root.style.setProperty('--cw-v4-icon-'+name,`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`)}")`);
-  const enabled = () => root.dataset.claudeStructure === 'rail' && root.dataset.claudeSkin === 'classic';
+  const installedIconValues = new Map(iconProperties.map(([key]) => [key, root.style.getPropertyValue(key)]));
+  const enabled = () => !destroyed && root.dataset.claudeEnabled !== 'off' && root.dataset.claudeStructure === 'rail' && root.dataset.claudeSkin === 'classic';
   // The mobile skin can also run in a wide desktop window. Match the CSS
   // breakpoint rather than treating the skin preference as viewport size.
   // Phones use the phone layout at any width (the stylesheets are pinned the
@@ -28,6 +30,7 @@ export function installOfficialLayout(win = window) {
   const mobile = () => root.dataset.claudeLayout === 'mobile' || win.innerWidth <= 700;
   let shell, current, requestedPanel, previousFocus, raf = 0, destroyed = false;
   const observers = [], disposers = [], dialogs = new Set(), panels = new Map();
+  const panelDecorations = new Map();
   const formattedForms = new WeakSet();
   const enhancedMenus = new WeakSet();
   const formSet = new Set();
@@ -357,14 +360,18 @@ export function installOfficialLayout(win = window) {
     node.hidden = false; node.style.setProperty('display', 'block','important'); node.classList.add('cw-v4-editing');
     const focus = doc.activeElement;
     dialogs.add(dialog);
-    dialog.addEventListener('close', () => {
+    let restored = false;
+    const restoreEditor = () => {
+      if (restored) return; restored = true;
       for(const [adapter,parent,select] of pickerHosts){win.jQuery(select).select2('close');adapter.$dropdownParent=parent;}
       node.hidden = oldHidden; node.style.setProperty('display',oldDisplay,oldPriority); node.classList.remove('cw-v4-editing');
       if (anchor.parentNode) anchor.replaceWith(node);
       standIn?.remove();
       try { opts.onClose?.(); } catch (error) { console.warn('[Claude Web] editor close', error); }
-      dialog.remove(); dialogs.delete(dialog); syncSheet(); focus?.isConnected && focus.focus({preventScroll: true}); schedule();
-    }, {once:true});
+      dialog.remove(); dialogs.delete(dialog); if (!destroyed) { syncSheet(); focus?.isConnected && focus.focus({preventScroll: true}); schedule(); }
+    };
+    dialog._cwRestore = restoreEditor;
+    dialog.addEventListener('close', restoreEditor, {once:true});
     dialog.dataset.cwSheetTitle = typeof title === 'string' ? title : (head.querySelector('h2')?.textContent || '');
     sheetDrag(dialog, head, shut);
     // 2.0.214：手机弹出页里照 App 一页摊开——Claude Web 设置的各组（外观 / 布局……）都展开，组名当灰字标签。
@@ -770,9 +777,10 @@ export function installOfficialLayout(win = window) {
     if(settingsSearch.parentElement!==searchHost)searchHost.prepend(settingsSearch);
     ids.forEach(([id]) => {
       const p = doc.getElementById(id); if (!p || panels.get(id) === p) return;
-      panels.set(id,p); p.classList.add('cw-v4-panel');
+      panels.set(id,p); const hadPanelClass = p.classList.contains('cw-v4-panel'); p.classList.add('cw-v4-panel');
       const glyph=nativeToggle(p)?.querySelector('.drawer-icon');
       const glyphName=['sliders','plug','type','book','image','puzzle','card','user','gear'][ids.findIndex(s=>s[0]===id)];
+      panelDecorations.set(p, { hadPanelClass, glyph, icon: glyph?.style.getPropertyValue('--cw-v4-nav-icon'), priority: glyph?.style.getPropertyPriority('--cw-v4-nav-icon'), installed: `var(--cw-v4-icon-${glyphName})` });
       glyph?.style.setProperty('--cw-v4-nav-icon',`var(--cw-v4-icon-${glyphName})`);
       // 打开旧聊天性能修复（20261001）：面板关着时里面的增删（表情列表、提示词管理器等重建）不排 sync；面板打开时自身 class 变化会排一次，enhance 那时再补。
       observe(p, records => { if (records.some(r => r.target === p || (r.type === 'childList' && isOpen(p)))) schedule(); }, {childList:true,subtree:true,attributes:true,attributeFilter:['class']});
@@ -828,6 +836,7 @@ export function installOfficialLayout(win = window) {
   const fill = r => { const min=+r.min||0, max=+r.max||100, v=((+r.value-min)/((max-min)||1)*100).toFixed(2)+'%'; if (r.style.getPropertyValue('--fill')!==v) r.style.setProperty('--fill',v); };
   function schedule() { if (!raf && !destroyed) raf = win.requestAnimationFrame(sync); }
   const start = () => {
+    if (destroyed) return;
     const keepStyleAfterTheme=()=>{
       const style=doc.querySelector('link[href*="/styles/official-layout.css"]');
       if(!style)return;
@@ -924,6 +933,7 @@ export function installOfficialLayout(win = window) {
     const vk = win.navigator.virtualKeyboard;
     const fullHeight = new Map();
     const syncKeyboard = () => {
+      if (destroyed) return;
       const vv = win.visualViewport, width = Math.round(win.innerWidth);
       const visible = Math.min(win.innerHeight, vv?.height || win.innerHeight);
       const full = Math.max(fullHeight.get(width) || 0, win.innerHeight);
@@ -940,16 +950,22 @@ export function installOfficialLayout(win = window) {
     // One read per frame: the keyboard fires several resize events in a row, and
     // each synchronous read here forced a style/layout flush of its own.
     let kbFrame = 0;
-    const queueKeyboard = () => { if (!kbFrame) kbFrame = win.requestAnimationFrame(() => { kbFrame = 0; syncKeyboard(); }); };
-    disposers.push(() => { if (kbFrame) win.cancelAnimationFrame(kbFrame); });
+    const kbTimers = new Set();
+    const queueKeyboard = () => { if (!destroyed && !kbFrame) kbFrame = win.requestAnimationFrame(() => { kbFrame = 0; syncKeyboard(); }); };
+    const delayKeyboard = delay => {
+      if (destroyed) return;
+      const timer = win.setTimeout(() => { kbTimers.delete(timer); queueKeyboard(); }, delay);
+      kbTimers.add(timer);
+    };
+    disposers.push(() => { kbTimers.forEach(timer => win.clearTimeout(timer)); kbTimers.clear(); if (kbFrame) win.cancelAnimationFrame(kbFrame); kbFrame = 0; });
     if (win.screen?.orientation?.addEventListener) on(win.screen.orientation, 'change', queueKeyboard);
     disposers.push(() => root.removeAttribute('data-cw-v4-landscape'));
     syncKeyboard();
     on(win, 'resize', queueKeyboard);
     if (win.visualViewport) on(win.visualViewport, 'resize', queueKeyboard);
     if (vk?.addEventListener) on(vk, 'geometrychange', queueKeyboard);
-    on(doc, 'focusin', () => win.setTimeout(queueKeyboard, 350));
-    on(doc, 'focusout', () => win.setTimeout(queueKeyboard, 50));
+    on(doc, 'focusin', () => delayKeyboard(350));
+    on(doc, 'focusout', () => delayKeyboard(50));
     disposers.push(() => root.removeAttribute('data-cw-v4-kb'));
     // Message "…" popup (design-v4, 2026-09-29). ST fades the … out and shows
     // .extraMesButtons.visible; any click elsewhere closes it. Here the … stays
@@ -1469,12 +1485,12 @@ export function installOfficialLayout(win = window) {
     if (canPopover) {
       pmHost.setAttribute('popover', 'manual');
       // popover 不困住焦点（showModal 会），Escape 可能落在页面上：开着时在 document 上接（下拉开着时让下拉先关）。
-      pmEsc = e => { if (e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('.select2-container--open')) return; e.preventDefault(); e.stopImmediatePropagation(); pmBack(pm)?.click(); };
+      pmEsc = e => { if (externalModalOpen || e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('.select2-container--open')) return; e.preventDefault(); e.stopImmediatePropagation(); pmBack(pm)?.click(); };
       doc.addEventListener('keydown', pmEsc, true);
     } else pmHost.addEventListener('cancel', e => { e.preventDefault(); pmBack(pm)?.click(); });
     pm.querySelectorAll('select').forEach(select => { const ad = win.jQuery?.(select).data?.('select2')?.dropdown; if (ad?.$dropdownParent) { pmPickers.push([ad, ad.$dropdownParent]); ad.$dropdownParent = win.jQuery(pmHost); } });
     const back = [...pm.children].find(a => a.style.display === 'flex')?.querySelector('.cw-pm-back');
-    if (canPopover) { shieldUp(); pmHost.showPopover(); }
+    if (canPopover) { shieldUp(); if (!externalModalOpen) pmHost.showPopover(); else syncExternalSheetYield(); guardSheetAnimation(pmHost); }
     else { if (back) back.autofocus = true; pmHost.showModal(); if (back) back.autofocus = false; }
     back?.focus({preventScroll: true});
   }
@@ -1496,6 +1512,7 @@ export function installOfficialLayout(win = window) {
     sheetAnimTimer = win.setTimeout(() => root.removeAttribute('data-cw-sheet-anim'), SHEET_MS + 80);
   }
   function syncSheet() {
+    if (destroyed) return;
     const pm = pmEl();
     // 提示词编辑页：酒馆摘掉 openDrawer 后 200ms 就 display:none，比我们的下滑短；收起期间挂 data-cw-closing，CSS 让它多显示一会儿播完。
     const pmOpen = Boolean(pm?.classList.contains('openDrawer'));
@@ -1527,6 +1544,7 @@ export function installOfficialLayout(win = window) {
       if (el.matches(SHEET_POPUP)) decorateStPopup(el);
     });
     for (const el of doc.querySelectorAll('[data-cw-sheet-under]')) if (!sheetStack.includes(el)) el.removeAttribute('data-cw-sheet-under');
+    syncExternalSheetYield();
     const open = sheetStack.length > 0, deep = sheetStack.length > 1;
     if (open === root.hasAttribute('data-cw-sheet') && deep === root.hasAttribute('data-cw-sheet-deep')) return;
     animWindow();
@@ -1603,45 +1621,153 @@ export function installOfficialLayout(win = window) {
      <dialog> 照样是 open（酒馆认 dialog[open]、close()、[opening] / [closing] 动画都不变）。模态白送的两件事自己补：
      · 点后面的页面不能有反应：弹出页底下垫一层透明的 .cw-sheet-shield（也是 popover，先于弹出页显示，所以在它下面）；
      · Escape 关弹窗：document 上接，给我们的弹窗走 shut()，给酒馆弹窗发 cancel 事件（酒馆自己决定能不能关）。
-     老内核没有 popover、电脑、不是弹出页的对话框：照旧 showModal。 */
+     老内核没有 popover、不是弹出页的对话框：照旧 showModal。CW 编辑窗在电脑上也用此路径，让第三方弹窗可接管交互。 */
   const nativeShowModal = win.HTMLDialogElement.prototype.showModal;
   let shield = null;
-  const liftable = d => canPopover && mobile() && enabled() && d.matches(SHEET_POPUP + ',dialog.cw-v4-editor');
+  let externalModalOpen = false;
+  const sheetAnimationChecks = new Map();
+  function guardSheetAnimation(layer) {
+    win.clearTimeout(sheetAnimationChecks.get(layer));
+    sheetAnimationChecks.set(layer, win.setTimeout(() => {
+      sheetAnimationChecks.delete(layer);
+      if (destroyed || !enabled() || externalModalOpen || !layer.isConnected || !layer.matches(':popover-open')) return;
+      if (layer.matches('dialog') && (!layer.open || layer.hasAttribute('closing') || layer.hasAttribute('data-cw-closing'))) return;
+      const rect = layer.getBoundingClientRect(), viewport = win.visualViewport;
+      const top = viewport?.offsetTop || 0, left = viewport?.offsetLeft || 0;
+      const frozenTransparent = Number(win.getComputedStyle(layer).opacity) === 0 && layer.getAnimations().some(animation => animation.playState === 'paused');
+      if (rect.width && rect.height && (frozenTransparent || rect.top >= top + (viewport?.height || win.innerHeight) || rect.bottom <= top || rect.left >= left + (viewport?.width || win.innerWidth) || rect.right <= left)) {
+        layer.setAttribute('data-cw-animation-fallback', '');
+        console.warn('[Claude Web] sheet entrance stayed outside viewport; skipped animation');
+      }
+    }, 1200));
+  }
+  const yieldedSheets = new Set();
+  let externalSheetModals = [], yieldCheckRaf = 0;
+  const ignoredSheetModals = new Set();
+  function resumeYieldedSheets() {
+    for (const modal of externalSheetModals) ignoredSheetModals.add(modal);
+    externalSheetModals = []; externalModalOpen = false;
+    syncExternalSheetYield();
+  }
+  function checkYieldHitTargets() {
+    yieldCheckRaf = 0;
+    if (!externalModalOpen || !yieldedSheets.size || destroyed) return;
+    // Check once after lowering our layers. CSS visibility alone cannot tell
+    // whether an extension's wrapper actually receives pointer input.
+    const blocksInput = externalSheetModals.some(modal => {
+      const r = modal.getBoundingClientRect();
+      const left = Math.max(0, r.left), right = Math.min(win.innerWidth, r.right);
+      const top = Math.max(0, r.top), bottom = Math.min(win.innerHeight, r.bottom);
+      if (left >= right || top >= bottom) return false;
+      return [[.5,.5],[.2,.2],[.8,.2],[.2,.8],[.8,.8]].some(([x,y]) =>
+        modal.contains(doc.elementFromPoint(left + (right-left)*x, top + (bottom-top)*y)));
+    });
+    if (!blocksInput) resumeYieldedSheets();
+  }
+  function openSheetLayers() {
+    const open = [...doc.querySelectorAll('dialog[data-cw-lifted][open]')];
+    const ordered = sheetStack.map(d => d === pmEl() ? pmHost : d).filter(d => d && (d === pmHost || open.includes(d)));
+    if (pmHost && !ordered.includes(pmHost)) ordered.unshift(pmHost);
+    ordered.push(...open.filter(d => !ordered.includes(d)));
+    return ordered;
+  }
+  function setExternalModals(modals) {
+    if (destroyed) return;
+    for (const modal of ignoredSheetModals) if (!modals.includes(modal)) ignoredSheetModals.delete(modal);
+    externalSheetModals = modals.filter(modal => !ignoredSheetModals.has(modal));
+    externalModalOpen = externalSheetModals.length > 0;
+    syncExternalSheetYield();
+  }
+  function syncExternalSheetYield() {
+    if (!canPopover || destroyed) return;
+    const ordered = openSheetLayers();
+    if (externalModalOpen && enabled() && ordered.length) {
+      const entering = !yieldedSheets.size;
+      if (!root.hasAttribute('data-cw-sheet-yield')) root.setAttribute('data-cw-sheet-yield', '');
+      for (const d of ordered) {
+        yieldedSheets.add(d); if (!d.hasAttribute('data-cw-sheet-yielded')) d.setAttribute('data-cw-sheet-yielded', '');
+        try { if (d.matches(':popover-open')) d.hidePopover(); } catch {}
+      }
+      try { if (shield?.matches(':popover-open')) shield.hidePopover(); } catch {}
+      if (entering && !yieldCheckRaf) yieldCheckRaf = win.requestAnimationFrame(checkYieldHitTargets);
+      return;
+    }
+    if (!yieldedSheets.size) return;
+    // Only restore still-open pages; a third-party modal may have closed its owner.
+    for (const d of yieldedSheets) d.removeAttribute('data-cw-sheet-yielded');
+    yieldedSheets.clear(); root.removeAttribute('data-cw-sheet-yield');
+    if (ordered.length && enabled()) restoreSheetLayers(ordered);
+    shieldMaybeDown();
+  }
+  // CW editors need to yield to third-party Teleports on desktop too.
+  const liftable = d => canPopover && enabled() && (d.matches('dialog.cw-v4-editor') || (mobile() && d.matches(SHEET_POPUP)));
   function shieldUp() {
     if (!canPopover) return;
     if (!shield) {
       shield = make('div', 'cw-sheet-shield'); shield.setAttribute('popover', 'manual'); shield.setAttribute('aria-hidden', 'true');
-      for (const type of ['click', 'pointerdown', 'mousedown', 'touchstart']) shield.addEventListener(type, e => { e.preventDefault(); e.stopPropagation(); }, {passive: false});
+      for (const type of ['click', 'pointerdown', 'mousedown', 'touchstart']) shield.addEventListener(type, e => {
+        if (!recoverDroppedSheets()) return;
+        e.preventDefault(); e.stopPropagation();
+      }, {passive: false});
       doc.body.append(shield);
     }
-    if (!shield.matches(':popover-open')) shield.showPopover();
+    if (!externalModalOpen && !shield.matches(':popover-open')) shield.showPopover();
   }
   function shieldMaybeDown() {
-    if (!shield || doc.querySelector('dialog[data-cw-lifted][open]') || pmHost) return;
+    if (!shield || doc.querySelector('dialog[data-cw-lifted][open]:popover-open') || pmHost) return;
     try { shield.hidePopover(); } catch {}
   }
+  function recoverDroppedSheets() {
+    if (externalModalOpen) return false;
+    const open = [...doc.querySelectorAll('dialog[data-cw-lifted][open]')];
+    const dropped = open.filter(d => !d.matches(':popover-open'));
+    if (!dropped.length) { shieldMaybeDown(); return Boolean(pmHost || open.length); }
+    for (const d of dropped) console.warn('[Claude Web] sheet dropped from top layer', d.parentNode, new Date().toISOString());
+    // Rebuild the order, including pages that are still in the top layer.
+    return restoreSheetLayers(openSheetLayers());
+  }
+  function restoreSheetLayers(ordered) {
+    try {
+      for (const d of ordered) if (d.matches(':popover-open')) d.hidePopover();
+      if (shield.matches(':popover-open')) shield.hidePopover();
+      shield.showPopover();
+      for (const d of ordered) { d.setAttribute('popover', 'manual'); d.showPopover(); guardSheetAnimation(d); }
+      return true;
+    } catch (error) {
+      console.warn('[Claude Web] sheet recovery failed', error);
+      for (const d of ordered) if (!d.matches(':popover-open')) {
+        if (d === pmHost) unhostPm(); else d.close();
+      }
+      shieldMaybeDown(); syncSheet();
+      return false;
+    }
+  }
   function liftDialog(d) {
+    d.removeAttribute('data-cw-animation-fallback');
     d.setAttribute('popover', 'manual'); d.setAttribute('data-cw-lifted', '');
     shieldUp();
     // 2.0.219：直接挂 open，不调 show()——show() 会自动把焦点给第一个按钮，而且不带 preventScroll；弹出页在 DOM 里还挂在设置面板里，
     // 面板就被滚到它那儿（Lulu：点扩展的设置，扩展页自己往下跳）。焦点由各自的代码给（我们的弹窗 focus({preventScroll})，酒馆的弹窗自己 setAutoFocus）。
     if (!d.open) d.setAttribute('open', '');
-    if (!d.matches(':popover-open')) {
+    if (externalModalOpen) syncExternalSheetYield();
+    else if (!d.matches(':popover-open')) {
       try { d.showPopover(); }
       catch { d.close(); d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted'); shieldMaybeDown(); nativeShowModal.call(d); return; }
     }
+    guardSheetAnimation(d);
     // 酒馆在 close 事件里可能马上又 showModal() 一次（关闭被拦下时）：那时 d 还开着，就不撤 popover，等下一次 close。
     const onClose = () => {
       if (d.open) { d.addEventListener('close', onClose, {once: true}); return; }
       try { if (d.matches(':popover-open')) d.hidePopover(); } catch {}
       d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted');
+      win.clearTimeout(sheetAnimationChecks.get(d)); sheetAnimationChecks.delete(d); d.removeAttribute('data-cw-animation-fallback');
       shieldMaybeDown();
     };
     d.addEventListener('close', onClose, {once: true});
   }
   function onSheetEscape(e) {
-    if (e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('dialog:modal,.select2-container--open')) return;
-    const top = [...sheetStack].reverse().find(el => el.matches?.('dialog[data-cw-lifted][open]'));
+    if (externalModalOpen || e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('dialog:modal,.select2-container--open')) return;
+    const top = openSheetLayers().reverse().find(el => el.matches?.('dialog[data-cw-lifted][open]'));
     if (!top) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (top._cwShut) top._cwShut(); else top.dispatchEvent(new win.Event('cancel', {cancelable: true}));
@@ -1649,13 +1775,62 @@ export function installOfficialLayout(win = window) {
   // 2.0.275（Lulu：删除确认的按钮先黑一下再变红）：删除类的标记原来在弹窗显示之后才挂；改成打开的那一刻就挂（酒馆这时已经填好内容）。
   const tagDanger = d => { if (!enabled() || !d.matches?.(SMALL_POPUP)) return; const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || ''); if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger); };
   function installLift() {
-    win.HTMLDialogElement.prototype.showModal = function () { tagDanger(this); if (liftable(this)) return liftDialog(this); return nativeShowModal.call(this); };
-    disposers.push(() => { win.HTMLDialogElement.prototype.showModal = nativeShowModal; shield?.remove(); shield = null; });
+    const wrappedShowModal = function () { tagDanger(this); if (liftable(this)) return liftDialog(this); return nativeShowModal.call(this); };
+    win.HTMLDialogElement.prototype.showModal = wrappedShowModal;
+    disposers.push(() => { if (win.HTMLDialogElement.prototype.showModal === wrappedShowModal) win.HTMLDialogElement.prototype.showModal = nativeShowModal; shield?.remove(); shield = null; });
     if (!canPopover) return;
+    on(doc, 'click', e => {
+      if (!externalModalOpen || !yieldedSheets.size || !e.isTrusted) return;
+      if (externalSheetModals.some(modal => modal.contains(e.target))) return;
+      const layer = [...yieldedSheets].reverse().find(layer => {
+        const r = layer.getBoundingClientRect();
+        return layer.contains(e.target) || (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom);
+      });
+      if (!layer) return;
+      // Consume a click that slipped through to the chat; never activate it.
+      if (!layer.contains(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); }
+      resumeYieldedSheets();
+    }, true);
+    disposers.push(() => { if (yieldCheckRaf) win.cancelAnimationFrame(yieldCheckRaf); yieldCheckRaf = 0; externalSheetModals = []; ignoredSheetModals.clear(); });
     on(doc, 'keydown', onSheetEscape, true);
+    // Popovers do not provide the native modal's Tab boundary.
+    on(doc, 'keydown', e => {
+      if (e.key !== 'Tab' || externalModalOpen || doc.querySelector('dialog:modal,.select2-container--open')) return;
+      const top = openSheetLayers().at(-1);
+      if (!top?.matches('dialog.cw-v4-editor:popover-open')) return;
+      const items = [...top.querySelectorAll('button,input,textarea,select,a[href],[tabindex]')].filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+      const first = items[0], last = items.at(-1);
+      if (!first) { e.preventDefault(); top.focus({preventScroll:true}); }
+      else if (!top.contains(doc.activeElement) || (!e.shiftKey && doc.activeElement === last) || (e.shiftKey && doc.activeElement === first)) {
+        e.preventDefault(); (e.shiftKey ? last : first).focus({preventScroll:true});
+      }
+    }, true);
   }
   function watchSheets() {
     installLift();
+    disposers.push(() => { for (const timer of sheetAnimationChecks.values()) win.clearTimeout(timer); sheetAnimationChecks.clear(); doc.querySelectorAll('[data-cw-animation-fallback]').forEach(layer => layer.removeAttribute('data-cw-animation-fallback')); });
+    // The root is not a content scroller. Avoid fighting the keyboard's reveal;
+    // reset only after focus leaves text controls or the visual viewport returns.
+    let rootResetRaf = 0, keyboardViewportSmall = false, keyboardViewportFullHeight = win.visualViewport?.height || win.innerHeight;
+    const textFocused = () => doc.activeElement?.matches('textarea,input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]):not([type=range]),[contenteditable]:not([contenteditable=false])');
+    const resetRoot = (keyboardClosed = false) => {
+      if (rootResetRaf || !enabled() || (!keyboardClosed && textFocused())) return;
+      rootResetRaf = win.requestAnimationFrame(() => {
+        rootResetRaf = 0;
+        if (enabled() && (keyboardClosed || !textFocused()) && (win.scrollX || win.scrollY)) win.scrollTo({left:0,top:0,behavior:'instant'});
+      });
+    };
+    on(win, 'scroll', () => resetRoot(), {passive:true});
+    on(doc, 'focusout', () => resetRoot(), true);
+    on(doc, 'focusin', () => { if (!keyboardViewportSmall) keyboardViewportFullHeight = Math.max(keyboardViewportFullHeight, win.visualViewport?.height || win.innerHeight); }, true);
+    if (win.visualViewport) on(win.visualViewport, 'resize', () => {
+      // Some hosts shrink innerHeight too, so compare against the pre-keyboard height.
+      if (!textFocused()) keyboardViewportFullHeight = win.visualViewport.height;
+      const small = win.visualViewport.height < Math.max(keyboardViewportFullHeight, win.innerHeight) - 100;
+      if (keyboardViewportSmall && !small) resetRoot(true);
+      keyboardViewportSmall = small;
+    });
+    disposers.push(() => { if (rootResetRaf) win.cancelAnimationFrame(rootResetRaf); });
     dimEl = make('div', 'cw-sheet-dim'); dimEl.setAttribute('aria-hidden', 'true'); doc.body.append(dimEl);
     // 2.0.214：Claude Web 设置弹窗里「自定义配色」照 App 是一行「›」，点了升起下一层弹出页（色块原样搬过去，关了搬回来）。
     on(doc, 'click', e => {
@@ -1676,6 +1851,7 @@ export function installOfficialLayout(win = window) {
     if (pm) { observe(pm, syncSheet, {attributes:true, attributeFilter:['class']}); decoratePromptPopup(pm); }
     on(win, 'resize', syncSheet);
     disposers.push(() => { win.clearTimeout(sheetAnimTimer); win.clearTimeout(pmCloseTimer); unhostPm(); dimEl?.remove(); for (const a of ['data-cw-sheet','data-cw-sheet-anim','data-cw-sheet-deep','data-cw-sheet-drag']) root.removeAttribute(a); });
+    disposers.push(() => { for (const d of yieldedSheets) d.removeAttribute('data-cw-sheet-yielded'); yieldedSheets.clear(); root.removeAttribute('data-cw-sheet-yield'); });
     hook();
   }
   // 提示词管理器的编辑 / 查看页也照弹出页排：顶栏「‹ 预设 | 编辑 | 保存」。按钮只是去点酒馆原来的关闭 / 保存，保存逻辑不变。
@@ -1697,5 +1873,35 @@ export function installOfficialLayout(win = window) {
     }
   }
   if (doc.readyState === 'loading') on(doc,'DOMContentLoaded',start,{once:true}); else start();
-  return { refresh: sync, activate, destroy() { destroyed = true; observers.forEach(m=>m.disconnect()); disposers.forEach(f=>f()); if (raf) win.cancelAnimationFrame(raf); for (const d of dialogs) d.close(); restoreAdaptedContainers(); shell?.remove(); doc.querySelector('.cw-v4-chat-head')?.remove(); root.removeAttribute('data-cw-v4'); root.removeAttribute('data-cw-v4-settings'); } };
+  return { refresh: sync, activate, setExternalModals, destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    observers.forEach(m=>m.disconnect());
+    if (raf) win.cancelAnimationFrame(raf);
+    // Native close events are queued. Restore inner editors before their parents.
+    for (const d of [...dialogs].reverse()) { d.close(); d._cwRestore?.(); }
+    for (const d of doc.querySelectorAll('dialog[data-cw-lifted]')) {
+      try { d.hidePopover(); } catch {}
+      d.close(); d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted');
+    }
+    disposers.forEach(f=>f());
+    sheetStack = [];
+    doc.querySelectorAll('[data-cw-sheet-under],[data-cw-sheet-lvl2]').forEach(n=>{n.removeAttribute('data-cw-sheet-under');n.removeAttribute('data-cw-sheet-lvl2');});
+    doc.getElementById('send_form')?.removeAttribute('data-cw-disclaimer');
+    doc.querySelector('.cw-v4-disclaimer')?.remove();
+    restoreAdaptedContainers();
+    for (const [panel, state] of panelDecorations) {
+      if (!state.hadPanelClass) panel.classList.remove('cw-v4-panel');
+      if (state.glyph?.style.getPropertyValue('--cw-v4-nav-icon') === state.installed) {
+        if (state.icon) state.glyph.style.setProperty('--cw-v4-nav-icon', state.icon, state.priority);
+        else state.glyph.style.removeProperty('--cw-v4-nav-icon');
+      }
+    }
+    panelDecorations.clear();
+    shell?.remove(); doc.querySelector('.cw-v4-chat-head')?.remove();
+    root.removeAttribute('data-cw-v4'); root.removeAttribute('data-cw-v4-settings');
+    for (const [key, value, priority] of iconProperties) if (root.style.getPropertyValue(key) === installedIconValues.get(key)) {
+      if (value) root.style.setProperty(key, value, priority); else root.style.removeProperty(key);
+    }
+  } };
 }
