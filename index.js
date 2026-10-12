@@ -4780,6 +4780,11 @@ if (CLAUDE_ENABLED) {
     return last.mes !== snap.lastMes || swipes !== snap.lastSwipes;   // 重新生成 / 继续写
   }
 
+  function setGeneratingFlag(on) {
+    const root = hostDocument.documentElement;
+    if (on) root.dataset.cwGenerating = '1'; else delete root.dataset.cwGenerating;
+  }
+
   function watchGenerationEvents() {
     if (generationSubscriptions.length || destroyed) return;
     const context = getContext();
@@ -4800,6 +4805,8 @@ if (CLAUDE_ENABLED) {
         if (active && args[2] === true) return;
         const wasActive = generationEventActive;
         generationEventActive = active;
+        /* 2.0.325：侧栏当前对话那一行的生成中橙点（official-web.css）。后台生成（quiet）不亮。 */
+        setGeneratingFlag(active && String(args[0] ?? '') !== 'quiet');
         if (active) startGenTimer(); else stopGenTimer();
         /* 上一轮如果是兜底收场的（结束事件丢了），generationEventActive 会一直是 true；
            这时新的开始事件也要开新一轮，否则这一轮的结束会被 settledRound 挡掉。 */
@@ -11258,6 +11265,7 @@ if (CLAUDE_ENABLED) {
     streamFollow = null;
     generationSubscriptions.length = 0;
     generationEventActive = false;
+    setGeneratingFlag(false);
     scrollHost?.removeEventListener('scroll', handleChatScroll);
     if (swipeTrackRaf) hostWindow.cancelAnimationFrame(swipeTrackRaf);
     swipeObserver?.disconnect();
