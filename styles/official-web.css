@@ -141,6 +141,7 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #send_t
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #send_form::after { left: 0 !important; right: 0 !important; width: auto !important; text-align: center !important; top: calc(100% + 11px) !important; bottom: auto !important; font-size: 12.5px !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) .clawd-character-switcher { top: calc(100% + 5px) !important; translate: 0 -6px !important; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body:not(.clawd-welcome) #send_but::before {
+  width: 20px !important; height: 20px !important;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 5v6.5a3 3 0 0 1-3 3H5.5'/%3E%3Cpath d='M9.5 10.5 5.5 14.5l4 4'/%3E%3C/svg%3E") !important;
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 5v6.5a3 3 0 0 1-3 3H5.5'/%3E%3Cpath d='M9.5 10.5 5.5 14.5l4 4'/%3E%3C/svg%3E") !important;
   background-color: var(--w-sub) !important; }

@@ -16,7 +16,7 @@
 import { installStreamFollow } from "./stream-follow.js";
 import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
 import { installOfficialLayout } from "./official-layout.js?v=2.0.323";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.310-rig18";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.326";
 import { createClawdPile } from "./clawd-pile.js?v=2.0.323";
 
 const CLAUDE_EXTENSION_MODE = true;
