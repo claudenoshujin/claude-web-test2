@@ -17,14 +17,17 @@
  * 只靠自动文件名命中的那条丢掉。同一角色、命中句一模一样的几条（同一段对话的分支）并成一行，标 ×N，点开最新的那条。
  * 2.0.320（Lulu 定，预览 design-phone-sidebar-v1，按官网尺寸）：手机侧栏也照官网 App——标题右边放搜索图标（点开在标题下
  * 出搜索框，和电脑同一套筛选 + 全部聊天搜索），「更多」折叠同一套，最近对话按日期分组（手机原来没有日期分类）。
- * 手机挂 html[data-cw-web-phone]，电脑挂 html[data-cw-web]，两边互不干扰。小灰字提示一律英文（Search / All chats …）。 */
+ * 手机挂 html[data-cw-web-phone]，电脑挂 html[data-cw-web]，两边互不干扰。小灰字提示一律英文（Search / All chats …）。
+ * 2.0.322（Lulu 定，预览 design-icons-v5）：侧栏图标自己重画，尺寸照 Claude 量的——线宽 1.2（24 格），完整图标撑满 80%。
+ * 菜单图标在 styles/official-web.css 末尾（由 tools/_tmp/cc-web/patch-322.cjs 从 icons-v5.cjs 生成），这里只管 新建 / More / 搜索。 */
 export function installOfficialWeb(win = window) {
   const doc = win.document, root = doc.documentElement;
-  const SV = (p, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const SV = (p, cls = '', sw = 1.6) => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const SVI = (p, cls = '') => SV(p, cls, 1.2);   // 侧栏图标（2.0.322 新画的那套）用细线
   const P = {
-    plus: '<path d="M12 5v14M5 12h14"/>',
-    search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
-    chev: '<path d="m9 6 6 6-6 6"/>',
+    plus: '<path d="M12 4.7v14.6M4.7 12h14.6"/>',
+    search: '<circle cx="10.5" cy="10.5" r="7.2"/><path d="m15.7 15.7 5.1 5.1"/>',
+    chev: '<path d="m9 4.6 7.4 7.4L9 19.4"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
     filter: '<path d="M7 4v6M7 14v6M17 4v2M17 10v10"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="8" r="2"/>',
     file: '<path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/>',
@@ -33,7 +36,7 @@ export function installOfficialWeb(win = window) {
   const zh = () => (doc.querySelector('#ui_language_select')?.value || win.localStorage.getItem('language') || win.navigator.language || 'en').startsWith('zh');
   const t = (cn, en) => zh() ? cn : en;
   const make = (tag, cls, html) => { const n = doc.createElement(tag); n.className = cls; if (html != null) n.innerHTML = html; return n; };
-  const row = (cls, icon, text, extra = '') => make('div', 'cw-web-row ' + cls, SV(icon) + `<span class="cw-web-label">${text}</span>` + extra);
+  const row = (cls, icon, text, extra = '') => make('div', 'cw-web-row ' + cls, SVI(icon) + `<span class="cw-web-label">${text}</span>` + extra);
   const deco = n => { n.setAttribute('aria-hidden', 'true'); return n; };
 
   // 'desk'：电脑布局（窗口 > 700）；'phone'：CW 的手机布局；null：都不管（窄电脑窗口、关掉、别的结构 / 皮肤）。
@@ -274,7 +277,7 @@ export function installOfficialWeb(win = window) {
     scheduleSearch(); renderResults();
   };
   const makeSearch = () => {
-    const box = make('label', 'cw-web-search cw-web-x', SV(P.search));
+    const box = make('label', 'cw-web-search cw-web-x', SVI(P.search));
     const input = doc.createElement('input');
     input.type = 'search'; input.className = 'cw-web-search-input'; input.placeholder = 'Search';
     input.setAttribute('aria-label', t('搜索聊天', 'Search chats')); input.autocomplete = 'off'; input.spellcheck = false;
@@ -303,7 +306,7 @@ export function installOfficialWeb(win = window) {
     if (mode === 'phone') {
       const brand = holder.querySelector(':scope > .clawd-rail-brand');
       if (brand && !brand.querySelector(':scope > .cw-web-phone-search')) {
-        const b = make('button', 'cw-web-phone-search cw-web-x', SV(P.search));
+        const b = make('button', 'cw-web-phone-search cw-web-x', SVI(P.search));
         b.type = 'button'; b.setAttribute('aria-label', t('搜索聊天', 'Search chats'));
         b.addEventListener('click', e => { e.stopPropagation(); togglePhoneSearch(); });
         brand.append(b);
@@ -355,7 +358,7 @@ export function installOfficialWeb(win = window) {
 
   if (!doc.getElementById('cw-web-style')) {
     const link = doc.createElement('link'); link.id = 'cw-web-style'; link.rel = 'stylesheet';
-    link.href = new URL('styles/official-web.css?v=2.0.321', import.meta.url).href; doc.head.append(link);
+    link.href = new URL('styles/official-web.css?v=2.0.322', import.meta.url).href; doc.head.append(link);
   }
   let raf = 0;
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; ensure(); }); };
