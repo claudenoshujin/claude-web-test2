@@ -14,7 +14,10 @@
  * 2.0.319（Lulu：搜索效果奇怪）：酒馆默认的聊天文件名带日期时间（xx - 2026-09-23@23h52m…），
  * 搜数字几乎全中，所以本地筛选和结果都不再拿这种自动文件名去比；结果行改成显示「命中的那句」+ 最后消息日期——
  * 以前显示的是最后一条消息，同一段对话的几个分支长得一模一样。前 30 条结果读一遍聊天内容找命中句，
- * 只靠自动文件名命中的那条丢掉。同一角色、命中句一模一样的几条（同一段对话的分支）并成一行，标 ×N，点开最新的那条。 */
+ * 只靠自动文件名命中的那条丢掉。同一角色、命中句一模一样的几条（同一段对话的分支）并成一行，标 ×N，点开最新的那条。
+ * 2.0.320（Lulu 定，预览 design-phone-sidebar-v1，按官网尺寸）：手机侧栏也照官网 App——标题右边放搜索图标（点开在标题下
+ * 出搜索框，和电脑同一套筛选 + 全部聊天搜索），「更多」折叠同一套，最近对话按日期分组（手机原来没有日期分类）。
+ * 手机挂 html[data-cw-web-phone]，电脑挂 html[data-cw-web]，两边互不干扰。小灰字提示一律英文（Search / All chats …）。 */
 export function installOfficialWeb(win = window) {
   const doc = win.document, root = doc.documentElement;
   const SV = (p, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -33,12 +36,20 @@ export function installOfficialWeb(win = window) {
   const row = (cls, icon, text, extra = '') => make('div', 'cw-web-row ' + cls, SV(icon) + `<span class="cw-web-label">${text}</span>` + extra);
   const deco = n => { n.setAttribute('aria-hidden', 'true'); return n; };
 
-  const active = () => root.dataset.cwV4 != null && root.dataset.claudeEnabled !== 'off'
-    && root.dataset.claudeStructure === 'rail' && root.dataset.claudeSkin === 'classic'
-    && root.dataset.claudeLayout !== 'mobile' && win.innerWidth > 700;
+  // 'desk'：电脑布局（窗口 > 700）；'phone'：CW 的手机布局；null：都不管（窄电脑窗口、关掉、别的结构 / 皮肤）。
+  const modeNow = () => {
+    if (root.dataset.cwV4 == null || root.dataset.claudeEnabled === 'off' || root.dataset.claudeStructure !== 'rail' || root.dataset.claudeSkin !== 'classic') return null;
+    if (root.dataset.claudeLayout === 'mobile') return 'phone';
+    return win.innerWidth > 700 ? 'desk' : null;
+  };
+  let mode = null;
 
   const mine = () => doc.querySelectorAll('.cw-web-x');
-  const teardown = () => { searchGen++; win.clearTimeout(searchTimer); mine().forEach(n => n.remove()); delete root.dataset.cwWeb; delete root.dataset.cwWebMore; };
+  const teardown = () => {
+    searchGen++; win.clearTimeout(searchTimer); query = ''; results = null; mode = null;
+    mine().forEach(n => n.remove());
+    for (const k of ['cwWeb', 'cwWebPhone', 'cwWebMore', 'cwWebSearch']) delete root.dataset[k];
+  };
   // 「更多」：收起时 CSS 把背景、扩展两行压成 0 高（不 display:none 整个 .drawer——它们的设置页是 fixed 的、挂在里面，
   // 开着的页不能跟着消失）。展开 / 收起记住。
   const MORE_KEY = 'claude-web:web-more';
@@ -183,7 +194,7 @@ export function installOfficialWeb(win = window) {
     const state = make('span', 'cw-web-results-state'); state.textContent = busy ? results.done + '/' + results.total : '';
     head.append(label, state); box.append(head);
     items.forEach(i => box.append(resultRow(i)));
-    if (!busy && !items.length) { const none = make('div', 'cw-web-results-none'); none.textContent = t('没有找到其他聊天', 'No other chats found'); box.append(none); }
+    if (!busy && !items.length) { const none = make('div', 'cw-web-results-none'); none.textContent = 'No other chats found'; box.append(none); }
   };
   const runSearch = async q => {
     const gen = ++searchGen, c = ctx(); if (!c) return;
@@ -252,28 +263,58 @@ export function installOfficialWeb(win = window) {
     if (same) return;
     have.forEach(h => h.remove());
     want.forEach(([r, g], i) => {
-      const h = deco(make('div', 'cw-web-date cw-web-x', `<span>${g}</span>` + (i === 0 ? SV(P.filter, 'cw-web-filter') : '')));
+      const h = deco(make('div', 'cw-web-date cw-web-x', `<span>${g}</span>` + (i === 0 && mode === 'desk' ? SV(P.filter, 'cw-web-filter') : '')));
       h.dataset.label = g; r.before(h);
     });
   };
 
+  const applyQuery = value => {
+    query = value;
+    const l = doc.querySelector('#top-settings-holder .clawd-rail-recents .recentChatList'); if (l) filterRecents(l);
+    scheduleSearch(); renderResults();
+  };
+  const makeSearch = () => {
+    const box = make('label', 'cw-web-search cw-web-x', SV(P.search));
+    const input = doc.createElement('input');
+    input.type = 'search'; input.className = 'cw-web-search-input'; input.placeholder = 'Search';
+    input.setAttribute('aria-label', t('搜索聊天', 'Search chats')); input.autocomplete = 'off'; input.spellcheck = false;
+    input.value = query;
+    input.addEventListener('input', () => applyQuery(input.value));
+    input.addEventListener('keydown', e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; applyQuery(''); } });
+    box.append(input);
+    return box;
+  };
+  // 手机：标题右边的放大镜开 / 关搜索框；关的时候连关键词一起清掉，列表恢复。
+  const togglePhoneSearch = () => {
+    const open = root.dataset.cwWebSearch !== 'open';
+    const input = doc.querySelector('#top-settings-holder > .cw-web-search .cw-web-search-input');
+    if (open) { root.dataset.cwWebSearch = 'open'; input?.focus({ preventScroll: true }); }
+    else { delete root.dataset.cwWebSearch; if (input) input.value = ''; applyQuery(''); input?.blur(); }
+  };
+
   const ensure = () => {
-    if (!active()) { if (root.dataset.cwWeb != null) teardown(); return; }
-    if (root.dataset.cwWeb == null) root.dataset.cwWeb = '';
+    const want = modeNow();
+    if (want !== mode && (root.dataset.cwWeb != null || root.dataset.cwWebPhone != null)) teardown();
+    if (!want) return;
+    mode = want;
+    if (mode === 'desk' && root.dataset.cwWeb == null) root.dataset.cwWeb = '';
+    if (mode === 'phone' && root.dataset.cwWebPhone == null) root.dataset.cwWebPhone = '';
     const holder = doc.getElementById('top-settings-holder'); if (!holder) return;
-    const tool = holder.querySelector(':scope > .cw-desk-tool');
+    if (mode === 'phone') {
+      const brand = holder.querySelector(':scope > .clawd-rail-brand');
+      if (brand && !brand.querySelector(':scope > .cw-web-phone-search')) {
+        const b = make('button', 'cw-web-phone-search cw-web-x', SV(P.search));
+        b.type = 'button'; b.setAttribute('aria-label', t('搜索聊天', 'Search chats'));
+        b.addEventListener('click', e => { e.stopPropagation(); togglePhoneSearch(); });
+        brand.append(b);
+      }
+      if (brand && !holder.querySelector(':scope > .cw-web-search')) brand.after(makeSearch());
+    }
+    const tool = mode === 'desk' && holder.querySelector(':scope > .cw-desk-tool');
     if (tool && !tool.querySelector('.cw-web-brand')) tool.querySelector(':scope > svg:nth-of-type(2)')?.after(deco(make('span', 'cw-web-brand cw-web-x', 'Claude')));
     let search = holder.querySelector(':scope > .cw-web-search');
-    if (!search) {
-      search = make('label', 'cw-web-search cw-web-x', SV(P.search));
-      const input = doc.createElement('input');
-      input.type = 'search'; input.className = 'cw-web-search-input'; input.placeholder = t('搜索', 'Search');
-      input.setAttribute('aria-label', t('搜索聊天', 'Search chats')); input.autocomplete = 'off'; input.spellcheck = false;
-      input.value = query;
-      const apply = () => { query = input.value; const l = doc.querySelector('#top-settings-holder .clawd-rail-recents .recentChatList'); if (l) filterRecents(l); scheduleSearch(); renderResults(); };
-      input.addEventListener('input', apply);
-      input.addEventListener('keydown', e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; apply(); } });
-      search.append(input);
+    if (mode === 'desk' && !search) {
+      search = makeSearch();
       (tool || holder.firstElementChild)?.after(search);
       const fresh = row('cw-web-new cw-web-x', P.plus, t('新建对话', 'New chat'));
       fresh.setAttribute('role', 'button'); fresh.tabIndex = 0;
@@ -301,11 +342,12 @@ export function installOfficialWeb(win = window) {
     // 侧栏各项靠 CSS order 排；「更多」跟角色卡同一个 order、DOM 紧跟其后，就排在它下面。样式表晚到时 order 会变，每次对一遍。
     const order = chars && win.getComputedStyle(chars).order;
     if (more && order && more.style.order !== order) more.style.order = order;
-    const persona = doc.querySelector('#persona-management-button > .drawer-toggle');
-    if (persona && !persona.querySelector('.cw-web-apps')) persona.append(deco(make('span', 'cw-web-apps cw-web-x', SV(P.apps))));
     const list = holder.querySelector('.clawd-rail-recents .recentChatList');
     if (list) { groupRecents(list); filterRecents(list); }
     if (query.trim()) renderResults();
+    if (mode !== 'desk') return;
+    const persona = doc.querySelector('#persona-management-button > .drawer-toggle');
+    if (persona && !persona.querySelector('.cw-web-apps')) persona.append(deco(make('span', 'cw-web-apps cw-web-x', SV(P.apps))));
     const form = doc.getElementById('send_form');
     if (form && !form.querySelector(':scope > .cw-web-proj')) form.append(deco(make('div', 'cw-web-proj cw-web-x', `<span>${t('项目', 'Project')}</span>` + SV(P.down))));
     if (!doc.querySelector('body > .cw-web-share')) doc.body.append(deco(make('div', 'cw-web-share cw-web-x', SV(P.file) + `<b>${t('分享', 'Share')}</b>`)));
@@ -313,7 +355,7 @@ export function installOfficialWeb(win = window) {
 
   if (!doc.getElementById('cw-web-style')) {
     const link = doc.createElement('link'); link.id = 'cw-web-style'; link.rel = 'stylesheet';
-    link.href = new URL('styles/official-web.css?v=2.0.319', import.meta.url).href; doc.head.append(link);
+    link.href = new URL('styles/official-web.css?v=2.0.320', import.meta.url).href; doc.head.append(link);
   }
   let raf = 0;
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; ensure(); }); };
