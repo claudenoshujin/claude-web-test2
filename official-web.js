@@ -332,7 +332,7 @@ export function installOfficialWeb(win = window) {
     const chars = doc.getElementById('rightNavHolder');
     let more = holder.querySelector(':scope > .cw-web-more');
     if (chars && !more) {
-      more = row('cw-web-more cw-web-x', P.chev, t('更多', 'More'));
+      more = row('cw-web-more cw-web-x', P.chev, 'More');   // 2.0.321（Lulu）：小灰字一律英文
       more.setAttribute('role', 'button'); more.tabIndex = 0;
       more.addEventListener('click', toggleMore);
       more.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMore(); } });
@@ -355,7 +355,7 @@ export function installOfficialWeb(win = window) {
 
   if (!doc.getElementById('cw-web-style')) {
     const link = doc.createElement('link'); link.id = 'cw-web-style'; link.rel = 'stylesheet';
-    link.href = new URL('styles/official-web.css?v=2.0.320', import.meta.url).href; doc.head.append(link);
+    link.href = new URL('styles/official-web.css?v=2.0.321', import.meta.url).href; doc.head.append(link);
   }
   let raf = 0;
   const schedule = () => { if (!raf) raf = win.requestAnimationFrame(() => { raf = 0; ensure(); }); };
