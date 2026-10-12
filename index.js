@@ -7534,9 +7534,16 @@ if (CLAUDE_ENABLED) {
 
   /* 当前对话那一行挂 cw-current：手机上「⋯」只在这一行常显（其余行长按） */
   function markCurrentRecent() {
-    const chatId = String(getContext()?.getCurrentChatId?.() ?? '');
+    const context = getContext();
+    const chatId = String(context?.getCurrentChatId?.() ?? '');
+    /* 2.0.328：不同角色可以有同名存档（比如从别的角色拷来的聊天），只比文件名会把两行都标成当前——
+       生成中的橙点就亮了两个。再比一次是哪个角色 / 群组；拿不到角色时退回只比文件名。 */
+    const groupId = String(context?.groupId ?? '').trim();
+    const avatar = groupId ? '' : String(context?.characters?.[context?.characterId]?.avatar ?? '').trim();
     for (const row of hostDocument.querySelectorAll('.clawd-rail-recents .recentChat')) {
-      const on = Boolean(chatId) && normalizeChatKey(row.dataset.file) === normalizeChatKey(chatId);
+      const owner = groupId ? String(row.dataset.group ?? '').trim() === groupId
+        : (!avatar || String(row.dataset.avatar ?? '').trim() === avatar);
+      const on = Boolean(chatId) && owner && normalizeChatKey(row.dataset.file) === normalizeChatKey(chatId);
       if (row.classList.contains('cw-current') !== on) row.classList.toggle('cw-current', on);
     }
   }
