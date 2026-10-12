@@ -1,4 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300..600&display=swap");
+/* Mobile: keep a fixed element in a message from making the root touch-scrollable. */
+html[data-cw-v4][data-claude-layout="mobile"]{overflow-y:hidden!important}
+/* Keep message fixed elements anchored to the viewport, not a scrollable root. */
+html[data-cw-v4]:is([data-claude-layout="mobile"],[data-claude-layout="pc"]){
+  -webkit-transform:none!important;
+  transform:none!important;
+  -webkit-perspective:none!important;
+  perspective:none!important;
+}
+/* Scaled blur backgrounds must not add scrollable overflow to the document. */
+html[data-cw-v4][data-claude-bg-image-blur="on"] body>:is(#bg1,#bg_custom,#bg_animation){position:fixed!important;inset:0!important}
+html[data-cw-v4][data-claude-clawd="off"] body #send_form#send_form::after{content:none!important;animation:none!important}
 /* Native theme selectors include the rail and panel IDs; match that scope. */
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel:is(#WorldInfo,#Backgrounds,#rm_extensions_block,#left-nav-panel,#rm_api_block,#AdvancedFormatting,#PersonaManagement,#right-nav-panel,#user-settings-block) :is(.menu_button,.cw-v4-button,button:not(.cw-v4-navitem)):not(.cw-v4-more-item,.cw-v4-editor-x,.cw-v4-primary,.cw-v4-as-btn,.cw-v4-seg-item,.cw-v4-pref-btn,.cw-v4-danger){background:var(--cw-v4-bg)!important;background-image:none!important;color:var(--cw-v4-text)!important;border:1px solid var(--cw-v4-line)!important;box-shadow:none!important;border-radius:8px!important;white-space:nowrap!important;word-break:normal!important;flex-shrink:0!important;font-size:14px!important;font-weight:400!important;min-height:34px;filter:none!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-toolbar{flex-wrap:wrap!important}
@@ -1729,6 +1741,13 @@ html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-
 /* 2.0.218：弹出页改用 popover 后垫在它底下的透明挡板（official-layout.js shieldUp），拦住点到后面页面的手势。 */
 html[data-cw-v4] body>.cw-sheet-shield{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;overflow:hidden;outline:0;pointer-events:auto}
 html[data-cw-v4] body>.cw-sheet-shield::backdrop{background:transparent}
+/* External modal owns interaction while lifted sheets temporarily leave the top layer. */
+html[data-cw-v4][data-cw-sheet-yield] body{scale:none!important;border-radius:0!important;transition:none!important}
+html[data-cw-v4][data-cw-sheet-yield] body :is(dialog[data-cw-sheet-yielded],.cw-pm-host[data-cw-sheet-yielded]){z-index:4098!important;pointer-events:auto!important}
+html[data-cw-v4][data-cw-sheet-yield] body dialog[data-cw-sheet-yielded]{display:flex!important}
+html[data-cw-v4][data-cw-sheet-yield] body .cw-pm-host[data-cw-sheet-yielded]{display:block!important}
+html[data-cw-v4][data-cw-sheet-yield] body>:is(.cw-sheet-shield,.cw-sheet-dim){display:none!important;pointer-events:none!important}
+html[data-cw-v4] body :is(dialog,.cw-pm-host)[data-cw-animation-fallback][data-cw-animation-fallback][data-cw-animation-fallback],html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog[data-cw-animation-fallback][data-cw-animation-fallback][data-cw-animation-fallback]{animation:none!important;translate:none!important}
 /* 2.0.218：电脑对话框不要「‹ 上一页」（2.0.211 起是手机才有的）。原来那条 display:none 权重不够，被 736 行的按钮规则（带 ID）压过，电脑上也露出来了。 */
 @media(min-width:701px){html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-editor>.cw-v4-editor-head>.cw-v4-editor-back{display:none!important}}
 /* 2.0.219（Lulu：点「管理」按钮会往右挪）：主题给抽屉 / 弹窗里的按钮按下时 transform:scale(.975)（day-mobile 1060 行），
@@ -3771,3 +3790,19 @@ html[data-cw-v4][data-claude-integrated-theme="night"] body>.cw-desk-win,html[da
 
 /* 2.0.313：去掉 Clawd 脚下阴影（大 Clawd 的 shadow 层 + 叠罗汉阴影）。 */
 .clr-p-shadow,.clawd-pile-shadow{display:none!important}
+
+/* Keep the navigation silhouette on WebViews that only support prefixed masks. */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-toggle>.drawer-icon{
+  -webkit-mask:var(--cw-v4-nav-icon) center/contain no-repeat!important;
+  mask:var(--cw-v4-nav-icon) center/contain no-repeat!important;
+}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::before,
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.drawer-toggle>.drawer-icon::after{
+  content:none!important;
+  display:none!important;
+}
+
+/* Long option names must leave room for the setting title in either layout. */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child)>.cw-v4-row-info{min-width:6em!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child)>.cw-v4-row-controls{min-width:0!important;max-width:55%!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-row:is(.cw-v4-stack,.cw-v4-stackm):has(>.cw-v4-row-controls>select:only-child)>.cw-v4-row-controls>select{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}

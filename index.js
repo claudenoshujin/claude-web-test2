@@ -146,7 +146,7 @@ try {
 
 /* 总开关。默认开；只有明确写过 'off' 才算关，
    读不到 localStorage（无痕、被云端宿主禁用）时不能把整个扩展关掉。 */
-const CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
+let CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off';
 /* 框架兼容模式保留 Claude Web 的桌面外壳：左侧栏、内容区让位和输入框。
    外部主题继续负责配色、字体、背景、欢迎页和消息内容。 */
 const CLAUDE_COMPAT_REQUESTED = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
@@ -461,8 +461,10 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
 officialStyle.href = new URL('styles/official-layout.css?v=20261006u', import.meta.url).href;
-document.head.append(officialStyle);
+document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
+if (CLAUDE_ENABLED) document.head.append(officialStyle);
 const startOfficialLayout = () => {
+  if (!CLAUDE_ENABLED) return;
   document.head.append(officialStyle);
   window.__claudeOfficialLayout?.destroy();
   window.__claudeOfficialLayout = installOfficialLayout(window);
@@ -2131,6 +2133,7 @@ if (CLAUDE_ENABLED) {
   const EXTERNAL_MODAL_OPEN_CLASS = 'clawd-external-modal-open';
   const EXTERNAL_MODAL_SELECTOR = [
     '[role="dialog"]',
+    '[aria-modal="true"]',
     'dialog[open]',
     '[class*="modal-backdrop" i]',
     '[class*="modal_backdrop" i]',
@@ -2165,10 +2168,63 @@ if (CLAUDE_ENABLED) {
   /* 2.0.223：输入框右上角三只叠着睡觉的 Clawd（clawd-pile.js），替换原来的装饰图 #send_form::after。 */
   /* 2.0.300：大小 Clawd 互相叠。小 Clawd 那边要知道大 Clawd 站没站在输入框上、在不在走路，
      还要能叫大 Clawd 降回地上（它坐着的那只小 Clawd 被拿走时）。A2 在后面才定义，这里只是闭包，用的时候已经有了。 */
-  const clawdPile = createClawdPile({ doc: hostDocument, win: hostWindow, big: {
+  const clawdEnabled = () => !destroyed && hostDocument.documentElement.dataset.claudeClawd !== 'off';
+  let clawdPileInstance = null;
+  const makeClawdPile = () => createClawdPile({ doc: hostDocument, win: hostWindow, big: {
     state: () => ({ grounded: !A2.held && Math.abs(A2.fy - A2.floor) < .5, walking: /^rig:walkLoop/.test(String(clawdTracks.B || '')) }),
     lower: () => clawdBigLower(),
   } });
+  const clawdPile = Object.fromEntries(['ensure','left','destroy','hush','peek','seats','trackSeats','seatLive','bigSat','blocks','riderCount','unloadBig','follow','followEnd','restack'].map(key => [key, (...args) => {
+    if (key === 'destroy') { clawdPileInstance?.destroy(); clawdPileInstance = null; return; }
+    if (clawdEnabled() && key === 'ensure' && !clawdPileInstance) clawdPileInstance = makeClawdPile();
+    if (clawdEnabled() && clawdPileInstance) return clawdPileInstance[key](...args);
+    if (key === 'trackSeats') return () => [];
+    return ['seats','blocks'].includes(key) ? [] : key === 'riderCount' ? 0 : null;
+  }]));
+  const clawdFrames = new Set(), clawdTimers = new Set();
+  function requestClawdFrame(fn) {
+    if (!clawdEnabled()) return 0;
+    const id = hostWindow.requestAnimationFrame(now => { clawdFrames.delete(id); if (clawdEnabled()) fn(now); });
+    clawdFrames.add(id); return id;
+  }
+  function clawdLater(fn, ms) {
+    if (!clawdEnabled()) return 0;
+    const id = hostWindow.setTimeout(() => { clawdTimers.delete(id); if (clawdEnabled()) fn(); }, ms);
+    clawdTimers.add(id); return id;
+  }
+  function cancelClawdLater(id) { clawdTimers.delete(id); hostWindow.clearTimeout(id); }
+  function cancelClawdFrame(id) { clawdFrames.delete(id); hostWindow.cancelAnimationFrame(id); }
+  let clawdWasEnabled = null;
+  function syncClawdRuntime() {
+    const on = clawdEnabled();
+    if (on === clawdWasEnabled) return;
+    clawdWasEnabled = on;
+    if (on) {
+      mountClawdDebugMenu();
+      clawdLastIdleTickAt = Date.now();
+      clawdRuntimeTimer = hostWindow.setInterval(clawdRuntimeTick, 200);
+      ensureComposerClawd();
+      return;
+    }
+    hostWindow.clearInterval(clawdRuntimeTimer); clawdRuntimeTimer = 0;
+    for (const id of clawdFrames) hostWindow.cancelAnimationFrame(id);
+    for (const id of clawdTimers) hostWindow.clearTimeout(id);
+    clawdFrames.clear(); clawdTimers.clear();
+    clawdPile.destroy(); cleanupClawdRigEffects();
+    A2.flying++; A2.seqRun++; A2.lockUntil = 0; A2.lockName = '';
+    const button = composerClawd();
+    if (A2.pointerId != null) try { button?.releasePointerCapture(A2.pointerId); } catch {}
+    A2.held = A2.dragging = A2.petting = false; A2.pointerId = null;
+    A2.x = A2.fy = A2.floor = A2.homeX = A2.rot = 0; A2.sqx = A2.sqy = 1;
+    A2.bndRaf = A2.petTimer = A2.squashTimer = 0; A2.bndReady = false;
+    lookRaf = dozeTimer = clawdScrollRestTimer = clawdPileRestTimer = 0;
+    clawdWalkNudge = null; clawdScrollHolding = false;
+    clawdTracks.B = 'idle'; clawdTracks.C = null; clawdTracks.bUntil = clawdTracks.cUntil = 0;
+    clawdReadingGate.reset(true); clawdComposerReaction.reset();
+    clawdFormRO?.disconnect(); clawdFormRO = null; clawdFormObserved = null;
+    unmountClawdDebugMenu();
+    hostDocument.querySelectorAll('button.' + BUTTON_CLASS).forEach(node => { node.getAnimations?.({subtree:true}).forEach(animation => animation.cancel()); node.remove(); });
+  }
   let streamFollow = null;
   let previousTypingActive = false;
   let generationEventActive = false;
@@ -3635,9 +3691,10 @@ if (CLAUDE_ENABLED) {
   }
 
   function renderClawdTracks() {
+    if (!clawdEnabled()) return;
     const visible = clawdVisibleState();
     const owner = clawdTracks.C ? 'C' : clawdTracks.A ? 'A' : 'B';
-    const clawdEnabled = hostDocument.documentElement.dataset.claudeClawd !== 'off';
+    const showClawd = clawdEnabled();
     const generationInFlight = clawdTracks.A === 'think'
       || clawdTracks.A === 'stream'
       || clawdTracks.A === 'sit';
@@ -3657,7 +3714,7 @@ if (CLAUDE_ENABLED) {
       /* 旧主题的 Clawd 开关和 welcome 规则都带 !important。最终显隐由真实
          开关和节点职责写在节点上，避免样式加载顺序误杀大 Clawd；粒子/气泡
          开关不参与本体显隐。 */
-      const display = clawdEnabled && (isComposer || !generationInFlight) ? 'block' : 'none';
+      const display = showClawd && (isComposer || !generationInFlight) ? 'block' : 'none';
       if (button.style.getPropertyValue('display') !== display
         || button.style.getPropertyPriority('display') !== 'important') {
         button.style.setProperty('display', display, 'important');
@@ -3707,10 +3764,11 @@ if (CLAUDE_ENABLED) {
   let clawdRigPrewarmTimer = 0;
   let clawdRigPrewarmIsIdle = false;
   function clawdRigSchedulePrewarm() {
+    if (!clawdEnabled()) return;
     if (clawdRigPrewarmTimer) return;
     const run = () => {
       clawdRigPrewarmTimer = 0;
-      if (destroyed) return;
+      if (!clawdEnabled()) return;
       const style = hostDocument.getElementById(CLAWD_RIG_STYLE_ID);
       if (!style) return;
       // 打断收场用的常驻容器也在这时建好：第一次按下时再建，要往 body 里插节点、读祖先层级，又是一次整页重算
@@ -3725,7 +3783,7 @@ if (CLAUDE_ENABLED) {
     clawdRigPrewarmIsIdle = typeof hostWindow.requestIdleCallback === 'function';
     clawdRigPrewarmTimer = clawdRigPrewarmIsIdle
       ? hostWindow.requestIdleCallback(run, { timeout: 4000 })
-      : hostWindow.setTimeout(run, 1500);
+      : clawdLater(run, 1500);
   }
 
   /* 某个动作第一次要播时，把它的 CSS 追加进骨架样式表 */
@@ -3820,7 +3878,7 @@ if (CLAUDE_ENABLED) {
   function removeClawdRigGhost(layer) {
     const job = clawdRigGhostJobs.get(layer);
     if (job) {
-      hostWindow.clearTimeout(job.timer);
+      cancelClawdLater(job.timer);
       job.animations.forEach(animation => animation.cancel());
       clawdRigGhostJobs.delete(layer);
     }
@@ -3830,7 +3888,7 @@ if (CLAUDE_ENABLED) {
   function cleanupClawdRigEffects() {
     if (clawdRigPrewarmTimer) {
       if (clawdRigPrewarmIsIdle) hostWindow.cancelIdleCallback?.(clawdRigPrewarmTimer);
-      else hostWindow.clearTimeout(clawdRigPrewarmTimer);
+      else cancelClawdLater(clawdRigPrewarmTimer);
       clawdRigPrewarmTimer = 0;
     }
     for (const layer of clawdRigGhostJobs.keys()) removeClawdRigGhost(layer);
@@ -3943,7 +4001,7 @@ if (CLAUDE_ENABLED) {
       return [ghost, frames];
     });
     host.append(layer);
-    const job = { timer: hostWindow.setTimeout(() => removeClawdRigGhost(layer), 1200), animations: [] };
+    const job = { timer: clawdLater(() => removeClawdRigGhost(layer), 1200), animations: [] };
     clawdRigGhostJobs.set(layer, job);
     // ③ 最后开始动
     for (const [ghost, frames] of jobs) {
@@ -3967,7 +4025,7 @@ if (CLAUDE_ENABLED) {
       const now = Date.now();
       if (curBase === 'tilt') {
         clawdRigUntiltUntil = now + CLAWD_RIG.clips.untilt.dur;
-        hostWindow.setTimeout(() => { if (!destroyed) renderClawdTracks(); }, CLAWD_RIG.clips.untilt.dur + 20);
+        clawdLater(() => { if (!destroyed) renderClawdTracks(); }, CLAWD_RIG.clips.untilt.dur + 20);
         clip = 'untilt';
       } else if (curBase === 'untilt' && now < clawdRigUntiltUntil) {
         clip = 'untilt';
@@ -4049,21 +4107,21 @@ if (CLAUDE_ENABLED) {
   let clawdDebugStatusTimer = 0;
   let clawdDebugOpen = false;       // 只有面板展开时「停掉随机闲置」才生效
 
-  function clawdDebugLater(ms, fn) { clawdDebugTimers.push(hostWindow.setTimeout(fn, ms)); }
+  function clawdDebugLater(ms, fn) { clawdDebugTimers.push(clawdLater(fn, ms)); }
 
   /* 慢放：把输入框 Clawd 身上正在跑的动画（含 ::before 和骨架各层）统一调速 */
   function clawdDebugApplyRate() {
     if (clawdDebugRate === 1) return;
     const button = composerClawd();
     if (!button) return;
-    hostWindow.requestAnimationFrame(() => {
+    requestClawdFrame(() => {
       try { button.getAnimations({ subtree: true }).forEach(anim => { anim.playbackRate = clawdDebugRate; }); }
       catch (error) { /* 老 WebView 没有 getAnimations 就不慢放 */ }
     });
   }
 
   function clawdDebugStop() {
-    clawdDebugTimers.forEach(id => hostWindow.clearTimeout(id));
+    clawdDebugTimers.forEach(id => cancelClawdLater(id));
     clawdDebugTimers = [];
     /* 没在生成时，A 轨上残留的完成 / 出错也一起收掉，不然它会盖住要看的动作 */
     clawdDebugA = false;
@@ -4204,7 +4262,7 @@ if (CLAUDE_ENABLED) {
   function unmountClawdDebugMenu() {
     hostWindow.clearInterval(clawdDebugStatusTimer);
     clawdDebugStatusTimer = 0;
-    clawdDebugTimers.forEach(id => hostWindow.clearTimeout(id));
+    clawdDebugTimers.forEach(id => cancelClawdLater(id));
     clawdDebugTimers = [];
     clawdDebugOpen = false;
     hostDocument.getElementById(CLAWD_DEBUG_ID)?.remove();
@@ -4250,18 +4308,19 @@ if (CLAUDE_ENABLED) {
     if (A2.held) {
       // 支撑撤走时还被手指按着：位置仍交给手势，松手必须走无支撑回落，不能停在旧座位上。
       A2.petting = false;
-      hostWindow.clearTimeout(A2.petTimer);
+      cancelClawdLater(A2.petTimer);
       return null;
     }
     button.style.setProperty('transition', 'transform .4s cubic-bezier(.4,0,.2,1)', 'important');
     A2.fy = A2.floor;
     if (seat) { A2.x += seat.cx - cx; A2.homeX = A2.x; }
     a2Place(button);
-    hostWindow.setTimeout(() => { if (!A2.held) { button.style.removeProperty('transition'); scheduleA2BoundsWarm(button); } }, 420);
+    clawdLater(() => { if (!A2.held) { button.style.removeProperty('transition'); scheduleA2BoundsWarm(button); } }, 420);
     return seat ? seat.name : null;
   }
 
   function setClawdA(value, duration = 0) {
+    if (value) clawdComposerReaction.reset();
     /* 生成永远优先：它能取消 A2 的生气序列。反过来不行——序列锁只挡 C 轨。 */
     a2CancelSeq();
     if (value !== clawdTracks.A) clawdShakeRiders(value);
@@ -4273,6 +4332,7 @@ if (CLAUDE_ENABLED) {
     if (value === 'stream' && !duration) duration = 20000;
     clawdTracks.aUntil = value && duration ? now + duration : 0;
     renderClawdTracks();
+    if (!value && clawdTracks.B === 'idle') syncClawdBState();
   }
 
   function setClawdB(value, duration = 0) {
@@ -4285,12 +4345,14 @@ if (CLAUDE_ENABLED) {
   /* A2 的序列锁只允许放进这个入口，避免 pointer/落地回调各写一份守卫。
      散到各处的后果是真踩过的：抛掷的落地回调曾经绕过全部守卫，把生气序列砸穿。 */
   function setClawdC(value, duration = 0) {
+    if (value) clawdComposerReaction.reset();
     if (a2Locked() && !A2.seqOwned) return;
     if (value) clawdCancelTransientB();
     if (value !== 'grab' && value !== 'drag' && value !== clawdTracks.C) clawdShakeRiders(value);   // 拎起来那条已经让头上的降下来了
     clawdTracks.C = value || null;
     clawdTracks.cUntil = value && duration ? Date.now() + duration : 0;
     renderClawdTracks();
+    if (!value && clawdTracks.B === 'idle') syncClawdBState();
   }
 
   function beginClawdGeneration() {
@@ -4308,41 +4370,76 @@ if (CLAUDE_ENABLED) {
     setClawdA(outcome, CLAWD_RIG.clips[outcome]?.dur || 1400);
   }
 
+  function createClawdComposerReaction(duration, blocked, now = Date.now) {
+    let before = null, composition = null, reaction = null, serial = 0;
+    const snapshot = box => ({ box, value: box.value, start: box.selectionStart, end: box.selectionEnd });
+    const reset = () => { before = null; composition = null; reaction = null; };
+    const inserted = (old, box) => {
+      if (!old || old.box !== box || old.value === box.value) return '';
+      const prefix = old.value.slice(0, old.start), suffix = old.value.slice(old.end);
+      if (!box.value.startsWith(prefix) || !box.value.endsWith(suffix) || box.value.length < prefix.length + suffix.length) return '';
+      return box.value.slice(prefix.length, box.value.length - suffix.length);
+    };
+    const commit = (old, box, expected) => {
+      const addition = inserted(old, box);
+      if (expected != null && addition !== expected) return false;
+      const mark = (addition.match(/[?？!！](?=[^?？!！]*$)/) || [''])[0];
+      if (mark && !blocked()) { const state = /[!！]/.test(mark) ? 'wow' : 'tilt'; reaction = { state, until: now() + duration(state), serial: ++serial }; }
+      return true;
+    };
+    const handle = event => {
+      const box = event.target;
+      if (box?.id !== 'send_textarea') return;
+      if (!event.isTrusted) { before = null; composition = null; return; }
+      if (event.type === 'compositionstart') { composition = { ...snapshot(box), ended: false }; before = null; return; }
+      if (event.type === 'beforeinput') {
+        before = /^(insertText|insertFromPaste|insertFromDrop|insertCompositionText|insertFromComposition)$/.test(event.inputType || '') ? snapshot(box) : null;
+        return;
+      }
+      if (event.type === 'compositionend') {
+        if (!composition) return;
+        composition.ended = true; composition.expected = event.data;
+        if (commit(composition, box, event.data)) { composition = null; before = null; }
+        return;
+      }
+      if (event.type !== 'input' || event.isComposing || (composition && !composition.ended)) return;
+      if (composition) { commit(composition, box, composition.expected); composition = null; }
+      else if (/^(insertText|insertFromPaste|insertFromDrop|insertCompositionText|insertFromComposition)$/.test(event.inputType || '')) commit(before, box);
+      before = null;
+    };
+    const current = () => { if (reaction && (blocked() || now() >= reaction.until)) reaction = null; return reaction; };
+    return { handle, current, reset };
+  }
+
+  const clawdComposerReaction = createClawdComposerReaction(state => CLAWD_RIG.clips[state].dur,
+    () => destroyed || !!(clawdTracks.A || clawdTracks.C || a2Locked() || idleAsleep || ccSleeping || ccDrowsy));
+  let clawdComposerReactionSerial = 0;
+  const handleClawdComposerEdit = event => {
+    if (!clawdEnabled()) return;
+    clawdReadingGate.reset();
+    clawdComposerReaction.handle(event);
+    if (event.type === 'compositionend') syncClawdBState();
+  };
+
   function syncClawdBState() {
+    if (!clawdEnabled()) return;
     const box = hostDocument.querySelector('#send_textarea');
     const focused = Boolean(box && hostDocument.activeElement === box);
     const text = box?.value?.trim() || '';
-    /* 打字反应看「最后打的那个标点」：以前只要文本里有问号就一直歪头，问号后面再打感叹号也不会惊讶。
-       打字反应也排在「被冷落」前面：你正在打字，Clawd 就该看着你打，不该还蔫着（Lulu 2026-09-24 真机：打！没反应）。 */
-    const mark = (text.match(/[?？!！](?=[^?？!！]*$)/) || [''])[0];
-    const next = (idleAsleep || ccSleeping)
-      ? 'sleep'
-      : ccDrowsy
-        ? 'drowsy'
-        : focused && /[?？]/.test(mark)
-          ? 'tilt'
-          : focused && (/[!！]/.test(mark) || text.length >= 20)
-            ? 'wow'
-            : focused && text
-              ? 'compose'
-              : neglected
-                ? 'neglected'
-                : 'idle';
-
-    /* hide / ledge 是有限时长的 B 轨在场动作。只有完全空闲时才允许它们
-       继续；一旦用户聚焦输入框、输入内容或进入睡眠/冷落状态，立即回到更
-       有信息量的 B 状态。A/C 轨不清空它，只是在画面优先级上盖过去。 */
-    /* 有时长的 B 轨动作（闲置池、调试菜单点的、滚动扒边和爬出来、醒来……）播完之前，
-       不被「空闲 / 被冷落 / 犯困 / 睡着」这类待机状态抢走，播完下一次刷新自然接上；
-       只有打字反应（歪头、惊讶、看你打字）可以立刻接管。
-       以前只挡「空闲」：一进被冷落，200ms 一次的刷新就把菜单点的动作、滚动扒边统统换掉
-       （Lulu 2026-09-25：滚轮一拨一跳、被冷落盖过点的动作）。
-       也不再看输入框有没有焦点：进对话时酒馆会自动把光标放进输入框，空着的输入框算出来还是「空闲」，
-       以前这一下就把刚扒上去的 peek 换回空闲，要等你点别处让输入框失焦才正常（Lulu 2026-09-25：进对话后滚动要好几秒才有反应）。 */
+    const reaction = focused ? clawdComposerReaction.current() : null;
+    if (!focused) clawdComposerReaction.reset();
+    const next = (idleAsleep || ccSleeping) ? 'sleep' : ccDrowsy ? 'drowsy'
+      : reaction ? reaction.state : focused && text ? 'compose' : neglected ? 'neglected' : 'idle';
+    if (reaction) {
+      const replay = reaction.serial !== clawdComposerReactionSerial && clawdTracks.B === next;
+      clawdComposerReactionSerial = reaction.serial;
+      setClawdB(next, Math.max(1, reaction.until - Date.now()));
+      if (replay) for (const animation of composerClawd()?.querySelector('.clawd-rig')?.getAnimations?.({ subtree: true }) || []) animation.currentTime = 0;
+      return;
+    }
     if (clawdTracks.bUntil > Date.now()
       && (next === 'idle' || next === 'neglected' || next === 'drowsy' || next === 'sleep')) {
-      renderClawdTracks();
-      return;
+      renderClawdTracks(); return;
     }
     setClawdB(next);
   }
@@ -4489,10 +4586,10 @@ if (CLAUDE_ENABLED) {
       const k = Math.min(1, Math.max(0, (Date.now() - t0) / walkMs));
       A2.x = from + (to - from) * k;
       a2Place(button);
-      if (k < 1) hostWindow.requestAnimationFrame(step);
+      if (k < 1) requestClawdFrame(step);
       else end();
     };
-    hostWindow.requestAnimationFrame(step);
+    requestClawdFrame(step);
     return intro + walkMs + 50;
   }
 
@@ -4523,11 +4620,12 @@ if (CLAUDE_ENABLED) {
     if (!walking) button.style.setProperty('transition', 'none', 'important');
     a2Place(button);
     clawdPile.restack();
-    if (!walking) hostWindow.requestAnimationFrame(() => { if (!clawdWalkNudge && !A2.held) button.style.removeProperty('transition'); });
+    if (!walking) requestClawdFrame(() => { if (!clawdWalkNudge && !A2.held) button.style.removeProperty('transition'); });
     scheduleA2BoundsWarm(button);
   }
 
   function ensureComposerClawd() {
+    if (!clawdEnabled()) return null;
     const form = hostDocument.querySelector('#send_form');
     if (!form) return null;
     let button = composerClawd();
@@ -4549,9 +4647,8 @@ if (CLAUDE_ENABLED) {
   const CLAWD_GEN_MAX_MS = 300000;
 
   function clawdRuntimeTick() {
-    if (destroyed) return;
+    if (!clawdEnabled()) return;
     const now = Date.now();
-    if (genTimerStartedAt) tickGenTimer();
     const inGeneration = clawdTracks.A === 'think' || clawdTracks.A === 'stream' || clawdTracks.A === 'sit';
     if (inGeneration && generationEventActive && now - clawdTracks.genStartedAt >= CLAWD_GEN_MAX_MS) {
       /* C1a：结束事件一直没来（事件丢失）的最后兜底，按「停止」收场，不庆祝。 */
@@ -4606,6 +4703,7 @@ if (CLAUDE_ENABLED) {
      不占任何一帧。 */
   let genTimerEl = null;
   let genTimerStartedAt = 0;
+  let genTimerTickTimer = 0;
   let genTimerLingerTimer = 0;
   const GEN_TIMER_LINGER_MS = 4000;
 
@@ -4640,10 +4738,11 @@ if (CLAUDE_ENABLED) {
     el.classList.remove('clawd-gen-timer-done');
     el.classList.add('clawd-gen-timer-visible');
     tickGenTimer();
-    /* A0：显示更新并入唯一的 clawdRuntimeTick，不再自己持有轮询器。 */
+    if (!genTimerTickTimer) genTimerTickTimer = hostWindow.setInterval(tickGenTimer, 200);
   }
 
   function stopGenTimer() {
+    hostWindow.clearInterval(genTimerTickTimer); genTimerTickTimer = 0;
     if (!genTimerStartedAt || !genTimerEl) return; // 没真的开始过（比如开关关闭时收到结束事件）
     const elapsed = (hostWindow.performance.now() - genTimerStartedAt) / 1000;
     genTimerEl.textContent = (ccPrefersChinese() ? '用时 ' : 'took ') + elapsed.toFixed(1) + 's';
@@ -5356,7 +5455,7 @@ if (CLAUDE_ENABLED) {
       A2.seqOwned = true;
       setClawdC(steps[index][0], 0);
       A2.seqOwned = false;
-      hostWindow.setTimeout(() => run(index + 1), steps[index][1]);
+      clawdLater(() => run(index + 1), steps[index][1]);
     };
     run(0);
   }
@@ -5464,7 +5563,7 @@ if (CLAUDE_ENABLED) {
   function scheduleA2BoundsWarm(button = composerClawd()) {
     A2.bndReady = false;
     if (A2.bndRaf || !button) return;
-    A2.bndRaf = hostWindow.requestAnimationFrame(() => {
+    A2.bndRaf = requestClawdFrame(() => {
       A2.bndRaf = 0;
       if (destroyed || A2.held || !button.isConnected) return;
       A2.bnd = a2Walls(button);
@@ -5552,9 +5651,9 @@ if (CLAUDE_ENABLED) {
     if (!A2.wokeOnDown) setClawdC(A2.fy < A2.floor - .5 ? 'grab' : 'press', 0);
     /* 轻抚（Lulu 2026-09-24）：按住不动 0.6 秒。手机没有悬停，只能靠这个；电脑上按住也一样算。
        挪动超过 5px 就是拖，0.6 秒内松手还是戳，三者分得开。 */
-    hostWindow.clearTimeout(A2.petTimer);
+    cancelClawdLater(A2.petTimer);
     A2.petting = false;
-    A2.petTimer = hostWindow.setTimeout(() => {
+    A2.petTimer = clawdLater(() => {
       A2.petTimer = 0;
       if (!A2.held || A2.moved || A2.fy < A2.floor - .5) return;
       A2.petting = clawdPet(button);
@@ -5570,12 +5669,12 @@ if (CLAUDE_ENABLED) {
       A2.moved = true;
       A2.dragging = true;
       dragStarted = true;
-      hostWindow.clearTimeout(A2.petTimer);
+      cancelClawdLater(A2.petTimer);
       A2.petting = false;
       clawdPile.unloadBig('lower');            // 2.0.300：头上的小 Clawd 平滑地降下来
       if (A2.floor) { A2.floor = 0; clawdPile.bigSat(null); }
       setClawdC('grab', 0);                    // 挪动超过阈值才真的拎起来（按住 / 摸着摸着拖动都一样）
-      hostWindow.setTimeout(() => { if (A2.dragging) { clawdRigPickVariant('drag'); setClawdC('drag', 0); } }, 350);
+      clawdLater(() => { if (A2.dragging) { clawdRigPickVariant('drag'); setClawdC('drag', 0); } }, 350);
     }
     if (!A2.moved) return;
     A2.fy = Math.max(A2.bnd.miny, Math.min(A2.bnd.maxy, A2.oy + dy));
@@ -5596,7 +5695,7 @@ if (CLAUDE_ENABLED) {
     if (!A2.held || (event && event.pointerId !== A2.pointerId)) return;
     A2.held = false;
     A2.tookPointer = true;
-    hostWindow.clearTimeout(A2.petTimer);
+    cancelClawdLater(A2.petTimer);
     if (A2.petting && !A2.moved) {
       /* 轻抚之后松手：不算戳，轻抚那段自己播完 */
       A2.petting = false;
@@ -5702,8 +5801,8 @@ if (CLAUDE_ENABLED) {
           const q = P.sq * Math.min(1, Math.abs(by) / 7);
           A2.sqx = 1 + q;
           A2.sqy = 1 - q;
-          if (A2.squashTimer) hostWindow.clearTimeout(A2.squashTimer);
-          A2.squashTimer = hostWindow.setTimeout(() => {
+          if (A2.squashTimer) cancelClawdLater(A2.squashTimer);
+          A2.squashTimer = clawdLater(() => {
             A2.squashTimer = 0;
             if (my !== A2.flying) return;
             A2.sqx = 1;
@@ -5736,18 +5835,18 @@ if (CLAUDE_ENABLED) {
              不用另写动画。 */
           /* 2.0.296：落在输入框外面（左边那块空地上）也一样滑回输入框上。 */
           if (seat ? A2.x !== A2.homeX : (A2.x > A2.bnd.maxxHome || A2.x < A2.bnd.minxHome || A2.x !== A2.homeX)) {
-            hostWindow.requestAnimationFrame(() => {
+            requestClawdFrame(() => {
               if (my !== A2.flying) return;
               A2.x = Math.max(A2.bnd.minxHome, Math.min(A2.bnd.maxxHome, A2.x));
               A2.homeX = A2.x;
               a2Place(button);
-              hostWindow.setTimeout(() => clawdRigPixelSnap(button), 300);
+              clawdLater(() => clawdRigPixelSnap(button), 300);
             });
           }
           /* 落定之后顺手重量一次，下一次抓取大概率还能走快路径。 */
           scheduleA2BoundsWarm(button);
           if (drop) return;                    // 只是掉回去，不接后续
-          hostWindow.setTimeout(() => {
+          clawdLater(() => {
             /* 原型这里没有代次令牌：840ms 内又被抓起来的话，旧的这条回调照样
                会烧到底，把跺脚或生气序列砸到新的一次互动上。 */
             if (my !== A2.flying) return;
@@ -5764,10 +5863,10 @@ if (CLAUDE_ENABLED) {
       }
       A2.rot = Math.max(-P.maxRot, Math.min(P.maxRot, -bx * P.spin));
       a2Place(button);
-      hostWindow.requestAnimationFrame(step);
+      requestClawdFrame(step);
     };
     a2TraceMark('ballistic:start');
-    hostWindow.requestAnimationFrame(step);
+    requestClawdFrame(step);
   }
 
   /* 轻抚：C 轨播「轻抚」（眯眼往手上蹭、冒心）。摸也算搭理它（不再被冷落），摸一摸就不烦了（烦躁清零）。
@@ -5859,7 +5958,7 @@ if (CLAUDE_ENABLED) {
 
   function a2Cancel(button, event) {
     if (!A2.held || (event && event.pointerId !== A2.pointerId)) return;
-    hostWindow.clearTimeout(A2.petTimer);
+    cancelClawdLater(A2.petTimer);
     A2.petting = false;
     A2.held = false;
     A2.tookPointer = true;
@@ -5922,7 +6021,7 @@ if (CLAUDE_ENABLED) {
     /* C1b：离开期间来了回复 → 回来后读信（只在 B 轨空闲、没在生成、没被碰时） */
     if (clawdLetterPending) {
       clawdLetterPending = false;
-      hostWindow.setTimeout(() => {
+      clawdLater(() => {
         if (destroyed || clawdTracks.A || clawdTracks.C || clawdTracks.B !== 'idle') return;
         setClawdB('rig:letter', CLAWD_RIG.clips.letter.dur);
       }, 800);
@@ -5989,6 +6088,7 @@ if (CLAUDE_ENABLED) {
   let dozeTimer = 0;
 
   function refreshIdleSleep() {
+    if (!clawdEnabled()) return;
     if (ccSleeping || !hasChatActivity) {
       if (neglected) setNeglected(false);
       return;
@@ -6019,7 +6119,7 @@ if (CLAUDE_ENABLED) {
        现在 3 分钟到了才打一次瞌睡：点两下头、在最低那一下（1.9 秒，惊醒之前）直接接睡着（打哈欠、坐下、冒 Z）。
        这 1.9 秒里有键盘 / 点输入框 / 抓戳，就算醒着，不睡。 */
     if (!idle) {
-      if (dozeTimer) { hostWindow.clearTimeout(dozeTimer); dozeTimer = 0; }
+      if (dozeTimer) { cancelClawdLater(dozeTimer); dozeTimer = 0; }
       if (ccDrowsy) setDrowsy(false);
       if (idleAsleep) { idleAsleep = false; setSleeping(false); }
       return;
@@ -6028,7 +6128,7 @@ if (CLAUDE_ENABLED) {
     if (dozeTimer) return;
     setNeglected(false);
     setDrowsy(true);
-    dozeTimer = hostWindow.setTimeout(() => {
+    dozeTimer = clawdLater(() => {
       dozeTimer = 0;
       if (Date.now() - lastActivityAt <= IDLE_SLEEP_MS) return;
       ccDrowsy = false;
@@ -6038,9 +6138,10 @@ if (CLAUDE_ENABLED) {
   }
 
   function noteActivity() {
+    if (!clawdEnabled()) return;
     hasChatActivity = true;
     lastActivityAt = Date.now();
-    if (dozeTimer) { hostWindow.clearTimeout(dozeTimer); dozeTimer = 0; }
+    if (dozeTimer) { cancelClawdLater(dozeTimer); dozeTimer = 0; }
     setDrowsy(false);
     if (!idleAsleep) return;
     idleAsleep = false;
@@ -6087,34 +6188,28 @@ if (CLAUDE_ENABLED) {
        现在 IntersectionObserver 只把屏幕内的 1～2 条消息放进集合。初次 observer
        回调尚未到达时，用一次小范围几何兜底，避免按钮闪一下。 */
     const candidates = visibleSwipeMessages.size
-      ? [...visibleSwipeMessages]
-      : [...observedSwipeMessages].filter(message => {
-        const box = message.getBoundingClientRect();
-        return box.bottom > viewportTop + 8 && box.top < viewportBottom - 8;
-      });
-    candidates.forEach(message => {
-      if (!message?.isConnected) return;
+      ? [...visibleSwipeMessages] : [...observedSwipeMessages];
+    // Read every candidate before updating any arrow: interleaving these reads
+    // and top writes forces another layout for each visible message on scroll.
+    const updates = [];
+    for (const message of candidates) {
+      if (!message?.isConnected) continue;
       const box = message.getBoundingClientRect();
-      if (box.bottom <= viewportTop + 8 || box.top >= viewportBottom - 8) return;
-      // setProperty 每次都会重写 style 属性，哪怕值没变。
-      // 观察器盯着 style，于是「刷新 → 写 style → 观察器触发 → 再刷新」
-      // 会自己转起来，20Hz 全量扫描停不下来。值没变就别写。
+      if (box.bottom <= viewportTop + 8 || box.top >= viewportBottom - 8) continue;
       let next;
-      if (box.height <= (viewportBottom - viewportTop) * 0.9) {
-        // 没比视口高就不用跟，居中本来就够得着
-        next = '50%';
-      } else {
-        const edge = 40;
+      if (box.height <= (viewportBottom - viewportTop) * .9) next = '50%';
+      else {
         const target = viewportMid - box.top;
-        const clamped = Math.min(Math.max(target, edge), box.height - edge);
-        next = clamped + 'px';
+        next = Math.min(Math.max(target, 40), box.height - 40) + 'px';
       }
-      message.querySelectorAll(`:scope > button.${LEFT_SWIPE_PROXY_CLASS}, :scope > button.${SWIPE_PROXY_CLASS}`)
-        .forEach(button => {
-          if (button.style.getPropertyValue('top') === next) return;
-          button.style.setProperty('top', next, 'important');
-        });
-    });
+      updates.push({message, next});
+    }
+    for (const {message, next} of updates) {
+      message.querySelectorAll(`:scope > button.${LEFT_SWIPE_PROXY_CLASS}, :scope > button.${SWIPE_PROXY_CLASS}`).forEach(button => {
+        if (button.style.getPropertyValue('top') === next) return;
+        button.style.setProperty('top', next, 'important');
+      });
+    }
   }
 
   function scheduleSwipeTrack() {
@@ -6148,19 +6243,75 @@ if (CLAUDE_ENABLED) {
     if (!isMobileLayout()) scheduleSwipeTrack();
   }
 
-  /* Clawd 被滚动带歪。照搬原型的三条设计，外加一条扩展这边的：
-       1) 死区：平滑后的速度低于 2.2 就直接返回。慢速滚动一分钱不花，
-          绝大多数滚动根本走不到下面。
-       2) 缓动交给 CSS transition，JS 只写一个角度，不做逐帧动画。
-       3) 只在 B 轨占画面时表演——生成、被抓、被丢、生气都比它优先。
-       4) 生成中整个跳过。那时正文每帧都在长、DOM 一直是脏的，
-          读 scrollTop 会摊上一次完整重排；trackSwipeArrows 在生成期间
-          吃掉 3823ms 就是这么来的。
-     用的是已有的那个滚动监听，没有新增第二套订阅。 */
+  /* 主动阅读跨至少三楼、两屏才扒边；停止900ms清累计，触发后冷却8秒。 */
+  function createClawdReadingGate(read, now = Date.now) {
+    const limits = { messages: 3, screens: 2, gapMs: 900, cooldownMs: 8000 };
+    let origin = null, until = 0, lastScroll = 0, fired = false, coolUntil = 0, pointer = null;
+    const reset = (clearCooldown = false) => { origin = null; until = 0; lastScroll = 0; fired = false; pointer = null; if (clearCooldown) coolUntil = 0; };
+    const begin = () => {
+      const t = now();
+      if (!origin || t - lastScroll > limits.gapMs) { origin = read(); fired = false; }
+      if (origin) { until = t + limits.gapMs; lastScroll = t; }
+    };
+    const intent = event => {
+      if (!event.isTrusted || event.defaultPrevented) return;
+      if (event.type === 'pointerup' || event.type === 'pointercancel') { pointer = null; return; }
+      if (event.type === 'pointermove') {
+        if (pointer?.id === event.pointerId && Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) >= 4) begin();
+        return;
+      }
+      const host = event.currentHost;
+      const inside = !!host?.contains(event.target);
+      if (event.target?.closest?.('textarea,input,select,button,[contenteditable="true"],dialog')) { reset(); return; }
+      if (event.type === 'pointerdown') {
+        if (!inside) { reset(); return; }
+        // Capture the reading position before native touch/scrollbar movement.
+        if (!origin || now() - lastScroll > limits.gapMs) { origin = read(); fired = false; }
+        lastScroll = now(); pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        const r = host.getBoundingClientRect();
+        if (event.clientX >= r.right - Math.max(12, host.offsetWidth - host.clientWidth)) begin();
+      } else if (event.type === 'wheel' && inside && Math.abs(event.deltaY) > 0) begin();
+      else if (event.type === 'keydown' && (inside || event.target?.tagName === 'BODY' || event.target?.tagName === 'HTML')
+        && !event.ctrlKey && !event.metaKey && !event.altKey && ['PageUp','PageDown','ArrowUp','ArrowDown','Home','End',' '].includes(event.key)) begin();
+    };
+    const check = () => {
+      const t = now();
+      if (!origin || t > until || t - lastScroll > limits.gapMs) { reset(); return 'none'; }
+      const current = read();
+      if (!current || !origin.node.isConnected || current.host !== origin.host || current.height !== origin.height || current.extent !== origin.extent) { reset(); return 'none'; }
+      lastScroll = t; until = t + limits.gapMs;
+      if (fired) return 'hold';
+      if (t < coolUntil || Math.abs(current.id - origin.id) < limits.messages
+        || Math.abs(current.top - origin.top) < limits.screens * origin.height) return 'none';
+      fired = true; coolUntil = t + limits.cooldownMs; return 'trigger';
+    };
+    return { intent, check, reset, limits };
+  }
+
+  function readClawdReadingPosition() {
+    const host = scrollHost;
+    if (!host || !host.clientHeight) return null;
+    const r = host.getBoundingClientRect();
+    const headerBottom = hostDocument.querySelector('.cw-v4-chat-head')?.getBoundingClientRect().bottom || 0;
+    const y = Math.max(0, r.top, headerBottom) + 16;
+    // A bounded local hit test, never a scan of the message history.
+    for (const fraction of [.5, .25, .75]) {
+      const node = hostDocument.elementFromPoint(r.left + r.width * fraction, y)?.closest?.('#chat > .mes');
+      const value = node?.getAttribute('mesid');
+      if (node?.parentElement === host && /^\d+$/.test(value || '')) return { host, node, id: Number(value), top: host.scrollTop, height: host.clientHeight, extent: host.scrollHeight };
+    }
+    return null;
+  }
+
+  const clawdReadingGate = createClawdReadingGate(readClawdReadingPosition);
+  const handleClawdReadingIntent = event => {
+    if (!clawdEnabled()) return;
+    if (destroyed) return;
+    clawdReadingGate.intent({ isTrusted: event.isTrusted, defaultPrevented: event.defaultPrevented, type: event.type, target: event.target,
+      currentHost: scrollHost, pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY,
+      deltaY: event.deltaY, key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey, altKey: event.altKey });
+  };
   const CLAWD_SCROLL_REST_MS = 700;
-  let clawdScrollVel = 0;
-  let clawdScrollLastTop = 0;
-  let clawdScrollLastAt = 0;
   let clawdScrollHolding = false;
   let clawdScrollRestTimer = 0;
   let clawdPileRestTimer = 0;
@@ -6173,50 +6324,30 @@ if (CLAUDE_ENABLED) {
   }
 
   function clawdScrollTilt() {
-    if (destroyed || isTypingActive()) return;
-    const host = scrollHost;
-    if (!host) return;
-    const now = Date.now();
-    const dt = Math.max(16, now - clawdScrollLastAt);
-    const top = host.scrollTop;
-    const raw = (top - clawdScrollLastTop) / dt * 16;
-    clawdScrollLastTop = top;
-    clawdScrollLastAt = now;
-    clawdScrollVel = clawdScrollVel * 0.8 + raw * 0.2;
-    const mag = Math.abs(clawdScrollVel);
-    if (mag < 2.2) return;                       // 死区
-    /* 2.0.304：小 Clawd 跟大 Clawd 用同一个判断扒边（手动滚、过了死区、没在打字）；生成中（A 轨）一起不扒，
-       自动跟随的滚动不会让它们缩下去。大 Clawd 自己睡着 / 在空中时小的照样扒，头上坐着的不跟着往下（bigDrop 0）。 */
-    if (clawdTracks.A) return;
-    /* fy 不为 0 就是还在空中或者被举着，那时候不该再叠一层歪。
-       睡着、犯困（包括调试菜单点的睡觉 / 犯困）时不扒，接着睡（Lulu 2026-09-25：菜单点了睡觉，一滚就被打断） */
+    if (!clawdEnabled()) return;
+    if (destroyed || isTypingActive() || clawdTracks.A || Date.now() < suppressManualScrollUntil) { clawdReadingGate.reset(); return; }
+    const admission = clawdReadingGate.check();
+    if (admission === 'none') return;
+    if (admission === 'hold') {
+      if (clawdPileRestTimer) armClawdScrollRest();
+      return;
+    }
     const bBase = String(clawdTracks.B || '').replace(/^rig:/, '').replace(/-m$/, '');
     const button = composerClawd();
     const bigPeeks = !!button && !(clawdTracks.C || a2Locked() || A2.held || Math.abs(A2.fy - A2.floor) > .5)
       && !(idleAsleep || ccSleeping || ccDrowsy || bBase === 'sleep' || bBase === 'drowsy');
-    /* 2.0.309（Lulu）：大 Clawd 坐在小 Clawd 头上时，滚动不做任何动作——它不动，垫着它的、坐它头上的也不缩（第三个参数），别的小 Clawd 照常扒边 */
     clawdPile.peek(true, bigPeeks && !A2.floor ? 12 : 0, !!A2.floor);
-    if (clawdPileRestTimer) hostWindow.clearTimeout(clawdPileRestTimer);
-    clawdPileRestTimer = hostWindow.setTimeout(() => { clawdPileRestTimer = 0; clawdPile.peek(false); }, CLAWD_SCROLL_REST_MS);
-    if (!bigPeeks || A2.floor) return;
+    if (bigPeeks && !A2.floor) { clawdScrollHolding = true; setClawdB('peek', 60000); scheduleClawdBAmbient(Date.now()); }
+    armClawdScrollRest();
+  }
 
-    /* 开始扒住：一次滚动只切这一次，中间的滚动事件都走不到这里。 */
-    if (!clawdScrollHolding) {
-      clawdScrollHolding = true;
-      /* C1b：扒着输入框由骨架画（peek：缩下去 4 格、两只钳子扒着边），停下后播「出来」 */
-      setClawdB('peek', 60000);
-    }
-    /* 刚滚过就别马上抽闲置动作：停下、爬出来之后隔一段再说 */
-    scheduleClawdBAmbient(now);
-    /* 停止判定：最后一次「有效滚动」之后 CLAWD_SCROLL_REST_MS 没动静才松手。
-       以前是 220ms：鼠标滚轮一格一格拨，两格之间常常隔 250–500ms，
-       于是每拨一格都松手、爬出来、再扒下去（Lulu 2026-09-25） */
-    if (clawdScrollRestTimer) hostWindow.clearTimeout(clawdScrollRestTimer);
-    clawdScrollRestTimer = hostWindow.setTimeout(() => {
-      clawdScrollRestTimer = 0;
-      clawdScrollVel = 0;
-      clawdScrollRelease();
-    }, CLAWD_SCROLL_REST_MS);
+  function armClawdScrollRest() {
+    if (!clawdEnabled()) return;
+    if (clawdPileRestTimer) cancelClawdLater(clawdPileRestTimer);
+    clawdPileRestTimer = clawdLater(() => { clawdPileRestTimer = 0; clawdPile.peek(false); }, CLAWD_SCROLL_REST_MS);
+    if (!clawdScrollHolding) return;
+    if (clawdScrollRestTimer) cancelClawdLater(clawdScrollRestTimer);
+    clawdScrollRestTimer = clawdLater(() => { clawdScrollRestTimer = 0; clawdScrollRelease(); }, CLAWD_SCROLL_REST_MS);
   }
 
   /* 欢迎态：聊天里没有真实消息时，复刻官网那个「问候语 + 输入框居中」的形态。
@@ -6691,6 +6822,7 @@ if (CLAUDE_ENABLED) {
 
   function handleViewportChange() {
     if (destroyed) return;
+    clawdReadingGate.reset();
     mobileViewportMetricsDirty = true;
     scheduleMobileViewportMetrics();
     scheduleMobileComposerTranslate();
@@ -7987,6 +8119,7 @@ if (CLAUDE_ENABLED) {
        订阅这个事件，就不需要靠定时轮询来发现变化了。 */
     const changedType = types.CHAT_CHANGED || 'chatLoaded';
     const changedHandler = () => {
+      clawdReadingGate.reset(true); clawdComposerReaction.reset();
       guardMobileChatAutofocus();
       recentSignature = null;
       refreshRailRecents({ force: true });
@@ -9324,6 +9457,7 @@ if (CLAUDE_ENABLED) {
   }
   let lastMouseMoveAt = Date.now();
   function handleLook(event) {
+    if (!clawdEnabled()) return;
     /* A pressed mouse button means the pointer is dragging or resizing. Eye
        tracking used to read every Clawd button's layout on every drag frame,
        competing directly with third-party movable panels. */
@@ -9332,7 +9466,7 @@ if (CLAUDE_ENABLED) {
     lookY = event.clientY;
     lastMouseMoveAt = Date.now();
     if (lookRaf) return;
-    lookRaf = hostWindow.requestAnimationFrame(applyLook);
+    lookRaf = requestClawdFrame(applyLook);
   }
 
   /* D2 左右观察：没有真实 mousemove 一段时间后，偶尔自主看一眼再收回。
@@ -9348,7 +9482,7 @@ if (CLAUDE_ENABLED) {
     button.dataset.look = dir;
     button.dataset.clawdAmbientLook = dir;
     button.classList.add('clawd-look-' + dir);
-    hostWindow.setTimeout(() => {
+    clawdLater(() => {
       // 期间没被真实鼠标顶替，才收回去；顶替过的话真实鼠标系统自己会管。
       if (button.dataset.clawdAmbientLook !== dir) return;
       delete button.dataset.clawdAmbientLook;
@@ -9373,6 +9507,7 @@ if (CLAUDE_ENABLED) {
 
   const handleComposerInput = event => {
     if (event.target?.id !== 'send_textarea') return;
+    clawdComposerReaction.handle(event);
     noteActivity();
     syncCcComposerState(true);
   };
@@ -10128,6 +10263,8 @@ if (CLAUDE_ENABLED) {
      这里只做 closest() 之类的轻量 DOM 定位，不读取任何文本，代价很低。 */
   function trackDirtyMessages(records) {
     for (const record of records) {
+      if ((record.type === 'childList' && record.target === scrollHost && [...record.addedNodes, ...record.removedNodes].some(n => n.nodeType === 1 && n.matches?.('.mes')))
+        || (record.type === 'attributes' && record.attributeName === 'mesid')) clawdReadingGate.reset();
       const target = record.target instanceof hostWindow.Element
         ? record.target
         : record.target.parentElement;
@@ -10179,20 +10316,42 @@ if (CLAUDE_ENABLED) {
     hostDocument.documentElement.dataset.claudeExternalSurface = 'character-manager';
   }
 
+  const extraExternalModalCandidates = new Set();
+  const externalModalSources = new Map();
+  const externalNotificationSelector = '#toast-container,[class^="toast"],[class*=" toast"],[role="status"],[role="alert"]';
+  function externalModalHost(element) {
+    if (!(element instanceof hostWindow.HTMLElement) || element.closest('dialog,[data-cw-lifted],.cw-v4-shell,.cw-pm-host,#top-settings-holder,#sheld')) return null;
+    if (element.closest(externalNotificationSelector)) return null;
+    if (element.matches('#bg1,#bg_custom,#bg_animation,#top-bar,[class*="clawd-"],[class*="cw-"]')) return null;
+    const semantic = element.matches('[role="dialog"],[aria-modal="true"]');
+    // Some extensions put the modal role inside a positioned Teleport wrapper.
+    for (let node = element; node && node !== hostDocument.body; node = node.parentElement) {
+      const position = hostWindow.getComputedStyle(node).position;
+      if (position === 'fixed' || (semantic && position === 'absolute')) return node;
+    }
+    return null;
+  }
   function observeExternalModalCandidates() {
     if (!externalModalObserver) return [];
-    const candidates = [...hostDocument.querySelectorAll(EXTERNAL_MODAL_SELECTOR)];
-    for (const candidate of candidates) {
-      if (candidate === hostDocument.body || candidate === hostDocument.documentElement) continue;
-      externalModalObserver.observe(candidate, {
-        attributes: true,
-        attributeFilter: ['class', 'style', 'hidden', 'open'],
+    externalModalSources.clear();
+    for (const candidate of extraExternalModalCandidates) if (!candidate.isConnected) extraExternalModalCandidates.delete(candidate);
+    const sources = [...hostDocument.querySelectorAll(EXTERNAL_MODAL_SELECTOR), ...extraExternalModalCandidates];
+    const candidates = new Set();
+    for (const source of sources) {
+      const host = externalModalHost(source);
+      if (!host) continue;
+      candidates.add(host);
+      if (!externalModalSources.has(host)) externalModalSources.set(host, []);
+      externalModalSources.get(host).push(source);
+      // Visibility may be controlled by a Teleport wrapper, not the role node.
+      for (let node = source; node && node !== hostDocument.body; node = node.parentElement) externalModalObserver.observe(node, {
+        attributes: true, attributeOldValue: true, attributeFilter: ['class', 'style', 'hidden', 'open'],
       });
     }
-    return candidates;
+    return [...candidates];
   }
 
-  function isVisibleFullScreenExternalModal(element) {
+  function isVisibleExternalModal(element) {
     if (!(element instanceof hostWindow.HTMLElement)) return false;
     // Our settings frame shares the native drawer layer; it is not an external modal.
     if (element.id === 'cw-v4-settings') return false;
@@ -10205,12 +10364,29 @@ if (CLAUDE_ENABLED) {
     const rail = hostDocument.querySelector('#top-settings-holder');
     if (rail && (rail === element || rail.contains(element) || element.contains(rail))) return false;
     const style = hostWindow.getComputedStyle(element);
-    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
-    if (style.position !== 'fixed') return false;
+    if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none' || Number(style.opacity) === 0) return false;
+    if (!['fixed', 'absolute'].includes(style.position)) return false;
+    if (element.checkVisibility && !element.checkVisibility({checkOpacity:true, checkVisibilityCSS:true})) return false;
     const rect = element.getBoundingClientRect();
-    const viewportWidth = Math.max(1, hostWindow.innerWidth || hostDocument.documentElement.clientWidth || 1);
-    const viewportHeight = Math.max(1, hostWindow.innerHeight || hostDocument.documentElement.clientHeight || 1);
-    return rect.width >= viewportWidth * 0.7 && rect.height >= viewportHeight * 0.7;
+    const width = hostWindow.innerWidth, height = hostWindow.innerHeight;
+    const visibleWidth = Math.max(0, Math.min(rect.right, width) - Math.max(rect.left, 0));
+    const visibleHeight = Math.max(0, Math.min(rect.bottom, height) - Math.max(rect.top, 0));
+    if (!visibleWidth || !visibleHeight) return false;
+    // A small dialog is valid when explicitly marked; a bare fixed float is not.
+    const semantic = (externalModalSources.get(element) || []).some(source => {
+      if (!source.matches(EXTERNAL_MODAL_SELECTOR) || source.closest(externalNotificationSelector)) return false;
+      const css = hostWindow.getComputedStyle(source), box = source.getBoundingClientRect();
+      return css.display !== 'none' && css.visibility !== 'hidden' && css.pointerEvents !== 'none'
+        && Number(css.opacity) !== 0 && box.width > 0 && box.height > 0
+        && (!source.checkVisibility || source.checkVisibility({checkOpacity:true, checkVisibilityCSS:true}));
+    });
+    // Host layout surfaces can cover the viewport without being an editor.
+    // Unmarked fixed overlays must contain a control; explicit dialog/backdrop
+    // semantics still allow read-only modals and their separate overlay layers.
+    const interactive = element.matches('button,input,textarea,select,a[href],iframe,canvas,[role="button"],[tabindex],[contenteditable="true"]')
+      || Boolean(element.querySelector('button,input,textarea,select,a[href],iframe,canvas,[role="button"],[tabindex],[contenteditable="true"]'));
+    return semantic || (interactive && style.position === 'fixed' && (visibleWidth * visibleHeight >= width * height * .5
+      || (visibleWidth >= width * .7 && visibleHeight >= height * .7)));
   }
 
   /* 2.0.244（Lulu：选了 Kemini 预设，它的「首次使用配置」全屏窗口一出来，设置就沉到主页下面，透出主页、白底）：
@@ -10234,7 +10410,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function syncExternalModalRailLayer() {
-    const modals = observeExternalModalCandidates().filter(isVisibleFullScreenExternalModal);
+    const modals = observeExternalModalCandidates().filter(isVisibleExternalModal);
     const modalOpen = modals.length > 0;
     setBodyClass(EXTERNAL_MODAL_OPEN_CLASS, modalOpen);
     /* 2.0.246（Lulu：欢迎页弹出 Kemini 的配置窗口时，整个侧栏不见了）：原来把 #top-settings-holder / #top-bar 降到 1
@@ -10242,6 +10418,10 @@ if (CLAUDE_ENABLED) {
        现在一律不降侧栏，只把比侧栏低的外部全屏窗口抬到 4100（liftExternalModals），关掉时还原。 */
     restoreExternalModalRailLayer();
     liftExternalModals(modalOpen ? modals : []);
+    hostWindow.__claudeOfficialLayout?.setExternalModals(modals);
+  }
+  function onExternalModalAnimationEnd(event) {
+    if (externalModalHost(event.target)) scheduleExternalSurfaceIsolation();
   }
 
   function restoreExternalModalRailLayer() {
@@ -10341,6 +10521,11 @@ if (CLAUDE_ENABLED) {
   }
 
   function handleObservedMutations(records) {
+    if (hostDocument.documentElement.hasAttribute('data-cw-sheet') || hostDocument.querySelector('dialog.cw-v4-editor[open]')) for (const record of records) {
+      if (record.type === 'childList' && record.target === hostDocument.body) for (const node of record.addedNodes) {
+        if (node instanceof hostWindow.HTMLElement) extraExternalModalCandidates.add(node);
+      }
+    }
     if (records.some(inClawdPile)) { records = records.filter(r => !inClawdPile(r)); if (!records.length) return; }
     /* Character Manager 的可见性只需每帧检查一次。TT 一批 DOM 变动里可能送来
        数百条记录，旧代码会为每批同步 querySelector + getComputedStyle。
@@ -10450,6 +10635,7 @@ if (CLAUDE_ENABLED) {
     frameId = 0;
     lastRefreshAt = Date.now();
     if (destroyed) return;
+    syncClawdRuntime();
     watchGenerationEvents();
     setBodyClass(READY_CLASS, true);
     const typingActive = isTypingActive();
@@ -10853,17 +11039,20 @@ if (CLAUDE_ENABLED) {
     setBodyClass(READY_CLASS, true);
     hostDocument.body.classList.toggle(MOBILE_LAYOUT_CLASS, mobileEnabled);
     hostDocument.body.classList.toggle(TAURITAVERN_HOST_CLASS, isTauriTavernHost());
-    externalModalObserver = new hostWindow.MutationObserver(scheduleExternalSurfaceIsolation);
+    externalModalObserver = new hostWindow.MutationObserver(records => {
+      // Some hosts rewrite an unchanged style/class attribute. Do not feed
+      // those no-op writes back into another layout and sheet-yield pass.
+      if (records.some(record => record.oldValue !== record.target.getAttribute(record.attributeName))) scheduleExternalSurfaceIsolation();
+    });
+    hostDocument.addEventListener('transitionend', onExternalModalAnimationEnd);
+    hostDocument.addEventListener('animationend', onExternalModalAnimationEnd);
     // 2.0.244：设置开 / 关也要重算侧栏层级（见 liftExternalModals）。
-    externalModalObserver.observe(hostDocument.documentElement, { attributes: true, attributeFilter: ['data-cw-v4-settings'] });
+    externalModalObserver.observe(hostDocument.documentElement, { attributes: true, attributeOldValue: true, attributeFilter: ['data-cw-v4-settings'] });
     syncExternalSurfaceIsolation();
     syncExternalModalRailLayer();
     installVirtualKeyboardOverlay();
     watchGenerationEvents();
-    if (!clawdRuntimeTimer) {
-      clawdLastIdleTickAt = Date.now();
-      clawdRuntimeTimer = hostWindow.setInterval(clawdRuntimeTick, 200);
-    }
+    syncClawdRuntime();
     observer = new hostWindow.MutationObserver(handleObservedMutations);
     chatAttributeObserver = new hostWindow.MutationObserver(handleObservedMutations);
     // characterData 会让流式输出的每个 token 都触发一次全量刷新，去掉；
@@ -10902,6 +11091,8 @@ if (CLAUDE_ENABLED) {
     hostWindow.addEventListener('resize', handleViewportChange, { passive: true });
     hostDocument.addEventListener('mousemove', handleLook, { passive: true });
     hostDocument.addEventListener('keydown', noteActivity, { passive: true });
+    for (const type of ['wheel','pointerdown','pointermove','pointerup','pointercancel','keydown']) hostDocument.addEventListener(type, handleClawdReadingIntent, { capture: true, passive: true });
+    for (const type of ['beforeinput','compositionstart','compositionend']) hostDocument.addEventListener(type, handleClawdComposerEdit, true);
     hostDocument.addEventListener('input', handleComposerInput, true);
     hostDocument.addEventListener('visibilitychange', noteCcVisibility, { passive: true });
     hostDocument.addEventListener('visibilitychange', recoverStalledFrame, { passive: true });
@@ -11007,6 +11198,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function destroy() {
+    hostWindow.clearInterval(genTimerTickTimer); genTimerTickTimer = 0;
     if (clawdRuntimeTimer) hostWindow.clearInterval(clawdRuntimeTimer);
     clawdRuntimeTimer = 0;
     if (genTimerLingerTimer) hostWindow.clearTimeout(genTimerLingerTimer);
@@ -11016,12 +11208,17 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    syncClawdRuntime();
     clawdPile.destroy();
     hostWindow.clearTimeout(pushLiveTimer);
     hostDocument.documentElement.removeAttribute(PUSH_LIVE_ATTRIBUTE);
     cleanupClawdRigEffects();
     externalModalObserver?.disconnect();
     externalModalObserver = null;
+    hostDocument.removeEventListener('transitionend', onExternalModalAnimationEnd);
+    hostDocument.removeEventListener('animationend', onExternalModalAnimationEnd);
+    extraExternalModalCandidates.clear();
+    externalModalSources.clear();
     hostDocument.body.classList.remove(EXTERNAL_MODAL_OPEN_CLASS);
     restoreExternalModalRailLayer();
     liftExternalModals([]);
@@ -11122,6 +11319,9 @@ if (CLAUDE_ENABLED) {
     hostWindow.removeEventListener('resize', handleViewportChange);
     hostDocument.removeEventListener('mousemove', handleLook);
     hostDocument.removeEventListener('keydown', noteActivity);
+    clawdReadingGate.reset(true); clawdComposerReaction.reset();
+    for (const type of ['wheel','pointerdown','pointermove','pointerup','pointercancel','keydown']) hostDocument.removeEventListener(type, handleClawdReadingIntent, true);
+    for (const type of ['beforeinput','compositionstart','compositionend']) hostDocument.removeEventListener(type, handleClawdComposerEdit, true);
     hostDocument.removeEventListener('input', handleComposerInput, true);
     hostDocument.removeEventListener('visibilitychange', noteCcVisibility);
     hostDocument.removeEventListener('visibilitychange', recoverStalledFrame);
@@ -11214,7 +11414,8 @@ if (CLAUDE_ENABLED) {
   //   corrections  守卫真的动手改回状态几次（理想是 0 —— 说明根因断干净了）
   const api = {
     destroy,
-    refresh: scheduleRefresh,
+    refresh: () => { syncClawdRuntime(); scheduleRefresh(); },
+    clawdRuntimeStats: () => ({enabled:clawdEnabled(),frames:clawdFrames.size,timers:clawdTimers.size,pile:!!clawdPileInstance,tick:!!clawdRuntimeTimer}),
     clawdState: () => ({
       A: clawdTracks.A,
       B: clawdTracks.B,
@@ -13862,6 +14063,12 @@ if (CLAUDE_ENABLED) {
      JS 那部分（侧栏、欢迎页、Clawd）已经挂在 DOM 上了，撤不干净，所以仍要刷新。 */
   function teardownLive() {
     try {
+      CLAUDE_ENABLED = false;
+      document.documentElement.dataset.claudeEnabled = 'off';
+      window.removeEventListener('load', startOfficialLayout);
+      window.__claudeOfficialLayout?.destroy();
+      delete window.__claudeOfficialLayout;
+      officialStyle.remove();
       const sheet = document.getElementById('claude-integrated-theme-live-style');
       if (sheet) sheet.disabled = true;
       const root = document.documentElement;
