@@ -3,9 +3,9 @@
   "loading_order": 100,
   "requires": [],
   "optional": [],
-  "js": "loader-2.0.139-ios1.js",
+  "js": "loader-2.0.139-ios2.js",
   "author": "lulu",
-  "version": "2.0.139-ios1",
+  "version": "2.0.139-ios2",
   "homePage": "https://github.com/claudenoshujin/claude-web-test2",
   "auto_update": true
 }

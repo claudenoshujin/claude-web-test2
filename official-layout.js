@@ -1,7 +1,7 @@
-import { installOfficialWeb } from './official-web.js?v=2.0.139-ios1';
-import { officialIcons } from './official-icons.js?v=2.0.139-ios1';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.139-ios1';
-import { tr } from './official-i18n.js?v=2.0.139-ios1';
+import { installOfficialWeb } from './official-web.js?v=2.0.139-ios2';
+import { officialIcons } from './official-icons.js?v=2.0.139-ios2';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.139-ios2';
+import { tr } from './official-i18n.js?v=2.0.139-ios2';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
