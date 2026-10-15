@@ -1,11 +1,11 @@
 {
-  "display_name": "Claude Web 2.0",
+  "display_name": "Claude Web 2.0 (iOS viewport test)",
   "loading_order": 100,
   "requires": [],
   "optional": [],
-  "js": "loader-2.0.139.js",
+  "js": "loader-2.0.139-ios1.js",
   "author": "lulu",
-  "version": "2.0.139",
-  "homePage": "https://github.com/claudenoshujin/claude-web",
+  "version": "2.0.139-ios1",
+  "homePage": "https://github.com/claudenoshujin/claude-web-test2",
   "auto_update": true
 }
