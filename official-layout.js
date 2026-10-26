@@ -1,6 +1,6 @@
-import { officialIcons } from './official-icons.js?v=20261002u';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=20261007a';
-import { tr } from './official-i18n.js?v=20261002t';
+import { officialIcons } from './official-icons.js?v=2.0.329';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.329';
+import { tr } from './official-i18n.js?v=2.0.329';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -34,8 +34,28 @@ export function installOfficialLayout(win = window) {
   const formattedForms = new WeakSet();
   const enhancedMenus = new WeakSet();
   const formSet = new Set();
-  const on = (node, event, fn, options) => { node.addEventListener(event, fn, options); disposers.push(() => node.removeEventListener(event, fn, options)); };
+  const promptListenerCleanup = new win.FinalizationRegistry(dispose => { const i=disposers.indexOf(dispose);if(i>=0)disposers.splice(i,1); });
+  const promptDisposer=(target,listener,event,options)=>{
+    const dispose=()=>{const n=target.deref(),f=listener.deref();if(n&&f)n.removeEventListener(event,f,options);promptListenerCleanup.unregister(dispose);};
+    return dispose;
+  };
+  const popoverDisposer=target=>{
+    const dispose=()=>{const list=target.deref();if(list?.matches(':popover-open'))list.hidePopover();promptListenerCleanup.unregister(dispose);};
+    return dispose;
+  };
+  const on = (node, event, fn, options) => {
+    node.addEventListener(event, fn, options);
+    if(node instanceof win.Element&&(node.matches('.cw-v4-more,.cw-v4-more-list,.cw-v4-more-item,.cw-v4-more-cancel')||node.closest('#completion_prompt_manager_list'))){
+      // Replaced prompt menus must not stay alive just for eventual uninstall.
+      // Native fragment ownership still keeps both target and listener restorable.
+      const dispose=promptDisposer(new win.WeakRef(node),new win.WeakRef(fn),event,options);
+      disposers.push(dispose);promptListenerCleanup.register(node,dispose,dispose);
+    }else disposers.push(() => node.removeEventListener(event, fn, options));
+  };
   const observe = (node, fn, options) => { const mo = new win.MutationObserver(fn); mo.observe(node, options); observers.push(mo); return mo; };
+  // One delegated pair replaces document listeners that captured every old menu.
+  on(doc,'click',e=>{for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)&&!menu.contains(e.target))menu.open=false;});
+  on(doc,'keydown',e=>{if(e.key!=='Escape')return;let closed=false;for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)){menu.open=false;closed=true;}if(closed){e.preventDefault();e.stopPropagation();}},true);
   const nativeToggle = panel => panel.closest('.drawer')?.querySelector(':scope > .drawer-toggle');
   /* Preferences: the design's PAGES table (app.js). R.* take the real
    * controls out of ST's panel and put them into "title left, control right"
@@ -600,10 +620,8 @@ export function installOfficialLayout(win = window) {
         list.style.left=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8))+'px';
         list.style.top=Math.max(8,Math.min(anchor.bottom+6,win.innerHeight-box.height-8))+'px';
       });
-      on(doc,'click',e=>{if(menu.open&&!menu.contains(e.target))menu.open=false;});
-      on(doc,'keydown',e=>{if(e.key==='Escape'&&menu.open){menu.open=false;e.preventDefault();e.stopPropagation();}},true);
       on(list,'click',e=>{if(e.target===list||e.target.closest('.menu_button,button'))menu.open=false;});
-      disposers.push(()=>{if(list.matches(':popover-open'))list.hidePopover();});
+      const dispose=popoverDisposer(new win.WeakRef(list));disposers.push(dispose);promptListenerCleanup.register(list,dispose,dispose);
     });
     // Native textareas continue to save using their original input handlers.
     // 2.0.214：色块都在行的最右边，取色器默认往右展开会跑出屏幕；改成往左展开。

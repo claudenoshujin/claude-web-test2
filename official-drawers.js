@@ -3,7 +3,9 @@
  * handlers. Comment markers allow a full return to the native layout.
  * Labels are the design's own Chinese strings; L() looks up the design's
  * English table for other UI languages. */
-import { createExtensionSettings } from './official-extension-settings.js?v=20261007a';
+import { createExtensionSettings } from './official-extension-settings.js?v=2.0.329';
+import { createPresetList } from './official-preset-list.js?v=2.0.329';
+import { createPromptScroll } from './official-prompt-scroll.js?v=2.0.329';
 export function actionLabel(node,t){
   const byId={world_backfill_memos:['补全标题','Fill titles'],world_apply_current_sorting:['应用排序','Apply sorting'],world_refresh:['刷新','Refresh'],OpenAllWIEntries:['展开全部','Expand all'],CloseAllWIEntries:['收起全部','Collapse all'],world_popup_name_button:['改名','Rename'],world_duplicate:['复制','Duplicate'],world_popup_delete:['删除','Delete'],bulkEditButton:['批量编辑','Bulk edit'],charListGridToggle:['切换网格视图','Toggle grid view'],rm_button_group_chats:['新建群聊','New group'],external_import_button:['从外部导入','Import externally'],character_import_button:['导入角色','Import character'],world_import_button:['导入','Import'],world_popup_export:['导出','Export'],bg_add_folder_button:['新建文件夹','New folder'],bg_selection_mode_button:['选择背景','Select backgrounds'],bg_group_add_to_folder_button:['移入文件夹','Move to folder'],open_s_preset_menu:['预设工具','Preset tools'],view_connection_profile:['查看配置','View profile'],reload_connection_profile:['重新载入','Reload profile'],personas_backup:['备份','Back up'],personas_restore:['恢复备份','Restore backup'],persona_grid_toggle:['切换网格视图','Toggle grid view']};
   if(byId[node.id])return t(...byId[node.id]);
@@ -13,6 +15,8 @@ export function actionLabel(node,t){
 export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu}) {
   const doc=win.document, states=new Map();
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
+  const presetList=createPresetList({win,make,button,t});
+  let promptScroll=null;
   const get=id=>doc.getElementById(id);
   function state(root){let s=states.get(root);if(!s){s={moves:[],created:[],root};states.set(root,s);}return s;}
   function move(s,node,host,before){if(!node||node===host||node.contains(host))return;const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark]);}if(before)host.insertBefore(node,before);else host.append(node);if(companion)move(s,companion,host);}
@@ -434,14 +438,17 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     // Insert only lists prompts that are not in the list yet; hide it when empty.
     if(footer){const pick=footer.querySelector('select');footer.classList.toggle('cw-v4-pm-no-insert',!pick?.options.length);}
     panel.querySelectorAll('#completion_prompt_manager_list .completion_prompt_manager_prompt').forEach(item=>{
+      // Vue owns these controls and their ancestry; adapt presentation in place.
+      if(item.closest('.bai-bai-preset-vue-list-host'))return;
       if(item.classList.contains('cw-v4-prompt-row'))return;item.classList.add('cw-v4-prompt-row');const s=state(item);s.cleanup=()=>item.classList.remove('cw-v4-prompt-row');
       const toggle=item.querySelector('.prompt-manager-toggle-action'),edit=item.querySelector('.prompt-manager-edit-action'),name=item.querySelector('.completion_prompt_manager_prompt_name');
+      for(const [node,attrs] of [[toggle,['role','aria-label','aria-checked','tabindex']],[edit,['role']]])if(node){const original=attrs.map(a=>[a,node.getAttribute(a)]);cleanup(s,()=>original.forEach(([a,v])=>v===null?node.removeAttribute(a):node.setAttribute(a,v)));}
       // Grid cells: switch · name · tokens · Edit · ⋯ (the native icons live in a nested span).
-      if(toggle){move(s,toggle,item,item.firstChild);toggle.setAttribute('role','switch');toggle.setAttribute('aria-label',t('切换提示词启用状态','Toggle prompt'));}
+      if(toggle){move(s,toggle,item,item.firstChild);toggle.setAttribute('role','switch');toggle.setAttribute('tabindex','0');toggle.setAttribute('aria-label',t('切换提示词启用状态','Toggle prompt'));}
       // Tokens are shown only once counted (the design leaves the column out otherwise).
       const tok=item.querySelector('.prompt_manager_prompt_tokens');if(tok&&!/\d/.test(tok.textContent))item.classList.add('cw-v4-pm-no-tokens');
       const marker=item.querySelector('.fa-thumb-tack,.fa-thumbtack');
-      if(name){const meta=make('span','cw-v4-pm-meta',L(marker?'占位（由酒馆按位置填入内容）':'自定义提示词'));name.append(meta);s.created.push(meta);}
+      if(name&&marker){const meta=make('span','cw-v4-pm-meta',L('占位'));name.append(meta);s.created.push(meta);}
       if(edit){move(s,edit,item);const label=make('span','cw-v4-action-label',L('编辑'));edit.append(label);s.created.push(label);edit.setAttribute('role','button');}
       const inspect=item.querySelector('.prompt-manager-inspect-action');
       const more=menu(s,[inspect?['查看实际内容',null,false,()=>inspect.click()]:null,['从列表移除',item.querySelector('.prompt-manager-detach-action'),true]]);
@@ -855,9 +862,12 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   }
   return {
     mount(panel){
+      // Native PromptManager discards rows on every render. Do not retain all
+      // discarded DOM and listeners after a large batch.
+      for(const [root,st] of states)if(!root.isConnected&&root.matches?.('.cw-v4-prompt-row,.completion_prompt_manager_footer')){st.cleanup?.();st.cleanups?.forEach(f=>f());states.delete(root);}
       ({WorldInfo:world,Backgrounds:backgrounds,AdvancedFormatting:formatting,'left-nav-panel':presets,PersonaManagement:personas,'right-nav-panel':characters,rm_api_block:api,rm_extensions_block:extensions})[panel.id]?.(panel);
       if(panel.id==='PersonaManagement'){personaRows(panel);personaName(state(panel));}
-      if(panel.id==='left-nav-panel')promptRows(panel);
+      if(panel.id==='left-nav-panel'){promptRows(panel);presetList.mount(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
       if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
       if(panel.id==='WorldInfo'){
         const s=state(panel);worldChips(s);worldSummary(s);
@@ -868,6 +878,6 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
       for(const f of paints)f();
     },
-    restore(){extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
+    restore(){presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
   };
 }

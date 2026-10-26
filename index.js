@@ -13,11 +13,11 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installStreamFollow } from "./stream-follow.js";
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.85";
-import { installOfficialLayout } from "./official-layout.js?v=2.0.323";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.326";
-import { createClawdPile } from "./clawd-pile.js?v=2.0.323";
+import { installStreamFollow } from "./stream-follow.js?v=2.0.329";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.329";
+import { installOfficialLayout } from "./official-layout.js?v=2.0.329";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.329";
+import { createClawdPile } from "./clawd-pile.js?v=2.0.329";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -429,7 +429,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.314-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.329-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -460,7 +460,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=2.0.323', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=2.0.329', import.meta.url).href;
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
 if (CLAUDE_ENABLED) document.head.append(officialStyle);
 const startOfficialLayout = () => {
@@ -5226,8 +5226,9 @@ if (CLAUDE_ENABLED) {
      已有手柄的 ST 行不动，避免重复显示或改变它的原生事件链。 */
   function refreshPromptManagerDragHandles() {
     hostDocument
-      .querySelectorAll('#completion_prompt_manager_list > li.completion_prompt_manager_prompt')
+      .querySelectorAll('#completion_prompt_manager_list li.completion_prompt_manager_prompt:not([data-preset-favorite-mirror])')
       .forEach(row => {
+        if (row.closest('.bai-bai-preset-vue-list-host')) return;
         const existingHandle = row.querySelector(':scope > .drag-handle');
         if (existingHandle && !existingHandle.classList.contains(PROMPT_DRAG_HANDLE_CLASS) && !isTauriTavernHost()) return;
         let handle = existingHandle;
@@ -5238,9 +5239,10 @@ if (CLAUDE_ENABLED) {
           row.prepend(handle);
         }
         handle.classList.add(PROMPT_DRAG_HANDLE_CLASS);
+        const presetList = row.closest('.cw-pm-list');
         Object.entries({
           position: 'static',
-          display: 'inline-flex',
+          display: presetList && !presetList.classList.contains('cw-pm-sort') ? 'none' : 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           width: '28px',
@@ -5256,6 +5258,11 @@ if (CLAUDE_ENABLED) {
           filter: 'none',
           textShadow: 'none',
         }).forEach(([property, value]) => handle.style.setProperty(property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value, 'important'));
+        if (presetList) {
+          for (const [property, value] of [['grid-column','1'],['grid-row','1'],['align-self','center'],['justify-self','center']]) {
+            if (handle.style.getPropertyValue(property) !== value) handle.style.setProperty(property, value, 'important');
+          }
+        }
         if (handle.querySelector(':scope > .' + PROMPT_DRAG_GLYPH_CLASS)) return;
         handle.textContent = '';
         const glyph = hostDocument.createElement('span');
@@ -7536,7 +7543,7 @@ if (CLAUDE_ENABLED) {
   function markCurrentRecent() {
     const context = getContext();
     const chatId = String(context?.getCurrentChatId?.() ?? '');
-    /* 2.0.328：不同角色可以有同名存档（比如从别的角色拷来的聊天），只比文件名会把两行都标成当前——
+    /* 2.0.329：不同角色可以有同名存档（比如从别的角色拷来的聊天），只比文件名会把两行都标成当前——
        生成中的橙点就亮了两个。再比一次是哪个角色 / 群组；拿不到角色时退回只比文件名。 */
     const groupId = String(context?.groupId ?? '').trim();
     const avatar = groupId ? '' : String(context?.characters?.[context?.characterId]?.avatar ?? '').trim();
@@ -8160,7 +8167,7 @@ if (CLAUDE_ENABLED) {
   function hostModuleRoot() {
     const mainScript = [...hostDocument.scripts].find(script => /(?:^|\/)script\.js(?:[?#].*)?$/.test(script.src));
     return {
-      main: mainScript?.src || new hostWindow.URL('script.js', hostDocument.baseURI).href,
+      main: mainScript?.src || new hostWindow.URL('script.js?v=2.0.329', hostDocument.baseURI).href,
       root: new hostWindow.URL('.', mainScript?.src || hostDocument.baseURI),
     };
   }
@@ -8169,7 +8176,7 @@ if (CLAUDE_ENABLED) {
     const urls = hostModuleRoot();
     /* 主模块必须保留页面实际使用的 ?v=... 等查询参数。
        去掉它再 import 会被浏览器当成另一份模块，可能把 SillyTavern 主程序重复执行一次。 */
-    if (relativePath === 'script.js') return urls.main;
+    if (relativePath === 'script.js?v=2.0.329') return urls.main;
     return new hostWindow.URL(relativePath, urls.root).href;
   }
 
@@ -8193,9 +8200,9 @@ if (CLAUDE_ENABLED) {
 
   function injectHostModuleLoader() {
     const urls = {
-      main: resolveHostModule('script.js'),
-      groups: resolveHostModule('scripts/group-chats.js'),
-      popup: resolveHostModule('scripts/popup.js'),
+      main: resolveHostModule('script.js?v=2.0.329'),
+      groups: resolveHostModule('scripts/group-chats.js?v=2.0.329'),
+      popup: resolveHostModule('scripts/popup.js?v=2.0.329'),
     };
     /* 模块说明符写成绝对地址：blob 兜底那条路的 baseURI 是 blob:，
        相对路径在那里解析不出来。 */
@@ -10970,7 +10977,7 @@ if (CLAUDE_ENABLED) {
 
     const token = {};
     autoCompleteResizeGuardToken = token;
-    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js');
+    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js?v=2.0.329');
 
     try {
       const previous = hostWindow[AUTOCOMPLETE_RESIZE_GUARD_KEY];
