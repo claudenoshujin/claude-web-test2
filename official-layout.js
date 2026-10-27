@@ -1,11 +1,11 @@
-import { preferencesFor } from './preferences.js?v=2.0.160-hw1';
-import { installOfficialWeb } from './official-web.js?v=2.0.160-hw1';
-import { officialIcons } from './official-icons.js?v=2.0.160-hw1';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.160-hw1';
-import { tr } from './official-i18n.js?v=2.0.160-hw1';
-import { createTTPanelRuntime } from './official-tt-panel-runtime.js?v=2.0.160-hw1';
-import { createBackgroundFilters } from './background-filters.js?v=2.0.160-hw1';
-import { createPromptScroll } from './official-prompt-scroll.js?v=2.0.160-hw1';
+import { preferencesFor } from './preferences.js?v=2.0.160-hw2';
+import { installOfficialWeb } from './official-web.js?v=2.0.160-hw2';
+import { officialIcons } from './official-icons.js?v=2.0.160-hw2';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.160-hw2';
+import { tr } from './official-i18n.js?v=2.0.160-hw2';
+import { createTTPanelRuntime } from './official-tt-panel-runtime.js?v=2.0.160-hw2';
+import { createBackgroundFilters } from './background-filters.js?v=2.0.160-hw2';
+import { createPromptScroll } from './official-prompt-scroll.js?v=2.0.160-hw2';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.

@@ -1,9 +1,9 @@
-import { preferencesFor, RELOAD_STORAGE_HINT } from './preferences.js?v=2.0.160-hw1';
-import { parseRecentTime } from './recent-time.js?v=2.0.160-hw1';
-import { installChatTools } from "./chat-tools.js?v=2.0.160-hw1";
-import { installIOSKeyboardScroll } from './ios-keyboard-scroll.js?v=2.0.160-hw1';
-import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.160-hw1';
-/* Claude Web public 2.0.160-hw1. Allowed runtime transplant; exclusions removed before generation. */
+import { preferencesFor, RELOAD_STORAGE_HINT } from './preferences.js?v=2.0.160-hw2';
+import { parseRecentTime } from './recent-time.js?v=2.0.160-hw2';
+import { installChatTools } from "./chat-tools.js?v=2.0.160-hw2";
+import { installIOSKeyboardScroll } from './ios-keyboard-scroll.js?v=2.0.160-hw2';
+import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.160-hw2';
+/* Claude Web public 2.0.160-hw2. Allowed runtime transplant; exclusions removed before generation. */
 (function() {
   try {
     for (const [k, v] of [ [ "mode", "full" ], [ "structure", "rail" ], [ "skin", "classic" ] ]) preferencesFor(window).setItem("claude-web:" + k, v);
@@ -18,18 +18,18 @@ import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.160-hw1';
   } catch {}
 })();
 
-import { tr } from "./official-i18n.js?v=2.0.160-hw1";
+import { tr } from "./official-i18n.js?v=2.0.160-hw2";
 
-import { installStreamFollow } from "./stream-follow.js?v=2.0.160-hw1";
+import { installStreamFollow } from "./stream-follow.js?v=2.0.160-hw2";
 
-import { installOfficialLayout } from "./official-layout.js?v=2.0.160-hw1";
+import { installOfficialLayout } from "./official-layout.js?v=2.0.160-hw2";
 
-import { installHalloween } from "./halloween.js?v=2.0.160-hw1";
+import { installHalloween } from "./halloween.js?v=2.0.160-hw2";
 
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.160-hw1";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.160-hw2";
 
-import { createClawdPile } from "./clawd-pile.js?v=2.0.160-hw1";
-import { installClawdRhythm } from "./clawd-rhythm.js?v=2.0.160-hw1";
+import { createClawdPile } from "./clawd-pile.js?v=2.0.160-hw2";
+import { installClawdRhythm } from "./clawd-rhythm.js?v=2.0.160-hw2";
 
 const CLAUDE_EXTENSION_BASE = new URL(".", import.meta.url).href;
 
@@ -381,7 +381,7 @@ const CLAUDE_FEATURES = {
 };
 
 const CLAUDE_KEYBOARD_BUILD = {
-  id: "2.0.160-hw1-public-full-" + CLAUDE_THEME_VARIANT + "-" + CLAUDE_LAYOUT + "-ext",
+  id: "2.0.160-hw2-public-full-" + CLAUDE_THEME_VARIANT + "-" + CLAUDE_LAYOUT + "-ext",
   mode: "full"
 };
 
@@ -397,7 +397,7 @@ const officialStyle = document.createElement("link");
 
 officialStyle.rel = "stylesheet";
 
-officialStyle.href = new URL("styles/official-layout.css?v=2.0.160-hw1", import.meta.url).href;
+officialStyle.href = new URL("styles/official-layout.css?v=2.0.160-hw2", import.meta.url).href;
 
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
 if (CLAUDE_ENABLED) document.head.append(officialStyle);
@@ -1197,7 +1197,7 @@ if (CLAUDE_ENABLED) {
       else hostWindow.localStorage.setItem(RESTORE_KEY, record);
       if (hostWindow.localStorage.getItem(RESTORE_KEY) !== record) throw new Error("无法保留主题恢复记录");
       const safetyId = hostWindow.__claudeSafety?.state?.id;
-      const {saveRestoredTheme} = await import(new URL("theme-restore.js?v=2.0.160-hw1", CLAUDE_EXTENSION_BASE).href);
+      const {saveRestoredTheme} = await import(new URL("theme-restore.js?v=2.0.160-hw2", CLAUDE_EXTENSION_BASE).href);
       await saveRestoredTheme(hostWindow, context, expected);
       if (hostWindow.localStorage.getItem(RESTORE_KEY) !== record || hostWindow.localStorage.getItem("claude-web:enabled") !== "off") throw new Error("恢复状态已改变，请重新确认");
       await hostWindow.__claudeSafety?.confirmRestore(record, safetyId);
@@ -1547,7 +1547,7 @@ if (CLAUDE_ENABLED) {
       genStartedAt: 0
     };
     const NORMAL_CLAWD_RIG = buildClawdRig();
-    let CLAWD_RIG = NORMAL_CLAWD_RIG, halloween = null;
+    let CLAWD_RIG = NORMAL_CLAWD_RIG, halloween = null, halloweenAirborne = false;
     function switchHalloweenRig(next) {
       const rig = next || NORMAL_CLAWD_RIG;
       if (CLAWD_RIG === rig || destroyed) return;
@@ -3158,18 +3158,20 @@ if (CLAUDE_ENABLED) {
     function a2Locked() {
       return Date.now() < A2.lockUntil;
     }
-    function a2Place(button) {
+    function a2Place(button, ballistic = false) {
+      halloweenAirborne = ballistic || A2.held || A2.dragging || Math.abs(A2.fy - A2.floor) > .5;
       const move = `translate3d(${A2.x.toFixed(1)}px, ${A2.fy.toFixed(1)}px, 0)`;
       const home = !A2.x && !A2.fy;
       if (home && !A2.rot && A2.sqx === 1 && A2.sqy === 1) {
         button.style.removeProperty("transform");
+        if (halloween?.enabled) halloween.positionClawd({ airborne: ballistic || A2.held || A2.dragging || Math.abs(A2.fy - A2.floor) > .5, x: A2.x, y: A2.fy });
         return;
       }
       let value = move;
       A2.rot && (value += ` rotate(${A2.rot.toFixed(1)}deg)`);
       A2.sqx === 1 && A2.sqy === 1 || (value += ` scale(${A2.sqx.toFixed(3)}, ${A2.sqy.toFixed(3)})`);
       button.style.setProperty("transform", value, "important");
-      if (halloween?.enabled) halloween.positionClawd();
+      if (halloween?.enabled) halloween.positionClawd({ airborne: ballistic || A2.held || A2.dragging || Math.abs(A2.fy - A2.floor) > .5, x: A2.x, y: A2.fy });
     }
     function a2CancelSeq() {
       if (!A2.lockUntil) {
@@ -3515,7 +3517,7 @@ if (CLAUDE_ENABLED) {
           }
         }
         A2.rot = Math.max(-P.maxRot, Math.min(P.maxRot, -bx * P.spin));
-        a2Place(button);
+        a2Place(button, true);
         requestClawdFrame(step);
       };
       requestClawdFrame(step);
@@ -7261,7 +7263,7 @@ if (CLAUDE_ENABLED) {
       installAutoCompleteResizeGuard();
       installStyle();
       installClawdRigStyle();
-      halloween = installHalloween({win:hostWindow, getContext, setRig:switchHalloweenRig, refresh:scheduleRefresh});
+      halloween = installHalloween({win:hostWindow, getContext, setRig:switchHalloweenRig, refresh:scheduleRefresh, getClawdState:()=>({x:A2.x,y:A2.fy,held:A2.held,dragging:A2.dragging,airborne:halloweenAirborne})});
       halloween.sync();
       hostWindow.console?.info?.("[Claude-Clawd] build:", KEYBOARD_BUILD.id);
       setBodyClass(READY_CLASS, !0);
