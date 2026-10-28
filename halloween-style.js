@@ -20,10 +20,6 @@ export const iconRules=[
   "svg"
  ],
  [
-  ".clawd-mobile-menu-button",
-  "hamburger"
- ],
- [
   "#leftNavDrawerIcon",
   "potion",
   "self"
@@ -54,8 +50,9 @@ export const iconRules=[
   "self"
  ],
  [
-  "#option_impersonate",
-  "ghost"
+  "#option_impersonate>i",
+  "ghost",
+  "native"
  ],
  [
   ".cw-v4-navitem[data-panel=\"right-nav-panel\"] .cw-v4-icon",
@@ -108,44 +105,37 @@ export const iconRules=[
   "cauldron"
  ],
  [
-  "#option_delete_mes",
-  "cauldron"
- ],
- [
-  "#option_delete_mes .fa-solid",
-  "cauldron"
+  "#option_delete_mes>i",
+  "cauldron",
+  "native"
  ],
  [
   "#ui-preset-delete-button",
   "cauldron"
  ],
  [
-  "#option_continue",
-  "cont"
+  "#option_continue>i",
+  "cont",
+  "native"
  ],
  [
-  "#option_continue .fa-solid",
-  "cont"
+  "#option_new_bookmark>i",
+  "flag",
+  "native"
  ],
  [
-  "#option_new_bookmark",
-  "flag"
- ],
- [
-  "#option_convert_to_group",
-  "ghosts"
+  "#option_convert_to_group>i",
+  "ghosts",
+  "native"
  ],
  [
   "#option_start_new_chat .fa-solid",
   "bubble"
  ],
  [
-  "#option_close_chat",
-  "bones"
- ],
- [
-  "#option_close_chat .fa-solid",
-  "bones"
+  "#option_close_chat>i",
+  "bones",
+  "native"
  ],
  [
   "#ui_preset_import_button",
@@ -162,9 +152,18 @@ export const iconRules=[
  ]
 ];
 export const halloweenCSS=String.raw`
+@keyframes hw-sheet-float{0%,100%{translate:0 -1px}25%{translate:0 -3px}75%{translate:0 1px}}
+html[data-cw-halloween="on"] .clawd-pile-c[data-name="cowboy"] .clawd-pile-leg{display:none!important}
+html[data-cw-halloween="on"] .clawd-pile-c[data-name="cowboy"] .clawd-pile-s{animation:hw-sheet-float 2.5s ease-in-out infinite}
+html[data-cw-halloween="on"] .clawd-pile-shadow:has(+.clawd-pile-c[data-name="cowboy"]){opacity:.45}
+.hw-prank-cursor{position:relative}
+.hw-prank-cursor>.hw-pixels{animation:hw-sheet-float 2.5s ease-in-out infinite}
+.hw-prank-cursor::after{content:"";position:absolute;left:50%;bottom:-4px;width:13px;height:2px;translate:-50% 0;border-radius:50%;background:rgba(0,0,0,.2)}
+html[data-cw-halloween="on"][data-cw-hw-calm="on"] :is(.clawd-pile-c[data-name="cowboy"] .clawd-pile-s,.hw-prank-cursor>.hw-pixels),html[data-cw-halloween="on"][data-cw-hw-ambient="off"] :is(.clawd-pile-c[data-name="cowboy"] .clawd-pile-s,.hw-prank-cursor>.hw-pixels){animation:none;translate:0 0}
+@media(prefers-reduced-motion:reduce){html[data-cw-halloween="on"] .clawd-pile-c[data-name="cowboy"] .clawd-pile-s,.hw-prank-cursor>.hw-pixels{animation:none;translate:0 0}}
 @keyframes hw-web-sway{0%,100%{transform:rotate(0deg)}25%{transform:rotate(1.15deg)}75%{transform:rotate(-1.15deg)}}
-@keyframes hw-signature{0%,100%{opacity:.95}50%{opacity:.45}}
 .hw-live-web,.hw-live-web *,.hw-chat-deco,.hw-chat-deco *{pointer-events:none!important;user-select:none}.hw-web-thread{transform-origin:top;transition:height .2s}.hw-web-star{transition:top .2s}.hw-chat-deco{position:fixed!important}
+.hw-fx.hw-node-spider,.hw-fx.hw-node-ripple{z-index:3003}
 .hw-node-spider,.hw-node-thread,.hw-node-body,.hw-node-ripple,.hw-prank,.hw-prank *{pointer-events:none!important;user-select:none}
 .hw-flight-char,.hw-flight-spark,.hw-delete-spark,.hw-delete-asterisk,.hw-delete-puff,.hw-delete-moth{display:block;pointer-events:none;user-select:none;transform-origin:center}
 .hw-flight-layer{position:fixed;inset:0;pointer-events:none}.hw-deletion-layer{pointer-events:none;isolation:isolate}.hw-delete-puff{border-radius:50%}.hw-delete-moth svg{overflow:visible}
@@ -176,7 +175,7 @@ html[data-cw-halloween="on"] .clawd-welcome-hero{position:relative}
 html.hw-typing .hw-welcome{opacity:0;transform:translate(-50%,-15px)}
 .hw-web{top:0;left:0;width:76px;height:62px;color:#d97757;opacity:.45;overflow:hidden}.hw-web svg{width:100%;height:100%}
 .hw-footer{left:10px;top:calc(100% + 8px);font-size:11px;color:var(--cl-muted,#7b7974);white-space:nowrap}
-html[data-cw-halloween="on"] button.hw-pail{all:unset;box-sizing:border-box!important;position:fixed!important;display:block!important;width:21px!important;height:24px!important;margin:0!important;padding:0!important;border:0!important;bottom:auto!important;pointer-events:auto!important;cursor:pointer!important;z-index:2999!important;touch-action:manipulation!important}
+html[data-cw-halloween="on"] button.hw-pail{all:unset;box-sizing:border-box!important;position:fixed!important;display:block!important;width:21px!important;height:24px!important;margin:0!important;padding:0!important;border:0!important;bottom:auto!important;pointer-events:auto!important;cursor:pointer!important;z-index:2999!important;touch-action:none!important}
 html[data-cw-halloween="on"] button.hw-pail:focus-visible{outline:2px solid var(--cl-accent,#d97757)!important;outline-offset:3px!important}
 html[data-cw-halloween="on"] button.hw-pail:disabled{cursor:default!important}
 .hw-pixels{display:block!important;max-width:none!important;image-rendering:pixelated;pointer-events:none;object-fit:fill}
@@ -195,8 +194,6 @@ html[data-cw-halloween="on"] .hw-footer{display:block!important;height:auto!impo
 html[data-cw-halloween="on"] :is(.cw-v4-panel,.cw-v4-editor) select:not([multiple]){background-image:var(--cw-hw-select)!important}
 html[data-cw-halloween="on"] .cw-v4-segsel-item[aria-pressed="true"]{clip-path:polygon(0 0,100% 0,100% 91%,92% 100%,84% 91%,76% 100%,68% 91%,60% 100%,52% 91%,44% 100%,36% 91%,28% 100%,20% 91%,12% 100%,4% 91%,0 95%)}
 html[data-cw-halloween="on"] :is(.cw-v4-panel,.cw-v4-editor) input[type=checkbox]:checked:not(.sr-only):not([data-v-app] *)::after{border-radius:0!important;background:var(--cw-hw-pumpkin) center/contain no-repeat!important;box-shadow:none!important}
-html[data-cw-halloween="on"] .clawd-mobile-menu-button>span{visibility:hidden!important}
-html[data-cw-halloween="on"] .clawd-mobile-menu-button::before{content:''!important;position:absolute!important;left:0!important;top:0!important;display:block!important;width:100%!important;height:100%!important;mask-size:22px 22px!important;-webkit-mask-size:22px 22px!important}
 html[data-cw-halloween="on"][data-claude-motion="off"] .clawd-welcome-hero>.asterisk{transition:none!important}
 @media(prefers-reduced-motion:reduce){.hw-welcome{transition:none}html[data-cw-halloween="on"] .clawd-welcome-hero>.asterisk{transition:none!important}}
 @media(max-width:700px){.hw-welcome{height:58px;bottom:calc(100% + 8px)}.hw-hanging-star{top:44px}.hw-footer{font-size:10px;top:calc(100% + 5px)}}

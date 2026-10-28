@@ -1,5 +1,5 @@
-import { preferencesFor } from './preferences.js?v=2.0.160-hw2';
-import { CHAT_TOOLS_CSS } from './chat-tools-style.js?v=2.0.160-hw2';
+import { preferencesFor } from './preferences.js?v=2.0.160-hw3';
+import { CHAT_TOOLS_CSS } from './chat-tools-style.js?v=2.0.160-hw3';
 
 const bare = f => String(f ?? '').replace(/\.jsonl$/i, '');
 export const chatRecordKey = r => JSON.stringify([r.group ? 'group' : 'character', String(r.group || r.avatar || ''), bare(r.file_name ?? r.file)]);

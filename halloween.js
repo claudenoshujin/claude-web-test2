@@ -1,4 +1,4 @@
-import { preferencesFor } from './preferences.js?v=2.0.160-hw2';
+import { preferencesFor } from './preferences.js?v=2.0.160-hw3';
 
 // Lightweight lifecycle. Artwork, rig and animation code are fetched only on enable.
 export function installHalloween({win, getContext, setRig, refresh, getClawdState}) {
@@ -47,11 +47,11 @@ export function installHalloween({win, getContext, setRig, refresh, getClawdStat
     if(scene){scene.sync();return;}
     if(pending)return pending;
     const ticket=++serial;
-    pending=import('./halloween-scene.js?v=2.0.160-hw2').then(module=>{
+    pending=import('./halloween-scene.js?v=2.0.160-hw3').then(module=>{
       if(disposed||serial!==ticket||!wanted())return;
       // Start only after all dependencies loaded; failed setup is fully reversible.
       root.dataset.cwHalloween='on';
-      const next=module.createHalloweenScene({win,getContext,ambient,getClawdState});
+      const next=module.createHalloweenScene({win,getContext,ambient,getClawdState,prefs});
       scene=next;
       try{next.install();setRig(next.rig);refresh();}
       catch(error){next.destroy();scene=null;root.removeAttribute('data-cw-halloween');setRig(null);throw error;}
