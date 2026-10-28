@@ -1,4 +1,4 @@
-import { preferencesFor } from './preferences.js?v=2.0.160-hw3';
+import { preferencesFor } from './preferences.js?v=2.0.160-hw4';
 /* 输入框上的三只小 Clawd（2.0.223 起；2.0.290 能拖、会自己走走停停）。
    Lulu 2026-10-01 看过原型 Claude outputs/clawd-pile-v1.html 后定的：一格 2px；巫师（星星帽 + 魔杖）躺在上面，
    牛仔帽在左下，墨镜在右下。替换原来那只不能点的装饰图（#send_form::after，icons/clawd.png）。
@@ -414,7 +414,7 @@ export function createClawdPile({ doc, win, big = null }) {
     const toY = parseFloat(k.el.style.top);
     k.mode = 'sit'; k.pose = 'dangle'; look(k);
     const a = k.el.animate?.([{ translate: `${fromX - k.x}px ${fromY - toY}px` }, { translate: '0 0' }], { duration: Math.min(420, 180 + Math.abs(fromY - toY) * 2), easing: 'cubic-bezier(.5,0,1,1)' });
-    const land = () => { squash(k); k.pose = 'crouch'; k.eyes = 'open'; look(k); settle(k, () => { save(); later(k, () => doze(k), rnd(1500, 3000)); }); };
+    const land = () => { squash(k); k.pose = 'crouch'; k.eyes = 'open'; look(k); settle(k, () => { save(); pile.dispatchEvent(new win.Event('cw-clawd-pile-drop', { bubbles: true })); later(k, () => doze(k), rnd(1500, 3000)); }); };
     if (a) a.onfinish = land; else land();
   }
 
