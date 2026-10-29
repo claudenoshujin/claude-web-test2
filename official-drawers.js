@@ -258,7 +258,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   function editEntry(entry){
     const drawer=entry.querySelector('.inline-drawer');
     // ST creates the editor lazily on this native event.
-    if(!entry.querySelector('.world_entry_edit'))win.jQuery?.(drawer).trigger('inline-drawer-toggle');
+    if(!entry.querySelector('.world_entry_edit'))drawer?.dispatchEvent(new win.CustomEvent('inline-drawer-toggle',{bubbles:true,detail:{open:true}}));
     const form=entry.querySelector('.world_entry_edit');if(!form)return;
     const Q=n=>entry.querySelector(`[name="${n}"]`);
     const es={moves:[],created:[],root:form},box=make('div','cw-v4-dialog-box cw-v4-wi-edit');
