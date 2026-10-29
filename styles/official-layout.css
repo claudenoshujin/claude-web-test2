@@ -3947,3 +3947,9 @@ html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list.cw-pm-sor
 .cw-v4-temporary{position:fixed;right:14px;top:calc(10px + env(safe-area-inset-top, 0px));width:32px;height:32px;padding:4px;border:0;background:none;color:var(--cw-v4-text);pointer-events:auto;z-index:4020}
 html[data-cw-v4] body:not(.clawd-welcome) .cw-v4-newchat-top{display:block;position:fixed;right:58px;top:calc(10px + env(safe-area-inset-top, 0px));width:32px;height:32px;padding:4px;border:0;background:none;color:var(--cw-v4-text,#1f1e1d);pointer-events:auto;z-index:4020;cursor:pointer}
 html[data-cw-v4] body:not(.clawd-welcome) .cw-v4-more-top{display:block;position:fixed;right:12px;top:calc(10px + env(safe-area-inset-top, 0px));width:32px;height:32px;padding:5px;box-sizing:border-box;border:0;background:none;color:var(--cw-v4-text,#1f1e1d);pointer-events:auto;z-index:4020;cursor:pointer}
+
+/* Scoped source b0e2761 */
+/* The list relied on the group block having no inline style yet; once ST writes display:none on every right_menu
+ * (after opening a character), the list fell back to ST's height:100% + overflow-y:hidden and could not scroll. */
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel .scrollableInner:has(> #rm_characters_block.cw-v4-reflow:not([style*="display: none"])){overflow:visible!important;height:auto!important;max-height:none!important}
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_characters_block.cw-v4-reflow{height:auto!important;max-height:none!important}
