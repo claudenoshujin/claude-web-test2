@@ -23,17 +23,19 @@ export function createPresetList({win,make,button,t}) {
   function restoreGroups(u=ui){if(!u)return;for(const [key]of u.expanded){const group=[...u.manager.querySelectorAll('.bai-bai-preset-group')].find(g=>g.dataset.presetGroupId===key);if(group&&!group.classList.contains('bai-bai-preset-group-collapsed'))group.querySelector('.bai-bai-preset-group-toggle')?.click();}u.expanded.clear();u.expanding.clear();}
   function expandGroup(group){if(!group?.classList.contains('bai-bai-preset-group-collapsed')||ui.expanding.has(group.dataset.presetGroupId))return;const key=group.dataset.presetGroupId;ui.expanded.set(key,true);ui.expanding.add(key);group.querySelector('.bai-bai-preset-group-toggle')?.click();win.setTimeout(()=>{if(ui){ui.expanding.delete(key);paint();}},220);}
   function ensureRow(key){const entry=find(key);if(node(entry))return Promise.resolve(entry);const group=[...ui.manager.querySelectorAll('.bai-bai-preset-group')].find(g=>g.dataset.presetGroupId===entry?.group);expandGroup(group);return new Promise(resolve=>{let timer;const done=()=>{const fresh=find(key);if(node(fresh)){observer.disconnect();win.clearTimeout(timer);resolve(fresh);}};const observer=new win.MutationObserver(done);observer.observe(ui.manager,{childList:true,subtree:true});timer=win.setTimeout(()=>{observer.disconnect();resolve(null);},1800);done();});}
-  function restoreSort(e){try{for(const k of ['disabled','handle'])if(e.get(k)===e.applied[k]&&!(k==='disabled'&&e.locked?.()))e.set(k,e.original[k]);}catch{}}
+  function restoreSort(e){if(!e.node.isConnected||e.alive?.()===false)return;try{for(const k of ['disabled','handle'])if(e.get(k)===e.applied[k]&&!(k==='disabled'&&e.locked?.()))e.set(k,e.original[k]);}catch{}}
   function sortables(block){
     const list=ui.manager.querySelector('#completion_prompt_manager_list');if(!list)return;
     const found=new Map(),$=win.jQuery;
-    if(!list.closest('.bai-bai-preset-vue-list-host')&&$&&$(list).hasClass('ui-sortable')){const instance=$(list).sortable('instance');if(instance)found.set(instance,{node:list,get:k=>$(list).sortable('option',k),set:(k,v)=>$(list).sortable('option',k,v)});}
+    if(!list.closest('.bai-bai-preset-vue-list-host')&&$&&$(list).hasClass('ui-sortable')){const instance=$(list).sortable('instance');if(instance)found.set(instance,{node:list,alive:()=>list.isConnected&&$(list).hasClass('ui-sortable')&&$(list).sortable('instance')===instance,get:k=>instance.option(k),set:(k,v)=>instance.option(k,v)});}
     for(const ul of [list,...list.querySelectorAll('.bai-bai-preset-group-list')])for(const k of Object.keys(ul)){const v=ul[k];if(k.startsWith('Sortable')&&v&&typeof v.option==='function')found.set(v,{node:ul,get:k=>v.option(k),set:(k,x)=>v.option(k,x)});}
     for(const [instance,e]of ui.sortables)if(!found.has(instance)){restoreSort(e);ui.sortables.delete(instance);}
     for(const [instance,api]of found){let e=ui.sortables.get(instance);if(!e){e={...api,original:{disabled:api.get('disabled'),handle:api.get('handle')},applied:{}};ui.sortables.set(instance,e);}for(const k of ['disabled','handle'])if(k in e.applied&&e.get(k)!==e.applied[k])e.original[k]=e.get(k);
       e.locked=()=>{const group=e.get('group');if(list.classList.contains('bai-bai-preset-drag-locked')||group?.pull===false)return true;try{return typeof group?.checkPull==='function'&&group.checkPull(instance,instance,null,null)===false;}catch{return true;}};const locked=e.locked();
       const desired={disabled:block||!!e.original.disabled||locked,handle:api.node===list&&list.closest('.bai-bai-preset-vue-list-host')?'.drag-handle, .bai-bai-preset-group-header':'.drag-handle'};
-      for(const k of ['disabled','handle']){if(e.get(k)!==desired[k])e.set(k,desired[k]);e.applied[k]=desired[k];}
+      // A disabled native sorter cannot start; assigning its handle walks every row.
+      // Apply the handle only when sort mode actually enables dragging.
+      for(const k of ['disabled',...(!desired.disabled?['handle']:[])]){if(e.get(k)!==desired[k])e.set(k,desired[k]);e.applied[k]=desired[k];}
     }
   }
   const key=()=>{const c=win.SillyTavern?.getContext?.();return JSON.stringify([doc.getElementById('settings_preset_openai')?.value,c?.characterId,c?.groupId,c?.chatId]);};
@@ -48,7 +50,7 @@ export function createPresetList({win,make,button,t}) {
   function paint(){
     if(!ui)return;
     if(ui.context!==key()){reset();return;}
-    if(!ui.busy&&(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')))return;
+    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive'))return;
     if(!ui.manager.contains(ui.tools)){ui.manager.prepend(ui.tools,ui.filterLine,ui.selectionLine);ui.manager.append(ui.empty,ui.bottom);}
     if(ui.manager.lastElementChild!==ui.bottom)ui.manager.append(ui.empty,ui.bottom);
     const active=doc.getElementById('main_api')?.value==='openai';hidden(ui.tabBar,!active);
@@ -223,8 +225,11 @@ export function createPresetList({win,make,button,t}) {
     listen(panel,'change',e=>{if(e.target.id==='settings_preset_openai')reset();});
     const ctx=win.SillyTavern?.getContext?.();for(const name of ['CHAT_CHANGED','CHAT_LOADED','OAI_PRESET_CHANGED_BEFORE','OAI_PRESET_CHANGED_AFTER']){const type=ctx?.eventTypes?.[name];if(type&&ctx.eventSource?.on){const fn=()=>reset();ctx.eventSource.on(type,fn);u.dispose.push(()=>ctx.eventSource.removeListener(type,fn));}}
     // Native row events are installed by PromptManager before our existing adapter.
-    let pruneTimer;
-    const observer=new win.MutationObserver(()=>{paint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);paint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);});
+    let pruneTimer,paintFrame=0;
+    const queuePaint=()=>{if(paintFrame||ui!==u)return;paintFrame=win.requestAnimationFrame(()=>{paintFrame=0;if(ui===u)paint();});};
+    const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select,.cw-pm-number,.cw-pm-state')||!!e.closest('.cw-pm-number,.cw-pm-state'));};
+    const ownMutation=r=>{if(r.type==='attributes'){const old=new Set((r.oldValue||'').split(/\s+/).filter(Boolean)),now=new Set(r.target.classList);const changed=[...[...old].filter(k=>!now.has(k)),...[...now].filter(k=>!old.has(k))];return changed.every(k=>k.startsWith('cw-pm-'));}return owned(r.target)||[...r.addedNodes,...r.removedNodes].every(owned);};
+    const observer=new win.MutationObserver(records=>{if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
     paint();
   }
   function destroy(){if(!ui)return;const u=ui;ui=null;u.epoch++;u.dispose.forEach(f=>f());
