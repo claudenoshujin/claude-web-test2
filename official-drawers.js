@@ -306,6 +306,46 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       es.created.forEach(n=>n.remove());box.remove();paintEntry(entry);
     }});
     dialog=box.closest('dialog');dialog?.classList.add('cw-v4-wi-dialog');
+    const contentSection=box.querySelector('.cw-v4-content-row')?.closest('section');
+    const expand=button('',()=>toggleContent(),'cw-v4-button cw-v4-wi-expand');
+    const expandText=make('span','',t('放大','Expand'));
+    expand.append(icon('expand'),expandText);expand.setAttribute('aria-expanded','false');
+    contentSection?.querySelector('h2')?.append(expand);
+    let expanded=false,measureFrame=0,cmModule=null;
+    const companion=()=>content?.nextElementSibling?.matches('.tt-codemirror-editor')?content.nextElementSibling:null;
+    const measure=()=>{
+      if(measureFrame)win.cancelAnimationFrame(measureFrame);
+      measureFrame=win.requestAnimationFrame(()=>{
+        measureFrame=0;
+        if(!dialog?.open)return;
+        const cm=companion();
+        if(cm&&cmModule)cmModule.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();
+        else if(cm&&!cmModule)import(new URL('/scripts/tauri/codemirror-editor.js',win.location.href).href)
+          .then(m=>{cmModule=m;if(dialog?.open)m.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();}).catch(()=>{});
+      });
+    };
+    function toggleContent(){
+      if(!dialog?.open)return;
+      const scroll=companion()?.querySelector('.cm-scroller')||content;
+      const savedScroll=[scroll?.scrollLeft||0,scroll?.scrollTop||0];
+      expanded=!expanded;dialog.classList.toggle('cw-v4-wi-expanded',expanded);
+      box.style.setProperty('display',expanded?'flex':'block','important');
+      expandText.textContent=expanded?t('收起','Collapse'):t('放大','Expand');
+      expand.setAttribute('aria-expanded',String(expanded));
+      if(scroll){scroll.scrollLeft=savedScroll[0];scroll.scrollTop=savedScroll[1];}
+      measure();
+    }
+    const escapeContent=e=>{
+      if(e.key!=='Escape'||!expanded||!dialog?.open)return;
+      const top=[...doc.querySelectorAll('dialog[open]')].at(-1);
+      if(top!==dialog||doc.querySelector('.select2-container--open'))return;
+      e.preventDefault();e.stopImmediatePropagation();toggleContent();expand.focus({preventScroll:true});
+    };
+    win.addEventListener('keydown',escapeContent,true);
+    const resize=win.ResizeObserver?new win.ResizeObserver(measure):null;
+    resize?.observe(dialog);
+    dialog.addEventListener('close',()=>{win.removeEventListener('keydown',escapeContent,true);resize?.disconnect();if(measureFrame)win.cancelAnimationFrame(measureFrame);},{once:true});
+
   }
 
   /* ---------------- 背景 ---------------- */
@@ -837,6 +877,65 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     }
   }
 
+  // Extension update checks run only when a user opens the list/configuration.
+  let versionState={kind:'latest',current:'',remote:''},versionIdentity=null,versionPending=null,versionDisposed=false,versionCard=null;
+  const versionRows=new Set();
+  let versionSuppressed=false,versionDelay=null,finishVersionDelay=null;
+  const cancelOwnVersionCheck=event=>{if(event.target.closest?.('#extensions_details')){versionSuppressed=true;if(versionDelay){win.clearTimeout(versionDelay);versionDelay=null;finishVersionDelay?.();}}};
+  doc.addEventListener('click',cancelOwnVersionCheck,true);
+  const moduleBase=new URL('.',import.meta.url);
+  const ownLoader=[...doc.scripts].find(n=>n.src&&/\/loader-[^/]+\.js/.test(new URL(n.src).pathname)&&new URL('.',n.src).href===moduleBase.href);
+  const versionBase=new URL('.',ownLoader?.src||import.meta.url);
+  const versionFolder=decodeURIComponent(versionBase.pathname.replace(/\/$/,'').split('/').pop());
+  const versionHeaders=()=>win.SillyTavern?.getContext?.()?.getRequestHeaders?.()||{'Content-Type':'application/json'};
+  const versionPost=(endpoint)=>win.fetch('/api/extensions/'+endpoint,{method:'POST',headers:versionHeaders(),body:JSON.stringify(versionIdentity)});
+  const versionKey=()=> 'claude-web:update-status:'+versionIdentity.extensionName+':'+versionIdentity.global;
+  function cacheVersion(){try{win.sessionStorage.setItem(versionKey(),JSON.stringify({at:Date.now(),kind:versionState.kind,remote:versionState.remote}));}catch{}}
+  function paintVersion(){
+    if(versionDisposed)return;
+    const state=versionState,available=state.kind==='available',done=state.kind==='done',busy=state.kind==='updating';
+    const text=busy?t('正在更新…','Updating…'):done?t('已更新到 ','Updated to ')+(state.remote||state.current):available?'● '+t('有新版本','Update available')+(state.remote?' '+state.remote:''):state.current;
+    const action=()=>versionState.kind==='done'?win.location.reload():updateVersion();
+    for(const r of versionRows){if(!r.isConnected){versionRows.delete(r);continue;}let status=r.querySelector('.cw-update-status');
+      if(!status){status=make('span','cw-update-status');status.append(make('span','cw-update-label'),button('',action,'cw-v4-button cw-update-action'));r.querySelector('.cw-v4-extension-edit')?.before(status);}
+      const label=status.querySelector('.cw-update-label');if(label.textContent!==text)label.textContent=text;if(status.dataset.kind!==state.kind)status.dataset.kind=state.kind;if(status.dataset.current!==state.current)status.dataset.current=state.current;
+      const control=status.querySelector('button');if(control.hidden!==(!available&&!done))control.hidden=!available&&!done;if(control.disabled!==busy)control.disabled=busy;const value=done?t('刷新页面','Reload page'):t('更新','Update');if(control.textContent!==value)control.textContent=value;
+    }
+    const sections=get('claude-web-settings')?.querySelector('.claude-web-sections');
+    if(sections){if(!versionCard||!versionCard.isConnected){versionCard=make('div','cw-update-card');versionCard.append(make('b','cw-update-card-title'),make('div','cw-update-card-desc'),button('',action,'cw-v4-button cw-update-card-action'));sections.prepend(versionCard);}
+      if(versionCard.hidden!==(!available&&!done&&!busy))versionCard.hidden=!available&&!done&&!busy;const title=versionCard.querySelector('b');if(title.textContent!==text)title.textContent=text;
+      const desc=versionCard.querySelector('.cw-update-card-desc'),detail=done?t('刷新页面后生效','Reload the page to apply'):t('当前 ','Current ')+state.current;if(desc.textContent!==detail)desc.textContent=detail;
+      const control=versionCard.querySelector('button');control.disabled=busy;const value=done?t('刷新页面','Reload page'):busy?t('正在更新…','Updating…'):t('更新','Update');if(control.textContent!==value)control.textContent=value;
+    }
+  }
+  async function checkVersion(){
+    if(versionDisposed||versionSuppressed)return;if(['done','updating'].includes(versionState.kind)){paintVersion();return;}if(versionPending)return versionPending;
+    const checkAfter=win.performance.now()+3000;
+    versionPending=(async()=>{try{
+      if(!versionIdentity){const [manifest,list]=await Promise.all([win.fetch(new URL('manifest.json',versionBase)).then(r=>r.ok?r.json():{}),win.fetch('/api/extensions/discover').then(r=>r.json())]);
+        versionState.current=String(manifest.version||'');const item=list.find(x=>x.name==='third-party/'+versionFolder||x.name===versionFolder);if(!item||!['local','global'].includes(item.type))return;
+        versionIdentity={extensionName:versionFolder,global:item.type==='global'};
+      }
+      paintVersion();let cached;try{cached=JSON.parse(win.sessionStorage.getItem(versionKey())||'null')}catch{}
+      if(cached&&Date.now()-cached.at<3600000){versionState.kind=['available','latest'].includes(cached.kind)?cached.kind:'latest';versionState.remote=String(cached.remote||'');paintVersion();return;}
+      await new Promise(resolve=>{finishVersionDelay=resolve;versionDelay=win.setTimeout(resolve,Math.max(0,checkAfter-win.performance.now()));});versionDelay=null;finishVersionDelay=null;
+      if(versionDisposed||versionSuppressed)return;
+      const response=await versionPost('version');if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();
+      if(typeof data.isUpToDate!=='boolean')throw Error('Invalid extension version response');versionState.kind=data.isUpToDate?'latest':'available';versionState.remote='';
+      if(!data.isUpToDate){const match=String(data.remoteUrl||'').match(/^(?:https?:\/\/github\.com\/|git@github\.com:)([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/);
+        if(match&&data.currentBranchName){const raw='https://raw.githubusercontent.com/'+match[1]+'/'+match[2]+'/'+String(data.currentBranchName).split('/').map(encodeURIComponent).join('/')+'/manifest.json?cw='+Date.now();
+          try{const r=await win.fetch(raw,{cache:'no-store'});if(r.ok){const m=await r.json();if(typeof m.version==='string')versionState.remote=m.version.slice(0,64);}}catch{}}
+      }
+      cacheVersion();
+    }catch{versionState.kind='latest';if(versionIdentity)cacheVersion();}finally{paintVersion();}})().finally(()=>versionPending=null);return versionPending;
+  }
+  async function updateVersion(){
+    if(!versionIdentity||versionState.kind!=='available')return;versionState.kind='updating';paintVersion();
+    try{const response=await versionPost('update');if(!response.ok)throw Error('HTTP '+response.status);const result=await response.json();if(typeof result.version==='string')versionState.remote=result.version;versionState.kind='done';cacheVersion();}
+    catch(error){versionState.kind='available';win.toastr?.error?.(t('更新失败：','Update failed: ')+error.message,t('Claude Web','Claude Web'));}
+    paintVersion();
+  }
+
   /* ---------------- 扩展 ---------------- */
   function extensions(panel){
     // 已经有就不再 add：add 一个已有的 class 也会重写属性，触发设置页的 sync 循环（见 official-layout.js sync）。
@@ -845,7 +944,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     if(started){const {s,page}=started,top=section(page,'');
       row(s,top,'','管理、安装和配置扩展',[act(s,get('third_party_extension_button'),'安装扩展'),act(s,get('extensions_details'),'管理')]);
       tg(s,top,get('extensions_notify_updates'),'扩展有更新时通知');
-      const list=section(page,'已安装');list.classList.add('cw-v4-entries');for(const id of ['extensions_settings','extensions_settings2'])move(s,get(id),list);
+      const list=section(page,'已安装');list.classList.add('cw-v4-entries');const editOrder=button(t('编辑顺序','Edit order'),()=>win.__claudeOfficialLayout?.editLayout?.('extensions'),'cw-v4-button cw-extensions-edit-order');list.querySelector('h2')?.append(editOrder);for(const id of ['extensions_settings','extensions_settings2'])move(s,get(id),list);
       const extras=panel.querySelector('.extensions_url_block');
       if(extras){const legacy=section(page,'旧版 Extras API（已弃用）');dialogRow(s,legacy,'Extras API','只有还在用旧版 Extras 服务器时才需要','Extras API',box=>move(s,extras,box),'配置',extensionSettings.open);}
       finish(s);
@@ -858,14 +957,18 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       const s=state(c),r=make('div','cw-v4-extension-row'),ic=make('span','cw-v4-extension-icon');
       r.append(ic,make('span','cw-v4-extension-name',name),button(L('配置'),e=>{e.stopPropagation();extensionSettings.open(c,name);},'cw-v4-button cw-v4-extension-edit'));
       c.prepend(r);s.created.push(r);
+      if(c.id==='claude-web-settings')versionRows.add(r);
     });
   }
+    function updateExtensionVersions(){paintVersion();void checkVersion();}
   return {
+    checkUpdates:checkVersion,
     mount(panel){
       // Native PromptManager discards rows on every render. Do not retain all
       // discarded DOM and listeners after a large batch.
       for(const [root,st] of states)if(!root.isConnected&&root.matches?.('.cw-v4-prompt-row,.completion_prompt_manager_footer')){st.cleanup?.();st.cleanups?.forEach(f=>f());states.delete(root);}
       ({WorldInfo:world,Backgrounds:backgrounds,AdvancedFormatting:formatting,'left-nav-panel':presets,PersonaManagement:personas,'right-nav-panel':characters,rm_api_block:api,rm_extensions_block:extensions})[panel.id]?.(panel);
+      if(panel.id==='rm_extensions_block')updateExtensionVersions();
       if(panel.id==='PersonaManagement'){personaRows(panel);personaName(state(panel));}
       if(panel.id==='left-nav-panel'){promptRows(panel);presetList.mount(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
       if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
@@ -878,6 +981,6 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
       for(const f of paints)f();
     },
-    restore(){presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
+    restore(){versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
   };
 }

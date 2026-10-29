@@ -1,3 +1,4 @@
+import { preferencesFor } from './preferences.js?v=2.0.330';
 import { officialIcons } from './official-icons.js?v=2.0.330';
 import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.330';
 import { tr } from './official-i18n.js?v=2.0.330';
@@ -335,6 +336,7 @@ export function installOfficialLayout(win = window) {
   // runs after the node is back in place (design openDialog).
   function openEditor(node, title, desc, opts = {}) {
     if (!node.isConnected || node.classList.contains('cw-v4-editing')) return;
+    if(node.id==='claude-web-settings')drawerLayouts.checkUpdates?.();
     // 2.0.222：扩展标题里带着帮助链接的「?」（图像生成 ?），弹窗标题不要它。
     if (typeof title === 'string') title = title.replace(/\s*[?？]$/, '');
     const anchor = doc.createComment('cw-v4-return'); node.before(anchor);
@@ -780,6 +782,152 @@ export function installOfficialLayout(win = window) {
     const v = h > 0 ? (h + 8) + 'px' : '0px';
     if (sheld.style.getPropertyValue('--cw-qr-h') !== v) sheld.style.setProperty('--cw-qr-h', v);
   }
+  // S04: one scrollHeight measurement at most per scheduled frame.
+  let composerFrame=0,composerSignature='',composerArea=null;
+  function clearComposerSizing(){root.removeAttribute('data-cw-composer-sized');root.style.removeProperty('--cw-composer-height');}
+  function syncComposerLines(force=false){
+    const phone=mobile(),fallback=phone?2:1,max=phone?6:8;
+    const raw=Number(preferencesFor(win).getItem('claude-web:composer-lines-'+(phone?'mobile':'pc'))||fallback);
+    const lines=Number.isFinite(raw)?Math.max(1,Math.min(max,Math.round(raw))):fallback;
+    if(root.dataset.cwComposerLines!==String(lines))root.dataset.cwComposerLines=String(lines);
+    const area=doc.getElementById('send_textarea');
+    const inactive=!enabled()||doc.body.classList.contains('clawd-welcome')||root.hasAttribute('data-cw-v4-landscape')&&root.hasAttribute('data-cw-v4-kb');
+    const signature=[phone,lines,inactive,area?.value].join('|');
+    if(!force&&signature===composerSignature&&area===composerArea)return;
+    composerSignature=signature;composerArea=area;
+    if(composerFrame)win.cancelAnimationFrame(composerFrame);
+    composerFrame=0;
+    if(!area||inactive||!area.value&&lines===fallback){clearComposerSizing();return;}
+    composerFrame=win.requestAnimationFrame(()=>{
+      composerFrame=0;if(destroyed||!area.isConnected)return;
+      root.setAttribute('data-cw-composer-sized','');
+      const css=win.getComputedStyle(area),lh=parseFloat(css.lineHeight)||parseFloat(css.fontSize)*1.5;
+      const padding=parseFloat(css.paddingTop)+parseFloat(css.paddingBottom),border=parseFloat(css.borderTopWidth)+parseFloat(css.borderBottomWidth);
+      const old=['height','min-height'].map(k=>[k,area.style.getPropertyValue(k),area.style.getPropertyPriority(k)]);
+      area.style.setProperty('height','0px','important');area.style.setProperty('min-height','0px','important');
+      const needed=area.scrollHeight+border;
+      for(const [k,v,priority] of old){if(v)area.style.setProperty(k,v,priority);else area.style.removeProperty(k);}
+      const min=lines*lh+padding+border,limit=Math.max(lines,phone?6:10)*lh+padding+border;
+      const value=Math.ceil(Math.max(min,Math.min(limit,needed)))+'px';
+      if(root.style.getPropertyValue('--cw-composer-height')!==value)root.style.setProperty('--cw-composer-height',value);
+    });
+  }
+  disposers.push(()=>{if(composerFrame)win.cancelAnimationFrame(composerFrame);clearComposerSizing();root.removeAttribute('data-cw-composer-lines');});
+
+  // S05: stable native IDs; only presentation is reordered, native nodes stay put.
+  const railMoreDefaults=new Set(['advanced-formatting-button','user-settings-button','backgrounds-button','extensions-settings-button']);
+  const layoutPrefs=preferencesFor(win),layoutStyles=new Map(),layoutSignatures=new Map();
+  let layoutBox=null,layoutBoxKind=null;
+  const layoutKey=kind=>'claude-web:'+(kind==='rail'?'rail':'extensions')+'-layout';
+  function storedLayout(kind){try{const v=JSON.parse(layoutPrefs.getItem(layoutKey(kind))||'null');return v?.v===1&&Array.isArray(v.items)?v:null}catch{return null}}
+  function railLayoutItems(){return [...doc.querySelectorAll('#top-settings-holder>.drawer:not(#persona-management-button)')].filter(n=>n.id).map((node,i)=>({id:node.id,node,label:node.querySelector('.clawd-rail-label')?.textContent?.trim()||node.getAttribute('aria-label')||node.id,place:railMoreDefaults.has(node.id)?'more':'main',rank:railMoreDefaults.has(node.id)?4:node.id==='rightNavHolder'?3:2,i})).sort((a,b)=>a.rank-b.rank||a.i-b.i);}
+  let extensionLayoutCatalog=[],extensionHost=null,extensionLoading=null;
+  const extensionRowsSeen=new WeakSet(),extensionNativeOrder=new Map();
+  const extensionMetadata=new Map(),extensionAliases={assets_container:'assets',expressions_container:'expressions',sd_container:'stable-diffusion',tts_container:'tts',qr_container:'quick-reply',translation_container:'translate',caption_container:'caption',summarize_container:'memory',regex_container:'regex',vectors_container:'vectors'};
+  const ownLayoutExtension='third-party/'+decodeURIComponent(new URL('.',import.meta.url).pathname.replace(/\/$/,'').split('/').pop());
+  const protectedLayout=(kind,id)=>kind==='rail'?id==='user-settings-button':id===ownLayoutExtension||extensionLayoutCatalog.some(i=>i.id===id&&i.protected);
+  const extensionNorm=value=>String(value||'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
+  let unknownExtensionRows=[];
+  async function ensureExtensionCatalog(){
+    if(extensionLoading)return extensionLoading;
+    extensionLoading=(async()=>{extensionHost||=await import(new URL('/scripts/extensions.js',win.location.href).href);
+      const names=Array.isArray(extensionHost.extensionNames)?extensionHost.extensionNames:(await win.fetch('/api/extensions/discover').then(r=>r.json())).map(x=>x.name);
+      await Promise.all(names.filter(n=>!extensionMetadata.has(n)).map(async name=>{let manifest=extensionHost.getExtensionManifest?.(name);if(!manifest){try{const r=await win.fetch('/scripts/extensions/'+name+'/manifest.json');if(r.ok)manifest=await r.json()}catch{}}extensionMetadata.set(name,{name,display:manifest?.display_name||name.split('/').pop()});}));
+      const catalog=new Map();unknownExtensionRows=[];
+      for(const row of doc.querySelectorAll('#rm_extensions_block .cw-v4-extension-item:not(.cw-v4-standin)>.cw-v4-extension-row')){
+        extensionRowsSeen.add(row);const parent=row.parentElement,label=row.querySelector('.cw-v4-extension-name')?.textContent.trim()||parent.id;
+        let name=parent.id==='claude-web-settings'?ownLayoutExtension:extensionAliases[parent.id];
+        if(!name){const byId=[...extensionMetadata.values()].filter(m=>extensionNorm(parent.id).startsWith(extensionNorm(m.name.split('/').pop())));const matches=byId.length===1?byId:[...extensionMetadata.values()].filter(m=>extensionNorm(m.display)===extensionNorm(label));if(matches.length===1)name=matches[0].name;}
+        // Global scripts can add settings rows without an installed extension folder.
+        if(!name&&parent.id)name='ui:'+parent.id;
+        if(!name){unknownExtensionRows.push(label);continue;}
+        if(!extensionNativeOrder.has(name))extensionNativeOrder.set(name,extensionNativeOrder.size);
+        if(row.dataset.cwLayoutExtension!==name)row.dataset.cwLayoutExtension=name;
+        if(catalog.has(name))catalog.get(name).nodes.push(row);else catalog.set(name,{id:name,node:parent,nodes:[row],label,place:'show',protected:parent.id==='claude-web-settings'});
+      }
+      extensionLayoutCatalog=[...catalog.values()].sort((a,b)=>extensionNativeOrder.get(a.id)-extensionNativeOrder.get(b.id));
+    })().finally(()=>extensionLoading=null);return extensionLoading;
+  }
+  const layoutItems=kind=>kind==='rail'?railLayoutItems():extensionLayoutCatalog;
+  function layoutRecords(kind){
+    const live=layoutItems(kind),saved=storedLayout(kind),seen=new Set(),places=kind==='rail'?['main','more','hidden']:['show','hidden'];
+    const records=[];for(const item of saved?.items||[]){if(typeof item?.id!=='string'||seen.has(item.id))continue;seen.add(item.id);let place=places.includes(item.place)?item.place:places[0];if(protectedLayout(kind,item.id)&&place==='hidden')place=kind==='rail'?'more':'show';records.push({id:item.id,place});}
+    for(const item of live)if(!seen.has(item.id)){seen.add(item.id);records.push({id:item.id,place:saved?places[0]:item.place});}
+    return records;
+  }
+  // The editor starts from presentation currently supplied by native scripts.
+  // A folded More drawer has zero height, which does not mean it is hidden.
+  function currentLayoutRecords(kind){
+    if(storedLayout(kind))return layoutRecords(kind);
+    const visibleOrder=item=>Number.parseFloat(win.getComputedStyle(item.nodes?.[0]||item.node).order)||0;
+    const hidden=item=>{let node=item.nodes?.[0]||item.node;const stop=kind==='rail'?doc.getElementById('top-settings-holder'):doc.getElementById('rm_extensions_block');while(node&&node!==stop){if(win.getComputedStyle(node).display==='none'||node.classList.contains('mc3-hidden'))return true;node=node.parentElement;}return false;};
+    return layoutItems(kind).map((item,i)=>({item,i,order:visibleOrder(item)})).sort((a,b)=>a.order-b.order||a.i-b.i).map(({item})=>({id:item.id,place:hidden(item)&&!protectedLayout(kind,item.id)?'hidden':item.place}));
+  }
+  const railScope='html[data-cw-v4]'+Array.from({length:8},(_,i)=>':not(#cwl'+i+')').join('')+' body #top-settings-holder';
+  function applyRailLayout(){
+    const records=layoutRecords('rail'),custom=!!storedLayout('rail'),signature=JSON.stringify([custom,records]);if(layoutSignatures.get('rail')===signature)return;layoutSignatures.set('rail',signature);
+    const more=records.filter(r=>r.place==='more').map(r=>'#'+win.CSS.escape(r.id)).join(',');
+    let css='';if(more)for(const phone of [false,true]){
+      const base='html['+(phone?'data-cw-web-phone':'data-cw-web')+']'+Array.from({length:phone?6:3},(_,i)=>':not(#cw'+(i+1)+')').join('');
+      const target=' body #top-settings-holder > :is('+more+')';
+      css+=base+target+'{order:4!important}'+base+':not([data-cw-web-more="open"])'+target+'{height:0!important;min-height:0!important;'+(phone?'position:absolute!important;top:0!important;left:0!important;margin:0!important;padding:0!important;overflow:visible!important':'')+'}'+base+':not([data-cw-web-more="open"])'+target+'>.drawer-toggle{display:none!important}';
+    }
+    if(custom){for(const [selector,order]of [['.cw-desk-tool',0],['.clawd-rail-brand',0],['.cw-web-search',10],['.cw-web-new',20],['.clawd-mobile-new-chat',20],['.cw-web-more',400],['.clawd-rail-recents',800],['#persona-management-button',1001]])css+=railScope+'>'+selector+'{order:'+order+'!important}';}
+    if(custom)records.forEach((r,i)=>{const selector=railScope+'>#'+win.CSS.escape(r.id),order=custom?(r.place==='more'?500:r.place==='hidden'?900:100)+i:r.place==='more'?4:r.id==='rightNavHolder'?3:2;
+      css+=selector+'{order:'+order+'!important}'+selector+'.mc3-hidden{display:flex!important}';
+      if(custom){css+=selector+'{display:flex!important;position:relative!important;inset:auto!important;height:auto!important;min-height:0!important;max-height:none!important}'+selector+'>.drawer-toggle{display:flex!important}';
+        const folded=selector.replace('html[data-cw-v4]','html[data-cw-v4]'+(r.place==='more'?':not([data-cw-web-more="open"])':''));
+        if(r.place!=='main')css+=folded+'{height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:visible!important}'+folded+'>.drawer-toggle{display:none!important}'+folded.replace('html[data-cw-v4]','html[data-cw-v4][data-cw-web-phone]')+'{position:absolute!important;top:0!important;left:0!important}';
+      }
+    });
+    let style=layoutStyles.get('rail');if(!style){style=make('style','');style.id='cw-rail-layout-style';doc.head.append(style);layoutStyles.set('rail',style);}style.textContent=css;
+  }
+  function applyExtensionLayout(){
+    if(!storedLayout('extensions')){layoutStyles.get('extensions')?.remove();layoutStyles.delete('extensions');layoutSignatures.delete('extensions');return;}
+    if(!doc.querySelector('#rm_extensions_block .cw-v4-extension-row'))return;
+    if(!extensionHost){ensureExtensionCatalog().then(()=>{layoutSignatures.delete('extensions');applyExtensionLayout();}).catch(error=>win.console.warn('[CW] extension layout',error));return;}
+    // Reconcile late additions without replacing native roots or event handlers.
+    const liveRows=[...doc.querySelectorAll('#rm_extensions_block .cw-v4-extension-item:not(.cw-v4-standin)>.cw-v4-extension-row')];
+    if(liveRows.some(r=>!extensionRowsSeen.has(r))){ensureExtensionCatalog().then(()=>{layoutSignatures.delete('extensions');applyExtensionLayout();}).catch(()=>{});return;}
+    const records=layoutRecords('extensions'),signature=JSON.stringify(records);if(layoutSignatures.get('extensions')===signature)return;layoutSignatures.set('extensions',signature);
+    const scope=railScope+' #rm_extensions_block';let css=scope+' .cw-v4-entries:has(#extensions_settings){display:flex!important;flex-direction:column!important}';
+    for(const holder of ['extensions_settings','extensions_settings2'])css+=scope+' #'+holder+'{display:contents!important}'+scope+' #'+holder+' div:has(.cw-v4-extension-row):not(.cw-v4-extension-row):not(.cw-v4-editing):not(dialog *){display:contents!important}';
+    records.forEach((record,i)=>{const row='>.cw-v4-extension-row[data-cw-layout-extension="'+win.CSS.escape(record.id)+'"]';
+      css+=scope+' .cw-v4-extension-item:not(.cw-v4-editing)'+row+'{order:'+i+'!important;display:'+(record.place==='hidden'?'none':'flex')+'!important}';
+    });
+    let style=layoutStyles.get('extensions');if(!style){style=make('style','');style.id='cw-extensions-layout-style';doc.head.append(style);layoutStyles.set('extensions',style);}style.textContent=css;
+  }
+  function applyLayouts(){applyRailLayout();applyExtensionLayout();}
+  function saveLayout(kind,records){layoutPrefs.setItem(layoutKey(kind),JSON.stringify({v:1,items:records.map(({id,place})=>({id,place}))}));layoutSignatures.delete(kind);applyLayouts();}
+  async function openLayoutEditor(kind='rail'){
+    if(kind==='extensions'){try{await ensureExtensionCatalog();if(unknownExtensionRows.length)throw Error(unknownExtensionRows.join(', '));applyExtensionLayout();}catch(error){win.toastr?.error?.(t('无法识别扩展目录：','Could not identify extension folders: ')+error.message);return;}}
+    if(layoutBox?.isConnected)return;const box=make('div','cw-layout-editor');layoutBox=box;layoutBoxKind=kind;
+    const places=kind==='rail'?[['main',t('侧栏','Sidebar')],['more','More'],['hidden',t('隐藏','Hidden')]]:[['show',t('显示','Visible')],['hidden',t('隐藏','Hidden')]];
+    let records=currentLayoutRecords(kind);const live=new Map(layoutItems(kind).map(i=>[i.id,i]));
+    const move=(id,place,before)=>{const record=records.find(r=>r.id===id);if(!record||place==='hidden'&&protectedLayout(kind,id))return;records=records.filter(r=>r!==record);record.place=place;let index=before?records.findIndex(r=>r.id===before):-1;if(index<0){const last=records.map(r=>r.place).lastIndexOf(place);index=last<0?records.length:last+1;}records.splice(index,0,record);saveLayout(kind,records);paint(id);};
+    const shift=(id,delta)=>{const record=records.find(r=>r.id===id),group=records.filter(r=>r.place===record.place&&live.has(r.id)),index=group.findIndex(r=>r.id===id),target=group[index+delta];if(!target)return;const a=records.indexOf(record),b=records.indexOf(target);[records[a],records[b]]=[records[b],records[a]];saveLayout(kind,records);paint(id);};
+    function paint(focusId){const scroll=box.parentElement?.scrollTop||0;box.replaceChildren();
+      for(const [place,title]of places){const group=make('section','cw-layout-group'),heading=make('h3','',title);group.dataset.place=place;group.append(heading);box.append(group);
+        group.addEventListener('dragover',e=>{if(!mobile())e.preventDefault()});group.addEventListener('drop',e=>{if(mobile())return;e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(live.has(id))move(id,place);});
+        const inGroup=records.filter(r=>r.place===place&&live.has(r.id));for(const [index,record]of inGroup.entries()){
+          const item=live.get(record.id),row=make('div','cw-layout-row'),label=make('span','cw-layout-label',item.label);row.dataset.layoutId=record.id;row.draggable=!mobile();
+          const sourceGlyph=item.node.querySelector?.('.drawer-icon'),mask=sourceGlyph?win.getComputedStyle(sourceGlyph).maskImage:null;const glyph=mask&&mask!=='none'?make('span','cw-layout-mask-icon'):icon('puzzle');if(mask&&mask!=='none'){glyph.style.mask=mask+' center / contain no-repeat';glyph.style.backgroundColor='currentColor';}glyph.classList.add('cw-layout-icon');glyph.setAttribute('aria-hidden','true');row.append(glyph,label);
+          const saved=storedLayout(kind);if(saved&&!saved.items.some(i=>i.id===record.id))row.append(make('small','cw-layout-new',t('新','New')));
+          const up=button('↑',()=>shift(record.id,-1),'cw-v4-button cw-layout-up'),down=button('↓',()=>shift(record.id,1),'cw-v4-button cw-layout-down');up.disabled=index===0;down.disabled=index===inGroup.length-1;up.setAttribute('aria-label',t('上移 ','Move up ')+item.label);down.setAttribute('aria-label',t('下移 ','Move down ')+item.label);
+          const select=make('select','cw-layout-place');select.setAttribute('aria-label',t('放到：','Place: ')+item.label);for(const [value,text]of places){const option=make('option','',text);option.value=value;option.disabled=value==='hidden'&&protectedLayout(kind,record.id);select.append(option);}select.value=place;select.addEventListener('change',()=>move(record.id,select.value));
+          row.append(up,down,select,make('span','cw-layout-grip','⠿'));group.append(row);
+          row.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',record.id));row.addEventListener('dragover',e=>{if(!mobile())e.preventDefault()});row.addEventListener('drop',e=>{if(mobile())return;e.preventDefault();e.stopPropagation();const id=e.dataTransfer.getData('text/plain');if(id!==record.id&&live.has(id))move(id,place,record.id);});
+        }
+      }
+      if(box.parentElement)box.parentElement.scrollTop=scroll;if(focusId)box.querySelector('[data-layout-id="'+win.CSS.escape(focusId)+'"] select')?.focus({preventScroll:true});
+    }
+    const reset=button(t('恢复默认','Restore defaults'),()=>{layoutPrefs.removeItem(layoutKey(kind));layoutSignatures.delete(kind);applyLayouts();records=currentLayoutRecords(kind);paint();},'cw-v4-button');paint();
+    const parentLayoutEditor=[...dialogs].filter(d=>d.open).at(-1);
+    (parentLayoutEditor?.querySelector('.cw-v4-editor-body')||doc.getElementById('top-settings-holder'))?.append(box);
+    openEditor(box,kind==='rail'?t('编辑侧栏','Edit sidebar'):t('编辑顺序','Edit order'),'',{foot:reset,onClose:()=>{layoutBox=null;layoutBoxKind=null;box.remove();}});box.closest('dialog')?.classList.add('cw-layout-dialog');
+  }
+  disposers.push(()=>{for(const s of layoutStyles.values())s.remove();layoutStyles.clear();layoutBox?.closest('dialog')?._cwShut?.();});
+
   function syncQrBar() {
     const q = doc.getElementById('qr--bar');
     if (q !== qrBar) { if (qrBar) qrRo?.unobserve(qrBar); qrBar = q; if (q) qrRo?.observe(q); }
@@ -788,6 +936,8 @@ export function installOfficialLayout(win = window) {
   function sync() {
     raf = 0; if (destroyed) return;
     syncQrBar();
+    applyLayouts();
+    syncComposerLines();
     root.toggleAttribute('data-cw-v4', enabled());
     if (!enabled()) { if (shell) shell.hidden = true; for (const dialog of dialogs) dialog.close(); restoreAdaptedContainers(); root.removeAttribute('data-cw-v4-settings'); return; }
     if (!shell) buildShell();
@@ -864,7 +1014,10 @@ export function installOfficialLayout(win = window) {
     keepStyleAfterTheme();
     observe(doc.head,keepStyleAfterTheme,{childList:true});
     sync();
-    observe(root, schedule, {attributes:true,attributeFilter:['data-claude-structure','data-claude-skin','data-cw-halloween']});
+    on(doc,'input',e=>{if(e.target.id==='send_textarea')syncComposerLines(true);});
+    on(win,'resize',()=>syncComposerLines(true));
+    observe(doc.body,()=>syncComposerLines(),{attributes:true,attributeFilter:['class']});
+    observe(root, schedule, {attributes:true,attributeFilter:['data-claude-structure','data-claude-skin','data-cw-halloween','data-claude-ui','data-claude-layout','data-cw-v4-landscape','data-cw-v4-kb']});
     observe(doc.body, schedule, {attributes:true,attributeFilter:['class','data-clawd-menu']});
     const chat = doc.getElementById('chat'); if (chat) observe(chat, schedule, {childList:true,subtree:true});
     // Typing only changes the filled state. syncChat() walks every assistant message and
@@ -940,6 +1093,7 @@ export function installOfficialLayout(win = window) {
       if (e.key !== 'Escape' || e.defaultPrevented || mobile() || !current) return;
       if (doc.querySelector('.select2-container--open,.cw-v4-more[open],#completion_prompt_manager_popup.openDrawer,dialog[open]:not(.cw-v4-editor)')) return;
       const top = [...dialogs].filter(d => d.open).at(-1);
+      if(top?.classList.contains("cw-v4-wi-expanded"))return;
       e.preventDefault(); e.stopImmediatePropagation();
       if (top) top._cwShut?.(); else closeSettings();
     }, true);
@@ -1205,7 +1359,17 @@ export function installOfficialLayout(win = window) {
       min: '<path d="M6 12h12"/>', max: '<rect x="6" y="6" width="12" height="12" rx="1"/>', close: '<path d="M6 6l12 12M18 6 6 18"/>',
     };
     // 「最近」：同一个角色连着的几条只在第一条放头像，后面换成空心小点（稿 B）。
+    function paintRecentsFilter(){
+      const state=win.__claudeClawdInteraction?.recentsFilter?.(),active=!!state?.enabled;
+      for(const el of doc.querySelectorAll('.cw-rec-filter,.cw-web-filter')){
+        const heading=el.closest('.cw-web-date');if(active){el.removeAttribute('aria-hidden');heading?.removeAttribute('aria-hidden');el.setAttribute('role','button');el.tabIndex=0;el.setAttribute('aria-label',t('筛选最近对话','Filter recent chats'));}else{el.setAttribute('aria-hidden','true');el.removeAttribute('role');el.removeAttribute('tabindex');}
+        const on=active&&state.value==='starred';if(el.hasAttribute('data-cw-starred')!==on)el.toggleAttribute('data-cw-starred',on);
+      }
+    }
+    const openRecentsFilter=e=>{const anchor=e.target.closest?.('.cw-rec-filter,.cw-web-filter'),state=win.__claudeClawdInteraction?.recentsFilter?.();if(!anchor||!state?.enabled||e.type==='keydown'&&!['Enter',' '].includes(e.key))return;e.preventDefault();e.stopPropagation();popMenu(anchor,[{label:t('全部','All'),check:state.value==='all',run:()=>{win.__claudeClawdInteraction.recentsFilter('all');paintRecentsFilter();}},{label:t('只看收藏','Starred only'),check:state.value==='starred',run:()=>{win.__claudeClawdInteraction.recentsFilter('starred');paintRecentsFilter();}}]);};
+    on(doc,'click',openRecentsFilter);on(doc,'keydown',openRecentsFilter);
     const markRepeats = () => {
+      paintRecentsFilter();
       let prev = null;
       for (const r of doc.querySelectorAll('#top-settings-holder .clawd-rail-recents .recentChat')) {
         const key = (r.dataset.avatar || '') + '|' + (r.dataset.group || '');
@@ -1215,12 +1379,37 @@ export function installOfficialLayout(win = window) {
       }
     };
     let recObs = null, recSlot = null;
+    const railPrefs=preferencesFor(win);
+    const railCollapsed=()=>enabled()&&root.dataset.claudeLayout==='pc'&&win.innerWidth>700&&railPrefs.getItem('claude-web:rail-collapsed')==='on';
+    let miniRail=null,railToggle=null,railToggleRo=null;
+    const setRailCollapsed=value=>{railPrefs.setItem('claude-web:rail-collapsed',value?'on':'off');syncRailCollapsed();};
+    function syncRailCollapsed(){
+      const collapsed=railCollapsed();if(root.hasAttribute('data-cw-rail-collapsed')!==collapsed)root.toggleAttribute('data-cw-rail-collapsed',collapsed);
+      railToggle?.setAttribute('aria-expanded',String(!collapsed));
+      if(!miniRail){miniRail=make('div','cw-rail-mini');const expandRail=button('',()=>setRailCollapsed(false),'cw-rail-mini-button');expandRail.innerHTML=SV(P.panel);expandRail.setAttribute('aria-label',t('展开侧栏','Expand sidebar'));
+        const newChat=button('',()=>doc.querySelector('#top-settings-holder>.cw-web-new,#top-settings-holder>.clawd-mobile-new-chat')?.click(),'cw-rail-mini-button');newChat.innerHTML='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M10 3.2c-3.9 0-7 2.7-7 6.1 0 1.8.9 3.4 2.3 4.5l-.6 3.1 3.3-1.7c.6.2 1.3.2 2 .2 3.9 0 7-2.7 7-6.1S13.9 3.2 10 3.2Z"/><path d="M10 6.6v5.4M7.3 9.3h5.4"/></svg>';newChat.setAttribute('aria-label',t('新对话','New chat'));miniRail.append(expandRail,newChat);doc.body.append(miniRail);}
+    }
+    function placeRailToggle(){
+      const tool=doc.querySelector('.cw-desk-tool'),glyph=tool?.querySelector(':scope>svg:nth-of-type(2)');if(!tool||!glyph||!railToggle)return;
+      railToggle.style.left=glyph.offsetLeft+'px';railToggle.style.top=glyph.offsetTop+'px';railToggle.style.width=glyph.getBoundingClientRect().width+'px';railToggle.style.height=glyph.getBoundingClientRect().height+'px';
+    }
+    on(win,'resize',()=>{syncRailCollapsed();placeRailToggle();});
+    observe(root,syncRailCollapsed,{attributes:true,attributeFilter:['data-claude-layout','data-cw-v4']});
+    disposers.push(()=>{railToggleRo?.disconnect();miniRail?.remove();railToggle?.remove();root.removeAttribute('data-cw-rail-collapsed');});
+
     const ensureDeskDeco = () => {
       if (!enabled()) return;
       const holder = doc.getElementById('top-settings-holder');
       if (holder && !holder.querySelector(':scope>.cw-desk-tool')) holder.prepend(deco('cw-desk-tool',
         SV(P.menu) + SV(P.panel) + SV(P.back) + SV(P.fwd, 'cw-dim') +
         `<span class="cw-desk-seg"><span class="cw-on">${SV(P.chat)}</span><span>${SV(P.code, 'cw-dim')}</span></span>`));
+      const tool=holder?.querySelector(':scope>.cw-desk-tool');
+      if(tool&&!tool.querySelector('.cw-rail-toggle')){
+        tool.removeAttribute('aria-hidden');tool.querySelectorAll('svg,.cw-desk-seg').forEach(n=>n.setAttribute('aria-hidden','true'));
+        railToggle=button('',()=>setRailCollapsed(true),'cw-rail-toggle');railToggle.setAttribute('aria-label',t('收起侧栏','Collapse sidebar'));tool.append(railToggle);
+        railToggleRo?.disconnect();railToggleRo=win.ResizeObserver?new win.ResizeObserver(placeRailToggle):null;railToggleRo?.observe(tool);
+      }
+      syncRailCollapsed();placeRailToggle();
       if (!doc.querySelector('body>.cw-desk-win')) doc.body.append(deco('cw-desk-win', SV(P.ghost, 'cw-ghost') + SV(P.min) + SV(P.max) + SV(P.close) + SV(P.share, 'cw-share')));
       const lab = holder?.querySelector('.clawd-rail-recents-label');
       if (lab && !lab.querySelector(':scope>.cw-rec-search')) lab.append(deco('cw-rec-search', SV(P.search)), deco('cw-rec-search cw-rec-filter', SV(P.filter)));
@@ -1352,6 +1541,7 @@ export function installOfficialLayout(win = window) {
         list.length ? {icon: 'user', label: L('切换用户角色'), sub: list} : null,
         {icon: 'card', label: L('用户角色设置'), run: () => openDrawerById('persona-management-button')},
         {icon: 'gear', label: L('设置'), run: () => openDrawerById('user-settings-button')},
+        {icon:'sliders',label:zh()?'编辑侧栏':'Edit sidebar',run:()=>openLayoutEditor('rail')},
         {sep: 1},
         vs ? {icon: 'sun', label: L('主题'), value: vs.disabled ? L('跟随时间') : (variant === 'night' ? L('夜间') : L('日间')), sub: vs.disabled ? null : themeItems, disabled: vs.disabled} : null,
       ].filter(Boolean).filter(it => !(it.sub === null && it.disabled === undefined)), {up: true, cls: 'cw-acct'});
@@ -1891,7 +2081,7 @@ export function installOfficialLayout(win = window) {
     }
   }
   if (doc.readyState === 'loading') on(doc,'DOMContentLoaded',start,{once:true}); else start();
-  return { refresh: sync, activate, setExternalModals, destroy() {
+  return { refresh: sync, activate, editLayout:openLayoutEditor, setExternalModals, destroy() {
     if (destroyed) return;
     destroyed = true;
     observers.forEach(m=>m.disconnect());

@@ -89,9 +89,6 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more:hover { background:
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more svg { transition: transform .15s ease; }
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-more[aria-expanded="true"] svg { transform: rotate(90deg); }
 /* 「更多」收着：背景、扩展这两行排到它下面，平时压成 0 高 */
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) { order: 4 !important; }
-html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) { height: 0 !important; min-height: 0 !important; }
-html[data-cw-web]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) > .drawer-toggle { display: none !important; }
 
 /* 最近：按日期分组，「最近」标题和它的放大镜不要了（搜索在顶上），排序图标挪到第一组标题右边 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .clawd-rail-recents { margin-top: 18px !important; }
@@ -224,9 +221,6 @@ html[data-cw-web-phone]:not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#c
 html[data-cw-web-phone]:not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) .cw-web-more .cw-web-label { font-size: 17px !important; color: var(--w-dim) !important; }
 html[data-cw-web-phone]:not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) .cw-web-more svg { width: 25px; height: 25px; flex: none; transition: transform .15s ease; }
 html[data-cw-web-phone]:not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) .cw-web-more[aria-expanded="true"] svg { transform: rotate(90deg); }
-html[data-cw-web-phone]:not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) { order: 4 !important; }
-html[data-cw-web-phone]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) { position: absolute !important; top: 0 !important; left: 0 !important; height: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
-html[data-cw-web-phone]:not([data-cw-web-more="open"]):not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) body #top-settings-holder > :is(#advanced-formatting-button, #user-settings-button, #backgrounds-button, #extensions-settings-button) > .drawer-toggle { display: none !important; }
 /* 最近：日期分组代替「最近」标题；行高 50、头像 30（官网），去掉行尾日期，⋯ 淡一点 */
 html[data-cw-web-phone]:not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) body #top-settings-holder .clawd-rail-recents-label { display: none !important; }
 html[data-cw-web-phone]:not(#cw1):not(#cw2):not(#cw3):not(#cw4):not(#cw5):not(#cw6) .clawd-rail-recents .cw-web-date { padding: 0 15px !important; margin-top: 14px !important; height: 30px !important; font-size: 14px !important; }

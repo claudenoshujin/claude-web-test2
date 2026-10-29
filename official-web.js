@@ -97,7 +97,7 @@ export function installOfficialWeb(win = window) {
     const kids = [...list.children];
     let header = null, headerHits = 0, head = null, headHit = false, groupHit = false;
     const flushGroup = () => { if (head) { const keep = headHit || groupHit; head.classList.toggle('cw-web-miss', !keep); if (keep) headerHits++; } head = null; headHit = groupHit = false; };
-    const flushHeader = () => { flushGroup(); if (header) header.classList.toggle('cw-web-miss', !!q && !headerHits); header = null; headerHits = 0; };
+    const flushHeader = () => { flushGroup(); if (header) header.classList.toggle('cw-web-miss', !!q && !headerHits && !header.dataset.cwFilterHeader); header = null; headerHits = 0; };
     for (const n of kids) {
       if (n.classList.contains('cw-web-date')) { flushHeader(); header = n; continue; }
       if (!n.classList.contains('recentChat')) continue;
@@ -272,13 +272,16 @@ export function installOfficialWeb(win = window) {
       const g = dayLabel(r.querySelector('.chatDate')?.title || ''); if (!g || g === last) continue;
       last = g; want.push([r, g]);
     }
+    const filter=win.__claudeClawdInteraction?.recentsFilter?.();
+    const filterHeader=mode==='desk'&&filter?.enabled&&!want.length&&(filter.value==='starred'||!!list.querySelector('.recentChat'));
+    if(filterHeader)want.push([[...list.children].find(n=>!n.classList.contains('cw-web-date'))||null,t('最近','Recents')]);
     const have = [...list.querySelectorAll(':scope > .cw-web-date')];
     const same = have.length === want.length && have.every((h, i) => h.nextElementSibling === want[i][0] && h.dataset.label === want[i][1]);
     if (same) return;
     have.forEach(h => h.remove());
     want.forEach(([r, g], i) => {
       const h = deco(make('div', 'cw-web-date cw-web-x', `<span>${g}</span>` + (i === 0 && mode === 'desk' ? SV(P.filter, 'cw-web-filter') : '')));
-      h.dataset.label = g; r.before(h);
+      h.dataset.label = g;if(filterHeader)h.dataset.cwFilterHeader='1';if(r)r.before(h);else list.append(h);
     });
   };
 

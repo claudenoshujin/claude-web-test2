@@ -1,3 +1,5 @@
+import { installRecentFavorites } from './recent-favorites.js?v=2.0.330';
+import { preferencesFor } from './preferences.js?v=2.0.330';
 /* Claude Web 2.0 —— SillyTavern 扩展形态入口。
  *
  * 【2026-08-10 更正】这个文件现在就是源码，直接改它。
@@ -240,6 +242,7 @@ const CLAUDE_FONT = claudeReadSetting('font', ['follow','songti','heiti','system
 document.documentElement.dataset.claudeFont = CLAUDE_FONT;
 document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');
 document.documentElement.dataset.claudeClawd = claudeReadSetting('clawd', ['on','off'], 'on');
+document.documentElement.dataset.claudeClawdPile=claudeReadSetting('clawd-pile',['on','off'],'on');
 document.documentElement.dataset.claudeAvatars = claudeReadSetting('avatars', ['on','off'], 'on');
 /* 侧栏「最近」大小（design-flavor-v8，Lulu 2026-10-06）：s 紧凑 / m 标准 / l 大 / xl 特大（默认，Lulu 2026-10-06 定）。CSS 在 official-layout.css「53」块。 */
 document.documentElement.dataset.claudeRecents = claudeReadSetting('recents-size', ['s','m','l','xl'], 'xl');
@@ -2170,6 +2173,7 @@ if (CLAUDE_ENABLED) {
   /* 2.0.300：大小 Clawd 互相叠。小 Clawd 那边要知道大 Clawd 站没站在输入框上、在不在走路，
      还要能叫大 Clawd 降回地上（它坐着的那只小 Clawd 被拿走时）。A2 在后面才定义，这里只是闭包，用的时候已经有了。 */
   const clawdEnabled = () => !destroyed && hostDocument.documentElement.dataset.claudeClawd !== 'off';
+  const clawdPileEnabled=()=>clawdEnabled()&&hostDocument.documentElement.dataset.claudeClawdPile!=='off';
   let clawdPileInstance = null;
   const makeClawdPile = () => createClawdPile({ doc: hostDocument, win: hostWindow, big: {
     state: () => ({ grounded: !A2.held && Math.abs(A2.fy - A2.floor) < .5, walking: /^rig:walkLoop/.test(String(clawdTracks.B || '')) }),
@@ -2177,8 +2181,8 @@ if (CLAUDE_ENABLED) {
   } });
   const clawdPile = Object.fromEntries(['setCostume','ensure','left','destroy','hush','peek','seats','trackSeats','seatLive','bigSat','blocks','riderCount','unloadBig','follow','followEnd','restack'].map(key => [key, (...args) => {
     if (key === 'destroy') { clawdPileInstance?.destroy(); clawdPileInstance = null; return; }
-    if (clawdEnabled() && key === 'ensure' && !clawdPileInstance) clawdPileInstance = makeClawdPile();
-    if (clawdEnabled() && clawdPileInstance) { if(key === 'ensure')clawdPileInstance.setCostume(CLAWD_RIG.pileCells || null); return clawdPileInstance[key](...args); }
+    if (clawdPileEnabled() && key === 'ensure' && !clawdPileInstance) clawdPileInstance = makeClawdPile();
+    if (clawdPileEnabled() && clawdPileInstance) { if(key === 'ensure')clawdPileInstance.setCostume(CLAWD_RIG.pileCells || null); return clawdPileInstance[key](...args); }
     if (key === 'trackSeats') return () => [];
     return ['seats','blocks'].includes(key) ? [] : key === 'riderCount' ? 0 : null;
   }]));
@@ -2198,6 +2202,8 @@ if (CLAUDE_ENABLED) {
   let clawdWasEnabled = null;
   function syncClawdRuntime() {
     const on = clawdEnabled();
+      if (!clawdPileEnabled()) clawdPile.destroy();
+      else if (on === clawdWasEnabled) clawdPile.ensure();
     if (on === clawdWasEnabled) return;
     clawdWasEnabled = on;
     if (on) {
@@ -7387,6 +7393,7 @@ if (CLAUDE_ENABLED) {
   const RECENT_FETCH_TTL = 60000;
   let recentFetchedAt = 0;
   let recentLoadedOnce = false;
+  let chatTools=null;
   /* 数据版本号。删除之类会改变列表的动作要把它 +1。
      在飞的那次拉取如果是在版本变化之前发出的，结果就作废 ——
      否则「删除前发起、删除后返回」的那次会把已经删掉的行又画回去，
@@ -7485,6 +7492,7 @@ if (CLAUDE_ENABLED) {
       });
       return b;
     };
+    if(chatTools?.isEnabled())box.append(item('star',chatTools.isFavorite(entry.record)?(cn?'取消收藏':'Unstar'):(cn?'收藏':'Star'),async()=>{chatTools.toggleFavorite(entry.record);}));
     box.append(
       item('pin', pinned ? (cn ? '取消置顶' : 'Unpin') : (cn ? '置顶' : 'Pin'), () => toggleRecentPin(entry)),
       item('pencil', cn ? '重命名' : 'Rename', () => renameRecent(entry)),
@@ -7620,7 +7628,9 @@ if (CLAUDE_ENABLED) {
     const main = hostModulesSnapshot?.main ?? {};
     const settings = readRecentChatsSettings();
     const pinned = readPinnedChats();
-    const records = await fetchRecentChatRecords(main, settings.maxDisplayed, Object.values(pinned));
+    const favoriteRecords=chatTools?.favoriteRecords()||[];
+    const records = await fetchRecentChatRecords(main, settings.maxDisplayed, [...Object.values(pinned),...favoriteRecords]);
+    if(records)chatTools?.reconcileFavorites(records,favoriteRecords);
     if (!records) return null;
 
     const context = getContext();
@@ -7696,13 +7706,12 @@ if (CLAUDE_ENABLED) {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       const diff = timeOf(b.dateText) - timeOf(a.dateText);
       if (diff) return diff;
-      return String(b.dateText).localeCompare(String(a.dateText));
-    });
-    return entries;
-  }
-
-  function ensureRecentsSlot(holder) {
-    const slots = [...hostDocument.querySelectorAll('.' + RAIL_RECENTS_CLASS)];
+        return String(b.dateText).localeCompare(String(a.dateText));
+      });
+      return chatTools?.isEnabled() && preferencesFor(hostWindow).getItem('claude-web:recents-filter') === 'starred' ? entries.filter(entry=>chatTools.isFavorite(entry.record)) : entries;
+    }
+    function ensureRecentsSlot(holder) {
+      const slots = [ ...hostDocument.querySelectorAll("." + RAIL_RECENTS_CLASS) ];
     for (const extra of slots.slice(1)) extra.remove();
     let slot = slots[0] || null;
     /* 2.0.148：四栏形态下这一格被 ensureShell() 搬进 #cw-shell 了，
@@ -8632,6 +8641,7 @@ if (CLAUDE_ENABLED) {
       /* 事件没发出来的话，侧栏和其他订阅者收不到通知，这里替酒馆补一发。 */
       await emitChatDeleted(eventKey, fileName).catch(() => {});
     }
+    chatTools?.removeChat({avatar:avatarId,group:groupId,file_name:fileName});
     dropRecentRow(fileName);
     recentSignature = null;   // 列表变了，下一次刷新必须真的重画
     recentDataVersion += 1;   // 在飞的那次拉取作废，别把删掉的行画回来
@@ -10852,7 +10862,8 @@ if (CLAUDE_ENABLED) {
       refreshPcTopActions();
       refreshRailLabels();
       watchChatDeleted();
-      refreshRailRecents();
+      chatTools?.sync();
+    refreshRailRecents();
       refreshWelcomeShortcuts();
       refreshCharacterSwitcher();
       /* 2.0.101：这两行以前只写在下面的完整模式路径里，被上面那个 return 挡住。
@@ -11206,6 +11217,7 @@ if (CLAUDE_ENABLED) {
     void installAutoCompleteResizeGuard();
     installStyle();
     installClawdRigStyle();
+    chatTools=installRecentFavorites({win:hostWindow,doc:hostDocument,getContext,enabled:()=>!destroyed&&hostDocument.documentElement.dataset.claudeEnabled!=='off',onChange:()=>{recentSignature=null;recentDataVersion++;refreshRailRecents({force:true});}});
     halloween = installHalloween({win:hostWindow, getContext, setRig:switchHalloweenRig, refresh:scheduleRefresh, getClawdState:()=>({x:A2.x,y:A2.fy,held:A2.held,dragging:A2.dragging,airborne:halloweenAirborne})});
     halloween.sync();
     mountClawdDebugMenu();
@@ -11383,6 +11395,7 @@ if (CLAUDE_ENABLED) {
     if (destroyed) return;
     destroyed = true;
     refreshRailUser.avatar?.cleanup();
+    chatTools?.destroy();chatTools=null;
     halloween?.destroy(); halloween = null;
     syncClawdRuntime();
     clawdPile.destroy();
@@ -11604,6 +11617,7 @@ if (CLAUDE_ENABLED) {
       settledRound: clawdTracks.settledRound,
       irr: A2.irr,
     }),
+    recentsFilter:value=>{const prefs=preferencesFor(hostWindow);if(chatTools?.isEnabled()&&['all','starred'].includes(value)){prefs.setItem('claude-web:recents-filter',value);recentSignature=null;recentDataVersion++;refreshRailRecents({force:true});}return {enabled:!!chatTools?.isEnabled(),value:prefs.getItem('claude-web:recents-filter')==='starred'?'starred':'all'};},
     streamFollowStats: () => streamFollow?.stats(),
     drawerStats: () => ({ ...drawerStats }),
     buildId: KEYBOARD_BUILD.id,
@@ -13827,6 +13841,7 @@ if (CLAUDE_ENABLED) {
                   <input type="checkbox" id="claude-web-clawd">
                   <span>显示 Clawd</span>
                 </label>
+                <label class="checkbox_label claude-web-check"><input type="checkbox" id="claude-web-clawd-pile"><span>输入框上方的小 Clawd</span></label>
                 <div id="claude-web-clawd-options" class="claude-web-suboptions">
                   <label class="checkbox_label claude-web-check">
                     <input id="claude-web-motion" type="checkbox">
@@ -14443,10 +14458,29 @@ if (CLAUDE_ENABLED) {
       window.__claudeClawdInteraction?.refresh?.();
       syncPanelPresentationRef();
     });
-
-    const recentsSel = panel.querySelector('#claude-web-recents-size');
-    recentsSel.value = read('recents-size', ['s', 'm', 'l', 'xl'], 'xl');
-    recentsSel.addEventListener('change', () => {
+    const clawdPileBox = panel.querySelector("#claude-web-clawd-pile");
+    clawdPileBox.checked = read("clawd-pile", [ "on", "off" ], "on") !== "off";
+    clawdPileBox.addEventListener("change", () => {
+      if (!write("clawd-pile", clawdPileBox.checked ? "on" : "off")) return;
+      document.documentElement.dataset.claudeClawdPile = clawdPileBox.checked ? "on" : "off";
+      window.__claudeClawdInteraction?.refresh?.();
+    });
+    const composerField=document.createElement('div');composerField.className='claude-web-field';
+    composerField.innerHTML='<label for="claude-web-composer-lines">输入框高度</label><div class="claude-web-range"><span>行数</span><input id="claude-web-composer-lines" type="range" min="1" step="1"><span id="claude-web-composer-lines-value"></span></div>';
+    panel.querySelector('#claude-web-layout').closest('.claude-web-field').after(composerField);
+    const composerSlider=composerField.querySelector('input'),composerValue=composerField.querySelector('#claude-web-composer-lines-value');
+    const composerMobile=()=>document.documentElement.dataset.claudeLayout==='mobile'||window.innerWidth<=700;
+    const syncComposerSlider=()=>{const phone=composerMobile(),max=phone?6:8;composerSlider.max=String(max);composerSlider.value=read('composer-lines-'+(phone?'mobile':'pc'),Array.from({length:max},(_,i)=>String(i+1)),phone?'2':'1');composerValue.textContent=composerSlider.value+' 行';};
+    composerSlider.addEventListener('input',()=>{const key='composer-lines-'+(composerMobile()?'mobile':'pc');if(!write(key,composerSlider.value))return;composerValue.textContent=composerSlider.value+' 行';window.__claudeOfficialLayout?.refresh?.();});
+    window.addEventListener('resize',syncComposerSlider);
+    const composerLayoutWatch=new MutationObserver(syncComposerSlider);composerLayoutWatch.observe(document.documentElement,{attributes:true,attributeFilter:['data-claude-layout']});
+    syncComposerSlider();
+    const sidebarSection=document.createElement('details');sidebarSection.className='claude-web-section';sidebarSection.id='claude-web-section-sidebar';
+    sidebarSection.innerHTML='<summary><span>侧栏</span></summary><div class="claude-web-section-body"><button type="button" id="claude-web-edit-sidebar" class="menu_button">编辑侧栏…</button><div class="claude-web-help">新界面的侧栏和扩展页请用这里排序。</div></div>';
+    panel.querySelector('#claude-web-section-about').before(sidebarSection);sidebarSection.querySelector('button').addEventListener('click',()=>window.__claudeOfficialLayout?.editLayout?.('rail'));
+    const recentsSel = panel.querySelector("#claude-web-recents-size");
+    recentsSel.value = read("recents-size", [ "s", "m", "l", "xl" ], "xl");
+    recentsSel.addEventListener("change", () => {
       if (!write('recents-size', recentsSel.value)) return;
       document.documentElement.dataset.claudeRecents = recentsSel.value;
     });
@@ -14724,6 +14758,7 @@ if (CLAUDE_ENABLED) {
 
       playbillOptions.hidden = document.documentElement.dataset.claudeSkin !== 'playbill';
       clawdOptions.hidden = !clawdBox.checked;
+      clawdPileBox.disabled=!clawdBox.checked;clawdPileBox.closest("label").style.opacity=clawdBox.checked?"":".45";
       bgBlurOptions.hidden = !bgBlurBox.checked;
       bgImageOptions.hidden = !bgImageBlurBox.checked;
       /* 兼容模式下配色预设和字体都不生效，但「当前明暗」要留着 ——
