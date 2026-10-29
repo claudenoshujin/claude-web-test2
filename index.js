@@ -2254,13 +2254,15 @@ if (CLAUDE_ENABLED) {
   const NORMAL_CLAWD_RIG = buildClawdRig();
   let CLAWD_RIG = NORMAL_CLAWD_RIG, halloween = null, halloweenAirborne = false;
   const halloweenBlinkClocks = new Map();
+  let halloweenErrorPending=false,halloweenSendClip='',halloweenSendPending=false;
   function switchHalloweenRig(next) {
     const rig = next || NORMAL_CLAWD_RIG;
     if (CLAWD_RIG === rig || destroyed) return;
     cleanupClawdRigEffects();
     for (const clock of halloweenBlinkClocks.values()) clock.destroy();
     halloweenBlinkClocks.clear();
-    CLAWD_RIG = rig;
+      CLAWD_RIG = rig;
+      if(rig===NORMAL_CLAWD_RIG&&['recover','errorSlump'].includes(clawdTracks.A)){clawdTracks.A=null;clawdTracks.aUntil=0;}
     clawdPile.setCostume(rig.pileCells || null);
     for (const button of hostDocument.querySelectorAll(".clawd-composer-clawd")) {
       button.querySelector(":scope > .clawd-rig")?.remove();
@@ -3843,7 +3845,10 @@ if (CLAUDE_ENABLED) {
       if (clawdTracks.C in clawdRigVariant) return clawdRigVariant[clawdTracks.C];
       return CLAWD_RIG_C[clawdTracks.C] || '';
     }
-    if (owner === 'A') return (A2.floor ? CLAWD_RIG_A_HELD : CLAWD_RIG_A)[clawdTracks.A] || '';
+    if (owner === 'A') {
+      if(halloween?.enabled){if(clawdTracks.A==='error'&&!A2.floor)return 'errorFall';if(['recover','errorSlump'].includes(clawdTracks.A))return clawdTracks.A;if(!A2.floor&&['think','stream'].includes(clawdTracks.A)){if(halloweenSendPending)return 'compose';if(halloweenSendClip)return halloweenSendClip;}}
+      return (A2.floor ? CLAWD_RIG_A_HELD : CLAWD_RIG_A)[clawdTracks.A] || '';
+    }
     const b = clawdTracks.B || 'idle';
     if (b.startsWith('rig:')) {
       const id = b.slice(4);
@@ -3857,6 +3862,7 @@ if (CLAUDE_ENABLED) {
   function clawdRigContinues(base, curBase) {
     const meta = CLAWD_RIG.clips[base], cur = CLAWD_RIG.clips[curBase];
     if (!meta || !cur) return false;
+    if(halloween?.enabled&&/^writeSend(?:Quiet)?$/.test(curBase)&&meta.from==='write')return true;
     return meta.from === curBase || meta.after === curBase || cur.next === base
       || cur.from === base || Boolean(meta.from && meta.from === cur.from);
   }
@@ -3905,6 +3911,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function cleanupClawdRigEffects() {
+    halloweenErrorPending=false;halloweenSendClip='';halloweenSendPending=false;
     for(const clock of halloweenBlinkClocks.values())clock.destroy();halloweenBlinkClocks.clear();
     if (clawdRigPrewarmTimer) {
       if (clawdRigPrewarmIsIdle) hostWindow.cancelIdleCallback?.(clawdRigPrewarmTimer);
@@ -4376,17 +4383,31 @@ if (CLAUDE_ENABLED) {
     if (!value && clawdTracks.B === 'idle') syncClawdBState();
   }
 
-  function beginClawdGeneration() {
+  function clawdOnMessageSent(){
+    if(!halloween?.enabled||!clawdEnabled()||hostDocument.documentElement.dataset.claudeMotion==='off'||clawdPrefersReducedMotion()||A2.floor||halloweenSendClip)return;
+    if(!halloweenSendPending&&!/^compose(-m)?$/.test(composerClawd()?.dataset.clawdClip||''))return;
+    halloweenSendPending=false;halloweenSendClip=clawdPile.riderCount()?'writeSendQuiet':'writeSend';setClawdA('think');
+  }
+  function beginClawdGeneration(type='normal') {
     clawdTracks.round += 1;
     clawdTracks.activeRound = clawdTracks.round;
     clawdTracks.genStartedAt = Date.now();
+    if(halloween?.enabled&&!halloweenSendClip&&type==='normal'&&clawdEnabled()&&hostDocument.documentElement.dataset.claudeMotion!=='off'&&!clawdPrefersReducedMotion()&&/^compose(-m)?$/.test(composerClawd()?.dataset.clawdClip||''))halloweenSendPending=true;
     setClawdA('think');
   }
 
-  function settleClawdGeneration(outcome = 'done') {
+  function settleClawdGeneration(outcome = 'done', replyArrived = false) {
     const round = clawdTracks.activeRound;
     if (!round || clawdTracks.settledRound === round) return;
     clawdTracks.settledRound = round;
+    if(halloween?.enabled){
+      halloweenSendPending=false;halloweenSendClip='';
+      if(!clawdEnabled()||hostDocument.documentElement.dataset.claudeMotion==='off'||clawdPrefersReducedMotion()){halloweenErrorPending=false;return;}
+      if(outcome==='error')halloweenErrorPending=true;
+      if(outcome==='done'&&replyArrived&&halloweenErrorPending){halloweenErrorPending=false;setClawdA('recover',CLAWD_RIG.clips.recover.dur);}
+      else {const clip=outcome==='error'&&!A2.floor?'errorFall':(A2.floor?CLAWD_RIG_A_HELD:CLAWD_RIG_A)[outcome];setClawdA(outcome,CLAWD_RIG.clips[clip]?.dur||1400);}
+      return;
+    }
     /* 复合动作的「完成」是 1.8 秒（丢笔丢纸 + 蹦两下），比旧的欢呼长一点 */
     setClawdA(outcome, CLAWD_RIG.clips[outcome]?.dur || 1400);
   }
@@ -4693,7 +4714,8 @@ if (CLAUDE_ENABLED) {
            事件一直不来的情况由本函数开头的 CLAWD_GEN_MAX_MS 兜底处理。 */
         if (!generationEventActive) settleClawdGeneration('done');
       } else {
-        setClawdA(null);
+        if(halloween?.enabled&&clawdTracks.A==='recover')setClawdA('done',CLAWD_RIG.clips.done.dur);
+        else setClawdA(halloween?.enabled&&halloweenErrorPending?'errorSlump':null);
       }
     }
     if (clawdTracks.bUntil && now >= clawdTracks.bUntil) {
@@ -4832,14 +4854,15 @@ if (CLAUDE_ENABLED) {
         /* 上一轮如果是兜底收场的（结束事件丢了），generationEventActive 会一直是 true；
            这时新的开始事件也要开新一轮，否则这一轮的结束会被 settledRound 挡掉。 */
         if (active && (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound)) {
-          beginClawdGeneration();
+          beginClawdGeneration(String(args[0]??'normal'));
           clawdGenSnapshot = snapshotChatForClawd(args[0]);
         } else if (!active) {
           /* C1a：酒馆 1.18 请求失败（503、额度用完）时只发 GENERATION_ENDED，
              根本没有 GENERATION_FAILED 这个事件。所以「结束」时要自己看这一轮
              到底有没有收到回复：没收到就按失败收场，不庆祝。 */
-          const final = outcome === 'done' && clawdGenSnapshot && !clawdReplyArrived(clawdGenSnapshot) ? 'error' : outcome;
-          settleClawdGeneration(final);
+          const replyArrived=!!clawdGenSnapshot&&clawdReplyArrived(clawdGenSnapshot);
+          const final = outcome === 'done' && clawdGenSnapshot && !replyArrived ? 'error' : outcome;
+          settleClawdGeneration(final,replyArrived);
           clawdGenSnapshot = null;
         }
         scheduleRefresh();
@@ -4849,6 +4872,7 @@ if (CLAUDE_ENABLED) {
     };
 
     /* C1b：你不在页面上时来了回复，等你回来 Clawd 读一封信 */
+    const sentType=types.MESSAGE_SENT||'message_sent';source.on(sentType,clawdOnMessageSent);generationSubscriptions.push({source,type:sentType,handler:clawdOnMessageSent});
     const receivedType = types.MESSAGE_RECEIVED || 'message_received';
     const onReceived = () => { if (hostDocument.hidden) clawdLetterPending = true; };
     source.on(receivedType, onReceived);

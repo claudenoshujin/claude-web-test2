@@ -864,7 +864,7 @@ export function installOfficialLayout(win = window) {
     keepStyleAfterTheme();
     observe(doc.head,keepStyleAfterTheme,{childList:true});
     sync();
-    observe(root, schedule, {attributes:true,attributeFilter:['data-claude-structure','data-claude-skin']});
+    observe(root, schedule, {attributes:true,attributeFilter:['data-claude-structure','data-claude-skin','data-cw-halloween']});
     observe(doc.body, schedule, {attributes:true,attributeFilter:['class','data-clawd-menu']});
     const chat = doc.getElementById('chat'); if (chat) observe(chat, schedule, {childList:true,subtree:true});
     // Typing only changes the filled state. syncChat() walks every assistant message and
