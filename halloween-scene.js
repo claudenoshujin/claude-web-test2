@@ -559,6 +559,7 @@ function nodeSpider(P, size) {
   }
   function iconEffectZ(source){
     let outer=0;for(let n=source;n&&n!==doc;n=n.parentElement){const c=win.getComputedStyle(n),z=Number.parseInt(c.zIndex,10);if(c.position!=='static'&&Number.isFinite(z))outer=z;}
+    const debug=doc.getElementById('claude-clawd-debug-menu');if(debug?.getClientRects().length)outer=Math.max(outer,Number.parseInt(win.getComputedStyle(debug).zIndex,10)||0);
     return Math.max(2999,outer+1);
   }
   function playIconEffect(kind,target,force=false){
