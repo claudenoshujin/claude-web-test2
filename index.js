@@ -6551,7 +6551,7 @@ if (CLAUDE_ENABLED) {
      WebViews support it; older Android builds fall back to the pan anchor. */
   function installVirtualKeyboardOverlay() {
     if (!isMobileLayout() || keyboardBaselineMode) return;
-    const keyboard = hostWindow.navigator?.virtualKeyboard;
+    const keyboard = /Android/i.test(hostWindow.navigator?.userAgent||'') ? null : hostWindow.navigator?.virtualKeyboard;
     if (keyboard && 'overlaysContent' in keyboard) {
       try {
         virtualKeyboardOverlayOriginal = Boolean(keyboard.overlaysContent);
