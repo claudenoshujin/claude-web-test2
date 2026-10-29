@@ -961,14 +961,22 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       finish(s);
     }
     panel.querySelectorAll('#extensions_settings > div,#extensions_settings2 > div').forEach(c=>{
-      if(c.dataset.cwV4Extension)return;
-      const drawer=c.matches('.inline-drawer')?c:c.querySelector('.inline-drawer'),head=drawer?.querySelector('.inline-drawer-header');if(!head)return;
-      const name=head.querySelector('b,strong')?.textContent.trim()||head.textContent.trim();if(!name)return;
-      c.dataset.cwV4Extension='1';c.classList.add('cw-v4-extension-item');
-      const s=state(c),r=make('div','cw-v4-extension-row'),ic=make('span','cw-v4-extension-icon');
-      r.append(ic,make('span','cw-v4-extension-name',name),button(L('配置'),e=>{e.stopPropagation();extensionSettings.open(c,name);},'cw-v4-button cw-v4-extension-edit'));
-      c.prepend(r);s.created.push(r);
-      if(c.id==='claude-web-settings')versionRows.add(r);
+      const direct=c.matches('.inline-drawer')?[c]:[...c.children].filter(n=>n.matches('.inline-drawer')||n.querySelector(':scope > .inline-drawer'));
+      const units=direct.length?direct:[c];
+      const s=state(c);s.extensionDrawers||=new Set();
+      for(const unit of units){
+        const drawer=unit.matches('.inline-drawer')?unit:unit.querySelector('.inline-drawer');
+        if(!drawer)continue;
+        if(s.extensionDrawers.has(drawer))continue;
+        const head=drawer.querySelector('.inline-drawer-header');
+        const name=head?.querySelector('b,strong')?.textContent.trim()||head?.textContent.trim();if(!name)continue;
+        s.extensionDrawers.add(drawer);
+        c.dataset.cwV4Extension='1';c.classList.add('cw-v4-extension-item');
+        const r=make('div','cw-v4-extension-row'),ic=make('span','cw-v4-extension-icon');
+        // Shared containers keep their drawers separate; self-rendered roots stay intact.
+        r.append(ic,make('span','cw-v4-extension-name',name),button(L('配置'),e=>{e.stopPropagation();extensionSettings.open(s.extensionDrawers.size>1?unit:c,name);},'cw-v4-button cw-v4-extension-edit'));
+        c.insertBefore(r,unit.parentElement===c?unit:c.firstChild);s.created.push(r);if(c.id==='claude-web-settings')versionRows.add(r);
+      }
     });
   }
     function updateExtensionVersions(){paintVersion();void checkVersion();}
