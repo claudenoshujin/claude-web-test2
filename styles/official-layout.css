@@ -4042,3 +4042,7 @@ html[data-cw-v4] body #top-settings-holder dialog.cw-layout-dialog{pointer-event
 html[data-cw-v4] body:is(.te-input-upper,.te-input-lower) #send_form #nonQRFormItems{justify-items:normal!important}
 html[data-cw-v4] body:is(.te-input-upper,.te-input-lower) #send_form #send_textarea{grid-row:1!important;grid-column:1/-1!important;justify-self:auto!important;width:auto!important}
 html[data-cw-v4][data-claude-layout="pc"] body:is(.te-input-upper,.te-input-lower):not(.clawd-welcome) #send_form #nonQRFormItems{display:flex!important}
+
+/* 骰子前端 (dice frontend) sizes its panel inline from #chat.clientWidth, which includes padding; ST's #chat has
+ * almost none, CW's has 16px (phone) / a wide left gutter (desktop), so the panel ran off the right edge. */
+html[data-cw-v4] body #chat>.acu-wrapper.acu-dice-ui-root{width:100%!important;max-width:100%!important}
