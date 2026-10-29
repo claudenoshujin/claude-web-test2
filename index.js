@@ -8666,44 +8666,122 @@ if (CLAUDE_ENABLED) {
     return { name, src: img?.src || '' };
   }
 
-  function refreshRailUser() {
-    if (!railEnabled) return;
-    const holder = hostDocument.querySelector('#top-settings-holder');
-    if (!holder) return;
-
-    // 直接改造玩家角色抽屉自己的 toggle —— 它本来就是个按钮，
-    // 点它走酒馆原生逻辑。之前另造一个 div 再转发点击，
-    // 结果是把本来开着的抽屉给关上了。
-    const row = holder.querySelector('#persona-management-button > .drawer-toggle');
-    if (!row) return;
-    // 多余的注入清掉，只留一份
-    for (const extra of [...row.querySelectorAll('.clawd-user-face')].slice(1)) {
-      extra.parentElement === row ? extra.remove() : null;
+  function refreshRailUser(retryBad = false) {
+      if (destroyed || !railEnabled) return;
+      const holder = hostDocument.querySelector("#top-settings-holder");
+      if (!holder) return;
+      const row = holder.querySelector("#persona-management-button > .drawer-toggle");
+      if (!row) return;
+      for (const extra of [ ...row.querySelectorAll(".clawd-user-face") ].slice(1)) extra.parentElement === row && extra.remove();
+      row.querySelector(".clawd-user-face") || row.insertAdjacentHTML("beforeend", '<span class="clawd-user-face"></span><span class="clawd-user-meta"><span class="clawd-user-name"></span><span class="clawd-user-plan">Max plan</span></span><span class="clawd-user-more">▾</span>');
+      const persona = currentPersona();
+      const name = row.querySelector(".clawd-user-name");
+      name && name.textContent !== persona.name && (name.textContent = persona.name || "User");
+      const face = row.querySelector(".clawd-user-face");
+      if (!face) return;
+      const previous = refreshRailUser.avatar;
+      if (previous && previous.img !== face.querySelector("img")) {
+        previous.cleanup();
+        refreshRailUser.avatar = null;
+      }
+      if (persona.src) {
+        let img = face.querySelector("img");
+        let created = false;
+        if (!img) {
+          img = hostDocument.createElement("img");
+          img.dataset.cwWant = persona.src;
+          created = true;
+          face.textContent = "";
+          face.append(img);
+        }
+        let state = refreshRailUser.avatar;
+        if (!state) {
+          state = {img, timer: 0, retries: 0, lastImmediate: 0, initials: null, name: ""};
+          const cancel = () => {
+            hostWindow.clearTimeout(state.timer);
+            state.timer = 0;
+          };
+          const valid = () => !destroyed && img.isConnected && img.parentElement === face;
+          const showInitials = () => {
+            img.hidden = true;
+            img.style.setProperty("display", "none", "important");
+            state.initials ??= hostDocument.createTextNode("");
+            state.initials.textContent = state.name;
+            if (state.initials.parentNode !== face) face.append(state.initials);
+          };
+          const request = () => {
+            if (!valid() || !img.dataset.cwWant) return;
+            const url = new hostWindow.URL(img.dataset.cwWant, hostDocument.baseURI);
+            url.searchParams.set("cw-retry", String(Date.now()));
+            img.src = url.href;
+          };
+          const loaded = () => {
+            cancel();
+            state.retries = 0;
+            if (img.hidden) img.hidden = false;
+            if (img.style.getPropertyValue("display")) img.style.removeProperty("display");
+            state.initials?.remove();
+          };
+          const failed = () => {
+            if (!valid() || state.timer) return;
+            if (state.retries >= 3) return showInitials();
+            const wanted = img.dataset.cwWant, delay = [1000, 3000, 10000][state.retries++];
+            state.timer = hostWindow.setTimeout(() => {
+              state.timer = 0;
+              if (valid() && img.dataset.cwWant === wanted) request();
+            }, delay);
+          };
+          // Passive refreshes must not restart an exhausted retry budget.
+          const recover = event => {
+            if (!img.complete || img.naturalWidth > 0 || state.timer) return;
+            if (!event.target?.closest?.('.clawd-mobile-menu-button, #persona-management-button, .recentChat, .cw-v4-newchat-top, #option_start_new_chat, .clawd-mobile-new-chat')) return;
+            hostWindow.queueMicrotask(() => !destroyed && refreshRailUser(true));
+          };
+          const removal = new hostWindow.MutationObserver(() => {
+            if (!valid()) state.cleanup();
+          });
+          removal.observe(face, {childList: true});
+          removal.observe(row, {childList: true});
+          removal.observe(row.parentElement, {childList: true});
+          removal.observe(holder, {childList: true});
+          state.cleanup = () => {
+            cancel();
+            removal.disconnect();
+            img.removeEventListener("error", failed);
+            img.removeEventListener("load", loaded);
+            hostDocument.removeEventListener("click", recover, true);
+            if (refreshRailUser.avatar === state) refreshRailUser.avatar = null;
+          };
+          state.request = request;
+          state.cancel = cancel;
+          img.addEventListener("error", failed);
+          img.addEventListener("load", loaded);
+          hostDocument.addEventListener("click", recover, true);
+          refreshRailUser.avatar = state;
+        }
+        state.name = (persona.name || "U").trim().slice(0, 2);
+        if (state.initials?.isConnected && state.initials.textContent !== state.name) state.initials.textContent = state.name;
+        if (created || img.dataset.cwWant !== persona.src) {
+          state.cancel();
+          state.retries = 0;
+          state.lastImmediate = 0;
+          if (img.dataset.cwWant !== persona.src) img.dataset.cwWant = persona.src;
+          if (img.hidden) img.hidden = false;
+          if (img.style.getPropertyValue("display")) img.style.removeProperty("display");
+          state.initials?.remove();
+          img.src = persona.src;
+        } else if (img.complete && img.naturalWidth === 0 && !state.timer &&
+          (state.retries < 3 || retryBad) && Date.now() - state.lastImmediate >= 5000) {
+          state.lastImmediate = Date.now();
+          state.request();
+        }
+      } else {
+        refreshRailUser.avatar?.cleanup();
+        face.querySelector("img")?.remove();
+        const initial = (persona.name || "U").trim().slice(0, 2);
+        face.textContent !== initial && (face.textContent = initial);
+      }
     }
-    if (!row.querySelector('.clawd-user-face')) {
-      row.insertAdjacentHTML('beforeend',
-        '<span class="clawd-user-face"></span>' +
-        '<span class="clawd-user-meta"><span class="clawd-user-name"></span>' +
-        '<span class="clawd-user-plan">Max plan</span></span>' +
-        '<span class="clawd-user-more">\u25be</span>');
-    }
-
-    const persona = currentPersona();
-    const name = row.querySelector('.clawd-user-name');
-    if (name && name.textContent !== persona.name) name.textContent = persona.name || 'User';
-
-    const face = row.querySelector('.clawd-user-face');
-    if (!face) return;
-    if (persona.src) {
-      let img = face.querySelector('img');
-      if (!img) { img = hostDocument.createElement('img'); face.textContent = ''; face.append(img); }
-      if (img.src !== persona.src) img.src = persona.src;
-    } else {
-      face.querySelector('img')?.remove();
-      const initial = (persona.name || 'U').trim().slice(0, 2);
-      if (face.textContent !== initial) face.textContent = initial;
-    }
-  }
 
   function currentCharacter() {
     const context = getContext();
@@ -11295,6 +11373,7 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    refreshRailUser.avatar?.cleanup();
     halloween?.destroy(); halloween = null;
     syncClawdRuntime();
     clawdPile.destroy();
