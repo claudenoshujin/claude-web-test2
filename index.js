@@ -8657,14 +8657,23 @@ if (CLAUDE_ENABLED) {
   const RAIL_USER_CLASS = 'clawd-rail-user';
 
   function currentPersona() {
-    const context = getContext();
-    const name = context?.name1 || '';
-    // 头像先找角色管理里选中的那张，退而求其次用聊天里自己的头像
-    const img =
-      hostDocument.querySelector('#user_avatar_block .avatar.selected img, #user_avatar_block [class*="selected"] img')
-      || hostDocument.querySelector('#chat .mes[is_user="true"] .avatar img');
-    return { name, src: img?.src || '' };
-  }
+      const context = getContext();
+      const name = context?.name1 || "";
+      const selected = hostDocument.querySelector('#user_avatar_block .avatar-container.selected, #user_avatar_block .avatar.selected');
+      const avatar = selected?.matches('.avatar') ? selected : selected?.querySelector('.avatar');
+      const img = selected?.querySelector('img');
+      const id = selected?.getAttribute('data-avatar-id') || avatar?.getAttribute('data-avatar-id') || avatar?.getAttribute('imgfile');
+      let src = id ? '/thumbnail?type=persona&file=' + encodeURIComponent(id) : "";
+      if (!src) {
+        const fallback = hostDocument.querySelector('#chat .mes[is_user="true"] .avatar img');
+        src = [img?.getAttribute('data-bai-bai-toolkit-lazy-avatar-src'), img?.getAttribute('src'), fallback?.getAttribute('src')]
+          .map(value => String(value || "").trim()).find(value => value && !/^data:/i.test(value)) || "";
+      }
+      return {
+        name: name,
+        src: src
+      };
+    }
 
   function refreshRailUser(retryBad = false) {
       if (destroyed || !railEnabled) return;
