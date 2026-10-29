@@ -10476,8 +10476,11 @@ if (CLAUDE_ENABLED) {
     delete hostDocument.documentElement.dataset.claudeExternalSurface;
   }
 
+  let watchedExternalManager=null,externalManagerWatch=null;
+  function watchExternalManager(manager){if(watchedExternalManager===manager)return;externalManagerWatch?.disconnect();watchedExternalManager=manager;externalManagerWatch=manager?new hostWindow.MutationObserver(scheduleExternalSurfaceIsolation):null;externalManagerWatch?.observe(manager,{attributes:true,attributeFilter:['style','class','hidden']});}
   function syncExternalSurfaceIsolation() {
     const manager = hostDocument.querySelector(CHARACTER_MANAGER_SELECTOR);
+    watchExternalManager(manager);
     const visible = manager && !manager.hidden && (() => {
       const style = hostWindow.getComputedStyle(manager);
       return style.display !== 'none' && style.visibility !== 'hidden';
@@ -11411,6 +11414,7 @@ if (CLAUDE_ENABLED) {
     hostDocument.body.classList.remove(EXTERNAL_MODAL_OPEN_CLASS);
     restoreExternalModalRailLayer();
     liftExternalModals([]);
+    externalManagerWatch?.disconnect();externalManagerWatch=null;watchedExternalManager=null;
     if (externalSurfaceIsolationRaf) hostWindow.cancelAnimationFrame(externalSurfaceIsolationRaf);
     externalSurfaceIsolationRaf = 0;
     restoreExternalThemeStyle();
