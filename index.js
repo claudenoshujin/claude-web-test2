@@ -13,11 +13,12 @@
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installStreamFollow } from "./stream-follow.js?v=2.0.329";
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.329";
-import { installOfficialLayout } from "./official-layout.js?v=2.0.329";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.329";
-import { createClawdPile } from "./clawd-pile.js?v=2.0.329";
+import { installStreamFollow } from "./stream-follow.js?v=2.0.330";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.330";
+import { installOfficialLayout } from "./official-layout.js?v=2.0.330";
+import { installHalloween } from "./halloween.js?v=2.0.330";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.330";
+import { createClawdPile } from "./clawd-pile.js?v=2.0.330";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -429,7 +430,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.329-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.330-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -460,7 +461,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=2.0.329', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=2.0.330', import.meta.url).href;
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
 if (CLAUDE_ENABLED) document.head.append(officialStyle);
 const startOfficialLayout = () => {
@@ -2174,10 +2175,10 @@ if (CLAUDE_ENABLED) {
     state: () => ({ grounded: !A2.held && Math.abs(A2.fy - A2.floor) < .5, walking: /^rig:walkLoop/.test(String(clawdTracks.B || '')) }),
     lower: () => clawdBigLower(),
   } });
-  const clawdPile = Object.fromEntries(['ensure','left','destroy','hush','peek','seats','trackSeats','seatLive','bigSat','blocks','riderCount','unloadBig','follow','followEnd','restack'].map(key => [key, (...args) => {
+  const clawdPile = Object.fromEntries(['setCostume','ensure','left','destroy','hush','peek','seats','trackSeats','seatLive','bigSat','blocks','riderCount','unloadBig','follow','followEnd','restack'].map(key => [key, (...args) => {
     if (key === 'destroy') { clawdPileInstance?.destroy(); clawdPileInstance = null; return; }
     if (clawdEnabled() && key === 'ensure' && !clawdPileInstance) clawdPileInstance = makeClawdPile();
-    if (clawdEnabled() && clawdPileInstance) return clawdPileInstance[key](...args);
+    if (clawdEnabled() && clawdPileInstance) { if(key === 'ensure')clawdPileInstance.setCostume(CLAWD_RIG.pileCells || null); return clawdPileInstance[key](...args); }
     if (key === 'trackSeats') return () => [];
     return ['seats','blocks'].includes(key) ? [] : key === 'riderCount' ? 0 : null;
   }]));
@@ -2250,7 +2251,24 @@ if (CLAUDE_ENABLED) {
      2026-09-24 起骨架接管这只 Clawd 的全部画面：三条轨道的每个状态都对应一个骨架动作（见 CLAWD_RIG_A/B/C），
      旧 ::before 整帧精灵只留给消息末尾的小 Clawd。新旧两套轮流画会接不上（Lulu 真机反馈），所以不再混用。
      动作的 CSS 按需生成：第一次要播哪个动作才生成哪个（全部约 440KB）。 */
-  const CLAWD_RIG = buildClawdRig();
+  const NORMAL_CLAWD_RIG = buildClawdRig();
+  let CLAWD_RIG = NORMAL_CLAWD_RIG, halloween = null, halloweenAirborne = false;
+  const halloweenBlinkClocks = new Map();
+  function switchHalloweenRig(next) {
+    const rig = next || NORMAL_CLAWD_RIG;
+    if (CLAWD_RIG === rig || destroyed) return;
+    cleanupClawdRigEffects();
+    for (const clock of halloweenBlinkClocks.values()) clock.destroy();
+    halloweenBlinkClocks.clear();
+    CLAWD_RIG = rig;
+    clawdPile.setCostume(rig.pileCells || null);
+    for (const button of hostDocument.querySelectorAll(".clawd-composer-clawd")) {
+      button.querySelector(":scope > .clawd-rig")?.remove();
+      button.removeAttribute("data-clawd-clip");
+    }
+    installClawdRigStyle();
+    renderClawdTracks();
+  }
   const CLAWD_RIG_STYLE_ID = 'claude-clawd-rig-style';
   /* 闲置随机池里的长动作：权重、冷却按 docs/Clawd动作分配-生态场-20260924.md §3 */
   const CLAWD_RIG_POOL = Object.freeze([
@@ -3796,6 +3814,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function ensureClawdRig(button) {
+    if(halloween?.enabled&&CLAWD_RIG.createBlinkClock){if(!halloweenBlinkClocks.has(button)){const clock=CLAWD_RIG.createBlinkClock(button,{enabled:()=>!destroyed&&clawdEnabled()});halloweenBlinkClocks.set(button,clock);hostWindow.queueMicrotask(()=>clock.sync());}else halloweenBlinkClocks.get(button).sync();}
     if (button.querySelector(':scope > .clawd-rig')) return;
     const rig = hostDocument.createElement('span');
     rig.className = 'clawd-rig';
@@ -3886,6 +3905,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function cleanupClawdRigEffects() {
+    for(const clock of halloweenBlinkClocks.values())clock.destroy();halloweenBlinkClocks.clear();
     if (clawdRigPrewarmTimer) {
       if (clawdRigPrewarmIsIdle) hostWindow.cancelIdleCallback?.(clawdRigPrewarmTimer);
       else cancelClawdLater(clawdRigPrewarmTimer);
@@ -4041,7 +4061,8 @@ if (CLAUDE_ENABLED) {
       clip = mirror ? base + '-m' : base;
     }
     if (clip === current) return;
-    if (current && !continues) clawdRigDropProps(button, curBase);
+    const brewingTransition = halloween?.enabled && /^(write|sitWrite|writeHeld|writeSend|writeSendQuiet|done|stopped|error|doneHeld|stoppedHeld|errorHeld|errorFall|recover)$/.test(curBase);
+    if (current && !continues && !brewingTransition) clawdRigDropProps(button, curBase);
     button.removeAttribute('data-clawd-clip');
     if (clip) {
       if (base.startsWith('glowstick')) clawdRigPickStickColors(button);
@@ -5111,6 +5132,7 @@ if (CLAUDE_ENABLED) {
   }
 
   async function safelyDeleteMessage(message) {
+    const halloweenDelete = halloween?.captureDelete(message);
     const id = getMessageId(message);
     if (id === null) return;
     const context = getContext();
@@ -5122,7 +5144,7 @@ if (CLAUDE_ENABLED) {
         && data.swipes.length > 1
         && id === context.chat.length - 1
         && selectedSwipe !== undefined;
-      await context.deleteMessage(id, canDeleteSwipe ? selectedSwipe : undefined, true);
+      try { await context.deleteMessage(id, canDeleteSwipe ? selectedSwipe : undefined, true); } finally { halloween?.finishDelete(halloweenDelete); }
       return;
     }
 
@@ -5420,19 +5442,20 @@ if (CLAUDE_ENABLED) {
   /* 只写，不读。旋转和压扁必须跟位移写进同一条 transform——transform 是单一
      属性，分两次写的话后一次会把前一次整条覆盖掉。
      回到原位时把内联样式整个撤掉，让 A1 的动画恢复原样。 */
-  function a2Place(button) {
+  function a2Place(button, ballistic = false) {
+    halloweenAirborne = ballistic || A2.held || A2.dragging || Math.abs(A2.fy - A2.floor) > .5;
     const move = `translate3d(${A2.x.toFixed(1)}px, ${A2.fy.toFixed(1)}px, 0)`;
     const home = !A2.x && !A2.fy;
     if (home && !A2.rot && A2.sqx === 1 && A2.sqy === 1) {
-      button.style.removeProperty('transform');
+      button.style.removeProperty("transform");
+      if (halloween?.enabled) halloween.positionClawd({ airborne: ballistic || A2.held || A2.dragging || Math.abs(A2.fy - A2.floor) > .5, x: A2.x, y: A2.fy });
       return;
     }
     let value = move;
-    if (A2.rot) value += ` rotate(${A2.rot.toFixed(1)}deg)`;
-    if (A2.sqx !== 1 || A2.sqy !== 1) {
-      value += ` scale(${A2.sqx.toFixed(3)}, ${A2.sqy.toFixed(3)})`;
-    }
-    button.style.setProperty('transform', value, 'important');
+    A2.rot && (value += ` rotate(${A2.rot.toFixed(1)}deg)`);
+    A2.sqx === 1 && A2.sqy === 1 || (value += ` scale(${A2.sqx.toFixed(3)}, ${A2.sqy.toFixed(3)})`);
+    button.style.setProperty("transform", value, "important");
+    if (halloween?.enabled) halloween.positionClawd({ airborne: ballistic || A2.held || A2.dragging || Math.abs(A2.fy - A2.floor) > .5, x: A2.x, y: A2.fy });
   }
 
   /* ===== 原子序列与锁 =====
@@ -5876,7 +5899,7 @@ if (CLAUDE_ENABLED) {
         }
       }
       A2.rot = Math.max(-P.maxRot, Math.min(P.maxRot, -bx * P.spin));
-      a2Place(button);
+      a2Place(button, true);
       requestClawdFrame(step);
     };
     a2TraceMark('ballistic:start');
@@ -7115,7 +7138,12 @@ if (CLAUDE_ENABLED) {
   }
 
   function heroText() {
-    const list = heroCandidates((getContext()?.name1 || '').trim(), ccPrefersChinese());
+    if (halloween?.enabled) {
+      const name = (getContext()?.name1 || "").trim();
+      const lines = ccPrefersChinese() ? [`不给糖就捣蛋${name ? "，" + name : ""}？`, `${name ? name + "，" : ""}今晚想变点什么戏法？`, `万圣夜好${name ? "，" + name : ""}`, "今晚有点闹鬼，一起查查？", `南瓜灯点好了${name ? "，" + name : ""}，进来坐？`, "今晚 Claude 能帮你变点什么？"] : [`Trick or treat${name ? ", " + name : ""}?`, "What magic shall we make tonight?", `Happy Halloween${name ? ", " + name : ""}.`];
+      return lines[Math.max(0,heroPick) % lines.length];
+    }
+    const list = heroCandidates((getContext()?.name1 || "").trim(), ccPrefersChinese());
     return list[heroPick] ?? list[0];
   }
 
@@ -7543,7 +7571,7 @@ if (CLAUDE_ENABLED) {
   function markCurrentRecent() {
     const context = getContext();
     const chatId = String(context?.getCurrentChatId?.() ?? '');
-    /* 2.0.329：不同角色可以有同名存档（比如从别的角色拷来的聊天），只比文件名会把两行都标成当前——
+    /* 2.0.330：不同角色可以有同名存档（比如从别的角色拷来的聊天），只比文件名会把两行都标成当前——
        生成中的橙点就亮了两个。再比一次是哪个角色 / 群组；拿不到角色时退回只比文件名。 */
     const groupId = String(context?.groupId ?? '').trim();
     const avatar = groupId ? '' : String(context?.characters?.[context?.characterId]?.avatar ?? '').trim();
@@ -8167,7 +8195,7 @@ if (CLAUDE_ENABLED) {
   function hostModuleRoot() {
     const mainScript = [...hostDocument.scripts].find(script => /(?:^|\/)script\.js(?:[?#].*)?$/.test(script.src));
     return {
-      main: mainScript?.src || new hostWindow.URL('script.js?v=2.0.329', hostDocument.baseURI).href,
+      main: mainScript?.src || new hostWindow.URL('script.js?v=2.0.330', hostDocument.baseURI).href,
       root: new hostWindow.URL('.', mainScript?.src || hostDocument.baseURI),
     };
   }
@@ -8176,7 +8204,7 @@ if (CLAUDE_ENABLED) {
     const urls = hostModuleRoot();
     /* 主模块必须保留页面实际使用的 ?v=... 等查询参数。
        去掉它再 import 会被浏览器当成另一份模块，可能把 SillyTavern 主程序重复执行一次。 */
-    if (relativePath === 'script.js?v=2.0.329') return urls.main;
+    if (relativePath === 'script.js?v=2.0.330') return urls.main;
     return new hostWindow.URL(relativePath, urls.root).href;
   }
 
@@ -8200,9 +8228,9 @@ if (CLAUDE_ENABLED) {
 
   function injectHostModuleLoader() {
     const urls = {
-      main: resolveHostModule('script.js?v=2.0.329'),
-      groups: resolveHostModule('scripts/group-chats.js?v=2.0.329'),
-      popup: resolveHostModule('scripts/popup.js?v=2.0.329'),
+      main: resolveHostModule('script.js?v=2.0.330'),
+      groups: resolveHostModule('scripts/group-chats.js?v=2.0.330'),
+      popup: resolveHostModule('scripts/popup.js?v=2.0.330'),
     };
     /* 模块说明符写成绝对地址：blob 兜底那条路的 baseURI 是 blob:，
        相对路径在那里解析不出来。 */
@@ -9933,19 +9961,22 @@ if (CLAUDE_ENABLED) {
   }
 
   function refreshComposerPhrase(active) {
-    const box = hostDocument.querySelector('#send_textarea');
+    const box = hostDocument.querySelector("#send_textarea");
     if (!box) return;
     if (active) {
-      if (box.dataset.ccPh === undefined) {
-        box.dataset.ccPh = box.getAttribute('placeholder') ?? '';
-        const phrase = ccPickPhrase();
-        box.setAttribute('placeholder', ccPrefersChinese() ? 'Clawd 正在' + phrase.cn : 'Clawd is ' + phrase.en);
+      const hwPhrase = halloween?.enabled === true;
+      if (box.dataset.ccPh === void 0 || hwPhrase !== (box.dataset.cwHalloweenPhrase === "on")) {
+        if(box.dataset.ccPh === void 0)box.dataset.ccPh = box.getAttribute("placeholder") ?? "";
+        const phrase = hwPhrase ? {cn:"熬魔药…",en:"brewing a potion…"} : ccPickPhrase();
+        if(hwPhrase)box.dataset.cwHalloweenPhrase = "on"; else delete box.dataset.cwHalloweenPhrase;
+        box.setAttribute("placeholder", ccPrefersChinese() ? "Clawd 正在" + phrase.cn : "Clawd is " + phrase.en);
       }
       return;
     }
-    if (box.dataset.ccPh !== undefined) {
-      box.setAttribute('placeholder', box.dataset.ccPh);
+    if (box.dataset.ccPh !== void 0) {
+      box.setAttribute("placeholder", box.dataset.ccPh);
       delete box.dataset.ccPh;
+      delete box.dataset.cwHalloweenPhrase;
     }
   }
 
@@ -10215,6 +10246,7 @@ if (CLAUDE_ENABLED) {
   ]);
 
   const OWNED_MUTATION_SELECTOR = [
+    "[data-cw-halloween-owned]",
     `button.${BUTTON_CLASS}`,
     `button.${LEFT_SWIPE_PROXY_CLASS}`,
     `button.${SWIPE_PROXY_CLASS}`,
@@ -10660,6 +10692,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function refreshClawdInner() {
+    halloween?.sync();
     frameId = 0;
     lastRefreshAt = Date.now();
     if (destroyed) return;
@@ -10977,7 +11010,7 @@ if (CLAUDE_ENABLED) {
 
     const token = {};
     autoCompleteResizeGuardToken = token;
-    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js?v=2.0.329');
+    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js?v=2.0.330');
 
     try {
       const previous = hostWindow[AUTOCOMPLETE_RESIZE_GUARD_KEY];
@@ -11062,6 +11095,8 @@ if (CLAUDE_ENABLED) {
     void installAutoCompleteResizeGuard();
     installStyle();
     installClawdRigStyle();
+    halloween = installHalloween({win:hostWindow, getContext, setRig:switchHalloweenRig, refresh:scheduleRefresh, getClawdState:()=>({x:A2.x,y:A2.fy,held:A2.held,dragging:A2.dragging,airborne:halloweenAirborne})});
+    halloween.sync();
     mountClawdDebugMenu();
     hostWindow.console?.info?.('[Claude-Clawd] build:', KEYBOARD_BUILD.id);
     setBodyClass(READY_CLASS, true);
@@ -11236,6 +11271,7 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    halloween?.destroy(); halloween = null;
     syncClawdRuntime();
     clawdPile.destroy();
     hostWindow.clearTimeout(pushLiveTimer);
@@ -11442,6 +11478,7 @@ if (CLAUDE_ENABLED) {
   //   blocked      拦掉了几次酒馆的 mousedown 自动关闭（应该 = 点击次数）
   //   corrections  守卫真的动手改回状态几次（理想是 0 —— 说明根因断干净了）
   const api = {
+    halloween: () => halloween,
     destroy,
     refresh: () => { syncClawdRuntime(); scheduleRefresh(); },
     clawdRuntimeStats: () => ({enabled:clawdEnabled(),frames:clawdFrames.size,timers:clawdTimers.size,pile:!!clawdPileInstance,tick:!!clawdRuntimeTimer}),
