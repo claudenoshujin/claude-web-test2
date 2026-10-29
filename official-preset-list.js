@@ -117,27 +117,63 @@ export function createPresetList({win,make,button,t}) {
     timer=win.setTimeout(()=>finish(false),2500);
     try{ui.nativeAction=toggle(r);ui.nativeAction.click();ui.nativeAction=null;check();}catch{if(ui)ui.nativeAction=null;finish(false);}
   });}
+  function batchManager(){
+    const pm=ui?.nativePM;
+    if(!pm||!['getPromptOrderEntry','render','saveServiceSettings'].every(k=>typeof pm[k]==='function')||typeof pm.tokenHandler?.getCounts!=='function')return null;
+    const counts=pm.tokenHandler.getCounts();return counts&&typeof counts==='object'?{pm,counts}:null;
+  }
+  function deadline(promise,ms){return new Promise(resolve=>{const timer=win.setTimeout(()=>resolve({timeout:true}),ms);Promise.resolve(promise).then(()=>{win.clearTimeout(timer);resolve({ok:true});},error=>{win.clearTimeout(timer);resolve({error});});});}
+  function confirmBatch(current,epoch,scope,record,pm){
+    let cancel;
+    const promise=new Promise(resolve=>{
+      let timer,observer,finished=false;
+      const finish=value=>{if(finished)return;finished=true;observer?.disconnect();win.clearTimeout(timer);const i=current.dispose.indexOf(cancel);if(i>=0)current.dispose.splice(i,1);resolve(value);};
+      cancel=()=>finish(false);current.dispose.push(cancel);
+      const check=()=>{if(ui!==current||current.epoch!==epoch||key()!==scope)return finish(false);
+        const mounted=new Map(rows().map(r=>[id(r),r]));if(!mounted.size)return;
+        if(record.every(task=>{const r=mounted.get(task.id),entry=pm.getPromptOrderEntry(pm.activeCharacter,task.id);return entry?.enabled===task.after&&(r?on(r)===task.after:!task.mounted);}))finish(true);
+      };
+      observer=new win.MutationObserver(check);observer.observe(current.manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});timer=win.setTimeout(()=>finish(false),15000);check();
+    });return {promise,cancel:()=>cancel?.()};
+  }
   async function run(target,undo=false){
     if(!ui||ui.busy)return;
-    const current=ui,epoch=ui.epoch,scope=ui.context;
-    const tasks=undo?[...ui.undo]:[...ui.selected].map(k=>({id:k,before:on(find(k)),after:target}));
+    const current=ui,epoch=ui.epoch,scope=ui.context,batch=batchManager(),catalog=new Map(entries().map(e=>[id(e),e]));
+    const tasks=undo?[...(ui.undo||[])]:[...ui.selected].map(k=>({id:k,before:on(catalog.get(k)),after:target}));
+    current.batchPath=batch?'native':'serial';current.batchError=null;
     ui.frozen||=new Set(ui.visible);ui.busy=true;ui.undo=null;text(ui.message,t(`正在处理 ${tasks.length} 条…`,`Processing ${tasks.length} prompts…`));paint();
-    let changed=0,skipped=0,failed=0,processed=0;const record=[];
-    try{for(const task of tasks){
-      if(ui!==current||ui.epoch!==epoch||key()!==scope)break;
-      const r=find(task.id),desired=undo?task.before:task.after;
-      if(!r||!allowed(r)){failed++;continue;}
-      if(undo&&(task.conflict||on(r)!==task.after)){skipped++;continue;}
-      if(on(r)===desired){skipped++;continue;}
-      const before=on(r);
-      const success=await setOne(task.id,desired,epoch);
-      if(ui!==current||ui.epoch!==epoch||key()!==scope)break;
-      if(success){changed++;record.push({id:task.id,before,after:desired});}else failed++;
-      processed=changed+skipped+failed;text(ui.message,t(`已处理 ${processed} / ${tasks.length} 条…`,`Processed ${processed} / ${tasks.length} prompts…`));
-      // Give native asynchronous render/save listeners a turn before the next item.
-      await new Promise(resolve=>win.setTimeout(resolve,0));
-    }}finally{
-      if(ui===current){ui.busy=false;if(epoch===ui.epoch&&key()===scope){ui.undo=!undo&&record.length?record:null;text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`));}paint();}
+    let changed=0,skipped=0,failed=0,processed=0,pending=false,saveError=null;const record=[];
+    try{
+      if(batch){
+        const {pm,counts}=batch;
+        // Mutate the captured preset in one synchronous turn, just like native handleToggle.
+        for(const task of tasks){
+          const r=catalog.get(task.id),entry=pm.getPromptOrderEntry(pm.activeCharacter,task.id),desired=undo?task.before:task.after;
+          if(!r||!entry||!allowed(r)){failed++;continue;}
+          const before=entry.enabled!==false;
+          if(undo&&(task.conflict||before!==task.after)){skipped++;continue;}
+          if(before===desired){skipped++;continue;}
+          entry.enabled=desired;counts[task.id]=null;changed++;record.push({id:task.id,before,after:desired,mounted:!!node(r)});
+        }
+        if(record.length){
+          const confirmation=confirmBatch(current,epoch,scope,record,pm);
+          try{pm.render();const saved=await deadline(pm.saveServiceSettings(),10000);saveError=saved.error||null;pending=!!saved.timeout||!await confirmation.promise;}finally{confirmation.cancel();}
+        }
+      }else for(const task of tasks){
+        if(ui!==current||ui.epoch!==epoch||key()!==scope)break;
+        const r=find(task.id),desired=undo?task.before:task.after;
+        if(!r||!allowed(r)){failed++;continue;}
+        if(undo&&(task.conflict||on(r)!==task.after)){skipped++;continue;}
+        if(on(r)===desired){skipped++;continue;}
+        const before=on(r),success=await setOne(task.id,desired,epoch);
+        if(ui!==current||ui.epoch!==epoch||key()!==scope)break;
+        if(success){changed++;record.push({id:task.id,before,after:desired});}else failed++;
+        processed=changed+skipped+failed;text(ui.message,t(`已处理 ${processed} / ${tasks.length} 条…`,`Processed ${processed} / ${tasks.length} prompts…`));
+        await new Promise(resolve=>win.setTimeout(resolve,0));
+      }
+    }catch(error){saveError=error;current.batchError=String(error?.message||error);}
+    finally{
+      if(ui===current){ui.busy=false;if(epoch===ui.epoch&&key()===scope){ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
     }
   }
   function mount(panel){
