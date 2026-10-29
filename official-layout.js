@@ -836,7 +836,8 @@ export function installOfficialLayout(win = window) {
       const catalog=new Map();unknownExtensionRows=[];
       for(const row of doc.querySelectorAll('#rm_extensions_block .cw-v4-extension-item:not(.cw-v4-standin)>.cw-v4-extension-row')){
         extensionRowsSeen.add(row);const parent=row.parentElement,label=row.querySelector('.cw-v4-extension-name')?.textContent.trim()||parent.id;
-        let name=parent.id==='claude-web-settings'?ownLayoutExtension:extensionAliases[parent.id];
+        const labelled=[...extensionMetadata.values()].filter(m=>extensionNorm(m.display)===extensionNorm(label));
+        let name=parent.id==='claude-web-settings'?ownLayoutExtension:labelled.length===1?labelled[0].name:extensionAliases[parent.id];
         if(!name){const byId=[...extensionMetadata.values()].filter(m=>extensionNorm(parent.id).startsWith(extensionNorm(m.name.split('/').pop())));const matches=byId.length===1?byId:[...extensionMetadata.values()].filter(m=>extensionNorm(m.display)===extensionNorm(label));if(matches.length===1)name=matches[0].name;}
         // Global scripts can add settings rows without an installed extension folder.
         if(!name&&parent.id)name='ui:'+parent.id;
