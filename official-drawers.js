@@ -3,7 +3,7 @@
  * handlers. Comment markers allow a full return to the native layout.
  * Labels are the design's own Chinese strings; L() looks up the design's
  * English table for other UI languages. */
-import { createExtensionSettings } from './official-extension-settings.js?v=2.0.160-hw8';
+import { createExtensionSettings } from './official-extension-settings.js?v=2.0.160-hw9';
 export function actionLabel(node,t){
   const byId={world_backfill_memos:['补全标题','Fill titles'],world_apply_current_sorting:['应用排序','Apply sorting'],world_refresh:['刷新','Refresh'],OpenAllWIEntries:['展开全部','Expand all'],CloseAllWIEntries:['收起全部','Collapse all'],world_popup_name_button:['改名','Rename'],world_duplicate:['复制','Duplicate'],world_popup_delete:['删除','Delete'],bulkEditButton:['批量编辑','Bulk edit'],charListGridToggle:['切换网格视图','Toggle grid view'],rm_button_group_chats:['新建群聊','New group'],external_import_button:['从外部导入','Import externally'],character_import_button:['导入角色','Import character'],world_import_button:['导入','Import'],world_popup_export:['导出','Export'],bg_add_folder_button:['新建文件夹','New folder'],bg_selection_mode_button:['选择背景','Select backgrounds'],bg_group_add_to_folder_button:['移入文件夹','Move to folder'],open_s_preset_menu:['预设工具','Preset tools'],view_connection_profile:['查看配置','View profile'],reload_connection_profile:['重新载入','Reload profile'],personas_backup:['备份','Back up'],personas_restore:['恢复备份','Restore backup'],persona_grid_toggle:['切换网格视图','Toggle grid view']};
   if(byId[node.id])return t(...byId[node.id]);
@@ -527,8 +527,22 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       adaptEdit(s);
       const inspect=item.querySelector('.prompt-manager-inspect-action');
       const more=menu(s,[inspect?['查看实际内容',null,false,()=>inspect.click()]:null,['从列表移除',item.querySelector('.prompt-manager-detach-action'),true]]);
+      if(inspect){const b=more.querySelector('.cw-v4-more-item');more.addEventListener('toggle',()=>{if(more.open)markInspect(item,b);});}
       item.append(more);s.created.push(more);
     });
+  }
+  // ST's handleInspect only opens when the prompt was part of the last dry run (promptManager.messages);
+  // otherwise (off, or empty) the click silently does nothing. Check the same thing when the ⋯ menu opens.
+  let pmModule=null;
+  function markInspect(item,b){
+    if(!pmModule){import(new URL('/scripts/openai.js',win.location.href).href).then(m=>{pmModule=m;markInspect(item,b);},()=>{});return;}
+    const pm=pmModule.promptManager,id=item.dataset.pmIdentifier;if(!pm||!id)return;
+    let can=false;try{can=pm.messages?.hasItemWithIdentifier(id)===true;}catch{}
+    b.disabled=!can;b.style.opacity=can?'':'.45';b.style.cursor=can?'':'default';
+    let note=b.nextElementSibling?.classList.contains('cw-v4-more-note')?b.nextElementSibling:null;
+    if(can){note?.remove();return;}
+    if(!note){note=make('div','cw-v4-more-note',t('这条现在不会发送，没有实际内容可看','Not sent right now, so there is nothing to inspect'));
+      note.style.cssText='font-size:12px;line-height:1.35;opacity:.6;padding:0 12px 6px;white-space:normal';b.after(note);}
   }
 
   /* ---------------- 用户角色 ---------------- */
@@ -836,7 +850,18 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       ui.opt(L('从文件导入'),false,click('character_import_button'));ui.opt(L('从网址导入'),false,click('external_import_button'));
     });
     fab.querySelector('summary').prepend(icon('plus'));fab.querySelector('summary').setAttribute('aria-label',L('新建'));page.append(fab);
-    move(s,get('rm_print_characters_pagination'),all);move(s,get('rm_print_characters_block'),all);finish(s);
+    move(s,get('rm_print_characters_pagination'),all);move(s,get('rm_print_characters_block'),all);
+    // After an import or a new character ST scrolls #rm_print_characters_block to the card and flashes it, but here the
+    // panel scrolls, not that block, so the card stayed off screen. Follow ST's flash and scroll the real scroller.
+    const printed=get('rm_print_characters_block');if(printed){
+      const shown=new WeakSet(),watch=new MutationObserver(ms=>{for(const m of ms){const card=m.target;
+        if(shown.has(card)||!card.classList.contains('flash'))continue;shown.add(card);
+        let box=card.parentElement;while(box&&!(box.scrollHeight>box.clientHeight+1&&/auto|scroll/.test(getComputedStyle(box).overflowY)))box=box.parentElement;
+        if(box){const r=card.getBoundingClientRect(),b=box.getBoundingClientRect();box.scrollTop+=r.top-b.top-(box.clientHeight-r.height)/2;}
+      }});
+      watch.observe(printed,{subtree:true,attributes:true,attributeFilter:['class']});cleanup(s,()=>watch.disconnect());
+    }
+    finish(s);
     // Keep the real form and its conditional wrappers, including create-only
     // name/submit controls. Editing an existing name still uses ST's Rename.
     const form=get('form_create'),adapted=form&&begin(form);if(adapted){

@@ -1,9 +1,9 @@
-import { preferencesFor, RELOAD_STORAGE_HINT } from './preferences.js?v=2.0.160-hw8';
-import { parseRecentTime } from './recent-time.js?v=2.0.160-hw8';
-import { installChatTools } from "./chat-tools.js?v=2.0.160-hw8";
-import { installIOSKeyboardScroll } from './ios-keyboard-scroll.js?v=2.0.160-hw8';
-import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.160-hw8';
-/* Claude Web public 2.0.160-hw8. Allowed runtime transplant; exclusions removed before generation. */
+import { preferencesFor, RELOAD_STORAGE_HINT } from './preferences.js?v=2.0.160-hw9';
+import { parseRecentTime } from './recent-time.js?v=2.0.160-hw9';
+import { installChatTools } from "./chat-tools.js?v=2.0.160-hw9";
+import { installIOSKeyboardScroll } from './ios-keyboard-scroll.js?v=2.0.160-hw9';
+import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.160-hw9';
+/* Claude Web public 2.0.160-hw9. Allowed runtime transplant; exclusions removed before generation. */
 (function() {
   try {
     for (const [k, v] of [ [ "mode", "full" ], [ "structure", "rail" ], [ "skin", "classic" ] ]) preferencesFor(window).setItem("claude-web:" + k, v);
@@ -18,18 +18,18 @@ import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.160-hw8';
   } catch {}
 })();
 
-import { tr } from "./official-i18n.js?v=2.0.160-hw8";
+import { tr } from "./official-i18n.js?v=2.0.160-hw9";
 
-import { installStreamFollow } from "./stream-follow.js?v=2.0.160-hw8";
+import { installStreamFollow } from "./stream-follow.js?v=2.0.160-hw9";
 
-import { installOfficialLayout } from "./official-layout.js?v=2.0.160-hw8";
+import { installOfficialLayout } from "./official-layout.js?v=2.0.160-hw9";
 
-import { installHalloween } from "./halloween.js?v=2.0.160-hw8";
+import { installHalloween } from "./halloween.js?v=2.0.160-hw9";
 
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.160-hw8";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.160-hw9";
 
-import { createClawdPile } from "./clawd-pile.js?v=2.0.160-hw8";
-import { installClawdRhythm } from "./clawd-rhythm.js?v=2.0.160-hw8";
+import { createClawdPile } from "./clawd-pile.js?v=2.0.160-hw9";
+import { installClawdRhythm } from "./clawd-rhythm.js?v=2.0.160-hw9";
 
 const CLAUDE_EXTENSION_BASE = new URL(".", import.meta.url).href;
 
@@ -381,7 +381,7 @@ const CLAUDE_FEATURES = {
 };
 
 const CLAUDE_KEYBOARD_BUILD = {
-  id: "2.0.160-hw8-public-full-" + CLAUDE_THEME_VARIANT + "-" + CLAUDE_LAYOUT + "-ext",
+  id: "2.0.160-hw9-public-full-" + CLAUDE_THEME_VARIANT + "-" + CLAUDE_LAYOUT + "-ext",
   mode: "full"
 };
 
@@ -397,7 +397,7 @@ const officialStyle = document.createElement("link");
 
 officialStyle.rel = "stylesheet";
 
-officialStyle.href = new URL("styles/official-layout.css?v=2.0.160-hw8", import.meta.url).href;
+officialStyle.href = new URL("styles/official-layout.css?v=2.0.160-hw9", import.meta.url).href;
 
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
 if (CLAUDE_ENABLED) document.head.append(officialStyle);
@@ -1197,7 +1197,7 @@ if (CLAUDE_ENABLED) {
       else hostWindow.localStorage.setItem(RESTORE_KEY, record);
       if (hostWindow.localStorage.getItem(RESTORE_KEY) !== record) throw new Error("无法保留主题恢复记录");
       const safetyId = hostWindow.__claudeSafety?.state?.id;
-      const {saveRestoredTheme} = await import(new URL("theme-restore.js?v=2.0.160-hw8", CLAUDE_EXTENSION_BASE).href);
+      const {saveRestoredTheme} = await import(new URL("theme-restore.js?v=2.0.160-hw9", CLAUDE_EXTENSION_BASE).href);
       await saveRestoredTheme(hostWindow, context, expected);
       if (hostWindow.localStorage.getItem(RESTORE_KEY) !== record || hostWindow.localStorage.getItem("claude-web:enabled") !== "off") throw new Error("恢复状态已改变，请重新确认");
       await hostWindow.__claudeSafety?.confirmRestore(record, safetyId);
@@ -3976,7 +3976,9 @@ if (CLAUDE_ENABLED) {
     }
     function installVirtualKeyboardOverlay() {
       if (!isMobileLayout() || keyboardBaselineMode) return;
-      const keyboard = hostWindow.navigator?.virtualKeyboard;
+      // Android lets the IME shrink the layout (ST asks for interactive-widget=resizes-content). Overlaying the
+      // keyboard there only lifted the composer: chat, message edit boxes and settings stayed full height under it.
+      const keyboard = usesNativeAndroidKeyboardLayout() ? null : hostWindow.navigator?.virtualKeyboard;
       if (keyboard && "overlaysContent" in keyboard) try {
         virtualKeyboardOverlayOriginal = Boolean(keyboard.overlaysContent);
         virtualKeyboardOverlayCaptured = !0;
@@ -5343,14 +5345,23 @@ if (CLAUDE_ENABLED) {
     function currentPersona() {
       const context = getContext();
       const name = context?.name1 || "";
-      const img = hostDocument.querySelector('#user_avatar_block .avatar.selected img, #user_avatar_block [class*="selected"] img') || hostDocument.querySelector('#chat .mes[is_user="true"] .avatar img');
+      const selected = hostDocument.querySelector('#user_avatar_block .avatar-container.selected, #user_avatar_block .avatar.selected');
+      const avatar = selected?.matches('.avatar') ? selected : selected?.querySelector('.avatar');
+      const img = selected?.querySelector('img');
+      const id = selected?.getAttribute('data-avatar-id') || avatar?.getAttribute('data-avatar-id') || avatar?.getAttribute('imgfile');
+      let src = id ? '/thumbnail?type=persona&file=' + encodeURIComponent(id) : "";
+      if (!src) {
+        const fallback = hostDocument.querySelector('#chat .mes[is_user="true"] .avatar img');
+        src = [img?.getAttribute('data-bai-bai-toolkit-lazy-avatar-src'), img?.getAttribute('src'), fallback?.getAttribute('src')]
+          .map(value => String(value || "").trim()).find(value => value && !/^data:/i.test(value)) || "";
+      }
       return {
         name: name,
-        src: img?.src || ""
+        src: src
       };
     }
-    function refreshRailUser() {
-      if (!railEnabled) return;
+    function refreshRailUser(retryBad = false) {
+      if (destroyed || !railEnabled) return;
       const holder = hostDocument.querySelector("#top-settings-holder");
       if (!holder) return;
       const row = holder.querySelector("#persona-management-button > .drawer-toggle");
@@ -5362,15 +5373,104 @@ if (CLAUDE_ENABLED) {
       name && name.textContent !== persona.name && (name.textContent = persona.name || "User");
       const face = row.querySelector(".clawd-user-face");
       if (!face) return;
+      const previous = refreshRailUser.avatar;
+      if (previous && previous.img !== face.querySelector("img")) {
+        previous.cleanup();
+        refreshRailUser.avatar = null;
+      }
       if (persona.src) {
         let img = face.querySelector("img");
+        let created = false;
         if (!img) {
           img = hostDocument.createElement("img");
+          img.dataset.cwWant = persona.src;
+          created = true;
           face.textContent = "";
           face.append(img);
         }
-        img.src !== persona.src && (img.src = persona.src);
+        let state = refreshRailUser.avatar;
+        if (!state) {
+          state = {img, timer: 0, retries: 0, lastImmediate: 0, initials: null, name: ""};
+          const cancel = () => {
+            hostWindow.clearTimeout(state.timer);
+            state.timer = 0;
+          };
+          const valid = () => !destroyed && img.isConnected && img.parentElement === face;
+          const showInitials = () => {
+            img.hidden = true;
+            img.style.setProperty("display", "none", "important");
+            state.initials ??= hostDocument.createTextNode("");
+            state.initials.textContent = state.name;
+            if (state.initials.parentNode !== face) face.append(state.initials);
+          };
+          const request = () => {
+            if (!valid() || !img.dataset.cwWant) return;
+            const url = new hostWindow.URL(img.dataset.cwWant, hostDocument.baseURI);
+            url.searchParams.set("cw-retry", String(Date.now()));
+            img.src = url.href;
+          };
+          const loaded = () => {
+            cancel();
+            state.retries = 0;
+            if (img.hidden) img.hidden = false;
+            if (img.style.getPropertyValue("display")) img.style.removeProperty("display");
+            state.initials?.remove();
+          };
+          const failed = () => {
+            if (!valid() || state.timer) return;
+            if (state.retries >= 3) return showInitials();
+            const wanted = img.dataset.cwWant, delay = [1000, 3000, 10000][state.retries++];
+            state.timer = hostWindow.setTimeout(() => {
+              state.timer = 0;
+              if (valid() && img.dataset.cwWant === wanted) request();
+            }, delay);
+          };
+          // Passive refreshes must not restart an exhausted retry budget.
+          const recover = event => {
+            if (!img.complete || img.naturalWidth > 0 || state.timer) return;
+            if (!event.target?.closest?.('.clawd-mobile-menu-button, #persona-management-button, .recentChat, .cw-v4-newchat-top, #option_start_new_chat, .clawd-mobile-new-chat')) return;
+            hostWindow.queueMicrotask(() => !destroyed && refreshRailUser(true));
+          };
+          const removal = new hostWindow.MutationObserver(() => {
+            if (!valid()) state.cleanup();
+          });
+          removal.observe(face, {childList: true});
+          removal.observe(row, {childList: true});
+          removal.observe(row.parentElement, {childList: true});
+          removal.observe(holder, {childList: true});
+          state.cleanup = () => {
+            cancel();
+            removal.disconnect();
+            img.removeEventListener("error", failed);
+            img.removeEventListener("load", loaded);
+            hostDocument.removeEventListener("click", recover, true);
+            if (refreshRailUser.avatar === state) refreshRailUser.avatar = null;
+          };
+          state.request = request;
+          state.cancel = cancel;
+          img.addEventListener("error", failed);
+          img.addEventListener("load", loaded);
+          hostDocument.addEventListener("click", recover, true);
+          refreshRailUser.avatar = state;
+        }
+        state.name = (persona.name || "U").trim().slice(0, 2);
+        if (state.initials?.isConnected && state.initials.textContent !== state.name) state.initials.textContent = state.name;
+        if (created || img.dataset.cwWant !== persona.src) {
+          state.cancel();
+          state.retries = 0;
+          state.lastImmediate = 0;
+          if (img.dataset.cwWant !== persona.src) img.dataset.cwWant = persona.src;
+          if (img.hidden) img.hidden = false;
+          if (img.style.getPropertyValue("display")) img.style.removeProperty("display");
+          state.initials?.remove();
+          img.src = persona.src;
+        } else if (img.complete && img.naturalWidth === 0 && !state.timer &&
+          (state.retries < 3 || retryBad) && Date.now() - state.lastImmediate >= 5000) {
+          state.lastImmediate = Date.now();
+          state.request();
+        }
       } else {
+        refreshRailUser.avatar?.cleanup();
         face.querySelector("img")?.remove();
         const initial = (persona.name || "U").trim().slice(0, 2);
         face.textContent !== initial && (face.textContent = initial);
@@ -6458,8 +6558,19 @@ if (CLAUDE_ENABLED) {
       suspendedThemeMedia = null;
       delete hostDocument.documentElement.dataset.claudeExternalSurface;
     }
+    // The character manager script closes by writing display:none on its modal. The body observer only sees
+    // childList changes, so watch the modal's own attributes; otherwise the isolation (theme suspended) stayed on.
+    let watchedExternalManager = null, externalManagerWatch = null;
+    function watchExternalManager(manager) {
+      if (watchedExternalManager === manager) return;
+      externalManagerWatch?.disconnect();
+      watchedExternalManager = manager;
+      externalManagerWatch = manager ? new hostWindow.MutationObserver(scheduleExternalSurfaceIsolation) : null;
+      externalManagerWatch?.observe(manager, { attributes: !0, attributeFilter: [ "style", "class", "hidden" ] });
+    }
     function syncExternalSurfaceIsolation() {
       const manager = hostDocument.querySelector("#charManagerModal");
+      watchExternalManager(manager);
       const visible = manager && !manager.hidden && (() => {
         const style = hostWindow.getComputedStyle(manager);
         return style.display !== "none" && style.visibility !== "hidden";
@@ -6995,6 +7106,7 @@ if (CLAUDE_ENABLED) {
       if (destroyed) return;
       destroyed = !0;
       halloween?.destroy(); halloween = null;
+      refreshRailUser.avatar?.cleanup();
       syncClawdRuntime();
       clawdPile.destroy();
       hostWindow.clearTimeout(pushLiveTimer);
@@ -7009,6 +7121,9 @@ if (CLAUDE_ENABLED) {
       hostDocument.body.classList.remove("clawd-external-modal-open");
       restoreExternalModalRailLayer();
       liftExternalModals([]);
+      externalManagerWatch?.disconnect();
+      externalManagerWatch = null;
+      watchedExternalManager = null;
       externalSurfaceIsolationRaf && hostWindow.cancelAnimationFrame(externalSurfaceIsolationRaf);
       externalSurfaceIsolationRaf = 0;
       restoreExternalThemeStyle();
