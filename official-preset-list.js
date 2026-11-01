@@ -33,7 +33,7 @@ export function createPresetList({win,make,button,t}) {
   const find=key=>entries().find(r=>id(r)===key);
   function restoreGroups(u=ui){if(!u)return;for(const [key]of u.expanded){const group=[...u.manager.querySelectorAll('.bai-bai-preset-group')].find(g=>g.dataset.presetGroupId===key);if(group&&!group.classList.contains('bai-bai-preset-group-collapsed'))group.querySelector('.bai-bai-preset-group-toggle')?.click();}u.expanded.clear();u.expanding.clear();}
   function expandGroup(group){if(!group?.classList.contains('bai-bai-preset-group-collapsed')||ui.expanding.has(group.dataset.presetGroupId))return;const key=group.dataset.presetGroupId;ui.expanded.set(key,true);ui.expanding.add(key);group.querySelector('.bai-bai-preset-group-toggle')?.click();win.setTimeout(()=>{if(ui){ui.expanding.delete(key);paint();}},220);}
-  function ensureRow(key){const entry=find(key);if(node(entry))return Promise.resolve(entry);const group=[...ui.manager.querySelectorAll('.bai-bai-preset-group')].find(g=>g.dataset.presetGroupId===entry?.group);expandGroup(group);return new Promise(resolve=>{let timer;const done=()=>{const fresh=find(key);if(node(fresh)){observer.disconnect();win.clearTimeout(timer);resolve(fresh);}};const observer=new win.MutationObserver(done);observer.observe(ui.manager,{childList:true,subtree:true});timer=win.setTimeout(()=>{observer.disconnect();resolve(null);},1800);done();});}
+  function ensureRow(key){const entry=find(key),row=node(entry),group=row?.closest('.bai-bai-preset-group')||[...ui.manager.querySelectorAll('.bai-bai-preset-group')].find(g=>g.dataset.presetGroupId===entry?.group);expandGroup(group);if(row&&!group?.classList.contains('bai-bai-preset-group-collapsed'))return Promise.resolve(entry);return new Promise(resolve=>{let timer;const done=()=>{const fresh=find(key);if(node(fresh)){observer.disconnect();win.clearTimeout(timer);resolve(fresh);}};const observer=new win.MutationObserver(done);observer.observe(ui.manager,{childList:true,subtree:true});timer=win.setTimeout(()=>{observer.disconnect();resolve(null);},1800);done();});}
   function restoreSort(e){if(!e.node.isConnected||e.alive?.()===false)return;try{for(const k of ['disabled','handle'])if(e.get(k)===e.applied[k]&&!(k==='disabled'&&e.locked?.()))e.set(k,e.original[k]);}catch{}}
   function sortables(block){
     const list=ui.manager.querySelector('#completion_prompt_manager_list');if(!list)return;
@@ -68,7 +68,7 @@ export function createPresetList({win,make,button,t}) {
     if(active){if(ui.panel.dataset.cwPresetTab!==ui.tab)ui.panel.dataset.cwPresetTab=ui.tab;}else delete ui.panel.dataset.cwPresetTab;
     if(ui.dragging)return;
     const all=entries(),query=ui.search.value.trim().toLocaleLowerCase(),filtering=!!query||ui.filter!=='all';
-    const match=e=>ui.frozen?ui.frozen.has(id(e)):e.name.toLocaleLowerCase().includes(query)&&(ui.filter==='all'||on(e)===(ui.filter==='on'));
+    const match=e=>ui.busy&&ui.actionRows?.has(id(e))||(ui.frozen?ui.frozen.has(id(e)):e.name.toLocaleLowerCase().includes(query)&&(ui.filter==='all'||on(e)===(ui.filter==='on')));
     const visible=all.filter(match),visibleKeys=new Set(visible.map(id)),viewportControls=trackVisibleControls(all);
     flag(ui.manager,'cw-pm-filtering',filtering);
     if(!filtering&&!ui.busy)restoreGroups();
@@ -166,23 +166,19 @@ export function createPresetList({win,make,button,t}) {
     ui.frozen||=new Set(ui.visible);ui.busy=true;ui.undo=null;text(ui.message,t(`正在处理 ${tasks.length} 条…`,`Processing ${tasks.length} prompts…`));paint();
     let changed=0,skipped=0,failed=0,processed=0,pending=false,saveError=null;const record=[];
     try{
-      if(batch){
-        const {pm,counts}=batch;
-        // Mutate the captured preset in one synchronous turn, just like native handleToggle.
-        for(const task of tasks){
-          const r=catalog.get(task.id),entry=pm.getPromptOrderEntry(pm.activeCharacter,task.id),desired=undo?task.before:task.after;
-          if(!r||!entry||!allowed(r)){failed++;continue;}
-          const before=entry.enabled!==false;
-          if(undo&&(task.conflict||before!==task.after)){skipped++;continue;}
-          if(before===desired){skipped++;continue;}
-          entry.enabled=desired;counts[task.id]=null;changed++;record.push({id:task.id,before,after:desired,mounted:!!node(r)});
-        }
-        if(record.length){
-          const confirmation=confirmBatch(current,epoch,scope,record,pm);
-          try{pm.render();const saved=await deadline(pm.saveServiceSettings(),10000);saveError=saved.error||null;pending=!!saved.timeout||!await confirmation.promise;}finally{confirmation.cancel();}
-        }
-      }else for(const task of tasks){
-        if(ui!==current||ui.epoch!==epoch||key()!==scope)break;
+      const nativeTasks=[],serialTasks=[];
+      for(const task of tasks){
+        if(ui!==current||current.epoch!==epoch||key()!==scope)break;
+        let r=catalog.get(task.id);
+        // A collapsed Vue group can omit its native row until expanded.
+        if(batch&&r&&!node(r)&&r.group){r=await ensureRow(task.id)||r;catalog.set(task.id,r);}
+        (batch&&!node(r)?.closest('.bai-bai-preset-vue-list-host')?nativeTasks:serialTasks).push(task);
+      }
+      current.batchPath=batch?(serialTasks.length?(nativeTasks.length?'bai+native':'bai'):'native'):'serial';
+      current.actionRows=new Set(serialTasks.map(task=>task.id));
+      if(serialTasks.length)paint();
+      for(const task of serialTasks){
+        if(ui!==current||ui.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
         const r=find(task.id),desired=undo?task.before:task.after;
         if(!r||!allowed(r)){failed++;continue;}
         if(undo&&(task.conflict||on(r)!==task.after)){skipped++;continue;}
@@ -193,9 +189,25 @@ export function createPresetList({win,make,button,t}) {
         processed=changed+skipped+failed;text(ui.message,t(`已处理 ${processed} / ${tasks.length} 条…`,`Processed ${processed} / ${tasks.length} prompts…`));
         await new Promise(resolve=>win.setTimeout(resolve,0));
       }
+      if(batch&&nativeTasks.length&&ui===current&&current.epoch===epoch&&key()===scope&&(!serialTasks.length||current.panel.classList.contains('openDrawer')&&!current.panel.classList.contains('cw-v4-inactive'))){
+        const {pm,counts}=batch,nativeRecord=[],nativeCatalog=serialTasks.length?new Map(entries().map(e=>[id(e),e])):catalog;
+        // Native-owned entries still change in one synchronous turn, after Vue clicks.
+        for(const task of nativeTasks){
+          const r=nativeCatalog.get(task.id),entry=pm.getPromptOrderEntry(pm.activeCharacter,task.id),desired=undo?task.before:task.after;
+          if(!r||!entry||!allowed(r)){failed++;continue;}
+          const before=entry.enabled!==false;
+          if(undo&&(task.conflict||before!==task.after)){skipped++;continue;}
+          if(before===desired){skipped++;continue;}
+          entry.enabled=desired;counts[task.id]=null;changed++;const item={id:task.id,before,after:desired,mounted:!!node(r)};nativeRecord.push(item);record.push(item);
+        }
+        if(nativeRecord.length){
+          const confirmation=confirmBatch(current,epoch,scope,nativeRecord,pm);
+          try{pm.render();const saved=await deadline(pm.saveServiceSettings(),10000);saveError=saved.error||null;pending=!!saved.timeout||!await confirmation.promise;}finally{confirmation.cancel();}
+        }
+      }
     }catch(error){saveError=error;current.batchError=String(error?.message||error);}
     finally{
-      if(ui===current){ui.busy=false;if(epoch===ui.epoch&&key()===scope){ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
+      if(ui===current){ui.busy=false;delete ui.actionRows;if(epoch===ui.epoch&&key()===scope){restoreGroups(current);ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
     }
   }
   function mount(panel){
