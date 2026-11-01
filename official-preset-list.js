@@ -10,6 +10,17 @@ export function createPresetList({win,make,button,t}) {
   const toggle=r=>node(r)?.querySelector('.prompt-manager-toggle-action');
   const allowed=r=>{if(!r)return false;const n=toggle(r);return n?!n.matches('[disabled],[aria-disabled="true"],.disabled'):!!r.prompt&&ui?.nativePM?.isPromptToggleAllowed?.(r.prompt)===true;};
   const on=r=>{const n=toggle(r);return n?n.classList.contains('fa-toggle-on'):r?.order?r.order.enabled!==false:!!node(r)&&!node(r).classList.contains('completion_prompt_manager_prompt_disabled');};
+  function removeVisibleControls(u,row){if(!u.decoratedRows?.delete(row))return;row.querySelectorAll('.cw-pm-select,.cw-pm-number,.cw-pm-state').forEach(n=>n.remove());}
+  function clearVisibleControls(u){u.rowObserver?.disconnect();u.rowObserver=null;u.viewportRoot=null;for(const row of u.decoratedRows||[])removeVisibleControls(u,row);u.observedRows?.clear();u.inView?.clear();}
+  function trackVisibleControls(all){
+    const u=ui;u.decoratedRows||=new Set();if(!win.IntersectionObserver)return false;
+    const root=u.manager.querySelector('#completion_prompt_manager_list');if(!root)return false;
+    if(u.viewportRoot!==root){clearVisibleControls(u);u.viewportRoot=root;u.observedRows=new Set();u.inView=new Set();u.rowObserver=new win.IntersectionObserver(records=>{if(ui!==u||u.viewportRoot!==root)return;for(const entry of records){if(!u.observedRows.has(entry.target)||!root.contains(entry.target)){u.inView.delete(entry.target);continue;}entry.isIntersecting?u.inView.add(entry.target):u.inView.delete(entry.target);}u.queuePaint?.();},{root,rootMargin:'240px 0px',threshold:0});}
+    const current=new Set(all.map(node).filter(Boolean));
+    for(const row of u.observedRows)if(!current.has(row)){u.rowObserver.unobserve(row);u.observedRows.delete(row);u.inView.delete(row);removeVisibleControls(u,row);}
+    for(const row of current)if(!u.observedRows.has(row)){u.observedRows.add(row);u.rowObserver.observe(row);}
+    return true;
+  }
   function entries(){
     const mounted=new Map(rows().map(r=>[id(r),r])),pm=ui?.nativePM;
     const order=pm?.getPromptOrderForCharacter?.(pm.activeCharacter),defs=pm?.serviceSettings?.prompts;
@@ -50,7 +61,7 @@ export function createPresetList({win,make,button,t}) {
   function paint(){
     if(!ui)return;
     if(ui.context!==key()){reset();return;}
-    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){delete ui.panel.dataset.cwPresetTab;return;}
+    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){delete ui.panel.dataset.cwPresetTab;clearVisibleControls(ui);return;}
     if(!ui.manager.contains(ui.tools)){ui.manager.prepend(ui.tools,ui.filterLine,ui.selectionLine);ui.manager.append(ui.empty,ui.bottom);}
     if(ui.manager.lastElementChild!==ui.bottom)ui.manager.append(ui.empty,ui.bottom);
     const active=doc.getElementById('main_api')?.value==='openai';hidden(ui.tabBar,!active);
@@ -58,7 +69,7 @@ export function createPresetList({win,make,button,t}) {
     if(ui.dragging)return;
     const all=entries(),query=ui.search.value.trim().toLocaleLowerCase(),filtering=!!query||ui.filter!=='all';
     const match=e=>ui.frozen?ui.frozen.has(id(e)):e.name.toLocaleLowerCase().includes(query)&&(ui.filter==='all'||on(e)===(ui.filter==='on'));
-    const visible=all.filter(match),visibleKeys=new Set(visible.map(id));
+    const visible=all.filter(match),visibleKeys=new Set(visible.map(id)),viewportControls=trackVisibleControls(all);
     flag(ui.manager,'cw-pm-filtering',filtering);
     if(!filtering&&!ui.busy)restoreGroups();
     for(const group of ui.manager.querySelectorAll('.bai-bai-preset-group')){rememberHidden(group);const has=visible.some(e=>e.group===group.dataset.presetGroupId);hidden(group,filtering&&!has);if(filtering&&has)expandGroup(group);}
@@ -67,11 +78,14 @@ export function createPresetList({win,make,button,t}) {
       const name=r.querySelector('.completion_prompt_manager_prompt_name');
       if(name){attr(name,'tabindex','0');attr(name,'role','button');}
       const label=entry.name;hidden(r,!visibleKeys.has(id(r)));
+      const decorate=!viewportControls||ui.inView.has(r)||r.contains(doc.activeElement);
+      if(decorate){ui.decoratedRows.add(r);
       let box=r.querySelector('.cw-pm-select'),number=r.querySelector('.cw-pm-number');
       if(!box){box=make('input','cw-pm-select');box.type='checkbox';box.setAttribute('aria-label',t('选择提示词','Select prompt')+': '+label);r.prepend(box);}
       if(!number){number=make('span','cw-pm-number');r.prepend(number);}
       text(number,String(index+1).padStart(2,'0'));prop(box,'checked',ui.selected.has(id(r)));prop(box,'disabled',!allowed(r)||ui.busy);
       prop(box,'title',allowed(r)?'':t('原生不允许启停','Native prompt cannot be toggled'));
+      }
       flag(r,'cw-pm-selected',ui.selected.has(id(r)));
       // The legacy TT fallback owns an inline !important display value.
       const handle=r.querySelector(':scope > .clawd-prompt-drag-handle');
@@ -79,8 +93,10 @@ export function createPresetList({win,make,button,t}) {
       const n=toggle(r);if(n)attr(n,'aria-checked',on(r));
       if(ui.undo&&!ui.busy&&ui.lastStates.has(id(r))&&ui.lastStates.get(id(r))!==on(r))for(const task of ui.undo)if(task.id===id(r))task.conflict=true;
       ui.lastStates.set(id(r),on(r));
+      if(decorate){
       let status=r.querySelector('.cw-pm-state');if(!status){status=make('span','cw-pm-state');r.append(status);}
       text(status,allowed(r)?(on(r)?t('开','On'):t('关','Off')):t('固定','Fixed'));
+      }else removeVisibleControls(ui,r);
     }
     ui.visible=visible.map(id);ui.rangeVisible=visible.filter(e=>node(e)&&!node(e).closest('.bai-bai-preset-group-collapsed')).map(id);
     // An empty list can be the middle of native renderTemplateAsync, not a deletion.
@@ -227,13 +243,14 @@ export function createPresetList({win,make,button,t}) {
     // Native row events are installed by PromptManager before our existing adapter.
     let pruneTimer,paintFrame=0;
     const queuePaint=()=>{if(paintFrame||ui!==u)return;paintFrame=win.requestAnimationFrame(()=>{paintFrame=0;if(ui===u)paint();});};
-    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active)queuePaint();else delete panel.dataset.cwPresetTab;}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
+    u.queuePaint=queuePaint;for(const type of ['focusin','focusout'])listen(manager,type,e=>{if(e.target.closest?.(ROW))queuePaint();});
+    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active)queuePaint();else{delete panel.dataset.cwPresetTab;clearVisibleControls(u);}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
     const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select,.cw-pm-number,.cw-pm-state')||!!e.closest('.cw-pm-number,.cw-pm-state'));};
     const ownMutation=r=>{if(r.type==='attributes'){const old=new Set((r.oldValue||'').split(/\s+/).filter(Boolean)),now=new Set(r.target.classList);const changed=[...[...old].filter(k=>!now.has(k)),...[...now].filter(k=>!old.has(k))];return changed.every(k=>k.startsWith('cw-pm-'));}return owned(r.target)||[...r.addedNodes,...r.removedNodes].every(owned);};
     const observer=new win.MutationObserver(records=>{if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
     paint();
   }
-  function destroy(){if(!ui)return;const u=ui;ui=null;u.epoch++;u.dispose.forEach(f=>f());
+  function destroy(){if(!ui)return;const u=ui;clearVisibleControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
     restoreGroups(u);for(const e of u.sortables.values())restoreSort(e);
     for(const n of [u.tabBar,u.tools,u.count.parentElement,u.selectionLine,u.bottom,u.empty])n.remove();u.manager.removeAttribute('aria-busy');
     delete u.panel.dataset.cwPresetTab;u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering');
