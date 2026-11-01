@@ -110,7 +110,7 @@ export function createPresetList({win,make,button,t}) {
     text(ui.multiButton,ui.multi?t('完成','Done'):t('多选','Select'));
     attr(ui.multiButton,'aria-pressed',ui.multi);
     text(ui.sortButton,ui.sort?t('完成排序','Done sorting'):t('调整顺序','Reorder'));
-    flag(ui.manager,'cw-pm-multi',ui.multi);flag(ui.manager,'cw-pm-sort',ui.sort);flag(ui.manager,'cw-pm-busy',ui.busy);
+    flag(ui.manager,'cw-pm-multi',ui.multi);flag(ui.manager,'cw-pm-sort',ui.sort);
     hidden(ui.selectionLine,!ui.multi);hidden(ui.batch,!ui.multi);hidden(ui.empty,visible.length!==0);
     hidden(ui.feedback,!ui.message.textContent&&!ui.undo&&!ui.busy);attr(ui.manager,'aria-busy',ui.busy);
     hidden(ui.undoButton,!ui.undo);prop(ui.undoButton,'disabled',ui.busy);
