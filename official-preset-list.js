@@ -177,7 +177,32 @@ export function createPresetList({win,make,button,t}) {
       current.batchPath=batch?(serialTasks.length?(nativeTasks.length?'bai+native':'bai'):'native'):'serial';
       current.actionRows=new Set(serialTasks.map(task=>task.id));
       if(serialTasks.length)paint();
-      for(const task of serialTasks){
+      if(batch&&serialTasks.length){
+        const prepared=[],attempted=[];
+        for(const task of serialTasks){
+          if(ui!==current||current.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
+          const r=await ensureRow(task.id),desired=undo?task.before:task.after;
+          if(ui!==current||current.epoch!==epoch||key()!==scope)break;
+          if(!r||!allowed(r)){failed++;continue;}
+          const before=on(r);
+          if(undo&&(task.conflict||before!==task.after)){skipped++;continue;}
+          if(before===desired){skipped++;continue;}
+          prepared.push({r,id:task.id,before,after:desired,mounted:true});
+        }
+        // Each click goes through Vue's own visible control. Let Vue coalesce its
+        // redraw, then confirm the entire result instead of repainting per item.
+        for(const item of prepared){
+          if(ui!==current||current.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
+          const r=node(item.r)?.isConnected?item.r:find(item.id),control=toggle(r);
+          if(!control||!allowed(r)||node(r).hidden||node(r).closest('.bai-bai-preset-group-collapsed')){failed++;continue;}
+          try{current.nativeAction=control;control.click();attempted.push({id:item.id,before:item.before,after:item.after,mounted:true});}finally{current.nativeAction=null;}
+        }
+        if(attempted.length&&ui===current&&current.epoch===epoch&&key()===scope){
+          const confirmation=confirmBatch(current,epoch,scope,attempted,batch.pm);
+          try{pending=!await confirmation.promise;}finally{confirmation.cancel();}
+          for(const item of attempted){const entry=batch.pm.getPromptOrderEntry(batch.pm.activeCharacter,item.id);if(entry?.enabled===item.after){changed++;record.push(item);}else failed++;}
+        }
+      }else for(const task of serialTasks){
         if(ui!==current||ui.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
         const r=find(task.id),desired=undo?task.before:task.after;
         if(!r||!allowed(r)){failed++;continue;}
