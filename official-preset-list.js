@@ -110,7 +110,7 @@ export function createPresetList({win,make,button,t}) {
     text(ui.multiButton,ui.multi?t('完成','Done'):t('多选','Select'));
     attr(ui.multiButton,'aria-pressed',ui.multi);
     text(ui.sortButton,ui.sort?t('完成排序','Done sorting'):t('调整顺序','Reorder'));
-    flag(ui.manager,'cw-pm-multi',ui.multi);flag(ui.manager,'cw-pm-sort',ui.sort);
+    flag(ui.manager,'cw-pm-multi',ui.multi&&!ui.baiAction);flag(ui.manager,'cw-pm-sort',ui.sort);
     hidden(ui.selectionLine,!ui.multi);hidden(ui.batch,!ui.multi);hidden(ui.empty,visible.length!==0);
     hidden(ui.feedback,!ui.message.textContent&&!ui.undo&&!ui.busy);attr(ui.manager,'aria-busy',ui.busy);
     hidden(ui.undoButton,!ui.undo);prop(ui.undoButton,'disabled',ui.busy);
@@ -175,7 +175,7 @@ export function createPresetList({win,make,button,t}) {
         (batch&&!node(r)?.closest('.bai-bai-preset-vue-list-host')?nativeTasks:serialTasks).push(task);
       }
       current.batchPath=batch?(serialTasks.length?(nativeTasks.length?'bai+native':'bai'):'native'):'serial';
-      current.actionRows=new Set(serialTasks.map(task=>task.id));
+      current.actionRows=new Set(serialTasks.map(task=>task.id));current.baiAction=!!batch&&serialTasks.length>0;
       if(serialTasks.length)paint();
       if(batch&&serialTasks.length){
         const prepared=[],attempted=[];
@@ -232,7 +232,7 @@ export function createPresetList({win,make,button,t}) {
       }
     }catch(error){saveError=error;current.batchError=String(error?.message||error);}
     finally{
-      if(ui===current){ui.busy=false;delete ui.actionRows;if(epoch===ui.epoch&&key()===scope){restoreGroups(current);ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
+      if(ui===current){ui.busy=false;delete ui.actionRows;delete ui.baiAction;if(epoch===ui.epoch&&key()===scope){restoreGroups(current);ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
     }
   }
   function mount(panel){
