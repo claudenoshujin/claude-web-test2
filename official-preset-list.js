@@ -91,7 +91,11 @@ export function createPresetList({win,make,button,t}) {
       const handle=r.querySelector(':scope > .clawd-prompt-drag-handle');
       if(handle){const display=ui.sort?'inline-flex':'none';if(handle.style.getPropertyValue('display')!==display)handle.style.setProperty('display',display,'important');}
       const n=toggle(r);if(n)attr(n,'aria-checked',on(r));
-      if(ui.undo&&!ui.busy&&ui.lastStates.has(id(r))&&ui.lastStates.get(id(r))!==on(r))for(const task of ui.undo)if(task.id===id(r))task.conflict=true;
+      if(ui.undo&&!ui.busy&&ui.lastStates.has(id(r))&&ui.lastStates.get(id(r))!==on(r))for(const task of ui.undo)if(task.id===id(r)){
+        // A native batch can finish while closed, leaving our DOM-state cache behind.
+        const entry=ui.nativePM?.getPromptOrderEntry?.(ui.nativePM.activeCharacter,task.id);
+        if(!entry||(entry.enabled!==false)!==task.after)task.conflict=true;
+      }
       ui.lastStates.set(id(r),on(r));
       if(decorate){
       let status=r.querySelector('.cw-pm-state');if(!status){status=make('span','cw-pm-state');r.append(status);}
