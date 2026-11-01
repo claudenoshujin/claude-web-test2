@@ -6893,9 +6893,7 @@ html[data-claude-structure="linear"] #chat .cw-act-art,
 html[data-claude-structure="linear"] #chat .cw-act-face{ display:none !important; }
 /* 没有配图时不留 300px 空白 */
 html[data-claude-structure="linear"] #chat{ padding-top:0 !important; }
-@media (min-width:1100px){
-  html[data-claude-structure="linear"] body:has(#clawd-pb-banner) #chat{ padding-top:300px !important; }
-}
+
 
 /* ---- 3. 导航排版：给它一个和 RECENTS 对等的分区标题 ----
    左栏现在只有两块内容（功能入口 / 会话列表），列表有 "RECENTS" 这个头，
