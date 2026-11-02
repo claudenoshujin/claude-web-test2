@@ -4836,6 +4836,32 @@ if (CLAUDE_ENABLED) {
     if (on) root.dataset.cwGenerating = '1'; else delete root.dataset.cwGenerating;
   }
 
+    let nativeGenerationSeen = !1;
+    function finishClawdGeneration(outcome) {
+      generationEventActive = !1;
+      nativeGenerationSeen = !1;
+      setGeneratingFlag(!1);
+      setBodyClass(GENERATING_CLASS, !1);
+      stopGenTimer();
+      const replied = !!clawdGenSnapshot && clawdReplyArrived(clawdGenSnapshot);
+      settleClawdGeneration(outcome === "done" && clawdGenSnapshot && !replied ? "error" : outcome, outcome === "done" && replied);
+      clawdGenSnapshot = null;
+      scheduleRefresh();
+    }
+    function syncNativeGeneration() {
+      if (!generationEventActive) return;
+      const stop = hostDocument.getElementById("mes_stop");
+      // CW styles can override computed visibility. Read ST's own inline state
+      // and data-generating marker, which activateSendButtons clears together.
+      const active = hostDocument.body?.dataset.generating === "true" || stop?.style.display === "flex";
+      if (active) {
+        nativeGenerationSeen = !0;
+      } else if (nativeGenerationSeen && stop?.style.display === "none") {
+        finishClawdGeneration("done");
+      }
+      // GENERATION_STARTED precedes prompt preparation / native activation.
+      // An initially hidden stop button must never end that new round.
+    }
   function watchGenerationEvents() {
     if (generationSubscriptions.length || destroyed) return;
     const context = getContext();
@@ -4854,24 +4880,15 @@ if (CLAUDE_ENABLED) {
            prompt. It must not turn the visible send control into Stop. */
         const active = outcome === 'start';
         if (active && args[2] === true) return;
+        if (!active) { finishClawdGeneration(outcome); return; }
+        nativeGenerationSeen = false;
         const wasActive = generationEventActive;
-        generationEventActive = active;
-        /* 2.0.325：侧栏当前对话那一行的生成中橙点（official-web.css）。后台生成（quiet）不亮。 */
-        setGeneratingFlag(active && String(args[0] ?? '') !== 'quiet');
-        if (active) startGenTimer(); else stopGenTimer();
-        /* 上一轮如果是兜底收场的（结束事件丢了），generationEventActive 会一直是 true；
-           这时新的开始事件也要开新一轮，否则这一轮的结束会被 settledRound 挡掉。 */
-        if (active && (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound)) {
-          beginClawdGeneration(String(args[0]??'normal'));
+        generationEventActive = true;
+        setGeneratingFlag(String(args[0] ?? '') !== 'quiet');
+        startGenTimer();
+        if (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound) {
+          beginClawdGeneration(String(args[0] ?? 'normal'));
           clawdGenSnapshot = snapshotChatForClawd(args[0]);
-        } else if (!active) {
-          /* C1a：酒馆 1.18 请求失败（503、额度用完）时只发 GENERATION_ENDED，
-             根本没有 GENERATION_FAILED 这个事件。所以「结束」时要自己看这一轮
-             到底有没有收到回复：没收到就按失败收场，不庆祝。 */
-          const replyArrived=!!clawdGenSnapshot&&clawdReplyArrived(clawdGenSnapshot);
-          const final = outcome === 'done' && clawdGenSnapshot && !replyArrived ? 'error' : outcome;
-          settleClawdGeneration(final,replyArrived);
-          clawdGenSnapshot = null;
         }
         scheduleRefresh();
       };
@@ -10688,7 +10705,9 @@ if (CLAUDE_ENABLED) {
     chatAttributeObserver.disconnect();
     observedAttributeChat = chat;
     chatAttributeObserver.observe(hostDocument.documentElement, ROOT_ATTRIBUTE_OBSERVER_INIT);
-    chatAttributeObserver.observe(hostDocument.body, ROOT_ATTRIBUTE_OBSERVER_INIT);
+    chatAttributeObserver.observe(hostDocument.body, {...ROOT_ATTRIBUTE_OBSERVER_INIT, attributeFilter: ['class', 'style', 'data-generating']});
+    const stop = hostDocument.getElementById('mes_stop');
+    if (stop) chatAttributeObserver.observe(stop, ROOT_ATTRIBUTE_OBSERVER_INIT);
     if (chat) chatAttributeObserver.observe(chat, CHAT_ATTRIBUTE_OBSERVER_INIT);
   }
 
@@ -10720,6 +10739,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function handleObservedMutations(records) {
+    syncNativeGeneration();
     if (hostDocument.documentElement.hasAttribute('data-cw-sheet') || hostDocument.querySelector('dialog.cw-v4-editor[open]')) for (const record of records) {
       if (record.type === 'childList' && record.target === hostDocument.body) for (const node of record.addedNodes) {
         if (node instanceof hostWindow.HTMLElement) extraExternalModalCandidates.add(node);
@@ -10837,6 +10857,7 @@ if (CLAUDE_ENABLED) {
     if (destroyed) return;
     syncClawdRuntime();
     watchGenerationEvents();
+    syncNativeGeneration();
     setBodyClass(READY_CLASS, true);
     const typingActive = isTypingActive();
     const continuingGeneration = previousTypingActive && typingActive;
@@ -11466,6 +11487,7 @@ if (CLAUDE_ENABLED) {
     streamFollow = null;
     generationSubscriptions.length = 0;
     generationEventActive = false;
+    nativeGenerationSeen = false;
     setGeneratingFlag(false);
     scrollHost?.removeEventListener('scroll', handleChatScroll);
     if (swipeTrackRaf) hostWindow.cancelAnimationFrame(swipeTrackRaf);
