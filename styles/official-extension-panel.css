@@ -101,3 +101,14 @@ html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe
 html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel #qr-assistant-settings :is(.qr-setting-text p,.qr-sort-desc,.qr-version-row){color:var(--e-muted)!important}
 
 html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-grip{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;width:18px!important;min-width:18px!important}
+
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel #qr-assistant-settings .qr-settings-tab-item{background:transparent!important;border:0!important;box-shadow:none!important}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel #qr-assistant-settings .qr-tab-glider{background-image:none!important}
+
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block.cw-ext-reordered>:not(.cw-ext-panel):not(.cw-v4-page-title):not(dialog){display:none!important}
+
+.cw-ext-panel .cwex-detail-container .cwex-active-branch{width:100%!important;max-width:none!important}
+
+/* QR initializes its sliding highlight on the native header click. Its active
+   tab still needs a visible pill when opened inline before that first click. */
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel #qr-assistant-settings .qr-tab-glider:not([style*="width:"])~.qr-settings-tab-item.active{background:var(--cw-v4-text)!important}
