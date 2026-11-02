@@ -657,17 +657,18 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
     for(const k of ['vectors','tts','expressions','translate','caption','memory','qr','regex','extras'])if(PLANS[k].match(root))return PLANS[k];
     return PLANS.generic;
   }
-  function open(root,title){
+  function open(root,title,options={}){
+    const present=options.openEditor||openEditor;
     // 自己画整套界面的扩展（酒馆助手这种）原样放进白卡片。
     // 酒馆自带、我们有专门排法的（正则……）不算：柏宝箱会往 #regex_container 里挂一个藏着的 Vue 根（data-v-app），
     // 再把仿原生的行渲染进 #saved_regex_scripts；按「自画界面」原样放，藏着的勾选框全被画成大开关（2.0.314）。
     const plan=planFor(root,title);
-    if(root.id==='claude-web-settings'||root.querySelector('#claude-web-settings')||(plan===PLANS.generic&&root.querySelector('[data-v-app],.qr-settings-tab-bar'))||/酒馆助手|Tavern Helper|st-chatu8/i.test(title)){openEditor(root,title);return;}
+    if(options.preserve||root.id==='claude-web-settings'||root.querySelector('#claude-web-settings')||(plan===PLANS.generic&&root.querySelector('[data-v-app],.qr-settings-tab-bar'))||/酒馆助手|Tavern Helper|st-chatu8/i.test(title)){present(root,title);return;}
     const s=session(root,plan);
-    try{build(s);}catch(e){console.error('[Claude Web] extension settings',e);teardown(s);sessions.delete(s);openEditor(root,title);return;}
+    try{build(s);}catch(e){console.error('[Claude Web] extension settings',e);teardown(s);sessions.delete(s);present(root,title);return;}
     watchRoot(s);
     watch.observe(doc.body,{childList:true,subtree:true});
-    openEditor(root,title,'',{onClose:()=>close(s)});
+    present(root,title,'',{onClose:()=>close(s)});
   }
   return {open,restore(){watch.disconnect();panelWatch.disconnect();bodyWatch.disconnect();for(const [panel,s] of hosted){s.page?.closest('dialog.cw-v4-editor')?._cwShut?.();panel.classList.remove('cwx-panel-hosted');}hosted.clear();for(const s of [...sessions])close(s);popups.clear();}};
 }

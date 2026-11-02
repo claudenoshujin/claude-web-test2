@@ -556,6 +556,7 @@ export function installOfficialLayout(win = window) {
   disposers.push(() => { for (const [sel, seg] of segSel) { seg.remove(); sel.classList.remove('cw-v4-has-seg'); } segSel.clear(); });
   function enhance(panel) {
     drawerLayouts.mount(panel);
+    if(panel.id==='rm_extensions_block')return;
     if (panel.id === 'user-settings-block') buildPrefs(panel);
     if (panel.id === 'rm_api_block') {
       panel.querySelectorAll('#openai_api > form,#openai_api > [id$="_form"],#azure_openai_settings').forEach(form => {
@@ -884,6 +885,7 @@ export function installOfficialLayout(win = window) {
     let style=layoutStyles.get('rail');if(!style){style=make('style','');style.id='cw-rail-layout-style';doc.head.append(style);layoutStyles.set('rail',style);}style.textContent=css;
   }
   function applyExtensionLayout(){
+    if(doc.querySelector("#rm_extensions_block.cw-ext-reordered")){layoutStyles.get("extensions")?.remove();layoutStyles.delete("extensions");return;}
     if(!storedLayout('extensions')){layoutStyles.get('extensions')?.remove();layoutStyles.delete('extensions');layoutSignatures.delete('extensions');return;}
     if(!doc.querySelector('#rm_extensions_block .cw-v4-extension-row'))return;
     if(!extensionHost){ensureExtensionCatalog().then(()=>{layoutSignatures.delete('extensions');applyExtensionLayout();}).catch(error=>win.console.warn('[CW] extension layout',error));return;}
@@ -901,6 +903,7 @@ export function installOfficialLayout(win = window) {
   function applyLayouts(){applyRailLayout();applyExtensionLayout();}
   function saveLayout(kind,records){layoutPrefs.setItem(layoutKey(kind),JSON.stringify({v:1,items:records.map(({id,place})=>({id,place}))}));layoutSignatures.delete(kind);applyLayouts();}
   async function openLayoutEditor(kind='rail'){
+    if(kind==='extensions'){drawerLayouts.editExtensions();return;}
     if(kind==='extensions'){try{await ensureExtensionCatalog();if(unknownExtensionRows.length)throw Error(unknownExtensionRows.join(', '));applyExtensionLayout();}catch(error){win.toastr?.error?.(t('无法识别扩展目录：','Could not identify extension folders: ')+error.message);return;}}
     if(layoutBox?.isConnected)return;const box=make('div','cw-layout-editor');layoutBox=box;layoutBoxKind=kind;
     const places=kind==='rail'?[['main',t('侧栏','Sidebar')],['more','More'],['hidden',t('隐藏','Hidden')]]:[['show',t('显示','Visible')],['hidden',t('隐藏','Hidden')]];

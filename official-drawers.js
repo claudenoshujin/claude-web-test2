@@ -6,6 +6,7 @@
 import { createExtensionSettings } from './official-extension-settings.js?v=2.0.332';
 import { createPresetList } from './official-preset-list.js?v=2.0.332';
 import { createPromptScroll } from './official-prompt-scroll.js?v=2.0.332';
+import { createExtensionPanel } from './official-extension-panel.js?v=2.0.332';
 export function actionLabel(node,t){
   const byId={world_backfill_memos:['补全标题','Fill titles'],world_apply_current_sorting:['应用排序','Apply sorting'],world_refresh:['刷新','Refresh'],OpenAllWIEntries:['展开全部','Expand all'],CloseAllWIEntries:['收起全部','Collapse all'],world_popup_name_button:['改名','Rename'],world_duplicate:['复制','Duplicate'],world_popup_delete:['删除','Delete'],bulkEditButton:['批量编辑','Bulk edit'],charListGridToggle:['切换网格视图','Toggle grid view'],rm_button_group_chats:['新建群聊','New group'],external_import_button:['从外部导入','Import externally'],character_import_button:['导入角色','Import character'],world_import_button:['导入','Import'],world_popup_export:['导出','Export'],bg_add_folder_button:['新建文件夹','New folder'],bg_selection_mode_button:['选择背景','Select backgrounds'],bg_group_add_to_folder_button:['移入文件夹','Move to folder'],open_s_preset_menu:['预设工具','Preset tools'],view_connection_profile:['查看配置','View profile'],reload_connection_profile:['重新载入','Reload profile'],personas_backup:['备份','Back up'],personas_restore:['恢复备份','Restore backup'],persona_grid_toggle:['切换网格视图','Toggle grid view']};
   if(byId[node.id])return t(...byId[node.id]);
@@ -15,6 +16,7 @@ export function actionLabel(node,t){
 export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu}) {
   const doc=win.document, states=new Map();
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
+  const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
   const presetList=createPresetList({win,make,button,t});
   let promptScroll=null;
   const get=id=>doc.getElementById(id);
@@ -949,45 +951,19 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
 
   /* ---------------- 扩展 ---------------- */
   function extensions(panel){
-    // 已经有就不再 add：add 一个已有的 class 也会重写属性，触发设置页的 sync 循环（见 official-layout.js sync）。
-    if(!panel.classList.contains('cw-v4-extension-page'))panel.classList.add('cw-v4-extension-page');
-    const started=begin(panel);
-    if(started){const {s,page}=started,top=section(page,'');
-      row(s,top,'','管理、安装和配置扩展',[act(s,get('third_party_extension_button'),'安装扩展'),act(s,get('extensions_details'),'管理')]);
-      tg(s,top,get('extensions_notify_updates'),'扩展有更新时通知');
-      const list=section(page,'已安装');list.classList.add('cw-v4-entries');const editOrder=button(t('编辑顺序','Edit order'),()=>win.__claudeOfficialLayout?.editLayout?.('extensions'),'cw-v4-button cw-extensions-edit-order');list.querySelector('h2')?.append(editOrder);for(const id of ['extensions_settings','extensions_settings2'])move(s,get(id),list);
-      const extras=panel.querySelector('.extensions_url_block');
-      if(extras){const legacy=section(page,'旧版 Extras API（已弃用）');dialogRow(s,legacy,'Extras API','只有还在用旧版 Extras 服务器时才需要','Extras API',box=>move(s,extras,box),'配置',extensionSettings.open);}
-      finish(s);
-    }
-    panel.querySelectorAll('#extensions_settings > div,#extensions_settings2 > div').forEach(c=>{
-      const direct=c.matches('.inline-drawer')?[c]:[...c.children].filter(n=>n.matches('.inline-drawer')||n.querySelector(':scope > .inline-drawer'));
-      const units=direct.length?direct:[c];
-      const s=state(c);s.extensionDrawers||=new Set();
-      for(const unit of units){
-        const drawer=unit.matches('.inline-drawer')?unit:unit.querySelector('.inline-drawer');
-        if(!drawer)continue;
-        if(s.extensionDrawers.has(drawer))continue;
-        const head=drawer.querySelector('.inline-drawer-header');
-        const name=head?.querySelector('b,strong')?.textContent.trim()||head?.textContent.trim();if(!name)continue;
-        s.extensionDrawers.add(drawer);
-        c.dataset.cwV4Extension='1';c.classList.add('cw-v4-extension-item');
-        const r=make('div','cw-v4-extension-row'),ic=make('span','cw-v4-extension-icon');
-        // Shared containers keep their drawers separate; self-rendered roots stay intact.
-        r.append(ic,make('span','cw-v4-extension-name',name),button(L('配置'),e=>{e.stopPropagation();extensionSettings.open(s.extensionDrawers.size>1?unit:c,name);},'cw-v4-button cw-v4-extension-edit'));
-        c.insertBefore(r,unit.parentElement===c?unit:c.firstChild);s.created.push(r);if(c.id==='claude-web-settings')versionRows.add(r);
-      }
-    });
+    extensionPanel.mount(panel);
+    return;
   }
     function updateExtensionVersions(){paintVersion();void checkVersion();}
   return {
     checkUpdates:checkVersion,
+    editExtensions:()=>extensionPanel.edit(),
     mount(panel){
       // Native PromptManager discards rows on every render. Do not retain all
       // discarded DOM and listeners after a large batch.
       for(const [root,st] of states)if(!root.isConnected&&root.matches?.('.cw-v4-prompt-row,.completion_prompt_manager_footer')){st.cleanup?.();st.cleanups?.forEach(f=>f());states.delete(root);}
       ({WorldInfo:world,Backgrounds:backgrounds,AdvancedFormatting:formatting,'left-nav-panel':presets,PersonaManagement:personas,'right-nav-panel':characters,rm_api_block:api,rm_extensions_block:extensions})[panel.id]?.(panel);
-      if(panel.id==='rm_extensions_block')updateExtensionVersions();
+      // The extension catalog checks versions on entry, not on layout redraws.
       if(panel.id==='PersonaManagement'){personaRows(panel);personaName(state(panel));}
       if(panel.id==='left-nav-panel'){promptRows(panel);presetList.mount(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
       if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
@@ -1000,6 +976,6 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
       for(const f of paints)f();
     },
-    restore(){versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
+    restore(){extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
   };
 }
