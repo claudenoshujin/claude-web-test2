@@ -198,6 +198,7 @@ export function createPresetList({win,make,button,t}) {
           const r=node(item.r)?.isConnected?item.r:find(item.id),control=toggle(r);
           if(!control||!allowed(r)||node(r).hidden||node(r).closest('.bai-bai-preset-group-collapsed')){failed++;continue;}
           try{current.nativeAction=control;control.click();attempted.push({id:item.id,before:item.before,after:item.after,mounted:true});}finally{current.nativeAction=null;}
+          processed=skipped+failed+attempted.length;text(current.message,t(`已处理 ${processed} / ${tasks.length} 条…`,`Processed ${processed} / ${tasks.length} prompts…`));
           if(index+1<prepared.length&&win.performance.now()-sliceStarted>=8){await new Promise(resolve=>win.setTimeout(resolve,0));sliceStarted=win.performance.now();}
         }
         if(attempted.length&&ui===current&&current.epoch===epoch&&key()===scope){
