@@ -4078,3 +4078,7 @@ html[data-cw-v4][data-claude-layout="pc"] body:is(.te-input-upper,.te-input-lowe
 /* 骰子前端 (dice frontend) sizes its panel inline from #chat.clientWidth, which includes padding; ST's #chat has
  * almost none, CW's has 16px (phone) / a wide left gutter (desktop), so the panel ran off the right edge. */
 html[data-cw-v4] body #chat>.acu-wrapper.acu-dice-ui-root{width:100%!important;max-width:100%!important}
+/* 2026-11-02 st-chatu8（智绘姬 3.1.8）的悬浮按钮 #st-chatu8-fab：插件把它挂在 body 下，position:fixed，z-index 1000，默认在屏幕左边 20px。
+   电脑布局里 CW 的左侧栏（#top-settings-holder，day-pc.css / night-pc.css 里 z-index 3995）不透明、整高，正好把它盖住（LingerCola，TT 安卓平板）。
+   只抬这一个节点，放到侧栏上面一层；设置页开着时（data-cw-v4-settings）不抬，跟原生一样让设置页盖住它。插件自己的设置弹窗是 4100，仍在它上面。 */
+html[data-cw-v4][data-claude-layout="pc"]:not([data-cw-v4-settings]) body>#st-chatu8-fab{z-index:3996!important}
