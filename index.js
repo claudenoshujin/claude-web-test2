@@ -2163,6 +2163,8 @@ if (CLAUDE_ENABLED) {
   let observer = null;
   let chatAttributeObserver = null;
   let externalModalObserver = null;
+  let surfaceThemeObserver = null;
+  let surfaceScheme = "";
   let externalModalRailState = [];
   let observedAttributeChat = null;
   let scrollHost = null;
@@ -4996,6 +4998,23 @@ if (CLAUDE_ENABLED) {
     return /T\s*G\s*D\s*\u601d\u7ef4\u94fe|draft[_\s-]*notes/i.test(text);
   }
 
+    function embeddedSurfaceScheme() {
+      const rootScheme = hostWindow.getComputedStyle(hostDocument.documentElement).colorScheme || "";
+      return /dark/.test(rootScheme) ? "dark" : /light/.test(rootScheme) || hostDocument.documentElement.dataset.claudeIntegratedTheme === "day" ? "light" : "dark";
+    }
+    // 2026-11-02：切换日夜时，已经渲染好的前端卡还留着旧的 color-scheme，跟页面对不上，浏览器就给 iframe 垫一层白底，
+    // 要刷新才好（LingerCola 的 MVU 栏）。主题属性变了、或者新主题样式表加载完时，配色真的变了才重新上色一次；不轮询。
+    // 只看属性不够：属性先变，新样式表后到，那一刻根元素的 color-scheme 还是旧的。
+    function repaintSurfacesIfSchemeChanged() {
+      if (destroyed) return;
+      const next = embeddedSurfaceScheme();
+      if (next === surfaceScheme) return;
+      surfaceScheme = next;
+      refreshEmbeddedSurfaces();
+    }
+    function onThemeStylesheetLoad(event) {
+      event.target?.id === "claude-integrated-theme-live-style" && repaintSurfacesIfSchemeChanged();
+    }
   function paintEmbeddedFrame(frame) {
     frame.setAttribute(EMBED_ATTRIBUTE, 'true');
     frame.style.setProperty('background', 'transparent', 'important');
@@ -5004,12 +5023,7 @@ if (CLAUDE_ENABLED) {
        iframe 画布画成不透明（浅色方案就是一整块白），里面 body 再透明也没用——数据库美化正则
        的白边就是这个。配色预设可以让页面是深色方案、而日夜变体仍是 day，所以方案取页面实际的
        color-scheme，并把同一个值同时写到 iframe 元素和注入的样式上，两边永远一致。 */
-    const rootScheme = hostWindow.getComputedStyle(hostDocument.documentElement).colorScheme || '';
-    const scheme = /dark/.test(rootScheme)
-      ? 'dark'
-      : /light/.test(rootScheme)
-        ? 'light'
-        : (hostDocument.documentElement.dataset.claudeIntegratedTheme === 'day' ? 'light' : 'dark');
+    const scheme = embeddedSurfaceScheme();
     frame.style.setProperty('color-scheme', scheme, 'important');
     const injectedCss = `
       :root { color-scheme: ${scheme}; }
@@ -5041,13 +5055,14 @@ if (CLAUDE_ENABLED) {
     try {
       const frameDocument = frame.contentDocument;
       if (!frameDocument?.documentElement) return;
-      let style = frameDocument.getElementById(EMBED_STYLE_ID);
-      if (!style) {
-        style = frameDocument.createElement('style');
+      const styles = [...frameDocument.querySelectorAll(`style#${EMBED_STYLE_ID}`)];
+      if (!styles.length) {
+        const style = frameDocument.createElement('style');
         style.id = EMBED_STYLE_ID;
         (frameDocument.head ?? frameDocument.documentElement).append(style);
+        styles.push(style);
       }
-      style.textContent = injectedCss;
+      styles.forEach(style => style.textContent !== injectedCss && (style.textContent = injectedCss));
     } catch {
       // Cross-origin embeds cannot be styled internally; the outer surface still becomes transparent.
     }
@@ -11239,6 +11254,10 @@ if (CLAUDE_ENABLED) {
     externalModalObserver.observe(hostDocument.documentElement, { attributes: true, attributeOldValue: true, attributeFilter: ['data-cw-v4-settings'] });
     syncExternalSurfaceIsolation();
     syncExternalModalRailLayer();
+    surfaceScheme = embeddedSurfaceScheme();
+    surfaceThemeObserver = new hostWindow.MutationObserver(repaintSurfacesIfSchemeChanged);
+    surfaceThemeObserver.observe(hostDocument.documentElement, {attributes: true, attributeFilter: ['data-claude-integrated-theme']});
+    hostDocument.addEventListener('load', onThemeStylesheetLoad, true);
     installVirtualKeyboardOverlay();
     watchGenerationEvents();
     syncClawdRuntime();
@@ -11405,6 +11424,9 @@ if (CLAUDE_ENABLED) {
     hostWindow.clearTimeout(pushLiveTimer);
     hostDocument.documentElement.removeAttribute(PUSH_LIVE_ATTRIBUTE);
     cleanupClawdRigEffects();
+    surfaceThemeObserver?.disconnect();
+    surfaceThemeObserver = null;
+    hostDocument.removeEventListener("load", onThemeStylesheetLoad, true);
     externalModalObserver?.disconnect();
     externalModalObserver = null;
     hostDocument.removeEventListener('transitionend', onExternalModalAnimationEnd);
