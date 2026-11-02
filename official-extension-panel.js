@@ -65,7 +65,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   }
   function homepage(e){let value=e.manifest.homePage||e.update?.remoteUrl;if(!value)return;try{const u=new URL(value);if(['https:','http:'].includes(u.protocol))win.open(u.href,'_blank','noopener,noreferrer');}catch{}}
   function moveNative(n,to){if(!n||n===to||n.contains(to))return;const mark=doc.createComment('cw-extension-panel-return');n.before(mark);moves.push([n,mark]);to.append(n);}
-  function show(view){hide(list,view!=='list');hide(detail,view!=='detail');hide(editor,view!=='sort');page.dataset.view=view;panel.scrollTop=0;paintHead(view);}
+  function show(view,resetScroll=true){hide(list,view!=='list');hide(detail,view!=='detail');hide(editor,view!=='sort');page.dataset.view=view;if(resetScroll)panel.scrollTop=0;paintHead(view);}
   function paintHead(view){if(!mobileHead)return;mobileHead.replaceChildren();
     const left=view==='list'?action('☰',()=>doc.querySelector('.cw-v4-shell .cw-v4-menu')?.click(),'cwex-mobile-menu'):action('‹ '+(view==='detail'?t('扩展','Extensions'):''),back,'cwex-mobile-back');left.setAttribute('aria-label',view==='list'?t('设置导航','Settings navigation'):t('返回扩展','Back to extensions'));
     mobileHead.append(left,make('h1','cwex-mobile-title',view==='list'?t('扩展','Extensions'):view==='sort'?t('排序和隐藏','Order and visibility'):active?.label||''));
@@ -116,7 +116,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     const notify=doc.getElementById('extensions_notify_updates');if(notify){const r=make('label','cwex-row'),txt=make('span','cwex-text');txt.append(make('span','cwex-name',t('扩展有更新时通知','Notify about extension updates')),make('span','cwex-meta',t('打开酒馆时检查一次','Check when opening SillyTavern')));r.append(txt);moveNative(notify,r);options.append(r);}
     const extras=panel.querySelector('.extensions_url_block');if(extras)options.append(action(t('旧版 Extras API','Legacy Extras API')+' ›',()=>openEditor(extras,t('旧版 Extras API','Legacy Extras API'))));
     options.append(action(t('其他原生设置','Other native settings')+' ›',()=>openEditor(sources,t('其他原生设置','Other native settings'))));list.append(options);
-    page.append(list);detail=make('div','cwex-detail-view');editor=make('div','cwex-sort-view');page.append(detail,editor);show('list');
+    page.append(list);detail=make('div','cwex-detail-view');editor=make('div','cwex-sort-view');page.append(detail,editor);show('list',false);
   }
   function reconcile(){if(!host)return;const values=[...entries.values()];for(const e of values)e.roots=e.roots.filter(r=>r.isConnected);for(const c of panel.querySelectorAll('#extensions_settings>div,#extensions_settings2>div')){
       const drawers=c.matches('.inline-drawer')?[c]:[...c.querySelectorAll(':scope>.inline-drawer,:scope>div>.inline-drawer')];for(const d of drawers){const h=d.querySelector('.inline-drawer-header'),label=h?.querySelector('b,strong')?.textContent.trim()||h?.textContent.trim();if(!label)continue;const cleanLabel=label.replace(/\s*new!?$/i,'').trim();const matches=values.filter(e=>norm(e.label)===norm(cleanLabel)||norm(e.manifest.display_name)===norm(cleanLabel));let id=c.id==='claude-web-settings'?own:matches.length===1&&third(matches[0])?matches[0].id:aliases[c.id]|| (matches.length===1?matches[0].id:null);
