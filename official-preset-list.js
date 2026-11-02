@@ -268,7 +268,7 @@ export function createPresetList({win,make,button,t}) {
     const listen=(node,type,fn,options)=>{node.addEventListener(type,fn,options);u.dispose.push(()=>node.removeEventListener(type,fn,options));};
     // Bai captures clicks on document before our manager listener. Lock user row
     // actions one level earlier, while allowing the adapter's own toggle clicks.
-    listen(win,'click',e=>{if(!u.busy||e.target===u.nativeAction||!u.manager.contains(e.target))return;const r=e.target.closest?.(ROW);if(r?.closest('.bai-bai-preset-vue-list-host')){e.preventDefault();e.stopImmediatePropagation();}},true);
+    listen(win,'click',e=>{if(!u.busy||e.target===u.nativeAction||e.target?.nodeType!==1||!u.manager.contains(e.target))return;const r=e.target.closest?.(ROW);if(r?.closest('.bai-bai-preset-vue-list-host')){e.preventDefault();e.stopImmediatePropagation();}},true);
     listen(search,'input',()=>{u.frozen=null;u.sort=false;paint();});
     listen(manager,'click',e=>{
       const r=e.target.closest('[data-pm-identifier]');if(!canonical(r))return;
