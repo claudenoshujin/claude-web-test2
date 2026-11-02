@@ -175,7 +175,7 @@ export function createPresetList({win,make,button,t}) {
         (batch&&!node(r)?.closest('.bai-bai-preset-vue-list-host')?nativeTasks:serialTasks).push(task);
       }
       current.batchPath=batch?(serialTasks.length?(nativeTasks.length?'bai+native':'bai'):'native'):'serial';
-      current.actionRows=new Set(serialTasks.map(task=>task.id));current.baiAction=!!batch&&serialTasks.length>0;
+      current.actionRows=new Set(serialTasks.map(task=>task.id));current.baiAction=serialTasks.length>0&&!!current.manager.querySelector('.bai-bai-preset-vue-list-host');
       if(serialTasks.length)paint();
       if(batch&&serialTasks.length){
         const prepared=[],attempted=[];
