@@ -2493,7 +2493,7 @@ if (CLAUDE_ENABLED) {
         display: none !important;
       }
 
-      #chat > .mes[is_user="false"] .mes_text :is(iframe, object, embed) {
+      #chat > .mes .mes_text :is(iframe, object, embed) {
         margin: 0 !important;
         padding: 0 !important;
         border: 0 !important;
@@ -2504,7 +2504,7 @@ if (CLAUDE_ENABLED) {
       }
 
       html[data-claude-integrated-theme="night"] body
-        #chat > .mes[is_user="false"] .mes_text .${REGEX_SURFACE_CLASS} {
+        #chat > .mes .mes_text .${REGEX_SURFACE_CLASS} {
         background: transparent !important;
         background-color: transparent !important;
       }
@@ -5060,7 +5060,7 @@ if (CLAUDE_ENABLED) {
       return;
     }
     const candidates = hostDocument.querySelectorAll(
-      `#chat > .mes[is_user="false"] .mes_text :is(div, section, article, main, figure):not(.${REGEX_SURFACE_CLASS})`,
+      `#chat > .mes .mes_text :is(div, section, article, main, figure):not(.${REGEX_SURFACE_CLASS})`,
     );
     candidates.forEach(element => {
       const color = hostWindow.getComputedStyle(element).backgroundColor;
@@ -5075,7 +5075,7 @@ if (CLAUDE_ENABLED) {
   }
 
   function refreshEmbeddedSurfaces() {
-    const frames = [...hostDocument.querySelectorAll('#chat > .mes[is_user="false"] .mes_text iframe')];
+    const frames = [...hostDocument.querySelectorAll('#chat > .mes .mes_text iframe')];
     const liveFrames = new Set(frames);
     embeddedFrameHandlers.forEach((handler, frame) => {
       if (liveFrames.has(frame)) return;
