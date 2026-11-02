@@ -171,7 +171,7 @@ export function createPresetList({win,make,button,t}) {
         if(ui!==current||current.epoch!==epoch||key()!==scope)break;
         let r=catalog.get(task.id);
         // A collapsed Vue group can omit its native row until expanded.
-        if(batch&&r&&!node(r)&&r.group){r=await ensureRow(task.id)||r;catalog.set(task.id,r);}
+        if(batch&&r&&!node(r)&&r.group){r=await ensureRow(task.id)||r;catalog.set(task.id,r);if(ui!==current||current.epoch!==epoch||key()!==scope)break;if(!node(r)){failed++;continue;}}
         (batch&&!node(r)?.closest('.bai-bai-preset-vue-list-host')?nativeTasks:serialTasks).push(task);
       }
       current.batchPath=batch?(serialTasks.length?(nativeTasks.length?'bai+native':'bai'):'native'):'serial';
@@ -191,11 +191,12 @@ export function createPresetList({win,make,button,t}) {
         }
         // Each click goes through Vue's own visible control. Let Vue coalesce its
         // redraw, then confirm the entire result instead of repainting per item.
-        for(const item of prepared){
+        let sliceStarted=win.performance.now();for(const [index,item]of prepared.entries()){
           if(ui!==current||current.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
           const r=node(item.r)?.isConnected?item.r:find(item.id),control=toggle(r);
           if(!control||!allowed(r)||node(r).hidden||node(r).closest('.bai-bai-preset-group-collapsed')){failed++;continue;}
           try{current.nativeAction=control;control.click();attempted.push({id:item.id,before:item.before,after:item.after,mounted:true});}finally{current.nativeAction=null;}
+          if(index+1<prepared.length&&win.performance.now()-sliceStarted>=8){await new Promise(resolve=>win.setTimeout(resolve,0));sliceStarted=win.performance.now();}
         }
         if(attempted.length&&ui===current&&current.epoch===epoch&&key()===scope){
           const confirmation=confirmBatch(current,epoch,scope,attempted,batch.pm);
