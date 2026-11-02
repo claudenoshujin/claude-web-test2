@@ -3928,6 +3928,10 @@ html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list.cw-pm-mul
 html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list.cw-pm-multi .cw-pm-native-row>.cw-pm-select{display:block!important;grid-column:1!important;grid-row:1!important;appearance:auto!important;width:18px!important;height:18px!important;accent-color:var(--v4-toggle-on)}
 html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list.cw-pm-multi .cw-pm-native-row>.cw-pm-state{display:block!important;grid-column:3!important;grid-row:1!important;font-size:13px;color:var(--v4-desc)}
 html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list .cw-pm-native-row.cw-pm-selected{background:var(--v4-hover)!important}
+/* Reveal only the Vue rows being processed; other rows stay in selection mode. */
+html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list.cw-pm-multi .cw-pm-native-row.cw-pm-bai-action-row>span:has(>.prompt_manager_prompt_controls){display:inline-flex!important;grid-column:3!important;grid-row:1!important}
+html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list.cw-pm-multi .cw-pm-native-row.cw-pm-bai-action-row>:is(.cw-pm-select,.cw-pm-state){display:none!important}
+html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list.cw-pm-multi .cw-pm-native-row.cw-pm-bai-action-row>.cw-pm-number{display:block!important}
 html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list:is(.cw-pm-filtering,.cw-pm-multi) .bai-bai-preset-favorites{display:none!important}
 html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list .bai-bai-preset-favorite-prompt>.drag-handle{display:none!important}
 html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-list .bai-bai-preset-vue-list-host{display:flex!important;flex-direction:column!important;flex:1 1 0!important;min-height:0!important;overflow:hidden!important}

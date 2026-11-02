@@ -31,6 +31,7 @@ export function createPresetList({win,make,button,t}) {
     return order.filter(e=>prompts.has(e.identifier)).map(order=>{const prompt=prompts.get(order.identifier),row=mounted.get(order.identifier);return {identifier:order.identifier,row,prompt,order,name:prompt.name||'',group:row?.dataset.presetGroupId||groups[order.identifier]?.groupId||''};});
   }
   const find=key=>entries().find(r=>id(r)===key);
+  function clearBaiControls(u){for(const r of u.actionRowNodes||[])r.classList.remove('cw-pm-bai-action-row');u.actionRowNodes?.clear();}
   function restoreGroups(u=ui){if(!u)return;for(const [key]of u.expanded){const group=[...u.manager.querySelectorAll('.bai-bai-preset-group')].find(g=>g.dataset.presetGroupId===key);if(group&&!group.classList.contains('bai-bai-preset-group-collapsed'))group.querySelector('.bai-bai-preset-group-toggle')?.click();}u.expanded.clear();u.expanding.clear();}
   function expandGroup(group){if(!group?.classList.contains('bai-bai-preset-group-collapsed')||ui.expanding.has(group.dataset.presetGroupId))return;const key=group.dataset.presetGroupId;ui.expanded.set(key,true);ui.expanding.add(key);group.querySelector('.bai-bai-preset-group-toggle')?.click();win.setTimeout(()=>{if(ui){ui.expanding.delete(key);paint();}},220);}
   function ensureRow(key){const entry=find(key),row=node(entry),group=row?.closest('.bai-bai-preset-group')||[...ui.manager.querySelectorAll('.bai-bai-preset-group')].find(g=>g.dataset.presetGroupId===entry?.group);expandGroup(group);if(row&&!group?.classList.contains('bai-bai-preset-group-collapsed'))return Promise.resolve(entry);return new Promise(resolve=>{let timer;const done=()=>{const fresh=find(key);if(node(fresh)){observer.disconnect();win.clearTimeout(timer);resolve(fresh);}};const observer=new win.MutationObserver(done);observer.observe(ui.manager,{childList:true,subtree:true});timer=win.setTimeout(()=>{observer.disconnect();resolve(null);},1800);done();});}
@@ -87,6 +88,7 @@ export function createPresetList({win,make,button,t}) {
       prop(box,'title',allowed(r)?'':t('原生不允许启停','Native prompt cannot be toggled'));
       }
       flag(r,'cw-pm-selected',ui.selected.has(id(r)));
+      const baiAction=!!(ui.busy&&ui.baiAction&&ui.actionRows?.has(id(r))&&r.closest('.bai-bai-preset-vue-list-host'));flag(r,'cw-pm-bai-action-row',baiAction);if(baiAction)(ui.actionRowNodes||=new Set()).add(r);
       // The legacy TT fallback owns an inline !important display value.
       const handle=r.querySelector(':scope > .clawd-prompt-drag-handle');
       if(handle){const display=ui.sort?'inline-flex':'none';if(handle.style.getPropertyValue('display')!==display)handle.style.setProperty('display',display,'important');}
@@ -110,7 +112,7 @@ export function createPresetList({win,make,button,t}) {
     text(ui.multiButton,ui.multi?t('完成','Done'):t('多选','Select'));
     attr(ui.multiButton,'aria-pressed',ui.multi);
     text(ui.sortButton,ui.sort?t('完成排序','Done sorting'):t('调整顺序','Reorder'));
-    flag(ui.manager,'cw-pm-multi',ui.multi&&!ui.baiAction);flag(ui.manager,'cw-pm-sort',ui.sort);
+    flag(ui.manager,'cw-pm-multi',ui.multi);flag(ui.manager,'cw-pm-sort',ui.sort);
     hidden(ui.selectionLine,!ui.multi);hidden(ui.batch,!ui.multi);hidden(ui.empty,visible.length!==0);
     hidden(ui.feedback,!ui.message.textContent&&!ui.undo&&!ui.busy);attr(ui.manager,'aria-busy',ui.busy);
     hidden(ui.undoButton,!ui.undo);prop(ui.undoButton,'disabled',ui.busy);
@@ -233,7 +235,7 @@ export function createPresetList({win,make,button,t}) {
       }
     }catch(error){saveError=error;current.batchError=String(error?.message||error);}
     finally{
-      if(ui===current){ui.busy=false;delete ui.actionRows;delete ui.baiAction;if(epoch===ui.epoch&&key()===scope){restoreGroups(current);ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
+      clearBaiControls(current);if(ui===current){ui.busy=false;delete ui.actionRows;delete ui.baiAction;if(epoch===ui.epoch&&key()===scope){restoreGroups(current);ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
     }
   }
   function mount(panel){
@@ -292,7 +294,7 @@ export function createPresetList({win,make,button,t}) {
     const observer=new win.MutationObserver(records=>{if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
     paint();
   }
-  function destroy(){if(!ui)return;const u=ui;clearVisibleControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
+  function destroy(){if(!ui)return;const u=ui;clearVisibleControls(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
     restoreGroups(u);for(const e of u.sortables.values())restoreSort(e);
     for(const n of [u.tabBar,u.tools,u.count.parentElement,u.selectionLine,u.bottom,u.empty])n.remove();u.manager.removeAttribute('aria-busy');
     delete u.panel.dataset.cwPresetTab;u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering');
