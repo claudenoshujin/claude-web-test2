@@ -1,5 +1,5 @@
-import { installRecentFavorites } from './recent-favorites.js?v=2.0.333';
-import { preferencesFor } from './preferences.js?v=2.0.333';
+import { installRecentFavorites } from './recent-favorites.js?v=2.0.334';
+import { preferencesFor } from './preferences.js?v=2.0.334';
 /* Claude Web 2.0 —— SillyTavern 扩展形态入口。
  *
  * 【2026-08-10 更正】这个文件现在就是源码，直接改它。
@@ -15,12 +15,12 @@ import { preferencesFor } from './preferences.js?v=2.0.333';
  *   localStorage['claude-web:layout']  = 'auto' | 'pc' | 'mobile'   默认 auto
  */
 
-import { installStreamFollow } from "./stream-follow.js?v=2.0.333";
-import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.333";
-import { installOfficialLayout } from "./official-layout.js?v=2.0.333";
-import { installHalloween } from "./halloween.js?v=2.0.333";
-import { buildClawdRig } from "./clawd-rig.js?v=2.0.333";
-import { createClawdPile } from "./clawd-pile.js?v=2.0.333";
+import { installStreamFollow } from "./stream-follow.js?v=2.0.334";
+import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.334";
+import { installOfficialLayout } from "./official-layout.js?v=2.0.334";
+import { installHalloween } from "./halloween.js?v=2.0.334";
+import { buildClawdRig } from "./clawd-rig.js?v=2.0.334";
+import { createClawdPile } from "./clawd-pile.js?v=2.0.334";
 
 const CLAUDE_EXTENSION_MODE = true;
 
@@ -433,7 +433,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      只改 CSS 内容、不改这个字符串，用户端（尤其 TauriTavern 这类会长期
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
-  id: '2.0.333-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
+  id: '2.0.334-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
     + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
   mode: 'full',
 };
@@ -464,7 +464,7 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=2.0.333', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=2.0.334', import.meta.url).href;
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
 if (CLAUDE_ENABLED) document.head.append(officialStyle);
 const startOfficialLayout = () => {
@@ -7603,7 +7603,7 @@ if (CLAUDE_ENABLED) {
   function markCurrentRecent() {
     const context = getContext();
     const chatId = String(context?.getCurrentChatId?.() ?? '');
-    /* 2.0.333：不同角色可以有同名存档（比如从别的角色拷来的聊天），只比文件名会把两行都标成当前——
+    /* 2.0.334：不同角色可以有同名存档（比如从别的角色拷来的聊天），只比文件名会把两行都标成当前——
        生成中的橙点就亮了两个。再比一次是哪个角色 / 群组；拿不到角色时退回只比文件名。 */
     const groupId = String(context?.groupId ?? '').trim();
     const avatar = groupId ? '' : String(context?.characters?.[context?.characterId]?.avatar ?? '').trim();
@@ -8228,7 +8228,7 @@ if (CLAUDE_ENABLED) {
   function hostModuleRoot() {
     const mainScript = [...hostDocument.scripts].find(script => /(?:^|\/)script\.js(?:[?#].*)?$/.test(script.src));
     return {
-      main: mainScript?.src || new hostWindow.URL('script.js?v=2.0.333', hostDocument.baseURI).href,
+      main: mainScript?.src || new hostWindow.URL('script.js?v=2.0.334', hostDocument.baseURI).href,
       root: new hostWindow.URL('.', mainScript?.src || hostDocument.baseURI),
     };
   }
@@ -8237,7 +8237,7 @@ if (CLAUDE_ENABLED) {
     const urls = hostModuleRoot();
     /* 主模块必须保留页面实际使用的 ?v=... 等查询参数。
        去掉它再 import 会被浏览器当成另一份模块，可能把 SillyTavern 主程序重复执行一次。 */
-    if (relativePath === 'script.js?v=2.0.333') return urls.main;
+    if (relativePath === 'script.js?v=2.0.334') return urls.main;
     return new hostWindow.URL(relativePath, urls.root).href;
   }
 
@@ -8261,9 +8261,9 @@ if (CLAUDE_ENABLED) {
 
   function injectHostModuleLoader() {
     const urls = {
-      main: resolveHostModule('script.js?v=2.0.333'),
-      groups: resolveHostModule('scripts/group-chats.js?v=2.0.333'),
-      popup: resolveHostModule('scripts/popup.js?v=2.0.333'),
+      main: resolveHostModule('script.js?v=2.0.334'),
+      groups: resolveHostModule('scripts/group-chats.js?v=2.0.334'),
+      popup: resolveHostModule('scripts/popup.js?v=2.0.334'),
     };
     /* 模块说明符写成绝对地址：blob 兜底那条路的 baseURI 是 blob:，
        相对路径在那里解析不出来。 */
@@ -11135,7 +11135,7 @@ if (CLAUDE_ENABLED) {
 
     const token = {};
     autoCompleteResizeGuardToken = token;
-    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js?v=2.0.333');
+    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js?v=2.0.334');
 
     try {
       const previous = hostWindow[AUTOCOMPLETE_RESIZE_GUARD_KEY];
