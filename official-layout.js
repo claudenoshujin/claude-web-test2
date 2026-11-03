@@ -1696,6 +1696,10 @@ export function installOfficialLayout(win = window) {
     if (pmHost) return;
     pmAnchor = doc.createComment('cw-pm-home'); pm.before(pmAnchor);
     pmHost = make(canPopover ? 'div' : 'dialog', 'cw-pm-host'); doc.body.append(pmHost); pmHost.append(pm);
+    // 2.0.335 反馈：外层铺满全屏。按下不冒泡给酒馆（它在 html 上「点外面关抽屉」，会把预设页和编辑页一起切成 closedDrawer，
+    // 编辑页的行内 display:block 还在，就卡在屏幕上）；点在编辑页外面就当点「‹ 预设」。
+    for (const type of ['mousedown', 'touchstart']) pmHost.addEventListener(type, e => e.stopPropagation());
+    pmHost.addEventListener('click', e => { if (e.target === pmHost) pmBack(pm)?.click(); });
     if (canPopover) {
       pmHost.setAttribute('popover', 'manual');
       // popover 不困住焦点（showModal 会），Escape 可能落在页面上：开着时在 document 上接（下拉开着时让下拉先关）。
@@ -1713,6 +1717,8 @@ export function installOfficialLayout(win = window) {
     for (const [ad, parent] of pmPickers) ad.$dropdownParent = parent; pmPickers = [];
     const pm = pmEl();
     if (pm && pmAnchor?.parentNode) pmAnchor.replaceWith(pm); else pmAnchor?.remove();
+    // 保险：收起了（没有 openDrawer）但 slideDown 留下的行内 display:block 还在，就会一直挂在屏幕上。
+    if (pm && !pm.classList.contains('openDrawer') && pm.style.display && pm.style.display !== 'none') pm.style.display = 'none';
     if (pmEsc) { doc.removeEventListener('keydown', pmEsc, true); pmEsc = null; }
     if (canPopover) { try { pmHost.hidePopover(); } catch {} } else pmHost.close();
     pmHost.remove(); pmHost = null; pmAnchor = null;
