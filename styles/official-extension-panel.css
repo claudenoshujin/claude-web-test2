@@ -112,3 +112,31 @@ html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe
 /* QR initializes its sliding highlight on the native header click. Its active
    tab still needs a visible pill when opened inline before that first click. */
 html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel #qr-assistant-settings .qr-tab-glider:not([style*="width:"])~.qr-settings-tab-item.active{background:var(--cw-v4-text)!important}
+
+/* 333 小修（Claude 2026-11-02）：返回按钮正常大小、按钮带图标、删除做成一行、「其他原生设置」用 CW 的卡片和行。 */
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-back{display:inline-flex!important;align-items:center!important;gap:4px!important;min-height:36px!important;height:auto!important;padding:0 10px 0 4px!important;margin:-4px 0 10px -4px!important;border:0!important;border-radius:9px!important;background:transparent!important;color:var(--cw-v4-text)!important;font:400 15px/20px var(--cw-v4-font)!important;cursor:pointer}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-back:hover{background:var(--e-hover)!important}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-back .cw-v4-icon,html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-back svg{width:18px!important;height:18px!important;flex:none}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-actions>.cwex-btn{display:inline-flex!important;align-items:center!important;gap:6px!important}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-btn>.cw-v4-icon{display:inline-flex;flex:none;width:15px;height:15px}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-btn>.cw-v4-icon svg{width:15px;height:15px}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-action-row{cursor:pointer}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-action-row:hover{background:var(--e-hover)}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-action-row:focus-visible{outline:2px solid var(--e-blue);outline-offset:-2px}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-row-icon>*{-webkit-mask:none!important;mask:none!important;background:none!important;width:18px;height:18px;display:inline-flex}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-row-icon svg{width:18px;height:18px}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-meta.cwex-wrap{white-space:normal;overflow:visible;display:block}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-delete{min-height:60px!important;padding:11px 14px!important;gap:12px!important;align-items:center!important}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-delete .cwex-row-icon{color:var(--e-warning)}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-delete .cwex-name{color:var(--e-warning)}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-delete .cwex-meta{color:var(--e-muted);margin-top:2px}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-chevron-always{display:block}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-section-note{margin:-4px 2px 8px!important}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-unclaimed+.cwex-unclaimed{margin-top:10px}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-unclaimed-head{min-height:44px}
+html[data-cw-v4] body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-unclaimed-body{padding:0 14px 12px}
+html[data-cw-v4] .cwex-mobile-head .cwex-mobile-back{display:inline-flex!important;align-items:center;gap:2px}
+html[data-cw-v4] .cwex-mobile-head .cwex-mobile-back svg{width:20px;height:20px}
+@media(max-width:700px){html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-detail-view>.cwex-page-heading{display:none!important}}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel .cwex-section-title[hidden]{display:none!important}
+html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel :is(.cwex-page-heading,.cwex-updates,.cwex-reload)>.cwex-btn{display:inline-flex!important;align-items:center!important;gap:6px!important}
