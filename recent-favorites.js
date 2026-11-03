@@ -1,4 +1,4 @@
-import { preferencesFor } from './preferences.js?v=2.0.335';
+import { preferencesFor } from './preferences.js?v=2.0.336';
 // S02 prerequisite: only the favorite record contract from formal chat-tools.
 // Other message tools remain outside this integration.
 export function installRecentFavorites({win,doc,getContext,enabled,onChange}) {

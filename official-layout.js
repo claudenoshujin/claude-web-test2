@@ -1,7 +1,7 @@
-import { preferencesFor } from './preferences.js?v=2.0.335';
-import { officialIcons } from './official-icons.js?v=2.0.335';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.335';
-import { tr } from './official-i18n.js?v=2.0.335';
+import { preferencesFor } from './preferences.js?v=2.0.336';
+import { officialIcons } from './official-icons.js?v=2.0.336';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.336';
+import { tr } from './official-i18n.js?v=2.0.336';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -1696,7 +1696,7 @@ export function installOfficialLayout(win = window) {
     if (pmHost) return;
     pmAnchor = doc.createComment('cw-pm-home'); pm.before(pmAnchor);
     pmHost = make(canPopover ? 'div' : 'dialog', 'cw-pm-host'); doc.body.append(pmHost); pmHost.append(pm);
-    // 2.0.335 反馈：外层铺满全屏。按下不冒泡给酒馆（它在 html 上「点外面关抽屉」，会把预设页和编辑页一起切成 closedDrawer，
+    // 335 反馈：外层铺满全屏。按下不冒泡给酒馆（它在 html 上「点外面关抽屉」，会把预设页和编辑页一起切成 closedDrawer，
     // 编辑页的行内 display:block 还在，就卡在屏幕上）；点在编辑页外面就当点「‹ 预设」。
     for (const type of ['mousedown', 'touchstart']) pmHost.addEventListener(type, e => e.stopPropagation());
     pmHost.addEventListener('click', e => { if (e.target === pmHost) pmBack(pm)?.click(); });

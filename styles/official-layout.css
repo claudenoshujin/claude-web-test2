@@ -3870,7 +3870,7 @@ html[data-cw-v4] body #top-settings-holder #left-nav-panel .cw-pm-tabs>button[ar
 html[data-cw-v4] body #top-settings-holder #left-nav-panel #completion_prompt_manager [hidden]{display:none!important}
 @media(max-width:700px){
 html[data-cw-v4] body #top-settings-holder #left-nav-panel #openai_api-presets .cw-v4-section>h2{display:none!important}
-/* 2.0.335 反馈：小标题藏了，卡片底（::before，给小标题留 28px）和那条线（::after）错位 28px，叠在提示词 / 参数和搜索那一排上。这一节手机上不要卡片底。 */
+/* 335 反馈：小标题藏了，卡片底（::before，给小标题留 28px）和那条线（::after）错位 28px，叠在提示词 / 参数和搜索那一排上。这一节手机上不要卡片底。 */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel #openai_api-presets .cw-v4-section.cw-v4-section::before,html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel #openai_api-presets .cw-v4-section.cw-v4-section::after{content:none!important;display:none!important}
 /* 提示词那一节同理：小标题藏了，卡片底从搜索框中间开始。卡片底改画在列表本身上，搜索和筛选那几排放在页面底色上。 */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompts.cw-v4-section.cw-v4-section::before,html[data-cw-v4] body #top-settings-holder#top-settings-holder #left-nav-panel .cw-v4-prompts.cw-v4-section.cw-v4-section::after{content:none!important;display:none!important}
