@@ -370,6 +370,8 @@ export function installOfficialLayout(win = window) {
     // 2.0.214：要编辑的东西在收起的 <details> 里（Claude Web「自定义配色」）时，放在 details 里面的 <dialog> 画不出来；挪到最外层收起的 details 后面。
     let place = host || anchor;
     for (let d = place.parentElement?.closest('details:not([open])'); d; d = d.parentElement?.closest('details:not([open])')) place = d;
+    // 334 反馈：挂的位置在藏起来（display:none）的祖先里时，showModal 照样让别处点不动，弹窗却画不出来。挂到最外层藏起来的祖先旁边。
+    for (let n = place.parentElement; n && n !== doc.body; n = n.parentElement) if (win.getComputedStyle(n).display === 'none') place = n;
     place.after(dialog); body.append(node); dialog.append(head, body,footer);
     // Select2 normally attaches results to body, which is behind a modal's
     // top layer. Preserve its existing adapter/options and change only host.

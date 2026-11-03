@@ -73,9 +73,9 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   function show(view,resetScroll=true){hide(list,view!=='list');hide(detail,view!=='detail');hide(editor,view!=='sort');page.dataset.view=view;if(resetScroll)panel.scrollTop=0;paintHead(view);}
   function paintHead(view){if(!mobileHead&&win.innerWidth>700&&doc.documentElement.dataset.claudeLayout!=='mobile')return;mobileHead||=make('div','cwex-mobile-head');mobileHead.replaceChildren();
     const left=view==='list'?action('☰',()=>doc.querySelector('.cw-v4-shell .cw-v4-menu')?.click(),'cwex-mobile-menu'):(()=>{const b=action('',back,'cwex-mobile-back');b.append(icon('chevl'));if(view==='detail')b.append(make('span','cwex-btn-label',t('扩展','Extensions')));return b;})();left.setAttribute('aria-label',view==='list'?t('设置导航','Settings navigation'):t('返回扩展','Back to extensions'));
-    mobileHead.append(left,make('h1','cwex-mobile-title',view==='list'?t('扩展','Extensions'):view==='sort'?t('排序和隐藏','Order and visibility'):nativeOpen?t('其他原生设置','Other native settings'):active?.label||''));
-    const right=make('div','cwex-mobile-right');if(view==='list')right.append(action('⋯',edit,'cwex-mobile-sort'),action('+',()=>host.openThirdPartyExtensionMenu(),'cwex-mobile-install'));else if(view==='sort')right.append(action(t('完成','Done'),back));mobileHead.append(right);
-    right.querySelector('.cwex-mobile-sort')?.setAttribute('aria-label',t('排序和隐藏','Order and visibility'));right.querySelector('.cwex-mobile-install')?.setAttribute('aria-label',t('安装扩展','Install extension'));if(!mobileHead.isConnected)doc.querySelector('.cw-v4-shell .cw-v4-head')?.append(mobileHead);
+    mobileHead.append(left,make('h1','cwex-mobile-title',view==='list'?t('扩展','Extensions'):view==='sort'?t('排序和隐藏','Order and visibility'):nativeOpen||active?.label||''));
+    const right=make('div','cwex-mobile-right');if(view==='sort')right.append(action(t('完成','Done'),back));mobileHead.append(right);
+    if(!mobileHead.isConnected)doc.querySelector('.cw-v4-shell .cw-v4-head')?.append(mobileHead);
   }
   function back(){returnRoot?.();returnRoot=null;nativeReturn?.();nativeReturn=null;nativeOpen=false;active=null;sorting=false;show('list');paint();}
   function present(root,title,desc,opts={}){
@@ -119,7 +119,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   // 管理、安装）和已弃用的 Extras API：通知和 Extras 已经在列表的「选项」里；这里放原生管理 / 安装两个入口，
   // 再把 CW 认不出来、没有详情页的扩展设置用卡片包起来放进「其他设置」，返回时放回原处。
   function unclaimedRoots(){const claimed=[...entries.values()].flatMap(e=>e.roots).filter(r=>r.isConnected);return [...panel.querySelectorAll('#extensions_settings>*,#extensions_settings2>*')].filter(c=>!claimed.some(r=>r===c||r.contains(c)||c.contains(r))&&c.querySelector('input:not([type=hidden]),select,textarea,button,.menu_button'));}
-  function openNativeSettings(){back();nativeOpen=true;detail.replaceChildren();const backButton=action('',back,'cwex-back');backButton.append(icon('chevl'),make('span','cwex-btn-label',t('扩展','Extensions')));
+  function openNativeSettings(){back();nativeOpen=t('其他原生设置','Other native settings');detail.replaceChildren();const backButton=action('',back,'cwex-back');backButton.append(icon('chevl'),make('span','cwex-btn-label',t('扩展','Extensions')));
     const heading=make('div','cwex-page-heading');heading.append(make('h2','',t('其他原生设置','Other native settings')));detail.append(backButton,heading);
     detail.append(make('h3','cwex-section-title',t('酒馆原生入口','SillyTavern native entries')),make('p','cwex-description cwex-section-note',t('CW 的列表出问题时，可以从这里用酒馆自己的界面。','If the CW list misbehaves, use SillyTavern’s own screens from here.')));
     const entriesCard=make('div','cwex-card cwex-native-entries');for(const [id,ic,title]of [['extensions_details','cube',t('原生的管理扩展','Native extension manager')],['third_party_extension_button','clouddown',t('原生的安装扩展','Native extension installer')]]){const r=actionRow(ic,title,'',()=>{const n=doc.getElementById(id);if(!n)throw Error(t('找不到酒馆的原生按钮','Native button not found'));n.click();},'cwex-native-entry');r.dataset.nativeEntry=id;r.append(make('span','cwex-chevron cwex-chevron-always','›'));entriesCard.append(r);}detail.append(entriesCard);
@@ -127,6 +127,19 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     if(!rest.length)detail.append(make('p','cwex-empty cwex-no-other',t('没有其他设置。','No other settings.')));
     for(const c of rest){const card=make('div','cwex-card cwex-unclaimed');card.dataset.unclaimed=c.id||'';const name=c.querySelector('h3,h4,b,strong')?.textContent.trim()||(c.id||'').replace(/_container$/,'').replace(/[_-]+/g,' ')||t('未识别的扩展','Unrecognized extension');const head=make('div','cwex-row cwex-unclaimed-head');head.append(make('div','cwex-name',name));const body=make('div','cwex-unclaimed-body');const mark=doc.createComment('cw-native-options-return');c.before(mark);returns.push([c,mark]);body.append(c);card.append(head,body);detail.append(card);}
     nativeReturn=()=>{for(const [n,m]of returns.reverse())if(m.parentNode)m.replaceWith(n);};show('detail');paint();}
+  // 334 反馈：旧版 Extras API 也是推进的一页。原生的地址、密钥、自动连接、状态和「连接」按钮搬进 CW 卡片（还是原来的元素，
+  // 酒馆自己的事件照常），返回时放回原处。
+  function openExtras(){back();const get=id=>doc.getElementById(id),url=get('extensions_url');if(!url)return;nativeOpen=t('旧版 Extras API','Legacy Extras API');detail.replaceChildren();
+    const backButton=action('',back,'cwex-back');backButton.append(icon('chevl'),make('span','cwex-btn-label',t('扩展','Extensions')));const heading=make('div','cwex-page-heading');heading.append(make('h2','',nativeOpen));
+    detail.append(backButton,heading,make('p','cwex-description',t('酒馆已经不再维护 Extras。只有连旧的 SillyTavern Extras 服务器时才用得到，现在的扩展一般不需要它。','Extras is deprecated. Only needed for an old SillyTavern Extras server.')));
+    const returns=[],take=(n,to)=>{if(!n)return;const m=doc.createComment('cw-extras-return');n.before(m);returns.push([n,m]);to.append(n);};
+    const card=make('div','cwex-card cwex-extras');const row=(tag,name,meta)=>{const r=make(tag,'cwex-row'),txt=make('span','cwex-text');txt.append(make('span','cwex-name',name));if(meta)txt.append(make('span','cwex-meta',meta));r.append(txt);card.append(r);return r;};
+    const field=(name,node)=>{if(!node)return;const r=make('label','cwex-row cwex-extras-field');r.append(make('span','cwex-name',name));card.append(r);take(node,r);};
+    field(t('地址','URL'),url);field(t('密钥','API key'),get('extensions_api_key'));
+    const auto=get('extensions_autoconnect');if(auto)take(auto,row('label',t('自动连接','Auto-connect'),t('打开酒馆时自动连上','Connect when opening SillyTavern')));
+    const status=row('div',t('状态','Status'));take(get('extensions_status'),status.querySelector('.cwex-text'));get('extensions_status')?.classList.add('cwex-meta');take(get('extensions_connect'),status);get('extensions_connect')?.classList.add('cwex-btn');
+    detail.append(card);
+    nativeReturn=()=>{get('extensions_status')?.classList.remove('cwex-meta');get('extensions_connect')?.classList.remove('cwex-btn');for(const [n,m]of returns.reverse())if(m.parentNode)m.replaceWith(n);};show('detail');paint();}
   function buildList(){list=make('div','cwex-list-view');const heading=make('div','cwex-page-heading');heading.append(make('h2','',t('扩展','Extensions')),iconAction('updown',t('排序和隐藏','Order and visibility'),edit,'cwex-sort-top'),iconAction('plus',t('安装扩展','Install extension'),()=>host.openThirdPartyExtensionMenu(),'cwex-primary cwex-install'));list.append(heading,make('p','cwex-description',t('点一行进入这个扩展的设置；开关决定它是否启用。','Open a row for settings; switches control whether extensions are enabled.')));
     const reload=make('div','cwex-reload');reload.append(make('span','',t('改动刷新后生效','Reload to apply changes')),iconAction('retry',t('现在刷新','Reload now'),()=>win.location.reload()));list.append(reload);const updates=make('div','cwex-updates');const copy=make('div','cwex-update-copy');copy.append(make('div','cwex-update-title'),make('small','cwex-update-names'));updates.append(copy,iconAction('retry',t('全部更新','Update all'),updateAll));list.append(updates);
     const search=make('input','cwex-search');search.type='search';search.placeholder=t('搜索扩展','Search extensions');search.setAttribute('aria-label',search.placeholder);search.addEventListener('input',()=>{q=search.value.trim().toLocaleLowerCase();paint();});list.append(search);
@@ -135,7 +148,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     list.append(make('p','cwex-empty',t('没有符合条件的扩展。','No matching extensions.')));const hiddenNote=make('p','cwex-hidden-note');list.append(hiddenNote);hiddenNote.append(action('',()=>{filter='hidden';paint();},'cwex-hidden-link'));
     list.append(make('h3','cwex-section-title',t('选项','Options')));const options=make('div','cwex-card cwex-options');options.append(action(t('排序和隐藏','Order and visibility')+' ›',edit,'cwex-sort-option'));
     const notify=doc.getElementById('extensions_notify_updates');if(notify){const r=make('label','cwex-row'),txt=make('span','cwex-text');txt.append(make('span','cwex-name',t('扩展有更新时通知','Notify about extension updates')),make('span','cwex-meta',t('打开酒馆时检查一次','Check when opening SillyTavern')));r.append(txt);moveNative(notify,r);options.append(r);}
-    const extras=panel.querySelector('.extensions_url_block');if(extras)options.append(action(t('旧版 Extras API','Legacy Extras API')+' ›',()=>openEditor(extras,t('旧版 Extras API','Legacy Extras API'))));
+    if(doc.getElementById('extensions_url'))options.append(action(t('旧版 Extras API','Legacy Extras API')+' ›',openExtras,'cwex-extras-option'));
     options.append(action(t('其他原生设置','Other native settings')+' ›',openNativeSettings));list.append(options);
     page.append(list);detail=make('div','cwex-detail-view');editor=make('div','cwex-sort-view');page.append(detail,editor);show('list',false);
   }
