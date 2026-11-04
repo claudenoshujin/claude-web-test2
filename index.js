@@ -3545,8 +3545,8 @@ if (CLAUDE_ENABLED) {
       button.${SWIPE_PROXY_CLASS} { right: 0 !important; }
 
       /* 设置里关掉「回复两侧的左右切换箭头」：只是不显示，按钮还在，操作栏的 ‹ › 仍靠它们切换。 */
-      html[data-claude-side-swipe="off"] body button.${LEFT_SWIPE_PROXY_CLASS},
-      html[data-claude-side-swipe="off"] body button.${SWIPE_PROXY_CLASS} { display: none !important; }
+      html[data-cw-v4][data-claude-side-swipe="off"] body button.${LEFT_SWIPE_PROXY_CLASS},
+      html[data-cw-v4][data-claude-side-swipe="off"] body button.${SWIPE_PROXY_CLASS} { display: none !important; }
 
       button.${LEFT_SWIPE_PROXY_CLASS}::before,
       button.${SWIPE_PROXY_CLASS}::before {
