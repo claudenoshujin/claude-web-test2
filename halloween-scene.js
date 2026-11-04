@@ -329,7 +329,7 @@ export function createHalloweenScene({win,getContext,ambient,getClawdState,prefs
     const record=records.find(r=>r.target===chat&&[...r.removedNodes].includes(snap.message));if(!record)return;
     // Bounded TT ChatSurface owns every direct child. Keep the fixed visual effect,
     // but let TT own the message-gap layout instead of inserting a foreign spacer.
-    if (win.__TAURITAVERN__ || win.__TAURI_INTERNALS__) {
+    if (chat.getAttribute('data-tt-chat-surface') === 'bounded') {
       snap.gapDone=true;playDelete(snap);return;
     }
     const spacer=node('div','hw-delete-spacer',doc.createDocumentFragment());

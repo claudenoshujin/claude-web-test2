@@ -607,13 +607,13 @@ html[data-cw-v4] body #form_sheld #send_form #send_textarea::placeholder{text-al
   html[data-cw-v4] .cw-v4-editor{width:100vw;height:100dvh;margin:0;border:0;border-radius:0}
   html[data-cw-v4] body #send_form .clawd-character-switcher,html[data-cw-v4] body #send_form .clawd-fake-mic{display:none!important}
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm{display:flex!important;width:auto!important;min-width:82px!important;max-width:none!important;gap:6px!important;flex:none!important}
-  
+
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #extensionsMenuButton{display:grid!important;place-items:center!important;flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;margin:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important}
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm #options_button{display:grid!important;place-items:center!important;flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;margin:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important}
   html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form #nonQRFormItems #leftSendForm :is(#extensionsMenuButton,#options_button){background:rgba(255,255,255,.05)!important}
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm:not([data-cw-v4-third-order]) #extensionsMenuButton{order:0!important}
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm:not([data-cw-v4-third-order]) #options_button{order:1!important}
-  
+
   html[data-cw-v4] body #send_form #leftSendForm>:not(#extensionsMenuButton):not(#options_button):not(.clawd-character-switcher):not(.clawd-fake-mic),html[data-cw-v4] body #send_form #rightSendForm>:not(#send_but):not(#mes_stop):not(.mes_stop){flex:none!important;width:38px!important;min-width:38px!important;max-width:38px!important;height:38px!important;min-height:38px!important;margin:0!important;padding:0!important;border-radius:50%!important;background:rgba(31,30,29,.05)!important;align-items:center!important;justify-content:center!important;place-items:center!important;font-size:17px!important;line-height:1!important;opacity:1!important}
   html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form #leftSendForm>:not(#extensionsMenuButton):not(#options_button):not(.clawd-character-switcher):not(.clawd-fake-mic),html[data-cw-v4][data-claude-integrated-theme="night"] body #send_form #rightSendForm>:not(#send_but):not(#mes_stop):not(.mes_stop){background:rgba(255,255,255,.05)!important}
   /* 2026-11-02 插件放到输入框右边的按钮（QR助手「推进重Roll」等）：day-mobile.css 在手机上把 #rightSendForm 里发送 / 停止以外的都藏了，
