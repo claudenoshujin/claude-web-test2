@@ -4093,3 +4093,9 @@ html[data-cw-v4][data-claude-layout="pc"]:not([data-cw-v4-settings]) body>#st-ch
 
 /* A generated scroll-flow footer has the same position without an unknown ChatSurface child. */
 html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #chat[data-cw-disclaimer]::after{content:attr(data-cw-disclaimer);display:block;flex-shrink:0;font-size:14px;color:var(--cw-v4-muted);padding:14px 0;text-align:left;margin-left:var(--cw-disclaimer-inset,0px)}
+
+/* Third-party mobile dialogs use the holder's bottom as their top bar bound.
+   Fixed drawers retain their own bounds when navigation is closed. */
+@media(max-width:700px){
+  html[data-cw-v4][data-claude-layout="mobile"] body:not([data-clawd-menu]) #top-settings-holder#top-settings-holder{height:54px!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important;overflow:visible!important}
+}
