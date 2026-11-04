@@ -4090,3 +4090,6 @@ html[data-cw-v4] body #chat>.acu-wrapper.acu-dice-ui-root{width:100%!important;m
    电脑布局里 CW 的左侧栏（#top-settings-holder，day-pc.css / night-pc.css 里 z-index 3995）不透明、整高，正好把它盖住（LingerCola，TT 安卓平板）。
    只抬这一个节点，放到侧栏上面一层；设置页开着时（data-cw-v4-settings）不抬，跟原生一样让设置页盖住它。插件自己的设置弹窗是 4100，仍在它上面。 */
 html[data-cw-v4][data-claude-layout="pc"]:not([data-cw-v4-settings]) body>#st-chatu8-fab{z-index:3996!important}
+
+/* A generated scroll-flow footer has the same position without an unknown ChatSurface child. */
+html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #chat[data-cw-disclaimer]::after{content:attr(data-cw-disclaimer);display:block;flex-shrink:0;font-size:14px;color:var(--cw-v4-muted);padding:14px 0;text-align:left;margin-left:var(--cw-disclaimer-inset,0px)}
