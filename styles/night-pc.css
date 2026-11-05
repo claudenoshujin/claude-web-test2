@@ -83,7 +83,7 @@ body {
   color:var(--cw-text-body) !important;
   font-family:var(--cl-serif) !important;
   font-size:1em !important;
-  font-weight:var(--cw-body-weight) !important;
+  font-weight:calc(var(--cw-body-weight) + var(--cw-weight-offset,0)) !important;
   line-height:1.72 !important;
   letter-spacing:0;
   font-optical-sizing:auto;

@@ -1,3 +1,4 @@
+import { createFontWeightControl } from './font-weight.js?v=2.0.338';
 import { preferencesFor } from './preferences.js?v=2.0.338';
 import { officialIcons } from './official-icons.js?v=2.0.338';
 import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.338';
@@ -64,6 +65,8 @@ export function installOfficialLayout(win = window) {
    * the design. Everything unmapped ends up in Advanced › Other. */
   const PAGES = [
     {key:'look',title:'外观',icon:'palette',group:'偏好设置',lede:'主题、显示样式、尺寸与颜色',sections:[
+      ['风格',()=>{const rows=[];for(const [id,label]of [['claude-web-preset','风格预设'],['claude-web-theme-auto','主题切换'],['claude-web-variant','当前明暗']]){const n=doc.getElementById(id);if(n)rows.push(prow(t(label,label),'',[n]));}return rows;}],
+      ['文字',()=>{const font=doc.getElementById('claude-web-font'),custom=doc.getElementById('claude-web-font-custom'),quote=doc.getElementById('claude-web-quote-body-color');const rows=[];if(font){const r=prow(t('字体','Font'),'',[font]);if(custom)pm(custom,r);rows.push(r);}const weight=createFontWeightControl({win,t,make,button});prefParts.push(weight.node);disposers.push(()=>weight.destroy());rows.push(weight.node);if(quote)rows.push(prow(t('引号内文字变色','Quote color'),'',[quote]));return rows;}],
       ['主题',()=>{const sel=take('themes');addClass(sel,'cw-v4-wide');const r1=prow(t('UI 主题','UI Theme'),'当前使用的界面主题预设',[sel],'cw-v4-stack');
         const r2=R.btns('主题文件',['ui-preset-update-button','ui-preset-save-button','ui_preset_import_button','ui_preset_export_button','ui-preset-delete-button'],{icons:{'ui-preset-update-button':'save','ui-preset-save-button':'saveplus','ui_preset_import_button':'import','ui_preset_export_button':'export','ui-preset-delete-button':'trash'},desc:'覆盖保存 · 另存为新主题 · 导入 · 导出 · 删除',cls:'cw-v4-textbtns',labels:{'ui-preset-update-button':'覆盖保存','ui-preset-save-button':'另存为','ui_preset_import_button':'导入','ui_preset_export_button':'导出','ui-preset-delete-button':'删除'}});
         addClass(doc.getElementById('ui-preset-delete-button'),'cw-v4-danger');const file=take('ui_preset_import_file');if(file&&r2)pm(file,r2);return [r1,r2];}],
@@ -416,6 +419,7 @@ export function installOfficialLayout(win = window) {
   const hiddenEl = k => k.hidden || k.style.display === 'none' || k.classList.contains('displayNone') || k.classList.contains('cw-v4-hidden-native');
   function tagRows(panel) {
     for (const row of panel.querySelectorAll('.cw-v4-row,.cw-v4-api-row')) {
+      if(row.closest('.cwr-page')||row.matches('.cwr-preset-entry,.cwr-connection-row'))continue;
       const ctl = row.querySelector(':scope>.cw-v4-row-controls,:scope>.cw-v4-api-controls');
       let kind = '';
       if (ctl) {
@@ -652,7 +656,7 @@ export function installOfficialLayout(win = window) {
     /* 2.0.297 bug：颜色选择器自带的色块按钮 48×24，比我们 34 的框宽，露在框外成了两层。让它画成 22 的方块，居中在框里。 */
     panel.querySelectorAll('toolcool-color-picker:not([button-width])').forEach(c => { c.setAttribute('button-width', '22px'); c.setAttribute('button-height', '22px'); c.setAttribute('button-padding', '0'); });
     panel.querySelectorAll('textarea').forEach(ta => {
-      if (ta.dataset.cwV4Text || ta.matches('.select2-search__field') || ta.closest('.select2-container,[data-v-app],#extensions_settings,#extensions_settings2,.world_entry,dialog') || ta.id === 'settingsSearch' || ta.classList.contains('displayNone') || ta.style.display === 'none') return;
+      if (ta.closest('.cwr-page') || ta.dataset.cwV4Text || ta.matches('.select2-search__field') || ta.closest('.select2-container,[data-v-app],#extensions_settings,#extensions_settings2,.world_entry,dialog') || ta.id === 'settingsSearch' || ta.classList.contains('displayNone') || ta.style.display === 'none') return;
       ta.dataset.cwV4Text = '1';
       const row = make('div', 'cw-v4-text-row'), preview = make('span', 'cw-v4-text-preview');
       const title = labelFor(ta);
@@ -1123,7 +1127,7 @@ export function installOfficialLayout(win = window) {
     // 会把整个设置一起关掉。在 window 捕获阶段先接：有我们的编辑弹窗就只关最上面那个，否则带淡出关设置。
     // 下拉、⋯ 菜单、提示词编辑页、酒馆自己的弹窗开着时不接，让它们自己处理。
     on(win,'keydown', e => {
-      if (e.key !== 'Escape' || e.defaultPrevented || mobile() || !current) return;
+      if (e.key !== 'Escape' || e.defaultPrevented || mobile() || !current || e.target.matches?.('.cwr-persona-name')) return;
       if (doc.querySelector('.select2-container--open,.cw-v4-more[open],#completion_prompt_manager_popup.openDrawer,dialog[open]:not(.cw-v4-editor)')) return;
       const top = [...dialogs].filter(d => d.open).at(-1);
       if(top?.classList.contains("cw-v4-wi-expanded"))return;

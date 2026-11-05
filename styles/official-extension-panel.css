@@ -2,7 +2,7 @@
 html[data-cw-v4] body #top-settings-holder #rm_extensions_block.cw-ext-reordered{padding:24px 34px 40px!important}
 html[data-cw-v4] body #top-settings-holder #rm_extensions_block.cw-ext-reordered>.cwex-sources{display:none!important}
 html[data-cw-v4] body #top-settings-holder #rm_extensions_block.cw-ext-reordered>.cw-ext-panel{display:block!important;min-width:0;color:var(--cw-v4-text);font-family:var(--cw-v4-font);--e-line:rgba(31,31,30,.08);--e-soft:#f4f4f1;--e-hover:#efeeeb;--e-muted:#7b7974;--e-card:#fff;--e-blue:#2c6fdf;--e-blue-soft:#e3ecfb;--e-warning:#b5522f}
-html[data-cw-v4][data-claude-integrated-theme=night] body #top-settings-holder #rm_extensions_block.cw-ext-reordered>.cw-ext-panel{--e-line:rgba(250,249,245,.07);--e-soft:#2c2c2a;--e-hover:#373734;--e-muted:#a3a19b;--e-card:#2c2c2a;--e-blue:#5b8ff0;--e-blue-soft:#24324d;--e-warning:#e08a63}
+html[data-cw-v4][data-claude-integrated-theme=night] body #top-settings-holder #rm_extensions_block.cw-ext-reordered>.cw-ext-panel{--e-line:rgba(250,249,245,.08);--e-soft:#2a2a28;--e-hover:#3d3d3a;--e-muted:#a3a19b;--e-card:#353533;--e-blue:#5b8ff0;--e-blue-soft:#24324d;--e-warning:#e08a63}
 /* Specificity is local: pre-existing ST/CW button rules must not repaint these. */
 html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel [hidden]{display:none!important}
 html[data-cw-v4]:not(#cwe0):not(#cwe1):not(#cwe2):not(#cwe3):not(#cwe4):not(#cwe5):not(#cwe6):not(#cwe7) body #top-settings-holder #rm_extensions_block .cw-ext-panel{font-size:14px;line-height:1.45}

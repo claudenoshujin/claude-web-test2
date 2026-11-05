@@ -1,3 +1,5 @@
+import { createPresetManagerPage } from './official-preset-manager.js?v=2.0.338';
+import { createInterfaceRefinements } from './official-interface-refinements.js?v=2.0.338';
 /* Semantic live layouts, ported from design-v4 (redo.js / wi.js).
  * Only original DOM nodes are moved; lists/forms keep their IDs and native
  * handlers. Comment markers allow a full return to the native layout.
@@ -52,7 +54,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   // asBtn(): a native control drawn as a text button.
   function act(s,n,label,plus,primary){if(!n)return n;n.classList.add('cw-v4-as-btn');if(primary)n.classList.add('cw-v4-primary');const text=make('span','cw-v4-action-label'+(plus?' cw-v4-plus':''),L(label));n.append(text);s.created.push(text);(s.buttons||=[]).push(n);return n;}
   function begin(root){const s=state(root);if(s.page)return null;const page=make('div','cw-v4-drawer-page');s.page=page;root.append(page);s.created.push(page);root.classList.add('cw-v4-reflow');return {s,page};}
-  function finish(s){const root=s.root,page=s.page,more=make('div','cw-v4-leftovers'),rest=make('div','cw-v4-native-rest');for(const n of [...root.childNodes])if(n!==page)rest.append(n);// 2.0.281（稿 design-desk-align-v2）：原来只有一个孤零零的 ⋯，改成一行「其他设置 · 说明 · 打开」，点整行打开。
+  function finish(s){const root=s.root,page=s.page,more=make('div','cw-v4-leftovers'),rest=make('div','cw-v4-native-rest');for(const n of [...root.childNodes])if(n!==page&&!(root.id==='AdvancedFormatting'&&n.nodeType===1&&n.id==='tt-assistant'))rest.append(n);// 2.0.281（稿 design-desk-align-v2）：原来只有一个孤零零的 ⋯，改成一行「其他设置 · 说明 · 打开」，点整行打开。
     const extra=button('',()=>openEditor(rest,t('其他设置','Additional settings')),'cw-v4-leftovers-row');extra.append(make('span','cw-lo-t',t('其他设置','Additional settings')),make('span','cw-lo-d',t('酒馆原来面板里还没排进上面分组的设置','Remaining native settings not placed above')),make('span','cw-lo-b',t('打开','Open')));extra.setAttribute('aria-label',t('其他设置','Additional settings'));extra.title=t('其他设置','Additional settings');more.append(extra,rest);page.append(more);s.rest=rest;s.more=more;refreshLeftovers(s);}
   // The fallback button appears only when real controls remain: panel pins,
   // doc links and icon labels of already-mapped toggles do not count.
@@ -129,6 +131,8 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     root.querySelectorAll('.world_entry_form_control:has(textarea),.world_entry_form_control:has(select[multiple])').forEach(n=>n.classList.add('cw-v4-field-wide'));
   }
 
+  const presetManagerPage=createPresetManagerPage({win,t,make,button,icon,move,cleanup,created});
+  const refinements=createInterfaceRefinements({win,t,L,make,button,icon,get,begin,finish,section,row,move,cleanup,created,act,menu,tg,sel,num,txt,presetRow,showToggle,openEditor});
   /* ---------------- 世界书 ---------------- */
   function worldChips(s){const box=s.chips;if(!box)return;const names=[...(get('world_info')?.selectedOptions||[])].map(o=>o.textContent.trim());const key=names.join('\n')||'-';if(box.dataset.key===key)return;box.dataset.key=key;box.replaceChildren(...(names.length?names.map(n=>make('span','cw-v4-chip',n)):[make('span','cw-v4-muted',L('无'))]));}
   function worldSummary(s){const n=s.summary;if(!n)return;const d=get('world_info_depth')?.value,b=get('world_info_budget')?.value,r=get('world_info_recursive')?.checked;const text=t(`扫描深度 ${d} · 上下文 ${b}% · 递归${r?'开':'关'}`,`Scan depth ${d} · Context ${b}% · Recursion ${r?'on':'off'}`);if(n.textContent!==text)n.textContent=text;}
@@ -365,49 +369,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   }
 
   /* ---------------- 格式化 ---------------- */
-  function formatting(panel){const started=begin(panel);if(!started)return;const {s,page}=started;const g=get,root=panel;
-    page.append(created(s,make('p','cw-v4-note',L('使用「对话补全」接口时，这一页的大部分设置不生效，酒馆会把它们变灰。'))));
-    const top=section(page,'');row(s,top,'全部格式化设置','一次导入或导出本页所有模板',[act(s,g('af_master_import'),'导入'),act(s,g('af_master_export'),'导出')]);
-    const context=section(page,'上下文模板');
-    presetRow(s,context,root,'模板','',g('context_presets'),'context');
-    tg(s,context,g('context_derived'),'按模型元数据自动推导','能推导时自动选模板');
-    textRow(s,context,g('context_story_string'),'故事字符串','拼接角色描述、场景、世界书等的模板');
-    sel(s,context,g('context_story_string_position'),'故事字符串位置');
-    textRow(s,context,g('context_example_separator'),'示例分隔符');
-    textRow(s,context,g('context_chat_start'),'聊天开始标记');
-    const cf=section(page,'上下文格式');
-    for(const [id,label] of [['always-force-name2-checkbox','始终把角色名加进提示词'],['single_line','每次只生成一行'],['collapse-newlines-checkbox','折叠连续的换行'],['trim_spaces','修剪空格'],['trim_sentences_checkbox','修剪不完整的句子'],['context_use_stop_strings','分隔符作为终止字符串'],['context_names_as_stop_strings','名字作为终止字符串']])tg(s,cf,g(id),label);
-    const instruct=section(page,'格式指引模板');
-    tg(s,instruct,g('instruct_enabled'),'启用格式指引','文本补全接口才需要');
-    presetRow(s,instruct,root,'模板','',g('instruct_presets'),'instruct');
-    tg(s,instruct,g('instruct_derived'),'按模型元数据自动推导');tg(s,instruct,g('instruct_bind_to_context'),'和上下文模板绑定','选这个模板时自动切换同名的上下文模板');
-    txt(s,instruct,g('instruct_activation_regex'),'激活正则','模型名匹配时自动选中这个模板');
-    for(const [id,label] of [['instruct_wrap','用换行包裹序列'],['instruct_macro','替换序列里的宏'],['instruct_sequences_as_stop_strings','序列作为终止字符串'],['instruct_skip_examples','跳过示例对话格式化']])tg(s,instruct,g(id),label);
-    sel(s,instruct,g('instruct_names_behavior'),'包含名字');
-    dialogRow(s,instruct,'序列','故事字符串、用户、助手、系统消息的前后缀','格式指引序列',box=>{
-      let x=section(box,'故事字符串');textRow(s,x,g('instruct_story_string_prefix'),'前缀');textRow(s,x,g('instruct_story_string_suffix'),'后缀');
-      x=section(box,'用户消息');textRow(s,x,g('instruct_input_sequence'),'前缀');textRow(s,x,g('instruct_input_suffix'),'后缀');textRow(s,x,g('instruct_first_input_sequence'),'第一条的前缀');textRow(s,x,g('instruct_last_input_sequence'),'最后一条的前缀');
-      x=section(box,'助手消息');textRow(s,x,g('instruct_output_sequence'),'前缀');textRow(s,x,g('instruct_output_suffix'),'后缀');textRow(s,x,g('instruct_first_output_sequence'),'第一条的前缀');textRow(s,x,g('instruct_last_output_sequence'),'最后一条的前缀');
-      x=section(box,'系统消息');tg(s,x,g('instruct_system_same_as_user'),'和用户消息相同');textRow(s,x,g('instruct_system_sequence'),'前缀');textRow(s,x,g('instruct_system_suffix'),'后缀');textRow(s,x,g('instruct_last_system_sequence'),'系统指令前缀');
-      x=section(box,'其他');textRow(s,x,g('instruct_stop_sequence'),'终止序列');textRow(s,x,g('instruct_user_alignment_message'),'用户填充消息');
-    });
-    const system=section(page,'系统提示词');
-    tg(s,system,g('sysprompt_enabled'),'启用系统提示词');
-    presetRow(s,system,root,'提示词','',g('sysprompt_select'),'sysprompt');
-    textRow(s,system,g('sysprompt_content'),'提示词内容');textRow(s,system,g('sysprompt_post_history'),'历史后置指令');
-    const stop=section(page,'终止字符串');textRow(s,stop,g('custom_stopping_strings'),'自定义终止字符串','JSON 字符串数组，例如 ["\\nUser:"]');tg(s,stop,g('custom_stopping_strings_macro'),'替换其中的宏');
-    const tok=section(page,'分词器');sel(s,tok,g('tokenizer'),'分词器');num(s,tok,g('token_padding'),'Token 填充','预留给不准确计数的余量');
-    const reasoning=section(page,'推理');
-    tg(s,reasoning,g('reasoning_auto_parse'),'自动解析','把模型输出里的思考部分单独拆出来');tg(s,reasoning,g('reasoning_auto_expand'),'自动展开');tg(s,reasoning,g('reasoning_show_hidden'),'显示隐藏的推理');
-    if(g('reasoning_add_to_prompts')){const inline=make('div','cw-v4-inline cw-v4-created');row(s,reasoning,'加入提示词','把之前的思考内容带进后续提示词，最多几条',[inline]);move(s,showToggle(s,g('reasoning_add_to_prompts')),inline);const n=g('reasoning_max_additions');if(n){n.classList.add('cw-v4-num');cleanup(s,()=>n.classList.remove('cw-v4-num'));move(s,n,inline);}inline.append(make('span','cw-v4-unit',L('条')));}
-    presetRow(s,reasoning,root,'推理格式','',g('reasoning_select'),'reasoning');
-    dialogRow(s,reasoning,'格式内容','前缀、后缀、分隔符','推理格式',box=>{const x=section(box,'');textRow(s,x,g('reasoning_prefix'),'前缀');textRow(s,x,g('reasoning_suffix'),'后缀');textRow(s,x,g('reasoning_separator'),'分隔符');});
-    const misc=section(page,'杂项');
-    tg(s,misc,g('bind_model_templates'),'把模型和模板绑定');txt(s,misc,g('markdown_escape_strings'),'非 Markdown 字符串','逗号分隔，不加空格');
-    textRow(s,misc,g('start_reply_with'),'回复开头','每次回复都从这段文字开始');tg(s,misc,g('chat-show-reply-prefix-checkbox'),'在聊天里显示回复开头');
-    const hide=make('div','cw-v4-park');page.append(created(s,hide));move(s,g('advanced-formatting-cc-notice'),hide);
-    finish(s);
-  }
+  function formatting(panel){refinements.formatting(panel);}
 
   /* ---------------- 预设 ---------------- */
   function presets(panel){const started=begin(panel);if(!started)return;const {s,page}=started;
@@ -418,7 +380,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const presetRoot=get('openai_api-presets');
     if(presetRoot){const ps=begin(presetRoot);if(ps){const group=section(ps.page,'对话补全预设');
       const select=get('settings_preset_openai');if(select){select.classList.add('cw-v4-preset-sel');cleanup(ps.s,()=>select.classList.remove('cw-v4-preset-sel'));}
-      row(ps.s,group,'预设','',[select,act(ps.s,get('update_oai_preset'),'保存'),menu(ps.s,[['另存为新的',get('new_oai_preset')],['改名',presetRoot.querySelector('[data-preset-manager-rename="openai"]')],['导入',get('import_oai_preset')],['导出',get('export_oai_preset')],['预设增强菜单',get('open_s_preset_menu')],['删除',get('delete_oai_preset'),true]])]).querySelector('.cw-v4-more')?.classList.add('cw-v4-preset-menu');
+      presetManagerPage.header(ps.s,group,select,[act(ps.s,get('update_oai_preset'),'保存'),menu(ps.s,[['另存为新的',get('new_oai_preset')],['改名',presetRoot.querySelector('[data-preset-manager-rename="openai"]')],['导入',get('import_oai_preset')],['导出',get('export_oai_preset')],['预设增强菜单',get('open_s_preset_menu')],['删除',get('delete_oai_preset'),true]])]).querySelector('.cw-v4-more')?.classList.add('cw-v4-preset-menu');
       tg(ps.s,group,get('bind_preset_to_connection'),'绑定到 API 连接','切换连接配置时自动切换预设');
       finish(ps.s);
     }}
@@ -514,31 +476,8 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
 
   /* ---------------- 用户角色 ---------------- */
   function personaName(s){if(!s.who)return;const text=get('your_name')?.textContent.trim()||'';if(s.who.textContent!==text)s.who.textContent=text;}
-  function personas(panel){const started=begin(panel);if(!started)return;const {s,page}=started;
-    const stats=panel.querySelector('.fa-ranking-star')?.closest('.menu_button');
-    const top=section(page,'');row(s,top,'','你在聊天里扮演的身份',[act(s,get('create_dummy_persona'),'新建',true),menu(s,[['使用统计',stats],['备份到文件',get('personas_backup')],['从文件恢复',get('personas_restore')],['网格视图',get('persona_grid_toggle')]])]);
-    const all=section(page,'全部');all.classList.add('cw-v4-entries');const b=bar();all.append(b);
-    b.append(searchBox(s,get('persona_search_bar'),'搜索用户角色'));move(s,get('persona_sort_order'),b);
-    b.append(sortButton(get('persona_sort_order')));
-    move(s,get('persona_pagination_container'),all);move(s,get('user_avatar_block'),all);
-    const current=section(page,'当前用户角色');
-    const who=make('span','cw-v4-persona-name');s.who=who;
-    const nameRow=row(s,current,'名字',who,[act(s,get('persona_rename_button'),'改名'),menu(s,[['把所有消息的名字改成这个',get('sync_name_button')],['用户角色世界书',get('persona_lore_button')],['更换头像',get('persona_set_image_button')],['复制一份',get('persona_duplicate_button')],['删除',get('persona_delete_button'),true]])]);
-    const park=make('div','cw-v4-park');nameRow.append(park);move(s,get('your_name'),park);personaName(s);
-    textRow(s,current,get('persona_description'),'描述','会作为 {{persona}} 放进提示词');
-    sel(s,current,get('persona_description_position'),'插入位置');
-    // Three independent lock buttons: each a switch row that clicks the native button.
-    for(const [id,label,desc] of [['lock_persona_default','新聊天默认用这个','开新聊天时自动选中这个用户角色'],['lock_persona_to_char','绑定到当前角色','和这个角色聊天时自动切换过来'],['lock_user_name','绑定到当前聊天','只在这段聊天里固定使用']])row(s,current,label,desc,[get(id)]).classList.add('cw-v4-lock-row');
-    const global=section(page,'全局设置');
-    for(const [id,label] of [['persona_show_notifications','切换时显示通知'],['persona_allow_multi_connections','允许一个角色绑定多个用户角色'],['persona_auto_lock','自动把选中的用户角色绑定到聊天']])tg(s,global,get(id),label);
-    finish(s);
-  }
-  function personaRows(panel){panel.querySelectorAll('#user_avatar_block .avatar-container').forEach(item=>{
-    if(item.querySelector('.cw-v4-persona-use'))return;const s=state(item),use=button('',e=>{e.stopPropagation();if(!item.classList.contains('selected'))item.click();},'cw-v4-button cw-v4-persona-use');
-    use.append(make('span','cw-v4-persona-current',L('使用中')),make('span','cw-v4-persona-switch',L('切换')));item.append(use);s.created.push(use);
-    const badge=make('span','cw-v4-badge',L('当前'));const name=item.querySelector('.ch_name');if(name){name.append(badge);s.created.push(badge);}
-    const desc=item.querySelector('.ch_description');if(desc&&/^\[?no description\]?$/i.test(desc.textContent.trim())){desc.classList.add('cw-v4-no-desc');desc.dataset.cwEmpty=L('还没有描述');s.cleanup=()=>desc.classList.remove('cw-v4-no-desc');}
-  });}
+  function personas(panel){refinements.personas(panel);}
+  function personaRows(panel){refinements.sync(panel,state(panel));}
 
   /* ---------------- 2.0.260 手机：照 Claude App 的 Profile（Lulu：Claude 是标题和内容分开，酒馆是挤在一起） ----------------
    * 手机专用的小节（.cw-v4-phone-only，电脑藏；稿 design-phone-batch1-v3.html，数值 手机参考标准-v1.html）：
@@ -892,8 +831,10 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const s=state(panel),profiles=get('connection_profiles');
     if(profiles&&s.profile&&!s.profile.contains(profiles)){
       profiles.classList.add('cw-v4-preset-sel');cleanup(s,()=>profiles.classList.remove('cw-v4-preset-sel'));
-      row(s,s.profile,'配置','保存一整套接口、模型和预设',[profiles,act(s,get('update_connection_profile'),'保存'),menu(s,[['新建配置',get('create_connection_profile')],['查看详情',get('view_connection_profile')],['编辑',get('edit_connection_profile')],['重新载入',get('reload_connection_profile')],['删除',get('delete_connection_profile'),true]])]);
+      row(s,s.profile,'配置','保存一整套接口、模型和预设',[profiles,act(s,get('update_connection_profile'),'保存'),act(s,get('create_connection_profile'),'新建',true),menu(s,[['查看详情',get('view_connection_profile')],['编辑',get('edit_connection_profile')],['重新载入',get('reload_connection_profile')],['删除',get('delete_connection_profile'),true]])]);
     }
+    const profileRow=s.profile?.querySelector('.cw-v4-row');profileRow?.classList.add('cwr-connection-row');
+    if(profileRow&&profiles&&!profileRow.querySelector('.cwr-connection-top')){const top=created(s,make('div','cwr-connection-top'));profileRow.prepend(top);move(s,profiles,top);top.append(icon('chevd'));}
     const source=get('openai_api');if(source&&!source.dataset.cwV4Sources){
       source.dataset.cwV4Sources='1';const ss=state(source);
       const ccs=get('chat_completion_source'),head=ccs?.previousElementSibling;
@@ -997,8 +938,9 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         worldEntries(panel);
       }
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
+      presetManagerPage.sync(panel);refinements.sync(panel,state(panel));
       for(const f of paints)f();
     },
-    restore(){extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
+    restore(){presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
   };
 }

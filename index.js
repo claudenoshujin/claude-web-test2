@@ -1,3 +1,4 @@
+import { officialIcons as recentBadgeIcons } from './official-icons.js?v=2.0.338';
 import { installRecentFavorites } from './recent-favorites.js?v=2.0.338';
 import { preferencesFor } from './preferences.js?v=2.0.338';
 /* Claude Web 2.0 —— SillyTavern 扩展形态入口。
@@ -267,6 +268,9 @@ try {
   const cf = window.localStorage.getItem('claude-web:fontCustom');
   if (cf) document.documentElement.style.setProperty('--cw-font-custom', cf);
 } catch { /* 无痕或被禁用 */ }
+// Apply saved weight offsets before styles and settings mount.
+try { const value=Number(window.localStorage.getItem('claude-web:font-weight-offset')||0);const offset=[-100,-50,0,50,100,150,200].includes(value)?value:0;const all=window.localStorage.getItem('claude-web:font-weight-scope')==='all';document.documentElement.style.setProperty('--cw-weight-offset',String(offset));document.documentElement.style.setProperty('--cw-ui-weight-offset',String(all?offset:0));document.documentElement.dataset.cwWeightScope=all?'all':'chat';}catch{}
+
 document.documentElement.dataset.claudeBgImageBlur = CLAUDE_BG_IMAGE_BLUR_ENABLED ? 'on' : 'off';
 document.documentElement.style.setProperty('--claude-bg-image-blur', `${CLAUDE_BG_IMAGE_BLUR}px`);
 document.documentElement.style.setProperty('--claude-bg-image-dim', String(CLAUDE_BG_IMAGE_DIM / 100));
@@ -466,6 +470,7 @@ const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
 officialStyle.href = new URL('styles/official-layout.css?v=2.0.338', import.meta.url).href;
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
+const refinementStyle=document.createElement('link');refinementStyle.rel='stylesheet';refinementStyle.href=new URL('styles/interface-refinements.css?v=2.0.338',import.meta.url).href;if(CLAUDE_ENABLED)document.head.append(refinementStyle);
 if (CLAUDE_ENABLED) document.head.append(officialStyle);
 const startOfficialLayout = () => {
   if (!CLAUDE_ENABLED) return;
@@ -6442,8 +6447,9 @@ if (CLAUDE_ENABLED) {
     }
     for (const {message, next} of updates) {
       message.querySelectorAll(`:scope > button.${LEFT_SWIPE_PROXY_CLASS}, :scope > button.${SWIPE_PROXY_CLASS}`).forEach(button => {
-        if (button.style.getPropertyValue('top') === next) return;
-        button.style.setProperty('top', next, 'important');
+          const top=!hostDocument.documentElement.hasAttribute('data-cw-v4')&&button.classList.contains(LEFT_SWIPE_PROXY_CLASS)?`max(${next}, 84px)`:next;
+          if (button.style.getPropertyValue('top') === top) return;
+          button.style.setProperty('top', top, 'important');
       });
     }
   }
@@ -8039,6 +8045,9 @@ if (CLAUDE_ENABLED) {
     more.setAttribute('aria-haspopup', 'menu');
     actions.append(del, more);
 
+    const badges=hostDocument.createElement('span');badges.className='cw-recent-badges';
+    for(const [key,on,label]of [['star',chatTools?.isEnabled()&&chatTools.isFavorite(entry.record),ccPrefersChinese()?'已收藏':'Starred'],['pin',entry.pinned,ccPrefersChinese()?'已置顶':'Pinned']])if(on){const badge=hostDocument.createElement('span');badge.className='cw-recent-badge';badge.dataset.icon=key;badge.title=label;badge.setAttribute('aria-label',label);badge.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+recentBadgeIcons[key]+'</svg>';badges.append(badge);}
+    if(badges.childElementCount)strong.after(badges);
     nameContainer.append(nameLine, date, actions, meta);
     if (preview) nameContainer.append(preview);
     info.append(nameContainer);
@@ -8093,7 +8102,7 @@ if (CLAUDE_ENABLED) {
 
   function signatureOf(entries) {
     return JSON.stringify(entries.map(entry => [
-      entry.fileName, entry.avatar, entry.group, entry.name, entry.pinned ? 1 : 0,
+      entry.fileName, entry.avatar, entry.group, entry.name, entry.pinned ? 1 : 0, chatTools?.isEnabled()&&chatTools.isFavorite(entry.record)?1:0,
     ]));
   }
 
@@ -14449,6 +14458,7 @@ if (CLAUDE_ENABLED) {
       window.__claudeOfficialLayout?.destroy();
       delete window.__claudeOfficialLayout;
       officialStyle.remove();
+      refinementStyle.remove();
       const sheet = document.getElementById('claude-integrated-theme-live-style');
       if (sheet) sheet.disabled = true;
       const root = document.documentElement;
