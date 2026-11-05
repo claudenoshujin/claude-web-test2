@@ -1,3 +1,4 @@
+import { createMorePages } from './settings-more-pages.js?v=2.0.339';
 import { createPresetManagerPage } from './official-preset-manager.js?v=2.0.339';
 import { createInterfaceRefinements } from './official-interface-refinements.js?v=2.0.339';
 import { normalizeSettingsSections } from './settings-sections.js?v=2.0.339';
@@ -21,6 +22,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
   const presetList=createPresetList({win,make,button,t});
+  let morePages=null;
   let promptScroll=null;
   const get=id=>doc.getElementById(id);
   function state(root){let s=states.get(root);if(!s){s={moves:[],created:[],root};states.set(root,s);}return s;}
@@ -412,7 +414,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     if(advanced&&manager){const as=begin(advanced);if(as){const st=as.s,target=as.page;
       const prompts=section(target,'提示词');prompts.classList.add('cw-v4-prompts','cw-v4-entries');move(st,manager,prompts);
       const quick=ranges?.querySelector('.cw-v4-quick');if(quick)move(st,quick,target);
-      const adv=section(target,'高级');
+      const adv=section(target,'其他');
       dialogRow(st,adv,'功能提示词','扮演、世界书格式、新聊天、续写等 10 条','功能提示词',box=>{const x=section(box,'');for(const [id,label,desc] of [['impersonation_prompt_textarea','扮演提示词','让 AI 代你写一条消息时用'],['wi_format_textarea','世界书格式','用 {0} 标出内容插入的位置'],['scenario_format_textarea','场景格式'],['personality_format_textarea','性格格式'],['group_nudge_prompt_textarea','群聊提示'],['newchat_prompt_textarea','新聊天'],['newgroupchat_prompt_textarea','新群聊'],['newexamplechat_prompt_textarea','新示例对话'],['continue_nudge_prompt_textarea','续写提示'],['send_if_empty_textarea','空消息时发送','输入框为空时代替发送的文字']])textRow(st,x,get(id),label,desc);});
       segRow(st,adv,['character_names_none','character_names_default','character_names_completion','character_names_content'].map(get),'角色名称','怎样在消息前加上说话人的名字',['不加','默认','补全对象','消息内容']);
       segRow(st,adv,['continue_postfix_none','continue_postfix_space','continue_postfix_newline','continue_postfix_double_newline'].map(get),'续写后缀','续写时在原文后接什么',['无','空格','换行','双换行']);
@@ -430,6 +432,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
           finish(bs.s);
         }
       }}
+      target.append(reasoning,tools,adv);const seed=get('seed_openai')?.closest('.cw-v4-row');if(seed)move(st,seed,adv);if(biasSelect){const block=biasSelect.closest('.range-block');if(block){block.classList.add('cwr-inline-bias');cleanup(st,()=>block.classList.remove('cwr-inline-bias'));move(st,block,adv);}}bias.hidden=true;
       finish(st);
     }}
     finish(s);
@@ -437,12 +440,17 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   // Prompt manager rows are re-rendered by ST; restyle each native row in place.
   function promptRows(panel){
     const footer=panel.querySelector('.completion_prompt_manager_footer');
+    const list=panel.querySelector('#completion_prompt_manager_list');if(footer&&list&&!list.closest('.bai-bai-preset-vue-list-host')&&footer.nextElementSibling===list)move(state(footer),footer,list.parentElement,list.nextSibling);
     if(footer&&!footer.querySelector('.cw-v4-more')){const s=state(footer);
       act(s,footer.querySelector('.fa-plus-square,.fa-square-plus'),'新建提示词',true);act(s,footer.querySelector('.fa-chain,.fa-link'),'插入');
       const del=footer.querySelector('.fa-x');
       const more=menu(s,[['导入提示词列表',get('prompt-manager-import')],['导出提示词列表',get('prompt-manager-export')],['重置当前角色的列表',get('prompt-manager-reset-character')],['删除选中的提示词',del?.closest('.menu_button')||del,true]]);
       footer.append(more);s.created.push(more);footer.classList.add('cw-v4-pm-footer');s.cleanup=()=>footer.classList.remove('cw-v4-pm-footer','cw-v4-pm-no-insert');
     }
+    const insert=footer?.querySelector('.fa-chain,.fa-link');
+    if(insert&&!insert.cwOpenPicker){const s=state(footer);const open=()=>{const select=footer.querySelector('select');if(!select)return;const marker=doc.createComment('cw-insert-select'),box=make('div','cwr-insert-picker');select.before(marker);box.append(select,button(L('插入'),()=>{box.closest('dialog')?.close();insert.click();},'cw-v4-button'));panel.append(box);openEditor(box,L('插入提示词'),'',{onClose:()=>{if(marker.parentNode)marker.replaceWith(select);box.remove();}});};insert.cwOpenPicker=open;const click=e=>{if(e.isTrusted){e.preventDefault();e.stopImmediatePropagation();open();}};insert.addEventListener('click',click,true);cleanup(s,()=>{insert.removeEventListener('click',click,true);delete insert.cwOpenPicker;});}
+    const footerMore=footer?.querySelector('.cw-v4-more'),topMore=panel.querySelector('.cw-pm-more>.cw-v4-more-list');
+    if(footerMore&&topMore&&!footerMore.hidden){for(const old of topMore.querySelectorAll('.cwr-footer-native-action'))old.remove();for(const item of [...footerMore.querySelector('.cw-v4-more-list').children]){item.classList.add('cwr-footer-native-action');move(state(footer),item,topMore);}footerMore.hidden=true;}
     // SPreset (third-party) injects a banner into the prompts area later; offer it from the preset menu instead.
     const spreset=panel.querySelector('.spreset-btn'),pmenu=panel.querySelector('.cw-v4-preset-menu>.cw-v4-more-list');
     if(spreset&&pmenu&&!pmenu.querySelector('.cw-v4-spreset')){const b=button(spreset.textContent.replace(/[→\s]+$/,'').trim()||'SPreset Editor',e=>{e.stopPropagation();pmenu.parentElement.open=false;spreset.click();},'cw-v4-more-item cw-v4-spreset');pmenu.insertBefore(b,pmenu.lastElementChild);}
@@ -817,9 +825,9 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const run=action=>()=>select(true,action).catch(console.error);
     // 2.0.215（Lulu）：点角色 = 进入编辑（和设置里其他「›」行一样进下一页）；直接去聊天放进 ⋯ 的第一项。原来点整行是开始聊天、「编辑」另有一个按钮。
     const chev=make('span','cw-v4-character-chev');chev.setAttribute('aria-hidden','true');
-    actions.append(menu(s,[['开始聊天',null,false,()=>select(false).catch(console.error)],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['删除',null,true,run('delete_button')]]),chev);
+    actions.append(menu(s,[['编辑',null,false,()=>select(true).catch(console.error)],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['删除',null,true,run('delete_button')]]),chev);
     item.append(actions);
-    const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(true).catch(console.error);};
+    const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(false).catch(console.error);};
     item.addEventListener('click',click);s.cleanup=()=>item.removeEventListener('click',click);
   });}
 
@@ -945,7 +953,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         worldEntries(panel);
       }
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
-      presetManagerPage.sync(panel);refinements.sync(panel,state(panel));
+      presetManagerPage.sync(panel);refinements.sync(panel,state(panel));(morePages||=createMorePages({win,make,button,icon,get,move,cleanup,created,state,act,menu,setting,t,L})).sync(panel);
       normalizeSettingsSections(panel,make);
       for(const f of paints)f();
     },

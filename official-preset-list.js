@@ -14,7 +14,7 @@ export function createPresetList({win,make,button,t}) {
   function clearVisibleControls(u){u.rowObserver?.disconnect();u.rowObserver=null;u.viewportRoot=null;for(const row of u.decoratedRows||[])removeVisibleControls(u,row);u.observedRows?.clear();u.inView?.clear();}
   function trackVisibleControls(all){
     const u=ui;u.decoratedRows||=new Set();if(!win.IntersectionObserver)return false;
-    const root=u.manager.querySelector('#completion_prompt_manager_list');if(!root)return false;
+    const list=u.manager.querySelector('#completion_prompt_manager_list');if(!list)return false;const root=/auto|scroll/.test(win.getComputedStyle(list).overflowY)?list:u.panel;
     if(u.viewportRoot!==root){clearVisibleControls(u);u.viewportRoot=root;u.observedRows=new Set();u.inView=new Set();u.rowObserver=new win.IntersectionObserver(records=>{if(ui!==u||u.viewportRoot!==root)return;for(const entry of records){if(!u.observedRows.has(entry.target)||!root.contains(entry.target)){u.inView.delete(entry.target);continue;}entry.isIntersecting?u.inView.add(entry.target):u.inView.delete(entry.target);}u.queuePaint?.();},{root,rootMargin:'240px 0px',threshold:0});}
     const current=new Set(all.map(node).filter(Boolean));
     for(const row of u.observedRows)if(!current.has(row)){u.rowObserver.unobserve(row);u.observedRows.delete(row);u.inView.delete(row);removeVisibleControls(u,row);}
@@ -68,7 +68,7 @@ export function createPresetList({win,make,button,t}) {
     const active=doc.getElementById('main_api')?.value==='openai';hidden(ui.tabBar,!active);
     if(active){if(ui.panel.dataset.cwPresetTab!==ui.tab)ui.panel.dataset.cwPresetTab=ui.tab;}else delete ui.panel.dataset.cwPresetTab;
     if(ui.dragging)return;
-    const all=entries(),query=ui.search.value.trim().toLocaleLowerCase(),filtering=!!query||ui.filter!=='all';
+    const all=entries();const tabLabel=ui.tabBar.querySelector('[data-tab=prompts]');let tabCount=tabLabel?.querySelector('.cw-pm-tab-count');if(tabLabel&&!tabCount){tabCount=make('span','cw-pm-tab-count');tabLabel.append(tabCount);}if(tabCount)text(tabCount,all.filter(on).length+'/'+all.length);const query=ui.search.value.trim().toLocaleLowerCase(),filtering=!!query||ui.filter!=='all';
     const match=e=>ui.busy&&ui.actionRows?.has(id(e))||(ui.frozen?ui.frozen.has(id(e)):e.name.toLocaleLowerCase().includes(query)&&(ui.filter==='all'||on(e)===(ui.filter==='on')));
     const visible=all.filter(match),visibleKeys=new Set(visible.map(id)),viewportControls=trackVisibleControls(all);
     flag(ui.manager,'cw-pm-filtering',filtering);
@@ -78,7 +78,7 @@ export function createPresetList({win,make,button,t}) {
       const r=node(entry);if(!r)continue;rememberHidden(r);flag(r,'cw-pm-row',true);flag(r,'cw-pm-native-row',!!r.closest('.bai-bai-preset-vue-list-host'));
       const name=r.querySelector('.completion_prompt_manager_prompt_name');
       if(name){attr(name,'tabindex','0');attr(name,'role','button');}
-      const label=entry.name;hidden(r,!visibleKeys.has(id(r)));
+      const label=entry.name;hidden(r,!visibleKeys.has(id(r)));if(!r.closest('.bai-bai-preset-vue-list-host')&&name){let meta=name.querySelector('.cw-pm-description');if(!meta){meta=make('span','cw-pm-description');name.append(meta);}const token=r.querySelector('.prompt_manager_prompt_tokens')?.textContent.trim(),marker=entry.prompt?.marker||!!r.querySelector('.fa-thumb-tack,.fa-thumbtack');text(meta,marker?t('占位 · 由酒馆自动填入','Placeholder · filled by SillyTavern'):t(({system:'系统',user:'用户',assistant:'助手'}[entry.prompt?.role]||'系统')+' · '+(/\d/.test(token||'')?'约 '+token+' Token':'Token 尚未统计'),(entry.prompt?.role||'system')+' · '+(/\d/.test(token||'')?'~ '+token+' tokens':'tokens not counted')));}
       const decorate=!viewportControls||ui.inView.has(r)||r.contains(doc.activeElement);
       if(decorate){ui.decoratedRows.add(r);
       let box=r.querySelector('.cw-pm-select'),number=r.querySelector('.cw-pm-number');
@@ -116,7 +116,7 @@ export function createPresetList({win,make,button,t}) {
     hidden(ui.selectionLine,!ui.multi);hidden(ui.batch,!ui.multi);hidden(ui.empty,visible.length!==0);
     hidden(ui.feedback,!ui.message.textContent&&!ui.undo&&!ui.busy);attr(ui.manager,'aria-busy',ui.busy);
     hidden(ui.undoButton,!ui.undo);prop(ui.undoButton,'disabled',ui.busy);
-    for(const b of [ui.enable,ui.disable,ui.clear])prop(b,'disabled',ui.busy||!ui.selected.size);
+    for(const b of [ui.enable,ui.disable,ui.clear,ui.remove])prop(b,'disabled',ui.busy||!ui.selected.size);
     prop(ui.allButton,'disabled',ui.busy||!visible.some(allowed));prop(ui.multiButton,'disabled',ui.busy);prop(ui.sortButton,'disabled',ui.busy||ui.multi);
     prop(ui.search,'disabled',ui.busy);
     for(const b of ui.filters){prop(b,'disabled',ui.busy);attr(b,'aria-pressed',b.dataset.filter===ui.filter);}
@@ -141,104 +141,33 @@ export function createPresetList({win,make,button,t}) {
     timer=win.setTimeout(()=>finish(false),2500);
     try{ui.nativeAction=toggle(r);ui.nativeAction.click();ui.nativeAction=null;check();}catch{if(ui)ui.nativeAction=null;finish(false);}
   });}
-  function batchManager(){
-    const pm=ui?.nativePM;
-    if(!pm||!['getPromptOrderEntry','render','saveServiceSettings'].every(k=>typeof pm[k]==='function')||typeof pm.tokenHandler?.getCounts!=='function')return null;
-    const counts=pm.tokenHandler.getCounts();return counts&&typeof counts==='object'?{pm,counts}:null;
-  }
-  function deadline(promise,ms){return new Promise(resolve=>{const timer=win.setTimeout(()=>resolve({timeout:true}),ms);Promise.resolve(promise).then(()=>{win.clearTimeout(timer);resolve({ok:true});},error=>{win.clearTimeout(timer);resolve({error});});});}
-  function confirmBatch(current,epoch,scope,record,pm){
-    let cancel;
-    const promise=new Promise(resolve=>{
-      let timer,observer,finished=false;
-      const finish=value=>{if(finished)return;finished=true;observer?.disconnect();win.clearTimeout(timer);const i=current.dispose.indexOf(cancel);if(i>=0)current.dispose.splice(i,1);resolve(value);};
-      cancel=()=>finish(false);current.dispose.push(cancel);
-      const check=()=>{if(ui!==current||current.epoch!==epoch||key()!==scope)return finish(false);
-        const mounted=new Map(rows().map(r=>[id(r),r]));if(!mounted.size)return;
-        if(record.every(task=>{const r=mounted.get(task.id),entry=pm.getPromptOrderEntry(pm.activeCharacter,task.id);return entry?.enabled===task.after&&(r?on(r)===task.after:!task.mounted);}))finish(true);
-      };
-      observer=new win.MutationObserver(check);observer.observe(current.manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});timer=win.setTimeout(()=>finish(false),15000);check();
-    });return {promise,cancel:()=>cancel?.()};
-  }
+  // Batch actions still click each original native switch, including Vue-owned rows.
   async function run(target,undo=false){
     if(!ui||ui.busy)return;
-    const current=ui,epoch=ui.epoch,scope=ui.context,batch=batchManager(),catalog=new Map(entries().map(e=>[id(e),e]));
+    const current=ui,epoch=ui.epoch,scope=ui.context,catalog=new Map(entries().map(e=>[id(e),e]));
     const tasks=undo?[...(ui.undo||[])]:[...ui.selected].map(k=>({id:k,before:on(catalog.get(k)),after:target}));
-    current.batchPath=batch?'native':'serial';current.batchError=null;
-    ui.frozen||=new Set(ui.visible);ui.busy=true;ui.undo=null;text(ui.message,t(`正在处理 ${tasks.length} 条…`,`Processing ${tasks.length} prompts…`));paint();
-    let changed=0,skipped=0,failed=0,processed=0,pending=false,saveError=null;const record=[];
-    try{
-      const nativeTasks=[],serialTasks=[];
-      for(const task of tasks){
-        if(ui!==current||current.epoch!==epoch||key()!==scope)break;
-        let r=catalog.get(task.id);
-        // A collapsed Vue group can omit its native row until expanded.
-        if(batch&&r&&!node(r)&&r.group){r=await ensureRow(task.id)||r;catalog.set(task.id,r);if(ui!==current||current.epoch!==epoch||key()!==scope)break;if(!node(r)){failed++;continue;}}
-        (batch&&!node(r)?.closest('.bai-bai-preset-vue-list-host')?nativeTasks:serialTasks).push(task);
-      }
-      current.batchPath=batch?(serialTasks.length?(nativeTasks.length?'bai+native':'bai'):'native'):'serial';
-      current.actionRows=new Set(serialTasks.map(task=>task.id));current.baiAction=serialTasks.length>0&&!!current.manager.querySelector('.bai-bai-preset-vue-list-host');
-      if(serialTasks.length)paint();
-      if(batch&&serialTasks.length){
-        const prepared=[],attempted=[];
-        for(const task of serialTasks){
-          if(ui!==current||current.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
-          const r=await ensureRow(task.id),desired=undo?task.before:task.after;
-          if(ui!==current||current.epoch!==epoch||key()!==scope)break;
-          if(!r||!allowed(r)){failed++;continue;}
-          const before=on(r);
-          if(undo&&(task.conflict||before!==task.after)){skipped++;continue;}
-          if(before===desired){skipped++;continue;}
-          prepared.push({r,id:task.id,before,after:desired,mounted:true});
-        }
-        // Each click goes through Vue's own visible control. Let Vue coalesce its
-        // redraw, then confirm the entire result instead of repainting per item.
-        let sliceStarted=win.performance.now();for(const [index,item]of prepared.entries()){
-          if(ui!==current||current.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
-          const r=node(item.r)?.isConnected?item.r:find(item.id),control=toggle(r);
-          if(!control||!allowed(r)||node(r).hidden||node(r).closest('.bai-bai-preset-group-collapsed')){failed++;continue;}
-          try{current.nativeAction=control;control.click();attempted.push({id:item.id,before:item.before,after:item.after,mounted:true});}finally{current.nativeAction=null;}
-          processed=skipped+failed+attempted.length;text(current.message,t(`已处理 ${processed} / ${tasks.length} 条…`,`Processed ${processed} / ${tasks.length} prompts…`));
-          if(index+1<prepared.length&&win.performance.now()-sliceStarted>=8){await new Promise(resolve=>win.setTimeout(resolve,0));sliceStarted=win.performance.now();}
-        }
-        if(attempted.length&&ui===current&&current.epoch===epoch&&key()===scope){
-          const confirmation=confirmBatch(current,epoch,scope,attempted,batch.pm);
-          try{pending=!await confirmation.promise;}finally{confirmation.cancel();}
-          for(const item of attempted){const entry=batch.pm.getPromptOrderEntry(batch.pm.activeCharacter,item.id);if(entry?.enabled===item.after){changed++;record.push(item);}else failed++;}
-        }
-      }else for(const task of serialTasks){
-        if(ui!==current||ui.epoch!==epoch||key()!==scope||!current.panel.classList.contains('openDrawer')||current.panel.classList.contains('cw-v4-inactive'))break;
-        const r=find(task.id),desired=undo?task.before:task.after;
-        if(!r||!allowed(r)){failed++;continue;}
-        if(undo&&(task.conflict||on(r)!==task.after)){skipped++;continue;}
-        if(on(r)===desired){skipped++;continue;}
-        const before=on(r),success=await setOne(task.id,desired,epoch);
-        if(ui!==current||ui.epoch!==epoch||key()!==scope)break;
-        if(success){changed++;record.push({id:task.id,before,after:desired});}else failed++;
-        processed=changed+skipped+failed;text(ui.message,t(`已处理 ${processed} / ${tasks.length} 条…`,`Processed ${processed} / ${tasks.length} prompts…`));
-        await new Promise(resolve=>win.setTimeout(resolve,0));
-      }
-      if(batch&&nativeTasks.length&&ui===current&&current.epoch===epoch&&key()===scope&&(!serialTasks.length||current.panel.classList.contains('openDrawer')&&!current.panel.classList.contains('cw-v4-inactive'))){
-        const {pm,counts}=batch,nativeRecord=[],nativeCatalog=serialTasks.length?new Map(entries().map(e=>[id(e),e])):catalog;
-        // Native-owned entries still change in one synchronous turn, after Vue clicks.
-        for(const task of nativeTasks){
-          const r=nativeCatalog.get(task.id),entry=pm.getPromptOrderEntry(pm.activeCharacter,task.id),desired=undo?task.before:task.after;
-          if(!r||!entry||!allowed(r)){failed++;continue;}
-          const before=entry.enabled!==false;
-          if(undo&&(task.conflict||before!==task.after)){skipped++;continue;}
-          if(before===desired){skipped++;continue;}
-          entry.enabled=desired;counts[task.id]=null;changed++;const item={id:task.id,before,after:desired,mounted:!!node(r)};nativeRecord.push(item);record.push(item);
-        }
-        if(nativeRecord.length){
-          const confirmation=confirmBatch(current,epoch,scope,nativeRecord,pm);
-          try{pm.render();const saved=await deadline(pm.saveServiceSettings(),10000);saveError=saved.error||null;pending=!!saved.timeout||!await confirmation.promise;}finally{confirmation.cancel();}
-        }
-      }
-    }catch(error){saveError=error;current.batchError=String(error?.message||error);}
-    finally{
-      clearBaiControls(current);if(ui===current){ui.busy=false;delete ui.actionRows;delete ui.baiAction;if(epoch===ui.epoch&&key()===scope){restoreGroups(current);ui.undo=!undo&&record.length?record:null;const suffix=saveError?t(' 数据已改，但原生渲染或保存失败，请检查后重试。',' Data changed, but native rendering or saving failed; check before retrying.'):pending?t(' 已改，列表还在刷新。',' Changed; the list is still refreshing.'):'';text(ui.message,t(`${undo?'撤销：':''}已改变 ${changed} 条，跳过 ${skipped} 条，失败 ${failed} 条。沿用酒馆原生保存。`,`${changed} changed, ${skipped} skipped, ${failed} failed. Uses native saving.`)+suffix);}paint();}
-    }
+    current.batchPath='serial';ui.frozen||=new Set(ui.visible);ui.busy=true;ui.undo=null;paint();
+    let changed=0,skipped=0,failed=0;const record=[];
+    try{for(const task of tasks){
+      if(ui!==current||current.epoch!==epoch||key()!==scope)break;
+      const r=await ensureRow(task.id),desired=undo?task.before:task.after;
+      if(ui!==current||current.epoch!==epoch||key()!==scope)break;
+      if(!r||!allowed(r)){failed++;continue;}
+      if(undo&&(task.conflict||on(r)!==task.after)){skipped++;continue;}
+      if(on(r)===desired){skipped++;continue;}
+      const before=on(r),success=await setOne(task.id,desired,epoch);
+      if(success){changed++;record.push({id:task.id,before,after:desired});}else failed++;
+      text(current.message,t('已处理 '+(changed+skipped+failed)+' / '+tasks.length+' 条…','Processed '+(changed+skipped+failed)+' / '+tasks.length+'…'));
+    }}finally{if(ui===current){ui.busy=false;if(epoch===ui.epoch&&key()===scope){ui.undo=!undo&&record.length?record:null;text(ui.message,t('已改变 '+changed+' 条，跳过 '+skipped+' 条，失败 '+failed+' 条。','Changed '+changed+'; skipped '+skipped+'; failed '+failed+'.'));}paint();}}
   }
+  async function removeSelected(){
+    const u=ui;if(!u||u.busy||!u.selected.size)return;
+    const keys=[...u.selected];if(!win.confirm(t('从当前列表移除已选 '+keys.length+' 条提示词？原提示词保留，可再次插入。','Remove '+keys.length+' selected prompts from this list? They remain available to insert again.')))return;
+    u.busy=true;u.undo=null;paint();let removed=0,failed=0;
+    try{for(const key of keys){if(ui!==u||u.context!==keyContext())break;const entry=await ensureRow(key),action=node(entry)?.querySelector('.prompt-manager-detach-action');if(!action){failed++;continue;}u.nativeAction=action;try{action.click();}finally{u.nativeAction=null;}const deadline=Date.now()+2500;while(find(key)&&Date.now()<deadline)await new Promise(r=>win.setTimeout(r,25));if(find(key))failed++;else{removed++;u.selected.delete(key);}}}
+    finally{if(ui===u){u.busy=false;text(u.message,t('已移除 '+removed+' 条，失败 '+failed+' 条。','Removed '+removed+'; failed '+failed+'.'));paint();}}
+  }
+  const keyContext=()=>key();
   function mount(panel){
     const manager=panel.querySelector('#completion_prompt_manager');if(!manager)return;
     if(ui?.manager===manager){paint();return;}destroy();
@@ -251,10 +180,10 @@ export function createPresetList({win,make,button,t}) {
     const count=make('span','cw-pm-count'),selection=make('span','cw-pm-selection'),message=make('span','');feedback.setAttribute('role','status');
     const allButton=btn(t('全选当前结果','Select current results'),()=>{for(const r of entries())if(ui.visible.includes(id(r))&&allowed(r))ui.selected.add(id(r));paint();});
     const clear=btn(t('清除选择','Clear selection'),()=>{ui.selected.clear();paint();});
-    const enable=btn(t('启用选中','Enable selected'),()=>run(true)),disable=btn(t('停用选中','Disable selected'),()=>run(false)),undoButton=btn(t('撤销','Undo'),()=>run(false,true));
-    tools.append(search,multiButton,sortButton);selectionLine.append(allButton,clear);batch.append(selection,enable,disable);feedback.append(message,undoButton);bottom.append(batch,feedback);
+    const enable=btn(t('启用','Enable selected'),()=>run(true)),disable=btn(t('停用','Disable selected'),()=>run(false)),undoButton=btn(t('撤销','Undo'),()=>run(false,true));
+    const more=make('details','cw-v4-more cw-pm-more'),summary=make('summary','','⋯'),menu=make('div','cw-v4-more-list');summary.setAttribute('aria-label',t('提示词工具','Prompt tools'));more.append(summary,menu);for(const [label,run]of [[t('多选','Select'),()=>multiButton.click()],[t('调整顺序','Reorder'),()=>sortButton.click()],[t('插入','Insert'),()=>manager.querySelector('.fa-chain,.fa-link')?.cwOpenPicker?.()],[t('导入提示词','Import prompts'),()=>doc.getElementById('prompt-manager-import')?.click()],[t('导出提示词','Export prompts'),()=>doc.getElementById('prompt-manager-export')?.click()]])menu.append(btn(label,()=>{more.open=false;run();}));const reorderHint=make('div','cw-pm-reorder-hint');reorderHint.append(make('span','',t('按住左边的把手拖动排序；改完点“完成”。','Drag the handles to reorder, then choose Done.')),btn(t('完成','Done'),()=>sortButton.click()));tools.append(reorderHint,search,multiButton,sortButton,more);selectionLine.append(allButton,clear);const remove=btn(t('删除','Remove'),()=>removeSelected());remove.classList.add('cw-pm-remove');batch.append(selection,enable,disable,remove);feedback.append(message,undoButton);bottom.append(batch,feedback);
     const empty=make('p','cw-pm-empty',t('没有匹配的提示词','No matching prompts'));
-    ui={panel,manager,tabBar,tools,filterLine:filters,count,search,multiButton,sortButton,selectionLine,batch,feedback,bottom,empty,selection,message,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,sort:false,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
+    ui={panel,manager,tabBar,tools,filterLine:filters,count,search,multiButton,sortButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,sort:false,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
     const u=ui;
     // Keep fragment-staged nodes restorable without retaining replaced trees.
     // Finalization removes dead wrappers without repeatedly dereferencing live ones.
@@ -264,7 +193,7 @@ export function createPresetList({win,make,button,t}) {
     const scroll=()=>{if(u.tab==='prompts')return manager.querySelector('#completion_prompt_manager_list')||panel;for(let n=manager.parentElement;n;n=n.parentElement)if(/auto|scroll/.test(win.getComputedStyle(n).overflowY))return n;return panel;};
     const tabs=[];
     for(const [value,label] of [['prompts',t('提示词','Prompts')],['params',t('参数','Parameters')]]){const b=btn(label,()=>{u.positions[u.tab]=scroll().scrollTop;u.tab=value;panel.dataset.cwPresetTab=value;for(const el of tabs)attr(el,'aria-selected',el.dataset.tab===value);scroll().scrollTop=u.positions[value];});b.setAttribute('role','tab');b.dataset.tab=value;attr(b,'aria-selected',value==='prompts');tabs.push(b);tabBar.append(b);}
-    const preset=panel.querySelector('#openai_api-presets .cw-v4-section');(preset||panel.querySelector(':scope>.cw-v4-drawer-page')).append(tabBar);
+    const preset=panel.querySelector('#openai_api-presets .cw-v4-section');if(preset)preset.after(tabBar);else panel.querySelector(':scope>.cw-v4-drawer-page').append(tabBar);
     manager.prepend(tools,filters,selectionLine);manager.append(empty,bottom);panel.dataset.cwPresetTab='prompts';manager.classList.add('cw-pm-list');
     const listen=(node,type,fn,options)=>{node.addEventListener(type,fn,options);u.dispose.push(()=>node.removeEventListener(type,fn,options));};
     // Bai captures clicks on document before our manager listener. Lock user row
@@ -303,7 +232,7 @@ export function createPresetList({win,make,button,t}) {
     for(const n of [u.tabBar,u.tools,u.count.parentElement,u.selectionLine,u.bottom,u.empty])n.remove();u.manager.removeAttribute('aria-busy');
     delete u.panel.dataset.cwPresetTab;u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering');
     // Restore live nodes even while native TT holds them outside the manager.
-    for(const r of hiddenNodes(u)){if(u.hidden.has(r))r.hidden=u.hidden.get(r);if(!r.matches('.cw-pm-row'))continue;r.classList.remove('cw-pm-selected','cw-pm-row','cw-pm-native-row');r.querySelectorAll('.cw-pm-select,.cw-pm-number,.cw-pm-state').forEach(n=>n.remove());const name=r.querySelector('.completion_prompt_manager_prompt_name');name?.removeAttribute('role');name?.removeAttribute('tabindex');}
+    for(const r of hiddenNodes(u)){if(u.hidden.has(r))r.hidden=u.hidden.get(r);if(!r.matches('.cw-pm-row'))continue;r.classList.remove('cw-pm-selected','cw-pm-row','cw-pm-native-row');r.querySelectorAll('.cw-pm-select,.cw-pm-number,.cw-pm-state,.cw-pm-description').forEach(n=>n.remove());const name=r.querySelector('.completion_prompt_manager_prompt_name');name?.removeAttribute('role');name?.removeAttribute('tabindex');}
     for(const ref of u.hiddenRefs)u.hiddenFinalizer.unregister(ref);u.hiddenRefs.clear();
   }
   return {mount,destroy};
