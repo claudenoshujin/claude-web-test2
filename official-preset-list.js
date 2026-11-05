@@ -56,13 +56,21 @@ export function createPresetList({win,make,button,t}) {
   const flag=(el,name,value)=>{if(el.classList.contains(name)!==value)el.classList.toggle(name,value);};
   const hidden=(el,value)=>{if(el.hidden!==value)el.hidden=value;};
   const prop=(el,name,value)=>{if(el[name]!==value)el[name]=value;};
+  function hideFloating(u){if(u.bottom.matches(':popover-open'))u.bottom.hidePopover();u.bottom.removeAttribute('popover');}
+  function floating(u){
+    if(!u.multi||!u.selected.size||u.tab!=='prompts'||doc.getElementById('main_api')?.value!=='openai'||!u.panel.classList.contains('openDrawer')||u.panel.classList.contains('cw-v4-inactive')||u.panel.classList.contains('cwr-presets-open')){hideFloating(u);return;}
+    if(!u.bottom.hasAttribute('popover'))u.bottom.setAttribute('popover','manual');
+    if(!u.bottom.matches(':popover-open'))u.bottom.showPopover();
+    const r=u.panel.getBoundingClientRect(),phone=win.innerWidth<=700,values={'--cw-pm-batch-x':r.x+(phone?12:34)+'px','--cw-pm-batch-w':r.width-(phone?24:92)+'px','--cw-pm-batch-bottom':win.innerHeight-r.bottom+(phone?22:16)+'px'};
+    for(const [key,value]of Object.entries(values))if(u.bottom.style.getPropertyValue(key)!==value)u.bottom.style.setProperty(key,value);
+  }
   function rememberHidden(r){if(!ui.hidden.has(r)){ui.hidden.set(r,r.hidden);const ref=new win.WeakRef(r);ui.hiddenRefs.add(ref);ui.hiddenFinalizer.register(r,ref,ref);}}
   function* hiddenNodes(u){for(const ref of u.hiddenRefs){const r=ref.deref();if(r)yield r;else u.hiddenRefs.delete(ref);}}
   function reset(){if(!ui)return;if(ui.context===key())restoreGroups();else{ui.expanded.clear();ui.expanding.clear();}ui.epoch++;ui.selected.clear();ui.lastStates.clear();ui.undo=null;ui.frozen=null;ui.anchor=null;ui.multi=false;ui.sort=false;ui.context=key();text(ui.message,'');paint();}
   function paint(){
     if(!ui)return;
     if(ui.context!==key()){reset();return;}
-    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){delete ui.panel.dataset.cwPresetTab;clearVisibleControls(ui);return;}
+    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){hideFloating(ui);delete ui.panel.dataset.cwPresetTab;clearVisibleControls(ui);return;}
     if(!ui.manager.contains(ui.tools)){ui.manager.prepend(ui.tools,ui.filterLine,ui.selectionLine);ui.manager.append(ui.empty,ui.bottom);}
     if(ui.manager.lastElementChild!==ui.bottom)ui.manager.append(ui.empty,ui.bottom);
     const active=doc.getElementById('main_api')?.value==='openai';hidden(ui.tabBar,!active);
@@ -120,6 +128,7 @@ export function createPresetList({win,make,button,t}) {
     prop(ui.allButton,'disabled',ui.busy||!visible.some(allowed));prop(ui.multiButton,'disabled',ui.busy);prop(ui.sortButton,'disabled',ui.busy||ui.multi);
     prop(ui.search,'disabled',ui.busy);
     for(const b of ui.filters){prop(b,'disabled',ui.busy);attr(b,'aria-pressed',b.dataset.filter===ui.filter);}
+    floating(ui);
     // Gate every existing sorter; keep plugin groups, callbacks and movement rules.
     sortables(!ui.sort||ui.multi||ui.busy||!!query||ui.filter!=='all');
   }
@@ -181,7 +190,7 @@ export function createPresetList({win,make,button,t}) {
     const allButton=btn(t('全选当前结果','Select current results'),()=>{for(const r of entries())if(ui.visible.includes(id(r))&&allowed(r))ui.selected.add(id(r));paint();});
     const clear=btn(t('清除选择','Clear selection'),()=>{ui.selected.clear();paint();});
     const enable=btn(t('启用','Enable selected'),()=>run(true)),disable=btn(t('停用','Disable selected'),()=>run(false)),undoButton=btn(t('撤销','Undo'),()=>run(false,true));
-    const more=make('details','cw-v4-more cw-pm-more'),summary=make('summary','','⋯'),menu=make('div','cw-v4-more-list');summary.setAttribute('aria-label',t('提示词工具','Prompt tools'));more.append(summary,menu);for(const [label,run]of [[t('多选','Select'),()=>multiButton.click()],[t('调整顺序','Reorder'),()=>sortButton.click()],[t('插入','Insert'),()=>manager.querySelector('.fa-chain,.fa-link')?.cwOpenPicker?.()],[t('导入提示词','Import prompts'),()=>doc.getElementById('prompt-manager-import')?.click()],[t('导出提示词','Export prompts'),()=>doc.getElementById('prompt-manager-export')?.click()]])menu.append(btn(label,()=>{more.open=false;run();}));const reorderHint=make('div','cw-pm-reorder-hint');reorderHint.append(make('span','',t('按住左边的把手拖动排序；改完点“完成”。','Drag the handles to reorder, then choose Done.')),btn(t('完成','Done'),()=>sortButton.click()));tools.append(reorderHint,search,multiButton,sortButton,more);selectionLine.append(allButton,clear);const remove=btn(t('删除','Remove'),()=>removeSelected());remove.classList.add('cw-pm-remove');batch.append(selection,enable,disable,remove);feedback.append(message,undoButton);bottom.append(batch,feedback);
+    const more=make('details','cw-v4-more cw-pm-more'),summary=make('summary','','⋯'),menu=make('div','cw-v4-more-list');summary.setAttribute('aria-label',t('提示词工具','Prompt tools'));more.append(summary,menu);for(const [label,run]of [[t('多选','Select'),()=>multiButton.click()],[t('调整顺序','Reorder'),()=>{if(ui.multi)multiButton.click();sortButton.click();}],[t('插入','Insert'),()=>manager.querySelector('.fa-chain,.fa-link')?.cwOpenPicker?.()],[t('导入提示词','Import prompts'),()=>doc.getElementById('prompt-manager-import')?.click()],[t('导出提示词','Export prompts'),()=>doc.getElementById('prompt-manager-export')?.click()]])menu.append(btn(label,()=>{more.open=false;run();}));const reorderHint=make('div','cw-pm-reorder-hint');reorderHint.append(make('span','',t('按住左边的把手拖动排序；改完点“完成”。','Drag the handles to reorder, then choose Done.')),btn(t('完成','Done'),()=>sortButton.click()));tools.append(reorderHint,search,multiButton,sortButton,more);selectionLine.append(allButton,clear);const remove=btn(t('删除','Remove'),()=>removeSelected());remove.classList.add('cw-pm-remove');batch.append(selection,enable,disable,remove);feedback.append(message,undoButton);bottom.append(batch,feedback);
     const empty=make('p','cw-pm-empty',t('没有匹配的提示词','No matching prompts'));
     ui={panel,manager,tabBar,tools,filterLine:filters,count,search,multiButton,sortButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,sort:false,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
     const u=ui;
@@ -196,6 +205,7 @@ export function createPresetList({win,make,button,t}) {
     const preset=panel.querySelector('#openai_api-presets .cw-v4-section');if(preset)preset.after(tabBar);else panel.querySelector(':scope>.cw-v4-drawer-page').append(tabBar);
     manager.prepend(tools,filters,selectionLine);manager.append(empty,bottom);panel.dataset.cwPresetTab='prompts';manager.classList.add('cw-pm-list');
     const listen=(node,type,fn,options)=>{node.addEventListener(type,fn,options);u.dispose.push(()=>node.removeEventListener(type,fn,options));};
+    listen(win,'resize',()=>floating(u));
     // Bai captures clicks on document before our manager listener. Lock user row
     // actions one level earlier, while allowing the adapter's own toggle clicks.
     listen(win,'click',e=>{if(!u.busy||e.target===u.nativeAction||e.target?.nodeType!==1||!u.manager.contains(e.target))return;const r=e.target.closest?.(ROW);if(r?.closest('.bai-bai-preset-vue-list-host')){e.preventDefault();e.stopImmediatePropagation();}},true);
@@ -221,13 +231,13 @@ export function createPresetList({win,make,button,t}) {
     let pruneTimer,paintFrame=0;
     const queuePaint=()=>{if(paintFrame||ui!==u)return;paintFrame=win.requestAnimationFrame(()=>{paintFrame=0;if(ui===u)paint();});};
     u.queuePaint=queuePaint;for(const type of ['focusin','focusout'])listen(manager,type,e=>{if(e.target.closest?.(ROW))queuePaint();});
-    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active)queuePaint();else{delete panel.dataset.cwPresetTab;clearVisibleControls(u);}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
+    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active)queuePaint();else{hideFloating(u);delete panel.dataset.cwPresetTab;clearVisibleControls(u);}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
     const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select,.cw-pm-number,.cw-pm-state')||!!e.closest('.cw-pm-number,.cw-pm-state'));};
     const ownMutation=r=>{if(r.type==='attributes'){const old=new Set((r.oldValue||'').split(/\s+/).filter(Boolean)),now=new Set(r.target.classList);const changed=[...[...old].filter(k=>!now.has(k)),...[...now].filter(k=>!old.has(k))];return changed.every(k=>k.startsWith('cw-pm-'));}return owned(r.target)||[...r.addedNodes,...r.removedNodes].every(owned);};
     const observer=new win.MutationObserver(records=>{if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
     paint();
   }
-  function destroy(){if(!ui)return;const u=ui;clearVisibleControls(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
+  function destroy(){if(!ui)return;const u=ui;hideFloating(u);clearVisibleControls(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
     restoreGroups(u);for(const e of u.sortables.values())restoreSort(e);
     for(const n of [u.tabBar,u.tools,u.count.parentElement,u.selectionLine,u.bottom,u.empty])n.remove();u.manager.removeAttribute('aria-busy');
     delete u.panel.dataset.cwPresetTab;u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering');
