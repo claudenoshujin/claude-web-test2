@@ -3,12 +3,14 @@ import { preferencesFor } from './preferences.js?v=2.0.339';
 import { officialIcons } from './official-icons.js?v=2.0.339';
 import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.339';
 import { tr } from './official-i18n.js?v=2.0.339';
+import { normalizeSettingsSections } from './settings-sections.js?v=2.0.339';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
  */
 export function installOfficialLayout(win = window) {
   const doc = win.document, root = doc.documentElement;
+  root.setAttribute("data-cw-settings-unified", "");
   const ids = [
     ['left-nav-panel', '预设', 'Presets'], ['rm_api_block', 'API 连接', 'API connection'],
     ['AdvancedFormatting', '格式化', 'Formatting'], ['WorldInfo', '世界书', 'World info'],
@@ -231,6 +233,7 @@ export function installOfficialLayout(win = window) {
     const remaining = make('div','cw-v4-pref-remaining');
     while (panel.firstChild) remaining.append(panel.firstChild);
     pages.append(remaining); panel.append(pages);
+    normalizeSettingsSections(pages,make);
     selectPrefs(prefPage);
   }
   const isOpen = p => p.classList.contains('openDrawer') && !p.classList.contains('closedDrawer');
@@ -569,6 +572,7 @@ export function installOfficialLayout(win = window) {
     for (const b of seg.children) { const on = b.dataset.value === sel.value; if ((b.getAttribute('aria-pressed') === 'true') !== on) b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
   }
   function buildSegs(panel) {
+    if(root.hasAttribute('data-cw-settings-unified'))return; // Retain original boxed selects.
     if (mobile()) return;
     panel.querySelectorAll('.cw-v4-row-controls>select:not([multiple]):not(.select2-hidden-accessible)').forEach(sel => {
       if (segSel.has(sel) || !segFits(sel)) return;
@@ -1014,7 +1018,7 @@ export function installOfficialLayout(win = window) {
         let hits=0;
         n.querySelectorAll('.cw-v4-pref-sec').forEach(sec=>{
           const inSec=!!searchQuery&&sec.firstElementChild.textContent.toLocaleLowerCase().includes(searchQuery);let secHits=0;
-          sec.querySelectorAll(':scope>.cw-v4-pref-row').forEach(row=>{const ok=!searchQuery||inSec||row.querySelector('.cw-v4-row-info')?.textContent.toLocaleLowerCase().includes(searchQuery);if(row.hidden===!!ok)row.hidden=!ok;if(ok)secHits++;});
+          sec.querySelectorAll(':scope>.cw-v4-card>.cw-v4-pref-row').forEach(row=>{const ok=!searchQuery||inSec||row.querySelector('.cw-v4-row-info')?.textContent.toLocaleLowerCase().includes(searchQuery);if(row.hidden===!!ok)row.hidden=!ok;if(ok)secHits++;});
           if(sec.hidden===!!secHits)sec.hidden=!secHits;hits+=secHits;
         });
         const hide=searchQuery ? !hits : !mobile()&&n.dataset.page!==prefPage;if(n.hidden!==hide)n.hidden=hide;
@@ -2175,7 +2179,7 @@ export function installOfficialLayout(win = window) {
     }
     panelDecorations.clear();
     shell?.remove(); doc.querySelector('.cw-v4-chat-head')?.remove();
-    root.removeAttribute('data-cw-v4'); root.removeAttribute('data-cw-v4-settings');
+    root.removeAttribute('data-cw-settings-unified'); root.removeAttribute('data-cw-v4'); root.removeAttribute('data-cw-v4-settings');
     for (const [key, value, priority] of iconProperties) if (root.style.getPropertyValue(key) === installedIconValues.get(key)) {
       if (value) root.style.setProperty(key, value, priority); else root.style.removeProperty(key);
     }

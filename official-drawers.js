@@ -1,5 +1,6 @@
 import { createPresetManagerPage } from './official-preset-manager.js?v=2.0.339';
 import { createInterfaceRefinements } from './official-interface-refinements.js?v=2.0.339';
+import { normalizeSettingsSections } from './settings-sections.js?v=2.0.339';
 /* Semantic live layouts, ported from design-v4 (redo.js / wi.js).
  * Only original DOM nodes are moved; lists/forms keep their IDs and native
  * handlers. Comment markers allow a full return to the native layout.
@@ -23,10 +24,16 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   let promptScroll=null;
   const get=id=>doc.getElementById(id);
   function state(root){let s=states.get(root);if(!s){s={moves:[],created:[],root};states.set(root,s);}return s;}
-  function move(s,node,host,before){if(!node||node===host||node.contains(host))return;const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark]);}if(before)host.insertBefore(node,before);else host.append(node);if(companion)move(s,companion,host);}
+  function sectionHost(host){
+    if(!host.matches?.('.cw-v4-section'))return host;
+    const card=host.querySelector(':scope>.cw-v4-card');if(!card)return host;
+    for(const child of [...host.childNodes])if(child!==card&&!(child.nodeType===1&&child.matches('h2')))card.append(child);
+    return card;
+  }
+  function move(s,node,host,before){if(!node||node===host||node.contains(host))return;if(!before)host=sectionHost(host);const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark]);}if(before)host.insertBefore(node,before);else host.append(node);if(companion)move(s,companion,host);}
   const created=(s,n)=>{s.created.push(n);return n;};
   const cleanup=(s,f)=>{(s.cleanups||=[]).push(f);};
-  function section(page,title){const n=make('section','cw-v4-section');if(title)n.append(make('h2','',L(title)));page.append(n);return n;}
+  function section(page,title){const n=make('section','cw-v4-section');if(title)n.append(make('h2','',L(title)));n.append(make('div','cw-v4-card'));page.append(n);return n;}
   // srow(): title + description on the left, controls on the right.
   function rowEl(label,desc,cls=''){
     const r=make('div','cw-v4-row'+(cls?' '+cls:'')),info=make('div','cw-v4-row-info'),controls=make('div','cw-v4-row-controls');
@@ -35,7 +42,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     if(label||desc)r.append(info);r.append(controls);return {r,info,controls};
   }
   function row(s,host,label,desc,nodes,cls){
-    const {r,info,controls}=rowEl(label,desc,cls);host.append(r);
+    const {r,info,controls}=rowEl(label,desc,cls);sectionHost(host).append(r);
     if(desc instanceof win.Node){const d=make('div','cw-v4-row-desc');info.append(d);if(desc.parentNode)move(s,desc,d);else d.append(desc);}
     for(const n of [].concat(nodes||[]))if(n)move(s,n,controls);
     if([].concat(nodes||[]).some(n=>n?.closest?.('[data-cc-null]')))r.setAttribute('data-cc-null','');
@@ -70,7 +77,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   // textRow(): two-line preview under the title + an Edit dialog.
   function textRow(s,host,ta,label,desc){
     if(!ta)return null;
-    const {r,info,controls}=rowEl(label,'','cw-v4-tprev-row');host.append(r);
+    const {r,info,controls}=rowEl(label,'','cw-v4-tprev-row');sectionHost(host).append(r);
     const prev=make('div','cw-v4-tprev');info.append(prev);
     const paint=()=>{const v=ta.value.trim();const text=v||L('（空）');if(prev.textContent!==text)prev.textContent=text;prev.classList.toggle('cw-v4-tprev-empty',!v);};
     paint();ta._cwV4Paint=paint;ta.dataset.cwV4Text='1';ta.addEventListener('input',paint);ta.addEventListener('change',paint);
@@ -939,6 +946,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       }
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
       presetManagerPage.sync(panel);refinements.sync(panel,state(panel));
+      normalizeSettingsSections(panel,make);
       for(const f of paints)f();
     },
     restore(){presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;for(const s of [...states.values()].reverse()){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}for(const [node,mark] of [...s.moves].reverse())if(mark.parentNode)mark.replaceWith(node);s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
