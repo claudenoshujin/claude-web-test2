@@ -94,7 +94,7 @@ html[data-cw-settings-unified] #Backgrounds .BGSampleTitle {display:block!import
 html[data-cw-settings-unified] #Backgrounds .bg_example_img {display:none!important}
 html[data-cw-settings-unified] #Backgrounds .selected-background .thumbnail-clipper {outline:2px solid var(--cwus-blue)!important;outline-offset:2px!important}
 html[data-cw-settings-unified] #Backgrounds .selected-background::after {content:'✓'!important;position:absolute!important;top:6px!important;right:6px!important;width:22px!important;height:22px!important;border-radius:50%!important;background:var(--cwus-blue)!important;color:white!important;font:600 14px/22px sans-serif!important;text-align:center!important;pointer-events:none!important;z-index:2!important}
-html[data-cw-settings-unified] #Backgrounds .mobile-only-menu-toggle {display:flex!important;position:absolute!important;inset:auto 6px 30px auto!important;width:30px!important;height:30px!important;border-radius:8px!important;background:var(--cwus-surface)!important;align-items:center!important;justify-content:center!important;z-index:3!important;opacity:0!important}
+html[data-cw-settings-unified] #Backgrounds .bg_example .mobile-only-menu-toggle {display:flex!important;position:absolute!important;inset:auto 6px 30px auto!important;width:30px!important;height:30px!important;border-radius:8px!important;background:var(--cwus-surface)!important;align-items:center!important;justify-content:center!important;z-index:3!important;opacity:0!important}
 html[data-cw-settings-unified] #Backgrounds .bg_example:hover .mobile-only-menu-toggle {opacity:1!important}
 html[data-cw-settings-unified] #rm_api_block .cw-v4-api-row.cwr-api-field {display:block!important}
 html[data-cw-settings-unified] #rm_api_block .cwr-api-field>.cw-v4-api-controls {width:100%!important;max-width:100%!important;margin-top:6px!important;display:block!important}
@@ -126,8 +126,10 @@ html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage im
 html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage img:first-child {margin-left:0!important}
 html[data-cw-settings-unified] #Backgrounds #bg_folder_grid:empty {display:none!important}
 html[data-cw-settings-unified] #Backgrounds .selected-background::before {display:none!important}
-html[data-cw-settings-unified] #Backgrounds .mobile-only-menu-toggle>i {display:none!important}
-html[data-cw-settings-unified] #Backgrounds .mobile-only-menu-toggle::after {content:'⋯'!important;font:500 20px/1 sans-serif!important;color:var(--cwus-ink)!important}
+html[data-cw-settings-unified] #Backgrounds .bg_example .mobile-only-menu-toggle>i {display:none!important}
+html[data-cw-settings-unified] #Backgrounds .bg_example .mobile-only-menu-toggle::after {content:'⋯'!important;font:500 20px/1 sans-serif!important;color:var(--cwus-ink)!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tag>* {color:inherit!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tag[data-toggle-state=EXCLUDED] {background:var(--cwus-canvas)!important;color:var(--cwus-red)!important;border-color:var(--cwus-red)!important}
 html[data-cw-settings-unified] #rm_api_block .cwr-api-help>summary {position:absolute!important;right:0!important;top:0!important;font-size:12px!important}
 html[data-cw-settings-unified] #rm_api_block .cwr-api-help[open]>ol {margin-top:6px!important}
 html[data-cw-settings-unified] #rm_api_block .online_status {display:flex!important;align-items:center!important;gap:8px!important;margin:0!important;padding:0!important;background:none!important;border:0!important;position:static!important}
@@ -161,7 +163,7 @@ html[data-cw-settings-unified] #right-nav-panel .cwr-list-actions #rm_button_cre
  html[data-cw-settings-unified] #Backgrounds .cwr-list-head>h2 {display:none!important}
  html[data-cw-settings-unified] #Backgrounds .cwr-list-head {justify-content:flex-end!important;margin:0 0 12px!important}
  html[data-cw-settings-unified] #Backgrounds .bg_list {grid-template-columns:repeat(2,minmax(0,1fr))!important}
- html[data-cw-settings-unified] #Backgrounds .mobile-only-menu-toggle {opacity:1!important}
+ html[data-cw-settings-unified] #Backgrounds .bg_example .mobile-only-menu-toggle {opacity:1!important}
  html[data-cw-settings-unified] #Backgrounds .bg_tab_button a {padding:5px 9px!important}
  html[data-cw-settings-unified] #Backgrounds .bg_example .jg-menu {z-index:5!important}
 }
