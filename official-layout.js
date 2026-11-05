@@ -144,7 +144,7 @@ export function installOfficialLayout(win = window) {
   const R = {
     tog(id,extra){const el=take(id);if(!el)return null;const lab=el.closest('label')||el.parentElement;const text=[...lab.children].find(c=>!['INPUT','I','A','AUDIO'].includes(c.tagName));
       const r=prow(textOf(text)||labelFor(el),titleOf(lab),[el],'',tagsOf(lab));lab.querySelectorAll('audio').forEach(a=>pm(a,r));if(extra)extra(r,lab);return r;},
-    sel(id,o={}){const el=take(id);if(!el)return null;const wrap=el.closest('div')||el.parentElement;const lab=prefPanel.querySelector(`label[for="${id}"]`)||[...wrap.children].find(c=>c!==el&&/^(SPAN|SMALL|LABEL)$/.test(c.tagName))||wrap.querySelector('label');
+    sel(id,o={}){const el=take(id);if(!el)return null;if(id==='ui_language_select'&&el.selectedIndex<0){const saved=win.localStorage.getItem('language')||'',match=[...el.options].find(o=>o.value.toLowerCase()===saved.toLowerCase());if(match){el.value=match.value;disposers.push(()=>{if(el.value===match.value&&win.localStorage.getItem('language')===saved)el.selectedIndex=-1;});}}const wrap=el.closest('div')||el.parentElement;const lab=prefPanel.querySelector(`label[for="${id}"]`)||[...wrap.children].find(c=>c!==el&&/^(SPAN|SMALL|LABEL)$/.test(c.tagName))||wrap.querySelector('label');
       return prow(o.label||textOf(lab)||labelFor(el),o.desc??titleOf(el,wrap,wrap.parentElement),[el],'cw-v4-stackm');},
     range(id,num,o={}){const el=take(id);if(!el)return null;const n=num?take(num):null,box=el.parentElement;const lab=box.querySelector('small span, label, small');const info=box.querySelector('.fa-circle-info');
       let desc=o.desc??titleOf(info,box);const more=[...box.querySelectorAll(':scope > small')].slice(1).map(s=>clean(s.textContent)).join(' ');if(more)desc=desc?`${desc} ${more}`:more;
@@ -420,6 +420,7 @@ export function installOfficialLayout(win = window) {
      不读布局（sync 很频繁）；只在类型变化时才写属性。 */
   const GENERIC_BTN = /^(编辑|配置|选择|设置|管理|打开|Edit|Configure|Choose|Open|Manage|Settings)$/i;
   const hiddenEl = k => k.hidden || k.style.display === 'none' || k.classList.contains('displayNone') || k.classList.contains('cw-v4-hidden-native');
+  const fieldRows=new Map();
   function tagRows(panel) {
     for (const row of panel.querySelectorAll('.cw-v4-row,.cw-v4-api-row')) {
       if(row.closest('.cwr-page')||row.matches('.cwr-preset-entry,.cwr-connection-row'))continue;
@@ -429,6 +430,9 @@ export function installOfficialLayout(win = window) {
         const kids = [...ctl.children].filter(k => !hiddenEl(k));
         // 用户角色页的「设为默认 / 绑定到当前角色」是画成开关的按钮，保持开关，不改成「›」行。
         const isBtn = k => k.matches('.cw-v4-as-btn,.cw-v4-pref-btn,.cw-v4-button,.menu_button,button') && !k.matches('[id^=lock_],[role=switch],[aria-pressed]');
+        if(!fieldRows.has(row))fieldRows.set(row,row.getAttribute('data-cw-field'));
+        const field = kids.length > 2 ? '1' : '';
+        if((row.dataset.cwField||'')!==field){if(field)row.dataset.cwField=field;else delete row.dataset.cwField;}
         const btns = kids.filter(isBtn), more = kids.filter(k => k.matches('details.cw-v4-more')), others = kids.filter(k => !isBtn(k) && !k.matches('details.cw-v4-more'));
         if (btns.length >= 2 && !others.length) kind = 'actions';
         else if (btns.length === 1 && more.length && !others.length) kind = 'actions';
@@ -2163,6 +2167,7 @@ export function installOfficialLayout(win = window) {
       d.close(); d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted');
     }
     disposers.forEach(f=>f());
+    for(const [row,value]of fieldRows){if(value===null)row.removeAttribute('data-cw-field');else row.setAttribute('data-cw-field',value);}fieldRows.clear();
     sheetStack = [];
     doc.querySelectorAll('[data-cw-sheet-under],[data-cw-sheet-lvl2]').forEach(n=>{n.removeAttribute('data-cw-sheet-under');n.removeAttribute('data-cw-sheet-lvl2');});
     doc.getElementById('send_form')?.removeAttribute('data-cw-disclaimer');
