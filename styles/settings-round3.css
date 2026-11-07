@@ -1,4 +1,4 @@
-/* Settings preview, rounds 3–4. Window dimensions belong to settings; editor variables stay native. */
+/* Settings preview, rounds 3–5. Window dimensions belong to settings; editor variables stay native. */
 @layer cw-settings-visibility,cw-settings-round3,cw-settings-unified;
 @layer cw-settings-round3 {
 html[data-cw-settings-unified] :is(.cw-v4-shell,.cw-v4-panel) {--cwus-window-w:min(1040px,calc(100vw - 48px));--cwus-window-h:min(760px,calc(100dvh - 64px));--cwus-window-x:calc((100vw - var(--cwus-window-w))/2);--cwus-window-y:calc((100dvh - var(--cwus-window-h))/2);--cwus-accent:#d97757}
@@ -141,7 +141,9 @@ html[data-cw-settings-unified] #rm_api_block .cw-v4-api-inline-row>h4 {font-size
 html[data-cw-settings-unified] #rm_api_block #openai_api:has(>#prompt_post_processing_form:not([style*="display: none"]))>.cw-v4-form-section:not(#prompt_post_processing_form) {border-radius:0!important;border-bottom:0!important}
 html[data-cw-settings-unified] #right-nav-panel .cwr-list-actions #rm_button_create {background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
 /* Round 4: measured against the supplied design, without touching chat or native data. */
-html[data-cw-settings-unified][data-claude-integrated-theme=night][data-claude-font=follow] :is(.cw-v4-panel,.cw-v4-shell) {--cw-v4-font:"Anthropic Sans","Styrene B","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+html[data-cw-settings-unified][data-claude-font=follow] :is(.cw-v4-panel,.cw-v4-shell) {--cw-v4-font:"Anthropic Sans","Styrene B","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+html[data-cw-settings-unified] .cw-v4-panel {--cwus-row-soft:#f4f4f1}
+html[data-cw-settings-unified][data-claude-integrated-theme=night] .cw-v4-panel {--cwus-row-soft:#2c2c2a}
 html[data-cw-settings-unified] :is(.cw-v4-panel,.cw-v4-shell) {text-shadow:none!important;-webkit-text-stroke:0!important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-first-section,html[data-cw-settings-unified] .cw-v4-panel .cwr-first-heading {margin-top:0!important}
 html[data-cw-settings-unified] #user-settings-block .cw-v4-pref-page[data-page=acct]>.cw-v4-pref-title {margin-bottom:18px!important}
@@ -152,8 +154,8 @@ html[data-cw-settings-unified] #rm_api_block .manage-api-keys {display:flex!impo
 html[data-cw-settings-unified] #rm_api_block .cwr-api-field .flex-container:has(>.manage-api-keys)>input {min-width:0!important;width:0!important;flex:1!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-num {box-sizing:border-box!important;width:86px!important;min-width:86px!important;max-width:86px!important;flex:0 0 86px!important;background:var(--cwus-surface)!important;border:1px solid var(--cwus-line)!important;text-align:right!important;padding:0 10px!important}
 html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list>li.cw-v4-prompt-row {min-height:60px!important;padding-top:9px!important;padding-bottom:9px!important}
-html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list>li.cw-v4-prompt-row.cw-pm-selected {background:var(--cwus-blue-soft)!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-placeholder {display:inline-block!important;width:auto!important;min-width:max-content!important;max-width:none!important;white-space:nowrap!important;padding:0 6px!important;border-radius:5px!important;border:1px solid var(--cwus-soft)!important;background:var(--cwus-canvas)!important;color:var(--cwus-muted)!important;font:400 11px/16px var(--cw-v4-font)!important;margin-right:4px!important}
+html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list>li.cw-v4-prompt-row:is(:hover,.cw-pm-selected) {background:var(--cwus-row-soft)!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-placeholder {display:inline-block!important;width:auto!important;min-width:max-content!important;max-width:none!important;height:auto!important;min-height:0!important;max-height:none!important;white-space:nowrap!important;padding:1px 7px!important;border-radius:999px!important;border:0!important;outline:0!important;box-shadow:none!important;filter:none!important;background:var(--cwus-row-soft)!important;color:var(--cwus-muted)!important;font:400 11px/16px var(--cw-v4-font)!important;margin-right:4px!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-search {padding-left:33px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237b7974' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 4.5 4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-size:16px 16px!important;background-position:11px center!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-remove {display:inline-flex!important;align-items:center!important;gap:6px!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-trash {display:inline-block!important;width:14px!important;height:14px!important;background:currentColor!important;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7'/%3E%3C/svg%3E") center/contain no-repeat!important}
@@ -172,9 +174,9 @@ html[data-cw-settings-unified] #right-nav-panel .group_select .group_name_block 
 html[data-cw-settings-unified] #right-nav-panel .character_select .character_name_block {margin:0!important}
 html[data-cw-settings-unified] #right-nav-panel .character_select .character_select_container {gap:0!important}
 html[data-cw-settings-unified] #right-nav-panel .tags_inline:empty {display:none!important}
-html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage img {width:40px!important;height:40px!important;min-width:40px!important;border:0!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage img {width:40px!important;height:40px!important;min-width:40px!important;max-width:40px!important;min-height:40px!important;max-height:40px!important;aspect-ratio:1!important;object-fit:cover!important;border:0!important}
 html[data-cw-settings-unified] #right-nav-panel .group_select.cwr-group-multi .avatar_collage {width:64px!important;min-width:64px!important;flex-basis:64px!important}
-html[data-cw-settings-unified] #right-nav-panel .group_select.cwr-group-multi .avatar_collage img {width:28px!important;height:28px!important;min-width:28px!important;border:2px solid var(--cwus-surface)!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select.cwr-group-multi .avatar_collage img {width:28px!important;height:28px!important;min-width:28px!important;max-width:28px!important;min-height:28px!important;max-height:28px!important;aspect-ratio:1!important;object-fit:cover!important;border:2px solid var(--cwus-surface)!important}
 html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage img:nth-child(n+4) {display:none!important}
 html[data-cw-settings-unified] #right-nav-panel .group_select .group_select_container {width:auto!important;min-width:0!important;flex:1 1 0!important;gap:0!important}
 html[data-cw-settings-unified] #right-nav-panel .group_select :is(.group_select_block_list,.character_name_block_sub_line,.group_select_counter) {display:none!important}
