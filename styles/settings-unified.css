@@ -520,9 +520,10 @@ html[data-cw-settings-unified] .cw-v4-panel :where(.cw-v4-row-controls input:not
  border:1px solid var(--cwus-line)!important;border-radius:9px!important;font-size:13.5px!important;font-weight:var(--cwus-normal-weight)!important;line-height:normal!important;
 }
 /* Minimums follow the multiline prototype, with round 5 as fallback; --cwr-input-height remains native autosize output. */
-html[data-cw-settings-unified] .cw-v4-panel textarea.cwr-input:not(.cwr-compact) {height:var(--cwr-input-height,100px)!important;min-height:var(--cwr-textarea-min,100px)!important;line-height:1.6!important}
+html[data-cw-settings-unified] .cw-v4-panel textarea.cwr-input:not(.cwr-compact) {height:var(--cwr-input-height,100px)!important;min-height:var(--cwr-textarea-min,100px)!important;line-height:1.6!important;padding:6px 10px!important}
 html[data-cw-settings-unified] #start_reply_with {--cwr-textarea-min:64px}
 html[data-cw-settings-unified] #persona_description {--cwr-textarea-min:170px}
+html[data-cw-settings-unified] .cwr-persona-editor>.cwr-card+.cwr-card {margin-top:12px!important}
 html[data-cw-settings-unified] #context_story_string {--cwr-textarea-min:96px}
 html[data-cw-settings-unified] #sysprompt_content {--cwr-textarea-min:120px}
 html[data-cw-settings-unified] #sysprompt_post_history {--cwr-textarea-min:64px}
