@@ -1,10 +1,10 @@
-import { createFontWeightControl } from './font-weight.js?v=2.0.339';
-import { preferencesFor } from './preferences.js?v=2.0.339';
-import { officialIcons } from './official-icons.js?v=2.0.339';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.339';
-import { retainRangeCounter } from './official-extension-settings.js?v=2.0.339';
-import { tr } from './official-i18n.js?v=2.0.339';
-import { normalizeSettingsSections } from './settings-sections.js?v=2.0.339';
+import { createFontWeightControl } from './font-weight.js?v=2.0.340';
+import { preferencesFor } from './preferences.js?v=2.0.340';
+import { officialIcons } from './official-icons.js?v=2.0.340';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.340';
+import { retainRangeCounter } from './official-extension-settings.js?v=2.0.340';
+import { tr } from './official-i18n.js?v=2.0.340';
+import { normalizeSettingsSections } from './settings-sections.js?v=2.0.340';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.

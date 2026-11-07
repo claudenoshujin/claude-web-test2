@@ -1,6 +1,6 @@
-@import url('./settings-round3.css?v=2.0.339');
+@import url('./settings-round3.css?v=2.0.340');
 @import url("https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300..600&display=swap");
-@import url('./settings-unified.css?v=2.0.339');
+@import url('./settings-unified.css?v=2.0.340');
 /* Mobile: keep a fixed element in a message from making the root touch-scrollable. */
 html[data-cw-v4][data-claude-layout="mobile"]{overflow-y:hidden!important}
 /* Keep message fixed elements anchored to the viewport, not a scrollable root. */
