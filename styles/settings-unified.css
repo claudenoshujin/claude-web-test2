@@ -442,6 +442,7 @@ html[data-cw-settings-unified] .cw-v4-panel :is(.cw-v4-page-title,.cw-v4-pref-ti
  font-family:var(--cw-v4-font)!important;height:auto!important;min-height:0!important;flex:none!important;font-size:20px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;line-height:normal!important;margin:0!important;
 }
 html[data-cw-settings-unified] .cw-v4-panel :is(.cwr-page-heading,.cwr-list-head) {margin:0 0 6px!important;gap:12px!important}
+html[data-cw-settings-unified] .cw-v4-panel :is(.cwr-page-heading,.cwr-list-head)>h2 {flex:1 1 0%!important;min-width:0!important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-pref-title:has(+.cw-v4-lede) {margin-bottom:6px!important}
 html[data-cw-settings-unified] .cw-v4-panel :is(.cw-v4-lede,.cwr-lede,.cwr-character-intro) {
  font-size:13px!important;font-weight:calc(400 + var(--cw-ui-weight-offset,0))!important;line-height:normal!important;margin:0 0 18px!important;
@@ -487,8 +488,8 @@ html[data-cw-settings-unified] :is(.cw-v4-panel,.cwr-confirm) :is(.cw-v4-more>su
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-more {--cwus-more-size:34px;width:var(--cwus-more-size)!important;min-width:0!important;max-width:none!important;height:var(--cwus-more-size)!important;flex:0 0 var(--cwus-more-size)!important;padding:0!important;margin:0!important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-prompt-row>.cw-v4-more {--cwus-more-size:30px}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-prompt-row>.cw-v4-more>summary {grid-column:auto!important}
-html[data-cw-settings-unified] .cw-v4-more>summary {--cwus-button-w:var(--cwus-more-size);--cwus-button-h:var(--cwus-more-size)}
-html[data-cw-settings-unified] .cw-v4-more>summary::before {width:15px!important;height:15px!important;vertical-align:middle!important}
+html[data-cw-settings-unified] .cw-v4-more>summary {--cwus-button-w:var(--cwus-more-size);--cwus-button-h:var(--cwus-more-size);gap:0!important}
+html[data-cw-settings-unified] .cw-v4-more>summary::before {width:15px!important;height:15px!important;flex:none!important;vertical-align:middle!important;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Ccircle cx='6' cy='12' r='1.6'/%3E%3Ccircle cx='12' cy='12' r='1.6'/%3E%3Ccircle cx='18' cy='12' r='1.6'/%3E%3C/svg%3E") center/contain no-repeat!important}
 html[data-cw-settings-unified] .cw-v4-panel :is(.cw-v4-as-btn,.cw-v4-button,.cwr-btn,.cwex-btn) :is(.cw-v4-icon,svg) {width:15px!important;height:15px!important;flex:none!important}
 html[data-cw-settings-unified] :is(.completion_prompt_manager_footer .cw-v4-as-btn:not(:has(.cw-v4-plus)),.cwr-btn.cwr-sm) {--cwus-button-h:30px;--cwus-button-p:0 11px;--cwus-button-font:13px}
 html[data-cw-settings-unified] .cw-v4-panel :is(.cw-pm-filters>button,.cw-v4-tags .tag) {
@@ -518,6 +519,14 @@ html[data-cw-settings-unified] .cw-v4-panel :where(.cw-v4-row-controls input:not
  box-sizing:border-box!important;height:34px!important;min-height:34px!important;padding:0 10px!important;margin:0!important;
  border:1px solid var(--cwus-line)!important;border-radius:9px!important;font-size:13.5px!important;font-weight:var(--cwus-normal-weight)!important;line-height:normal!important;
 }
+/* Minimums follow the multiline prototype, with round 5 as fallback; --cwr-input-height remains native autosize output. */
+html[data-cw-settings-unified] .cw-v4-panel textarea.cwr-input:not(.cwr-compact) {height:var(--cwr-input-height,100px)!important;min-height:var(--cwr-textarea-min,100px)!important;line-height:1.6!important}
+html[data-cw-settings-unified] #start_reply_with {--cwr-textarea-min:64px}
+html[data-cw-settings-unified] #persona_description {--cwr-textarea-min:170px}
+html[data-cw-settings-unified] #context_story_string {--cwr-textarea-min:96px}
+html[data-cw-settings-unified] #sysprompt_content {--cwr-textarea-min:120px}
+html[data-cw-settings-unified] #sysprompt_post_history {--cwr-textarea-min:64px}
+@media(max-width:700px){html[data-cw-settings-unified] #persona_description {--cwr-textarea-min:150px}}
 html[data-cw-settings-unified] .cw-v4-panel textarea.cwr-compact {height:var(--cwr-input-height,34px)!important;line-height:20px!important;padding-top:6px!important;padding-bottom:6px!important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-num {
  width:var(--cwus-number-w)!important;min-width:var(--cwus-number-w)!important;max-width:var(--cwus-number-w)!important;
@@ -593,6 +602,9 @@ html[data-cw-settings-unified] .cw-v4-panel .cwr-field-label {font-size:14px!imp
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-api-row {padding-top:12px!important;padding-bottom:12px!important}
 html[data-cw-settings-unified] .cwr-connection-row {grid-template-columns:minmax(120px,1fr) 190px auto!important}
 html[data-cw-settings-unified] .cwr-connection-top select {width:100%!important;min-width:0!important}
+/* Grid children must use their own complete column, never the generic 65% row-controls cap. */
+html[data-cw-settings-unified] .cwr-connection-row>.cw-v4-row-controls {--cwus-controls-max:100%;justify-self:stretch!important}
+html[data-cw-settings-unified] .cwr-connection-row .cw-v4-more>summary::before {flex:none!important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-tabs {margin-top:0!important}
 html[data-cw-settings-unified] .cw-v4-panel .manage-api-keys::before {font-family:'Font Awesome 6 Free'!important;font-weight:900!important;font-size:15px!important;line-height:15px!important;width:15px!important;height:15px!important;display:block!important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row-title:has(>.cw-new),html[data-cw-settings-unified] .cwr-weight-caption {display:flex!important;align-items:center!important;gap:8px!important}
@@ -630,6 +642,7 @@ html[data-cw-settings-unified] #rm_api_block .cw-v4-card:has(>#openai_api) {bord
 html[data-cw-settings-unified] #rm_api_block .cw-v4-card:has(>#openai_api)>.cw-v4-row {border:1px solid var(--cwus-soft)!important;border-radius:14px 14px 0 0!important}
 html[data-cw-settings-unified] #rm_api_block #openai_api>.cw-v4-row {border:1px solid var(--cwus-soft)!important;border-top:0!important;border-radius:0 0 14px 14px!important}
 html[data-cw-settings-unified] #rm_api_block #openai_api>.cw-v4-section>.cw-v4-card {border-radius:14px 14px 0 0!important;margin-bottom:0!important;border-bottom:0!important}
+html[data-cw-settings-unified] #Backgrounds .bg_list {min-height:0!important;border:1px solid var(--cwus-soft)!important;border-radius:14px!important;padding:12px!important;background:var(--cwus-surface)!important}
 html[data-cw-settings-unified] .cw-v4-panel .BGSampleTitle {font-family:var(--cw-v4-font)!important}
 html[data-cw-settings-unified] .cw-v4-lock-row :is(#lock_persona_default,#lock_persona_to_char,#lock_user_name) {width:42px!important;min-width:42px!important;max-width:42px!important;height:25px!important;min-height:25px!important;max-height:25px!important;flex:none!important;padding:1px 6px!important;margin:0!important;border:0!important;border-radius:999px!important;background:var(--cwus-toggle-off)!important;font-size:0!important;position:relative!important}
 html[data-cw-settings-unified] .cw-v4-lock-row :is(#lock_persona_default,#lock_persona_to_char,#lock_user_name)::before {content:none!important;display:none!important}
