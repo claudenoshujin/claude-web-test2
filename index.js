@@ -1251,6 +1251,10 @@ if (CLAUDE_ENABLED) {
     Object.entries(CLAUDE_THEME).filter(([key]) => key !== 'name'),
   );
   const RESTORE_KEY = 'claude-integrated-theme-restore:v2';
+  const FOREIGN_CSS_KEY = 'claude-web:foreign-theme-css:v1';
+  let themeChoiceTimer = 0, nativeThemeChosen = false;
+  let foreignCss = [];
+  try { const saved = JSON.parse(hostWindow.localStorage.getItem(FOREIGN_CSS_KEY) || '[]'); if (Array.isArray(saved)) foreignCss = saved.filter(x => typeof x === 'string').slice(-24); } catch { /* private storage */ }
   const WATCHDOG_KEY = '__claudeIntegratedThemeWatchdog';
   const HOST_DELETE_MODE_STYLESHEET_SUFFIX = '/css/toggle-dependent.css';
   const HOST_DELETE_MODE_SELECTOR_MARKS = [
@@ -1277,12 +1281,45 @@ if (CLAUDE_ENABLED) {
   hostWindow[INSTANCE_KEY]?.destroy?.({ restore: false });
 
   function getContext() {
-    if (typeof SillyTavern !== 'undefined') return SillyTavern;
-    return hostWindow.SillyTavern ?? null;
+    const host = typeof SillyTavern !== 'undefined' ? SillyTavern : hostWindow.SillyTavern;
+    return host?.getContext?.() ?? host ?? null;
   }
 
   function isClaudeThemeName(value) {
-    return typeof value === 'string' && (value === THEME_NAME || value.startsWith('Claude Web ·'));
+    return typeof value === 'string' && (value === THEME_NAME || value.startsWith('Claude Web ·') || Object.values(CLAUDE_THEMES).some(theme => theme.name === value));
+  }
+
+  function cssFingerprint(css) {
+    const text = String(css ?? ''); let a = 2166136261, b = 2246822519;
+    for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = Math.imul(b ^ c, 3266489917); }
+    return `${text.length}:${a >>> 0}:${b >>> 0}`;
+  }
+  function rememberForeignCss(css) {
+    if (!String(css ?? '').trim()) return;
+    const fingerprint = cssFingerprint(css);
+    foreignCss = [...foreignCss.filter(x => x !== fingerprint), fingerprint].slice(-24);
+    try { hostWindow.localStorage.setItem(FOREIGN_CSS_KEY, JSON.stringify(foreignCss)); } catch { /* retain this session */ }
+  }
+  function onNativeThemeChange(event) {
+    const select = event.target;
+    if (!(select instanceof hostWindow.HTMLSelectElement) || select !== findThemeSelect(getContext()?.powerUserSettings?.theme)) return;
+    const settings = getContext()?.powerUserSettings, choice = select.value;
+    if (!settings) return;
+    if (isClaudeThemeName(choice) && !isClaudeThemeName(settings.theme)) rememberForeignCss(settings.custom_css);
+    nativeThemeChosen = !isClaudeThemeName(choice);
+    hostWindow.clearTimeout(themeChoiceTimer);
+    // Run after the native direct change handler has applied its theme.
+    themeChoiceTimer = hostWindow.setTimeout(() => {
+      themeChoiceTimer = 0;
+      if (destroyed || select.value !== choice) return;
+      if (!isClaudeThemeName(choice)) { rememberForeignCss(getContext()?.powerUserSettings?.custom_css); return; }
+      const variant = Object.keys(CLAUDE_THEMES).find(key => CLAUDE_THEMES[key].name === choice);
+      if (variant) {
+        const control = hostDocument.getElementById('claude-web-variant');
+        if (control && control.value !== variant) { control.value = variant; control.dispatchEvent(new hostWindow.Event('change', { bubbles: true })); }
+        applyThemeValuesFor(variant, true);
+      } else persistFullTheme({ resetTheme: true });
+    }, 0);
   }
 
   function readRestorePoint() {
@@ -1579,7 +1616,12 @@ if (CLAUDE_ENABLED) {
     const element = hostDocument.querySelector(selector);
     if (!element) return;
     if (checked) element.checked = Boolean(value);
-    else element.value = String(value);
+    else {
+      element.value = String(value);
+      if (element.matches('input[type="range"]')) {
+        for (const counter of hostDocument.querySelectorAll('input[data-for="' + element.id + '"]')) counter.value = element.value;
+      }
+    }
   }
 
   function findThemeSelect(previousName) {
@@ -1597,6 +1639,7 @@ if (CLAUDE_ENABLED) {
       '#shadow_width': settings.shadow_width,
       '#font_scale': settings.font_scale,
       '#chat_width': settings.chat_width,
+      '#chat_width_slider': settings.chat_width,
       '#avatar_style': settings.avatar_style,
       '#chat_display': settings.chat_display,
       '#toastr_position': settings.toastr_position,
@@ -1628,25 +1671,41 @@ if (CLAUDE_ENABLED) {
     Object.entries(checks).forEach(([selector, value]) => setControl(selector, value, true));
 
     const customCss = hostDocument.querySelector('#customCSS, #custom_css');
-    if (customCss) customCss.value = settings.custom_css;
+    if (customCss && customCss.value !== String(settings.custom_css ?? '')) {
+      customCss.value = String(settings.custom_css ?? '');
+      customCss.dispatchEvent(new hostWindow.Event('input', { bubbles: true }));
+    }
 
     const themeSelect = findThemeSelect(previousName);
     if (themeSelect) {
-      let option = [...themeSelect.options].find(item => item.value === THEME_NAME);
+      const ownName = isClaudeThemeName(settings.theme) ? settings.theme : THEME_NAME;
+      let option = [...themeSelect.options].find(item => item.value === ownName);
       if (!option && installThemeOption) {
         option = hostDocument.createElement('option');
         option.className = OPTION_CLASS;
-        option.value = THEME_NAME;
-        option.textContent = THEME_NAME;
+        option.value = ownName;
+        option.textContent = ownName;
         themeSelect.append(option);
       }
-      const targetTheme = installThemeOption ? THEME_NAME : String(settings.theme ?? '');
+      const targetTheme = installThemeOption ? ownName : String(settings.theme ?? '');
       if ([...themeSelect.options].some(item => item.value === targetTheme)) themeSelect.value = targetTheme;
     }
   }
 
-  function valuesWithPreservedQuote(settings, values) {
+  function valuesWithPreservedQuote(settings, values, resetTheme = false) {
     const next = { ...values };
+    if (!resetTheme && isClaudeThemeName(settings?.theme)) {
+      // Keep the established non-color user overrides; color policy is unchanged.
+      for (const key of ['font_scale', 'chat_width', 'timer_enabled', 'timestamps_enabled', 'timestamp_model_icon', 'mesIDDisplay_enabled', 'message_token_count_enabled', 'hideChatAvatars_enabled', 'expand_message_actions', 'show_swipe_num_all_messages', 'click_to_edit', 'reasoning_auto_expand', 'compact_input_area', 'hotswap_enabled', 'enableZenSliders', 'enableLabMode', 'reduced_motion', 'media_display', 'toastr_position']) {
+        if (Object.hasOwn(settings, key) && Object.hasOwn(next, key)) next[key] = settings[key];
+      }
+      const css = String(settings.custom_css ?? ''), snapshot = readRestorePoint();
+      const fromNativeSnapshot = snapshot && !isClaudeThemeName(snapshot.theme) && css.trim() && css === snapshot.custom_css;
+      if (!fromNativeSnapshot && !foreignCss.includes(cssFingerprint(css))) {
+        const base = Object.values(CLAUDE_THEMES).find(theme => css.startsWith(theme.custom_css));
+        next.custom_css = base ? String(values.custom_css ?? '') + css.slice(base.custom_css.length) : css;
+      }
+    }
     if (hostDocument.documentElement.dataset.claudeQuoteBodyColor !== 'off') {
       next.quote_text_color = next.main_text_color ?? values.quote_text_color;
       return next;
@@ -1660,14 +1719,14 @@ if (CLAUDE_ENABLED) {
     return next;
   }
 
-  function persistFullTheme() {
+  function persistFullTheme({ resetTheme = false } = {}) {
     const context = getContext();
     const settings = context?.powerUserSettings;
     if (!settings) return null;
 
     const previousName = settings.theme;
     rememberRestorePoint(settings);
-    const values = valuesWithPreservedQuote(settings, THEME_VALUES);
+    const values = valuesWithPreservedQuote(settings, THEME_VALUES, resetTheme);
     const changed = settings.theme !== THEME_NAME
       || Object.entries(values).some(([key, value]) => !valuesMatch(settings[key], value));
     Object.assign(settings, values);
@@ -1690,7 +1749,7 @@ if (CLAUDE_ENABLED) {
      再走一遍 persistFullTheme 同一套流程（写 powerUserSettings、CSS 变量、
      UI 状态、下拉框、保存），暴露成 api.applyVariant，供设置面板在切换
      明暗后调用，两边真正共用同一个真相来源。 */
-  function applyThemeValuesFor(variant) {
+  function applyThemeValuesFor(variant, resetTheme = false) {
     const theme = typeof CLAUDE_THEMES !== 'undefined' ? CLAUDE_THEMES?.[variant] : null;
     if (!theme) return false;
     const context = getContext();
@@ -1701,6 +1760,7 @@ if (CLAUDE_ENABLED) {
     const values = valuesWithPreservedQuote(
       settings,
       Object.fromEntries(Object.entries(theme).filter(([key]) => key !== 'name')),
+      resetTheme,
     );
     Object.assign(settings, values);
     settings.theme = theme.name;
@@ -1947,7 +2007,7 @@ if (CLAUDE_ENABLED) {
       return;
     }
     hostWindow.setTimeout(() => {
-      if (!destroyed) {
+      if (!destroyed && !nativeThemeChosen) {
         neutralizeStyleAttributeRules();
         persistFullTheme();
       }
@@ -1956,6 +2016,8 @@ if (CLAUDE_ENABLED) {
 
   function destroy({ restore = false } = {}) {
     if (destroyed) return;
+    hostWindow.clearTimeout(themeChoiceTimer);
+    hostDocument.removeEventListener('change', onNativeThemeChange, true);
     compatibilityStyleOrderObserver?.disconnect();
     compatibilityStyleOrderObserver = null;
     restoreCompatibilityLayers();
@@ -2024,6 +2086,7 @@ if (CLAUDE_ENABLED) {
     applyVariant: compatibilityMode ? () => false : applyThemeValuesFor,
   };
   hostWindow[INSTANCE_KEY] = api;
+  if (!compatibilityMode) hostDocument.addEventListener('change', onNativeThemeChange, true);
   hostWindow.addEventListener('beforeunload', markHostPageUnloading, true);
   hostWindow.addEventListener('pagehide', markHostPageUnloading, true);
   watchRunnerPresence();
@@ -14490,7 +14553,7 @@ if (CLAUDE_ENABLED) {
     };
     describe();
 
-    box.addEventListener('change', () => {
+    box.addEventListener('change', async () => {
       if (!write('enabled', box.checked ? 'on' : 'off')) {
         hint.textContent = '写入失败，设置没保存。';
         box.checked = enabled;
@@ -14514,10 +14577,31 @@ if (CLAUDE_ENABLED) {
         teardownLive();
       }
       hint.textContent = box.checked ? '正在启用，刷新中…' : '正在关闭，刷新中…';
-      /* 恢复走的是酒馆的 saveSettingsDebounced，不是立即写盘的接口；
-         这里把关闭时的刷新延迟从 150ms 提到 320ms，给防抖保存留出落盘窗口，
-         降低"主题已恢复但刷新抢先发生，恢复结果没保存住"的概率。 */
-      window.setTimeout(() => window.location.reload(), box.checked ? 150 : 320);
+      if (!box.checked) {
+        // A fixed reload delay can expire before the native debounced save.
+        // Complete the native save before navigating away from the restored theme.
+        try {
+          const context = window.SillyTavern?.getContext?.();
+          const expected = { theme: context?.powerUserSettings?.theme, css: context?.powerUserSettings?.custom_css };
+          const native = await import(new URL('script.js', window.document.baseURI).href);
+          if (typeof native.saveSettings !== 'function') throw new Error('Native settings save unavailable');
+          await native.saveSettings();
+          // Native saveSettings may consume HTTP failures. Verify the saved theme.
+          const response = await window.fetch(new URL('api/settings/get', window.document.baseURI).href, {
+            method: 'POST', headers: context?.getRequestHeaders?.() ?? { 'Content-Type': 'application/json' }, body: '{}', cache: 'no-store',
+          });
+          if (!response.ok) throw new Error('Native settings read-back failed');
+          const payload = await response.json();
+          const saved = typeof payload.settings === 'string' ? JSON.parse(payload.settings) : payload.settings;
+          if (typeof expected.theme !== 'string' || saved?.power_user?.theme !== expected.theme || saved?.power_user?.custom_css !== expected.css) throw new Error('Native theme save not confirmed');
+        } catch (error) {
+          hint.textContent = '主题已恢复，但保存未完成，请稍后刷新。';
+          window.toastr?.error?.(hint.textContent);
+          console.warn('[Claude Web] Theme restore save failed', error);
+          return;
+        }
+      }
+      window.setTimeout(() => window.location.reload(), box.checked ? 150 : 0);
     });
   }
 
