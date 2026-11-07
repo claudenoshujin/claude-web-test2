@@ -825,7 +825,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const run=action=>()=>select(true,action).catch(console.error);
     // 2.0.215（Lulu）：点角色 = 进入编辑（和设置里其他「›」行一样进下一页）；直接去聊天放进 ⋯ 的第一项。原来点整行是开始聊天、「编辑」另有一个按钮。
     const chev=make('span','cw-v4-character-chev');chev.setAttribute('aria-hidden','true');
-    actions.append(menu(s,[['编辑',null,false,()=>select(true).catch(console.error)],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['删除',null,true,run('delete_button')]]),chev);
+    actions.append(menu(s,[['编辑',null,false,()=>select(true).catch(console.error)],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['导出',null,false,run('export_button')],['删除',null,true,run('delete_button')]]),chev);
     item.append(actions);
     const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(false).catch(console.error);};
     item.addEventListener('click',click);s.cleanup=()=>item.removeEventListener('click',click);

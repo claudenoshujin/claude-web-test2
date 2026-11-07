@@ -1,4 +1,4 @@
-/* Preview round 3. Window dimensions belong to settings; editor variables stay native. */
+/* Settings preview, rounds 3–4. Window dimensions belong to settings; editor variables stay native. */
 @layer cw-settings-visibility,cw-settings-round3,cw-settings-unified;
 @layer cw-settings-round3 {
 html[data-cw-settings-unified] :is(.cw-v4-shell,.cw-v4-panel) {--cwus-window-w:min(1040px,calc(100vw - 48px));--cwus-window-h:min(760px,calc(100dvh - 64px));--cwus-window-x:calc((100vw - var(--cwus-window-w))/2);--cwus-window-y:calc((100dvh - var(--cwus-window-h))/2);--cwus-accent:#d97757}
@@ -57,7 +57,7 @@ html[data-cw-settings-unified] #left-nav-panel .cw-pm-selection {flex:1!importan
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-remove {color:white!important;background:var(--cwus-red)!important;border-color:var(--cwus-red)!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-range>.cw-v4-row-controls {width:340px!important;max-width:60%!important;flex:none!important;display:flex!important;gap:10px!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-rangebox {width:auto!important;flex:1!important;min-width:0!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-range .cw-v4-num {width:82px!important;flex:none!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-range .cw-v4-num {width:86px!important;flex:none!important}
 html[data-cw-settings-unified] #left-nav-panel .cwr-inline-bias :is(.cw-v4-drawer-page,.cw-v4-card,.cw-v4-row) {border:0!important;background:transparent!important;margin:0!important}
 html[data-cw-settings-unified] #left-nav-panel .cwr-inline-bias {padding:0!important;margin:0!important}
 html[data-cw-settings-unified] .cwr-list-head {display:flex!important;align-items:center!important;gap:12px!important;margin:0 0 18px!important}
@@ -90,7 +90,7 @@ html[data-cw-settings-unified] #Backgrounds .bg_tab_panel {grid-column:1/-1!impo
 html[data-cw-settings-unified] #Backgrounds .bg_list {display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;border:1px solid var(--cwus-soft)!important;border-radius:14px!important;padding:12px!important;background:var(--cwus-surface)!important}
 html[data-cw-settings-unified] #Backgrounds .bg_example {display:block!important;position:relative!important;aspect-ratio:auto!important;height:auto!important;width:100%!important;min-width:0!important;margin:0!important;padding:0!important;background:none!important;border:0!important;border-radius:0!important;overflow:visible!important;box-shadow:none!important}
 html[data-cw-settings-unified] #Backgrounds .thumbnail-clipper {position:relative!important;inset:auto!important;display:block!important;aspect-ratio:16/10!important;width:100%!important;height:auto!important;border-radius:10px!important;overflow:hidden!important;border:1px solid var(--cwus-soft)!important;background-size:cover!important}
-html[data-cw-settings-unified] #Backgrounds .BGSampleTitle {display:block!important;position:static!important;background:none!important;color:var(--cwus-muted)!important;font-size:12.5px!important;font-weight:400!important;text-shadow:none!important;text-align:left!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;margin:6px 0 0!important;padding:0!important;max-width:100%!important;line-height:1.5!important}
+html[data-cw-settings-unified] #Backgrounds .BGSampleTitle {display:block!important;opacity:1!important;visibility:visible!important;position:static!important;background:none!important;color:var(--cwus-muted)!important;font-size:12.5px!important;font-weight:400!important;text-shadow:none!important;text-align:left!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;margin:6px 0 0!important;padding:0!important;max-width:100%!important;line-height:1.5!important}
 html[data-cw-settings-unified] #Backgrounds .bg_example_img {display:none!important}
 html[data-cw-settings-unified] #Backgrounds .selected-background .thumbnail-clipper {outline:2px solid var(--cwus-blue)!important;outline-offset:2px!important}
 html[data-cw-settings-unified] #Backgrounds .selected-background::after {content:'✓'!important;position:absolute!important;top:6px!important;right:6px!important;width:22px!important;height:22px!important;border-radius:50%!important;background:var(--cwus-blue)!important;color:white!important;font:600 14px/22px sans-serif!important;text-align:center!important;pointer-events:none!important;z-index:2!important}
@@ -140,12 +140,63 @@ html[data-cw-settings-unified] #rm_api_block .online_status_indicator::before {d
 html[data-cw-settings-unified] #rm_api_block .cw-v4-api-inline-row>h4 {font-size:14.5px!important;font-weight:var(--cwus-weight)!important;color:var(--cwus-ink)!important;margin:0 0 6px!important}
 html[data-cw-settings-unified] #rm_api_block #openai_api:has(>#prompt_post_processing_form:not([style*="display: none"]))>.cw-v4-form-section:not(#prompt_post_processing_form) {border-radius:0!important;border-bottom:0!important}
 html[data-cw-settings-unified] #right-nav-panel .cwr-list-actions #rm_button_create {background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
+/* Round 4: measured against the supplied design, without touching chat or native data. */
+html[data-cw-settings-unified][data-claude-integrated-theme=night][data-claude-font=follow] :is(.cw-v4-panel,.cw-v4-shell) {--cw-v4-font:"Anthropic Sans","Styrene B","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+html[data-cw-settings-unified] :is(.cw-v4-panel,.cw-v4-shell) {text-shadow:none!important;-webkit-text-stroke:0!important}
+html[data-cw-settings-unified] .cw-v4-panel .cwr-first-section,html[data-cw-settings-unified] .cw-v4-panel .cwr-first-heading {margin-top:0!important}
+html[data-cw-settings-unified] #user-settings-block .cw-v4-pref-page[data-page=acct]>.cw-v4-pref-title {margin-bottom:18px!important}
+html[data-cw-settings-unified] #rm_api_block .cwr-connection-top>.cw-v4-icon {display:none!important}
+html[data-cw-settings-unified] #rm_api_block :is(.cwr-connection-top select,.cw-v4-api-controls select,.cw-v4-api-inline-row select) {appearance:none!important;box-sizing:border-box!important;border:1px solid var(--cwus-line)!important;background:var(--cwus-surface)!important;background-image:var(--cwus-chevron)!important;background-repeat:no-repeat!important;background-position:right 9px center!important;background-size:15px 15px!important;padding:0 29px 0 10px!important;font-weight:400!important}
+html[data-cw-settings-unified] #rm_api_block .cwr-api-field>.cw-v4-api-controls {padding:0!important}
+html[data-cw-settings-unified] #rm_api_block .manage-api-keys {display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;margin:0!important;padding:0!important;border:1px solid var(--cwus-line)!important;border-radius:9px!important;background:var(--cwus-surface)!important;color:var(--cwus-ink)!important;box-shadow:none!important}
+html[data-cw-settings-unified] #rm_api_block .cwr-api-field .flex-container:has(>.manage-api-keys)>input {min-width:0!important;width:0!important;flex:1!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-num {box-sizing:border-box!important;width:86px!important;min-width:86px!important;max-width:86px!important;flex:0 0 86px!important;background:var(--cwus-surface)!important;border:1px solid var(--cwus-line)!important;text-align:right!important;padding:0 10px!important}
+html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list>li.cw-v4-prompt-row {min-height:60px!important;padding-top:9px!important;padding-bottom:9px!important}
+html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list>li.cw-v4-prompt-row.cw-pm-selected {background:var(--cwus-blue-soft)!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-placeholder {display:inline-block!important;width:auto!important;min-width:max-content!important;max-width:none!important;white-space:nowrap!important;padding:0 6px!important;border-radius:5px!important;border:1px solid var(--cwus-soft)!important;background:var(--cwus-canvas)!important;color:var(--cwus-muted)!important;font:400 11px/16px var(--cw-v4-font)!important;margin-right:4px!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-search {padding-left:33px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237b7974' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 4.5 4.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-size:16px 16px!important;background-position:11px center!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-remove {display:inline-flex!important;align-items:center!important;gap:6px!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-trash {display:inline-block!important;width:14px!important;height:14px!important;background:currentColor!important;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7'/%3E%3C/svg%3E") center/contain no-repeat!important}
+html[data-cw-settings-unified] #right-nav-panel .cwr-character-intro {font:400 13px/1.5 var(--cw-v4-font)!important;color:var(--cwus-muted)!important;margin:0 0 18px!important}
+html[data-cw-settings-unified] #right-nav-panel .cwr-list-head {margin-bottom:6px!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tags {width:100%!important;align-items:center!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tag {font-weight:400!important;background:var(--cwus-surface)!important;color:var(--cwus-muted)!important;opacity:1!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tag[data-toggle-state=SELECTED] {background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .manageTags {display:none!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .clearAllFilters {display:none!important;order:99!important;margin-left:auto!important;border:0!important;background:transparent!important;padding-right:0!important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags:has([data-toggle-state=SELECTED],[data-toggle-state=EXCLUDED]) .clearAllFilters,html[data-cw-settings-unified] #right-nav-panel:has(#character_search_bar:not(:placeholder-shown)) .cw-v4-tags .clearAllFilters {display:inline-flex!important}
+html[data-cw-settings-unified] #right-nav-panel .filterByFavorites .cwr-filter-label::before {content:'★';margin-right:5px}
+html[data-cw-settings-unified] #right-nav-panel #rm_print_characters_block :is(.character_select,.group_select) {min-height:60px!important;padding-top:9px!important;padding-bottom:9px!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage {width:40px!important;min-width:40px!important;height:40px!important;flex:0 0 40px!important;margin:0!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select .group_name_block {margin:0!important}
+html[data-cw-settings-unified] #right-nav-panel .character_select .character_name_block {margin:0!important}
+html[data-cw-settings-unified] #right-nav-panel .character_select .character_select_container {gap:0!important}
+html[data-cw-settings-unified] #right-nav-panel .tags_inline:empty {display:none!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage img {width:40px!important;height:40px!important;min-width:40px!important;border:0!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select.cwr-group-multi .avatar_collage {width:64px!important;min-width:64px!important;flex-basis:64px!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select.cwr-group-multi .avatar_collage img {width:28px!important;height:28px!important;min-width:28px!important;border:2px solid var(--cwus-surface)!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select .avatar_collage img:nth-child(n+4) {display:none!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select .group_select_container {width:auto!important;min-width:0!important;flex:1 1 0!important;gap:0!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select :is(.group_select_block_list,.character_name_block_sub_line,.group_select_counter) {display:none!important}
+html[data-cw-settings-unified] #right-nav-panel .cwr-group-summary {display:block!important;margin:3px 0 0!important;font:400 12.5px/1.5 var(--cw-v4-font)!important;color:var(--cwus-muted)!important}
+html[data-cw-settings-unified] #right-nav-panel .group_select:not(:has(.cw-v4-more))::after {display:block!important;content:''!important;width:34px!important;height:34px!important;flex:0 0 34px!important;margin:0!important;align-self:center!important;background:var(--cwus-muted)!important;mask:var(--cw-v4-icon-chev) center/16px 16px no-repeat!important}
+html[data-cw-settings-unified] #Backgrounds .bg_tabs_list {width:max-content!important;min-width:0!important;justify-self:start!important}
+html[data-cw-settings-unified] #Backgrounds .bg_tab_button {width:auto!important;flex:0 0 auto!important}
+html[data-cw-settings-unified] #Backgrounds .bg_tabs_list>.heading-controls {display:none!important}
+html[data-cw-settings-unified] #Backgrounds .bg_tab_button a {width:auto!important;display:block!important}
+html[data-cw-settings-unified] .cw-v4-shell .cw-v4-nav {overflow-y:auto!important;min-height:0!important;scroll-padding-block:16px!important;padding-bottom:16px!important}
+html[data-cw-settings-unified] .cw-v4-shell .cw-v4-nav>* {flex-shrink:0!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-placeholder {opacity:1!important}
+html[data-cw-settings-unified] #rm_api_block .cw-v4-api-label small {opacity:1!important}
+html[data-cw-settings-unified][data-claude-integrated-theme=night] :is(.cw-v4-panel .cw-v4-tag-exp,.cwr-confirm .cwr-warnings) {color:#e5a080!important}
 @media(min-width:701px) {
+ html[data-cw-settings-unified] #PersonaManagement .cwr-persona-columns>div>.cwr-section-title:first-child {margin-top:0!important}
  html[data-cw-settings-unified]:not([data-claude-layout=mobile]) .cw-v4-shell {left:var(--cwus-window-x)!important;top:var(--cwus-window-y)!important;width:var(--cwus-window-w)!important;height:var(--cwus-window-h)!important}
  html[data-cw-settings-unified]:not([data-claude-layout=mobile]) .cw-v4-panel.openDrawer:not(.closedDrawer) {left:calc(var(--cwus-window-x) + 214px)!important;top:var(--cwus-window-y)!important;width:calc(var(--cwus-window-w) - 214px)!important;height:var(--cwus-window-h)!important;max-width:none!important;max-height:none!important}
  html[data-cw-settings-unified] #right-nav-panel .ch_tags {display:flex!important;flex-wrap:wrap!important;gap:4px!important;margin-top:4px!important}
 }
 @media(max-width:700px) {
+ html[data-cw-settings-unified] #PersonaManagement .cwr-persona-editor>.cwr-section-title:first-child {margin-top:0!important}
  html[data-cw-settings-unified] #left-nav-panel .completion_prompt_manager_footer .cw-v4-as-btn:not(:has(.cw-v4-plus)) {display:none!important}
  html[data-cw-settings-unified] #left-nav-panel .cw-pm-tools>button {display:none!important}
  html[data-cw-settings-unified] #left-nav-panel .cwr-preset-entry>.cw-v4-row-info {min-width:0!important}
