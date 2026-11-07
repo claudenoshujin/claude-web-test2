@@ -7,7 +7,7 @@ import { normalizeSettingsSections } from './settings-sections.js?v=2.0.339';
  * handlers. Comment markers allow a full return to the native layout.
  * Labels are the design's own Chinese strings; L() looks up the design's
  * English table for other UI languages. */
-import { createExtensionSettings } from './official-extension-settings.js?v=2.0.339';
+import { createExtensionSettings, retainRangeCounter } from './official-extension-settings.js?v=2.0.339';
 import { createPresetList } from './official-preset-list.js?v=2.0.339';
 import { createPromptScroll } from './official-prompt-scroll.js?v=2.0.339';
 import { createExtensionPanel } from './official-extension-panel.js?v=2.0.339';
@@ -32,7 +32,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     for(const child of [...host.childNodes])if(child!==card&&!(child.nodeType===1&&child.matches('h2')))card.append(child);
     return card;
   }
-  function move(s,node,host,before){if(!node||node===host||node.contains(host))return;if(!before)host=sectionHost(host);const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark]);}if(before)host.insertBefore(node,before);else host.append(node);if(companion)move(s,companion,host);}
+  function move(s,node,host,before){if(!node||node===host||node.contains(host))return;if(!before)host=sectionHost(host);const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;for(const counter of node.matches?.('input[data-for]')?[node]:node.querySelectorAll?.('input[data-for]')||[]){const undoRange=retainRangeCounter(counter);if(undoRange)cleanup(s,undoRange);}if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark]);}if(before)host.insertBefore(node,before);else host.append(node);if(companion)move(s,companion,host);}
   const created=(s,n)=>{s.created.push(n);return n;};
   const cleanup=(s,f)=>{(s.cleanups||=[]).push(f);};
   function section(page,title){const n=make('section','cw-v4-section');if(title)n.append(make('h2','',L(title)));n.append(make('div','cw-v4-card'));page.append(n);return n;}

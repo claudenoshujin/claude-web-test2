@@ -2,6 +2,7 @@ import { createFontWeightControl } from './font-weight.js?v=2.0.339';
 import { preferencesFor } from './preferences.js?v=2.0.339';
 import { officialIcons } from './official-icons.js?v=2.0.339';
 import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.339';
+import { retainRangeCounter } from './official-extension-settings.js?v=2.0.339';
 import { tr } from './official-i18n.js?v=2.0.339';
 import { normalizeSettingsSections } from './settings-sections.js?v=2.0.339';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
@@ -127,7 +128,8 @@ export function installOfficialLayout(win = window) {
   let prefPage = 'look', searchQuery = '', prefPanel = null;
   const prefMoves = [], prefParts = [], prefClasses = [];
   const chatMoves=[];
-  function pm(node,host){if(!node||node===host)return;if(node.parentNode){const mark=doc.createComment('cw-v4-pref-return');node.before(mark);prefMoves.push([node,mark]);}host.append(node);}
+  const prefRangeUndos=[];
+  function pm(node,host){if(!node||node===host)return;for(const counter of node.matches?.('input[data-for]')?[node]:node.querySelectorAll?.('input[data-for]')||[]){const undo=retainRangeCounter(counter);if(undo)prefRangeUndos.push(undo);}if(node.parentNode){const mark=doc.createComment('cw-v4-pref-return');node.before(mark);prefMoves.push([node,mark]);}host.append(node);}
   const take = id => { const n=doc.getElementById(id); return n && prefPanel?.contains(n) && !n.closest('.cw-v4-pref-pages') ? n : null; };
   const addClass=(n,...c)=>{if(!n)return;n.classList.add(...c);prefClasses.push([n,c]);};
   const clean = s => (s || '').replace(/\s+/g, ' ').replace(/[:：]\s*$/, '').trim();
@@ -164,6 +166,7 @@ export function installOfficialLayout(win = window) {
   };
   const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu});
   function restorePrefs() {
+    for(const undo of prefRangeUndos.splice(0).reverse())undo();
     const panel = panels.get('user-settings-block'), pages = panel?.querySelector('.cw-v4-pref-pages');
     if (!pages) return;
     const remaining = pages.querySelector('.cw-v4-pref-remaining');
