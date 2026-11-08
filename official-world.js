@@ -195,7 +195,10 @@ export function createWorldPage(h) {
     actions.append(more);if(add)move(s,add,actions);
     const sub=make('p','cwr-lede cww-sub cww-book-sub');
     const tools=make('div','cww-tools'),find=make('label','cwr-search-box cww-find'),search=get('world_info_search');find.append(icon('search'));
-    if(search){const old=search.placeholder;search.placeholder=t('搜索条目名字或关键词','Search entry names or keywords');cleanup(s,()=>{search.placeholder=old;});search.classList.add('cwr-search');cleanup(s,()=>search.classList.remove('cwr-search'));move(s,search,find);}
+    if(search){const old=search.getAttribute('placeholder'),i18n=search.getAttribute('data-i18n');search.placeholder=t('搜索条目名字或关键词','Search entry names or keywords');
+      // ST re-applies data-i18n placeholders on language passes; keep ours there too.
+      if(i18n!==null)search.setAttribute('data-i18n',[...i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')),'[placeholder]'+search.placeholder].join(';'));
+      cleanup(s,()=>{old===null?search.removeAttribute('placeholder'):search.setAttribute('placeholder',old);i18n===null?search.removeAttribute('data-i18n'):search.setAttribute('data-i18n',i18n);});search.classList.add('cwr-search');cleanup(s,()=>search.classList.remove('cwr-search'));move(s,search,find);}
     tools.append(find);const sort=get('world_info_sort_order');if(sort){const box=make('span','cww-sort');tools.append(box);move(s,sort,box);}
     const chips=make('div','cww-chips');chips.setAttribute('role','group');chips.setAttribute('aria-label',t('筛选','Filter'));
     ui.chipBtns={};for(const k of ['all','const','key','vec','off']){const b=make('button','cww-chip');b.type='button';b.dataset.filter=k;b.addEventListener('click',()=>{ui.filter=k;paint();});chips.append(b);ui.chipBtns[k]=b;}
@@ -467,6 +470,8 @@ export function createWorldPage(h) {
     on(types.WORLDINFO_UPDATED,(name)=>{counts.delete(name);stats.delete(name);if(name===currentBook())keyMemo=null;queue();});
     on(types.CHAT_CHANGED,()=>queue());on(types.WORLDINFO_SETTINGS_UPDATED,fresh);on(types.SETTINGS_UPDATED,()=>queue());
     cleanup(s,()=>{for(const [type,fn]of subs)src.removeListener?.(type,fn);});
+    // Open/close is a class change on the native drawer; mount() does not run on close.
+    const po=new win.MutationObserver(()=>sync(panel));po.observe(panel,{attributes:true,attributeFilter:['class']});cleanup(s,()=>po.disconnect());
     // Load ST's module once for counts and keys (read-only); no network for the list.
     loadWI().then(()=>queue());
     ui.views.home.hidden=false;for(const k of ['book','entry','act'])ui.views[k].hidden=true;panel.dataset.cwwView='home';
