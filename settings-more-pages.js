@@ -1,6 +1,6 @@
 /* Presentation adapters. Native nodes, handlers, lists and provider ancestors remain live. */
 export function createMorePages(h) {
-  const {win,make,button,icon,get,move,cleanup,created,state,act,menu,setting,t,L}=h,doc=win.document;
+  const {win,make,button,icon,get,move,cleanup,created,state,act,menu,setting,t,L}=h,doc=win.document,firstFrames=new Set();
   function characters(panel){
     const page=panel.querySelector('#rm_characters_block>.cw-v4-drawer-page');if(!page)return;
     const s=state(page);
@@ -38,6 +38,21 @@ export function createMorePages(h) {
     const row=connect?.closest('.cw-v4-row');if(row){const source=get('chat_completion_source')?.value,model=get(source==='custom'?'custom_model_id':'model_'+source+'_select'),status=row.querySelector('.cw-v4-row-info');let info=status?.querySelector('.cwr-connection-model');if(status&&!info){info=created(state(row),make('p','cwr-connection-model'));status.append(info);}if(info){const selected=model||[...panel.querySelectorAll('select[id*="model"],input[id*="model"]')].find(n=>n.checkVisibility?.());const value=selected?.selectedOptions?.[0]?.textContent||selected?.value||'';if(info.textContent!==value)info.textContent=value;}}
   }
   return {sync(panel){if(panel.id==='right-nav-panel')characters(panel);if(panel.id==='Backgrounds')backgrounds(panel);if(panel.id==='rm_api_block')api(panel);
-    const heading=[...panel.querySelectorAll('.cw-v4-section>h2')].find(n=>n.checkVisibility());if(heading&&!heading.classList.contains('cwr-first-heading')){heading.classList.add('cwr-first-heading');const sec=heading.parentElement;sec.classList.add('cwr-first-section');cleanup(state(heading),()=>{heading.classList.remove('cwr-first-heading');sec.classList.remove('cwr-first-section');});}
+    firstHeading(panel);
   }};
+  // checkVisibility() forces a full style recalc. During sync the drawer is still
+  // being rebuilt, so the check ran on dirty styles and the frame recalculated
+  // everything again. A ResizeObserver's first callback runs in this same frame
+  // after style and layout are clean and before paint: the read is cheap and no
+  // frame is painted without the class.
+  function firstHeading(panel){
+    if(firstFrames.has(panel))return;
+    const check=()=>{firstFrames.delete(panel);if(!panel.isConnected||!doc.documentElement.hasAttribute('data-cw-settings-unified'))return;
+      const heading=[...panel.querySelectorAll('.cw-v4-section>h2')].find(n=>n.checkVisibility());
+      for(const old of panel.querySelectorAll('.cwr-first-heading'))if(old!==heading){old.classList.remove('cwr-first-heading');old.parentElement?.classList.remove('cwr-first-section');}
+      if(heading&&!heading.classList.contains('cwr-first-heading')){heading.classList.add('cwr-first-heading');const sec=heading.parentElement;sec.classList.add('cwr-first-section');const hs=state(heading);if(!hs.firstHeading){hs.firstHeading=true;cleanup(hs,()=>{heading.classList.remove('cwr-first-heading');sec.classList.remove('cwr-first-section');});}}
+    };
+    if(!win.ResizeObserver){firstFrames.add(panel);win.requestAnimationFrame(check);return;}
+    const ro=new win.ResizeObserver(()=>{ro.disconnect();check();});firstFrames.add(panel);ro.observe(panel);
+  }
 }

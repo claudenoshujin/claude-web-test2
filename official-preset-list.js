@@ -14,7 +14,9 @@ export function createPresetList({win,make,button,t}) {
   function clearVisibleControls(u){u.rowObserver?.disconnect();u.rowObserver=null;u.viewportRoot=null;for(const row of u.decoratedRows||[])removeVisibleControls(u,row);u.observedRows?.clear();u.inView?.clear();}
   function trackVisibleControls(all){
     const u=ui;u.decoratedRows||=new Set();if(!win.IntersectionObserver)return false;
-    const list=u.manager.querySelector('#completion_prompt_manager_list');if(!list)return false;const root=/auto|scroll/.test(win.getComputedStyle(list).overflowY)?list:u.panel;
+    const list=u.manager.querySelector('#completion_prompt_manager_list');if(!list)return false;// The unified layout makes the panel scroll and the list visible (settings-unified.css);
+    // reading overflow there forced a full style recalc on every repaint.
+    const root=doc.documentElement.hasAttribute('data-cw-settings-unified')&&!list.closest('.bai-bai-preset-vue-list-host')?u.panel:/auto|scroll/.test(win.getComputedStyle(list).overflowY)?list:u.panel;
     if(u.viewportRoot!==root){clearVisibleControls(u);u.viewportRoot=root;u.observedRows=new Set();u.inView=new Set();u.rowObserver=new win.IntersectionObserver(records=>{if(ui!==u||u.viewportRoot!==root)return;for(const entry of records){if(!u.observedRows.has(entry.target)||!root.contains(entry.target)){u.inView.delete(entry.target);continue;}entry.isIntersecting?u.inView.add(entry.target):u.inView.delete(entry.target);}u.queuePaint?.();},{root,rootMargin:'240px 0px',threshold:0});}
     const current=new Set(all.map(node).filter(Boolean));
     for(const row of u.observedRows)if(!current.has(row)){u.rowObserver.unobserve(row);u.observedRows.delete(row);u.inView.delete(row);removeVisibleControls(u,row);}
