@@ -90,6 +90,8 @@ export function createWorldPage(h) {
     view.append(head,make('p','cwr-lede cww-sub',t('世界书在三个地方生效：全局（每段聊天都用）、绑在角色上、绑在这段聊天上。','World Info applies in three places: globally (every chat), bound to a character, or bound to this chat.')));
     const where=make('section','cw-v4-section cww-where');where.append(make('h2','',t('正在生效','Active now')));const card=make('div','cw-v4-card');where.append(card);view.append(where);
     const picker=get('WIMultiSelector'),park=make('div','cw-v4-park');view.append(park);if(picker)move(s,picker,park);
+    // The book picker is driven by the list rows; keep it (and its select2 box) live but out of sight.
+    const ed=editor(),edPark=make('div','cww-park');view.append(edPark);if(ed){const c=s2box(ed);move(s,ed,edPark);if(c)move(s,c,edPark);}
     ui.global=whereRow('global',ICON.globe(),t('全局','Global'),t('每段聊天都会用','Used in every chat'),()=>picker&&openEditor(picker,t('全局世界书','Global World Info')));
     ui.char=whereRow('char',ICON.card(),t('当前角色','Current character'),t('只在和这个角色聊天时用','Only in chats with this character'),()=>{const b=get('world_button');b?.dispatchEvent(new win.MouseEvent('click',{bubbles:true,cancelable:true,shiftKey:true}));});
     ui.chat=whereRow('chat',ICON.chat(),t('当前聊天','Current chat'),t('只在这一段聊天里用','Only in this chat'),()=>{const b=doc.querySelector('.chat_lorebook_button');b?.dispatchEvent(new win.MouseEvent('click',{bubbles:true,cancelable:true,shiftKey:true}));});
@@ -185,7 +187,7 @@ export function createWorldPage(h) {
     finally{current.busy=false;if(ui===current){ui.selected.clear();paintBooks();}}
   }
 
-  /* ---------- 书页 ---------- */
+  /* ---------- 书页（v2：电脑四列 条目 / 插入位置 / 顺序 / 启用 + ›；手机位置和顺序放第三行） ---------- */
   function buildBook(s,view){
     const back=btn(t('世界书','World Info'),()=>go('home'),'cwr-back cww-back',ICON.back());
     const head=make('div','cwr-list-head cww-head'),title=make('h2',''),actions=make('div','cwr-list-actions');head.append(title,actions);
@@ -202,20 +204,29 @@ export function createWorldPage(h) {
     tools.append(find);const sort=get('world_info_sort_order');if(sort){const box=make('span','cww-sort');tools.append(box);move(s,sort,box);}
     const chips=make('div','cww-chips');chips.setAttribute('role','group');chips.setAttribute('aria-label',t('筛选','Filter'));
     ui.chipBtns={};for(const k of ['all','const','key','vec','off']){const b=make('button','cww-chip');b.type='button';b.dataset.filter=k;b.addEventListener('click',()=>{ui.filter=k;paint();});chips.append(b);ui.chipBtns[k]=b;}
-    const list=make('div','cw-v4-card cww-entry-list'),empty=make('p','cwr-empty cww-empty',t('没有符合条件的条目','No matching entries'));
+    // 色点图例放在筛选胶囊下面（第二行只写关键词或策略名）。
+    const legend=make('div','cww-legend');for(const k of ['constant','normal','vectorized']){const [zh,en,kind]=STATE[k],it=make('span',''),d=make('i','cww-dot');d.dataset.kind=kind;it.append(d,doc.createTextNode(t(zh,en)));legend.append(it);}
+    const ehead=make('div','cww-ehead');for(const [zh,en] of [['条目','Entry'],['插入位置','Position'],['顺序','Order'],['启用','On'],['','']])ehead.append(make('span','',t(zh,en)));
+    const card=make('div','cw-v4-card cww-entry-card'),list=make('div','cww-entry-list'),empty=make('p','cwr-empty cww-empty',t('没有符合条件的条目','No matching entries'));
+    // 分页条：原生分页照旧（隐藏），这里只读它的范围、点它的上一页 / 下一页。
+    const pagerBar=make('div','cww-pager'),pagerText=make('span',''),prev=button('',()=>get('world_info_pagination')?.querySelector('.paginationjs-prev:not(.disabled)')?.click(),'cww-pb'),next=button('',()=>get('world_info_pagination')?.querySelector('.paginationjs-next:not(.disabled)')?.click(),'cww-pb');
+    prev.append(ICON.back());next.append(svg('<path d="m9 6 6 6-6 6"/>',{w:1.9}));prev.setAttribute('aria-label',t('上一页','Previous page'));next.setAttribute('aria-label',t('下一页','Next page'));pagerBar.append(pagerText,make('span','cww-grow'),prev,next);
+    card.append(list,empty,pagerBar);
     // Native list stays live (parked); CW rows mirror it. A Vue-rendered list (Bai Bai)
     // is shown as it is: never compete for its nodes.
     const nativeHost=make('div','cww-native-list'),pager=get('world_info_pagination'),entries=get('world_popup_entries_list');
-    if(entries)move(s,entries,nativeHost);if(pager)move(s,pager,view);
+    if(entries)move(s,entries,nativeHost);if(pager)move(s,pager,nativeHost);
     const hiddenTools=make('div','cw-v4-park');for(const id of ['OpenAllWIEntries','CloseAllWIEntries'])if(get(id))move(s,get(id),hiddenTools);
     const opts=make('div','cw-v4-card cww-opts cww-phone-only'),r=make('div','cw-v4-row cww-row');r.append(iconBox(ICON.plus()),make('div','cw-v4-row-title',t('新建条目','New entry')));r.tabIndex=0;r.setAttribute('role','button');r.addEventListener('click',()=>get('world_popup_new')?.click());opts.append(r);
-    view.append(back,head,sub,tools,chips,list,empty,nativeHost,hiddenTools);if(pager)view.append(pager);view.append(opts);
-    Object.assign(ui,{bookTitle:title,bookSub:sub,entryList:list,entryEmpty:empty,nativeHost,chips});
+    view.append(back,head,sub,tools,chips,legend,ehead,card,nativeHost,hiddenTools,opts);
+    Object.assign(ui,{bookTitle:title,bookSub:sub,entryList:list,entryEmpty:empty,entryCard:card,pagerBar,pagerText,prevBtn:prev,nextBtn:next,ehead,legend,nativeHost,chips});
     // Rows are rebuilt from the native list once per frame; CW's own nodes live outside it.
-    if(entries){const mo=new win.MutationObserver(()=>queue());mo.observe(entries,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});cleanup(s,()=>mo.disconnect());}
+    for(const n of [entries,pager].filter(Boolean)){const mo=new win.MutationObserver(()=>queue());mo.observe(n,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});cleanup(s,()=>mo.disconnect());}
     const onInput=e=>{if(e.target.closest?.('#world_popup_entries_list'))queue();};doc.addEventListener('input',onInput,true);doc.addEventListener('change',onInput,true);cleanup(s,()=>{doc.removeEventListener('input',onInput,true);doc.removeEventListener('change',onInput,true);});
   }
   const q=(entry,n)=>entry.querySelector(`[name="${n}"]`);
+  // select2 keeps its own container; it is not always the next sibling. Read it before moving the select.
+  const s2box=sel=>{const c=win.jQuery?.(sel).data?.('select2')?.$container?.[0];if(c)return c;const n=sel.nextElementSibling;return n?.matches?.('.select2-container')?n:null;};
   function entryData(entry){
     const st=STATE[q(entry,'entryStateSelector')?.value]||STATE.normal;
     const keyField=entry.querySelector('textarea[name="key"]');
@@ -228,22 +239,32 @@ export function createWorldPage(h) {
   // ST's cache clones on every get(); read each book's keys once per paint batch.
   let keyMemo=null;
   function keyCache(book){if(keyMemo?.book===book)return keyMemo.map;const data=wi.worldInfoCache.get(book),map={};for(const [uid,e]of Object.entries(data?.entries||{}))map[uid]=e.key;keyMemo={book,map};return map;}
+  const posText=d=>{const p=POS[d.pos];return (p?t(...p):'')+(d.pos==='4'&&d.depth!==''&&d.depth!=null?' '+d.depth:'');};
   function entryRow(entry){
     let row=ui.entryRows.get(entry);if(row)return row;
-    const r=make('div','cw-v4-row cww-row cww-entry'),sw=make('button','cww-tg');sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));
-    const info=make('div','cw-v4-row-info'),nm=make('div','cw-v4-row-title'),meta=make('p','cww-meta'),dot=make('span','cww-dot'),stText=make('span',''),keys=make('span','cww-keys'),pos=make('div','cww-pos');
-    meta.append(dot,stText,keys);info.append(nm,meta);r.append(sw,info,pos);r.tabIndex=0;r.setAttribute('role','button');
+    const r=make('div','cww-entry'),txt=make('div','cww-etxt'),nmLine=make('div','cww-enm'),nm=make('span','cw-v4-row-title'),off=make('span','cww-offtag',t('已停用','Disabled')),meta=make('div','cww-meta'),dot=make('span','cww-dot'),k=make('span','cww-k'),meta2=make('div','cww-meta2');
+    nmLine.append(nm,off);meta.append(dot,k);txt.append(nmLine,meta,meta2);
+    const pos=make('div','cww-cpos'),ord=make('div','cww-cord'),on=make('div','cww-con'),sw=make('button','cww-tg cww-sm');sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));on.append(sw);
+    const end=make('div','cww-cend');end.append(ICON.chev());
+    r.append(txt,pos,ord,on,end);r.tabIndex=0;r.setAttribute('role','button');
     sw.addEventListener('click',e=>{e.stopPropagation();q(entry,'entryKillSwitch')?.click();queue();});
     const open=()=>openEntry(entry);r.addEventListener('click',open);r.addEventListener('keydown',e=>{if(e.target===r&&e.key==='Enter'){e.preventDefault();open();}});
-    row={r,sw,nm,dot,stText,keys,pos};ui.entryRows.set(entry,row);return row;
+    row={r,sw,nm,off,dot,k,pos,ord,meta2};ui.entryRows.set(entry,row);return row;
   }
   function paintEntryRow(entry,row,d){
-    text(row.nm,d.name||t('（无标题）','(Untitled)'));
-    if(row.dot.dataset.kind!==d.st[2])row.dot.dataset.kind=d.st[2];text(row.stText,t(d.st[0],d.st[1]));
-    text(row.keys,'· '+(d.st[2]==='const'?t('常驻，不需要关键词','Always on; no keywords needed'):d.st[2]==='vec'?t('按语义相似度触发','Triggered by similarity'):(d.keys.join(t('、',', '))||t('还没有关键词','No keywords yet'))));
-    const p=POS[d.pos],posText=(p?t(...p):'')+(d.pos==='4'?' '+(d.depth??''):'');const key=posText+'|'+d.order;
-    if(row.pos.dataset.key!==key){row.pos.dataset.key=key;row.pos.replaceChildren(doc.createTextNode(posText),make('br',''),doc.createTextNode(t(`顺序 ${d.order??''}`,`Order ${d.order??''}`)));}
+    text(row.nm,d.name||t('（无标题）','(Untitled)'));setHidden(row.off,d.on);
+    if(row.dot.dataset.kind!==d.st[2])row.dot.dataset.kind=d.st[2];
+    const missing=d.st[2]==='key'&&!d.keys.length;row.k.classList.toggle('cww-missing',missing);
+    text(row.k,d.st[2]==='key'?(d.keys.join(t('、',', '))||t('还没填关键词','No keywords yet')):t(d.st[0],d.st[1]));
+    const p=posText(d);text(row.pos,p);row.pos.title=p;text(row.ord,String(d.order??''));text(row.meta2,t(`${p} · 顺序 ${d.order??''}`,`${p} · Order ${d.order??''}`));
     row.sw.setAttribute('aria-checked',String(d.on));row.r.classList.toggle('cww-off',!d.on);
+  }
+  function paintPager(){
+    const pager=get('world_info_pagination'),nav=pager?.querySelector('.paginationjs-nav')?.textContent||'',m=nav.match(/(\d+)\s*[-–]\s*(\d+)\s*\.\.\s*(\d+)/);
+    const prevOff=!pager?.querySelector('.paginationjs-prev:not(.disabled)'),nextOff=!pager?.querySelector('.paginationjs-next:not(.disabled)');
+    setHidden(ui.pagerBar,!m||prevOff&&nextOff);
+    if(m)text(ui.pagerText,t(`第 ${m[1]}–${m[2]} 条，共 ${m[3]} 条`,`${m[1]}–${m[2]} of ${m[3]}`));
+    ui.prevBtn.disabled=prevOff;ui.nextBtn.disabled=nextOff;
   }
   function paintBook(){
     const name=currentBook();
@@ -256,18 +277,18 @@ export function createWorldPage(h) {
     if(ui.bookSub.dataset.key!==subKey){ui.bookSub.dataset.key=subKey;ui.bookSub.replaceChildren(make('span','',t(`${total} 条`,`${total} entries`)),...(w.length?badges(w):[make('span','',t('· 现在没有在哪里生效','· Not active anywhere'))]));}
     const label={all:t('全部','All'),const:t('常驻','Constant'),key:t('关键词','Keyword'),vec:t('向量','Vector'),off:t('已停用','Disabled')};
     for(const [k,b]of Object.entries(ui.chipBtns)){text(b,label[k]+(k!=='all'&&st?' '+st[k]:''));b.setAttribute('aria-pressed',String(ui.filter===k));}
-    if(vue){setHidden(ui.entryList,true);setHidden(ui.entryEmpty,true);return;}
+    if(vue){for(const n of [ui.entryCard,ui.ehead,ui.legend])setHidden(n,true);return;}
+    setHidden(ui.entryCard,false);setHidden(ui.legend,false);
     keyMemo=null;
     const rows=[];for(const entry of entries){const d=entryData(entry),f=ui.filter,show=f==='all'||(f==='off'?!d.on:d.st[2]===f);const row=entryRow(entry);paintEntryRow(entry,row,d);if(show)rows.push(row.r);}
     if(rows.length!==ui.entryList.children.length||rows.some((n,i)=>ui.entryList.children[i]!==n))ui.entryList.replaceChildren(...rows);
-    setHidden(ui.entryList,!rows.length);setHidden(ui.entryEmpty,rows.length>0||!entries.length&&ui.filter==='all');
-    if(!entries.length&&ui.filter==='all'){setHidden(ui.entryEmpty,false);text(ui.entryEmpty,t('这本书还没有条目','No entries yet'));}else text(ui.entryEmpty,t('没有符合条件的条目','No matching entries'));
-    const pager=get('world_info_pagination');if(pager){const single=!pager.querySelector('.paginationjs')||(!!pager.querySelector('.paginationjs-prev.disabled')&&!!pager.querySelector('.paginationjs-next.disabled'));pager.classList.toggle('cw-v4-single-page',single);}
-    // Rebuilt native entries leave stale rows behind; WeakMap releases them.
+    setHidden(ui.entryList,!rows.length);setHidden(ui.ehead,!rows.length);setHidden(ui.entryEmpty,rows.length>0);
+    text(ui.entryEmpty,!entries.length&&ui.filter==='all'?t('这本书还没有条目','No entries yet'):t('没有符合条件的条目','No matching entries'));
+    paintPager();
     if(ui.view==='book'&&entries.length&&!wi)loadWI().then(()=>queue());
   }
 
-  /* ---------- 条目页 ---------- */
+  /* ---------- 条目页（v2） ---------- */
   function buildEntryView(view){ui.entryHost=view;}
   function openEntry(entry){
     if(!ui||!entry?.isConnected)return;
@@ -279,77 +300,147 @@ export function createWorldPage(h) {
     const es={moves:[],created:[],undo:[],entry},view=ui.entryHost;ui.editing=es;
     const M=(n,host,before)=>{if(!n)return null;const mark=doc.createComment('cww-entry-return');n.before(mark);es.moves.push([n,mark]);before?host.insertBefore(n,before):host.append(n);return n;};
     const Q=n=>q(entry,n);
-    const add=n=>{es.created.push(n);return n;};
-    const field=(host,label,hint,nodes,cls='')=>{const f=make('div','cww-field'+(cls?' '+cls:'')),lab=make('div','cww-lab');if(label instanceof win.Node)lab.append(label);else lab.textContent=label;f.append(lab);if(hint){const hn=make('div','cww-hint');if(hint instanceof win.Node)hn.append(hint);else hn.textContent=hint;f.append(hn);}const box=make('div','cww-ctl');f.append(box);for(const n of [].concat(nodes))if(n)n instanceof win.Node&&!n.parentNode?box.append(n):M(n,box);host.append(f);return f;};
-    const sec=(title,extra)=>{const s=make('section','cw-v4-section cww-esec'),h=make('h2','',title);if(extra)h.append(extra);s.append(h);const c=make('div','cw-v4-card');s.append(c);return {s,c};};
-    const num=n=>{const x=Q(n);if(x){x.classList.add('cw-v4-num','cww-num');es.undo.push(()=>x.classList.remove('cw-v4-num','cww-num'));}return x;};
-    const book=currentBook();
-    const back=add(btn(book,()=>go('book'),'cwr-back cww-back',ICON.back()));
-    // 名字单独一行，可以直接改（原生 comment 文本框）。
-    const sh=add(make('div','cww-sheet-h')),comment=Q('comment');
-    if(comment){comment.classList.add('cww-memo');es.undo.push(()=>comment.classList.remove('cww-memo'));M(comment,sh);if(!comment.placeholder){comment.placeholder=t('条目名字','Entry name');es.undo.push(()=>comment.removeAttribute('placeholder'));}}
-    const hdr=entry.querySelector('.inline-drawer-header');
-    const emenu=menu(es,[['复制这条',hdr?.querySelector('.duplicate_entry_button')],['移到其他世界书',hdr?.querySelector('.move_entry_button')]]);emenu.classList.add('cww-entry-more');sh.append(emenu);
-    // 启用开关 + 常驻 / 关键词 / 向量。
-    const bar=add(make('div','cww-statusbar')),onl=make('label','cww-on-l'),sw=make('button','cww-tg');sw.type='button';sw.setAttribute('role','switch');onl.append(sw,make('span','',t('启用','Enabled')));
-    const kill=Q('entryKillSwitch');sw.addEventListener('click',()=>{kill?.click();paintStatus();});
-    const seg=make('div','cww-seg');seg.setAttribute('role','group');seg.setAttribute('aria-label',t('触发方式','Trigger'));
-    const stateSel=Q('entryStateSelector');const segBtns={};
-    for(const [v,[zh,en,k]]of Object.entries(STATE)){const b=make('button','');b.type='button';const d=make('span','cww-dot');d.dataset.kind=k;b.append(d,make('span','',t(zh,en)));b.addEventListener('click',()=>{if(!stateSel||stateSel.value===v)return;stateSel.value=v;stateSel.dispatchEvent(new win.Event('input',{bubbles:true}));stateSel.dispatchEvent(new win.Event('change',{bubbles:true}));paintStatus();});seg.append(b);segBtns[v]=b;}
-    if(stateSel){const park=add(make('div','cw-v4-park'));M(stateSel,park);bar.append(park);}
-    bar.append(onl,seg);
+    const on=(n,type,fn)=>{if(!n)return;n.addEventListener(type,fn);es.undo.push(()=>n.removeEventListener(type,fn));};
+    const cls=(n,...c)=>{if(!n)return n;const added=c.filter(x=>!n.classList.contains(x));n.classList.add(...added);es.undo.push(()=>n.classList.remove(...added));return n;};
+    const fire=(n,...types)=>{if(!n)return;for(const ty of types){if(win.jQuery)win.jQuery(n).trigger(ty);else n.dispatchEvent(new win.Event(ty,{bubbles:true}));}};
+    const num=n=>cls(Q(n),'cw-v4-num','cww-num');
+    // 卡片里的一格字段：标题、说明、控件在下（「标题和说明在上，控件在下」）。
+    const field=(host,label,hint,nodes,extra='')=>{const f=make('div','cww-field'+(extra?' '+extra:'')),lab=make('div','cww-lab');if(label instanceof win.Node)lab.append(label);else lab.textContent=label;f.append(lab);if(hint!=null){const hn=make('div','cww-hint');if(hint instanceof win.Node)hn.append(hint);else hn.textContent=hint;f.append(hn);}const box=make('div','cww-ctl');f.append(box);for(const n of [].concat(nodes))if(n)n.parentNode?M(n,box):box.append(n);host.append(f);return f;};
+    // 行内字段：左边标题和说明，右边控件（手机 3 列网格也用这个）。
+    const inField=(host,label,hint,nodes,extra='')=>{const f=make('div','cww-field cww-fin'+(extra?' '+extra:'')),txt=make('div','cww-fin-t'),lab=make('div','cww-lab',label),hn=make('div','cww-hint',hint||''),box=make('div','cww-ctl');txt.append(lab);if(hint)txt.append(hn);f.append(txt,box);for(const n of [].concat(nodes))if(n)n.parentNode?M(n,box):box.append(n);host.append(f);return {f,hn};};
+    const card=host=>{const c=make('div','cw-v4-card cww-ecard');host.append(c);return c;};
+    const secH=(title,small,extra)=>{const h=make('h2','cww-sub-h'),tt=make('span','',title);h.append(tt);if(small)h.append(make('small','',small));if(extra){h.append(make('span','cww-grow'),extra);}return h;};
+    const swRow=(host,title,desc,checkbox,afterRow)=>{const r=make('div','cw-v4-row cww-set-row'),info=make('div','cw-v4-row-info'),c=make('div','cw-v4-row-controls');info.append(make('div','cw-v4-row-title',title));const p=make('p','',desc||'');if(desc)info.append(p);r.append(info,c);host.append(r);if(checkbox){M(showToggle(es,checkbox),c);}if(afterRow)host.append(afterRow);return {r,p,c};};
+    const book=currentBook(),hdr=entry.querySelector('.inline-drawer-header');
+    const back=btn(book,()=>go('book'),'cwr-back cww-back',ICON.back());
+    // 标题：名字可直接改；复制 / 移动 / 删除收进 ⋯。
+    const titleRow=make('div','cww-etitle'),comment=Q('comment');
+    if(comment){cls(comment,'cww-memo');M(comment,titleRow);if(!comment.getAttribute('placeholder')){comment.placeholder=t('给这条起个名字','Name this entry');es.undo.push(()=>comment.removeAttribute('placeholder'));}}
+    const del=hdr?.querySelector('.delete_entry_button');
+    const emenu=menu(es,[['复制这条',hdr?.querySelector('.duplicate_entry_button')],['移到其他世界书…',hdr?.querySelector('.move_entry_button')],['删除这条',del,true,()=>{go('book');del?.click();}]]);emenu.classList.add('cww-entry-more');titleRow.append(emenu);
+    // 状态卡：启用一行、触发方式一行。
+    const status=make('div','cw-v4-card cww-ecard cww-status'),kill=Q('entryKillSwitch'),stateSel=Q('entryStateSelector');
+    const onRow=make('div','cw-v4-row cww-set-row'),onInfo=make('div','cw-v4-row-info'),onMeta=make('p',''),sw=make('button','cww-tg');sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));onInfo.append(make('div','cw-v4-row-title',t('启用','Enabled')),onMeta);const onCtl=make('div','cw-v4-row-controls');onCtl.append(sw);onRow.append(onInfo,onCtl);
+    sw.addEventListener('click',()=>{kill?.click();paintStatus();queue();});
+    const stRow=make('div','cw-v4-row cww-set-row cww-st-row'),stInfo=make('div','cw-v4-row-info'),stMeta=make('p',''),seg=make('div','cww-seg');stInfo.append(make('div','cw-v4-row-title',t('触发方式','Trigger')),stMeta);seg.setAttribute('role','group');seg.setAttribute('aria-label',t('触发方式','Trigger'));stRow.append(stInfo,seg);
+    const segBtns={};for(const [v,[zh,en,k]]of Object.entries(STATE)){const b=make('button','');b.type='button';const d=make('span','cww-dot');d.dataset.kind=k;b.append(d,make('span','',t(zh,en)));b.addEventListener('click',()=>{if(!stateSel||stateSel.value===v)return;stateSel.value=v;stateSel.dispatchEvent(new win.Event('input',{bubbles:true}));stateSel.dispatchEvent(new win.Event('change',{bubbles:true}));paintStatus();});seg.append(b);segBtns[v]=b;}
+    const statePark=make('div','cww-park');if(stateSel)M(stateSel,statePark);
+    status.append(onRow,stRow,statePark);
     const keyHint=make('span','');
-    function paintStatus(){sw.setAttribute('aria-checked',String(!kill?.classList.contains('fa-toggle-off')));const v=stateSel?.value;for(const [k,b]of Object.entries(segBtns))b.setAttribute('aria-pressed',String(k===v));
-      text(keyHint,v==='constant'?t('常驻条目每次都会发送，关键词可以不填。','Constant entries are always sent; keywords are optional.'):v==='vectorized'?t('向量条目按语义相似度触发，关键词可选。','Vectorized entries trigger by similarity; keywords are optional.'):t('聊天里出现任意一个关键词时发送这条。','Sent when any keyword appears in the chat.'));}
-    // 触发
-    const keyNodes=n=>[entry.querySelector(`select[name="${n}"]`),entry.querySelector(`select[name="${n}"]+.select2-container`),entry.querySelector(`textarea[name="${n}"]`),entry.querySelector(`.${n==='key'?'keyprimary':'keysecondary'} .switch_input_type_icon`)].filter(Boolean);
-    const trig=sec(t('触发','Trigger'));
-    field(trig.c,t('关键词','Keywords'),keyHint,keyNodes('key'),'cww-keys-field');
-    const logicLab=make('span','cww-lab-row');logicLab.append(make('span','',t('可选过滤器','Optional filter')),make('span','cww-grow'));const logic=Q('entryLogicType');if(logic){M(logic,logicLab);}
-    field(trig.c,logicLab,t('和上面的关键词一起判断；留空就不用。','Checked together with the keywords above; leave empty to skip.'),keyNodes('keysecondary'),'cww-keys-field');
+    const ST_DESC={constant:['每次都发送','Always sent'],normal:['聊天里出现关键词时发送','Sent when a keyword appears'],vectorized:['按语义相似度触发','Triggered by similarity']};
+    function paintStatus(){const live=!kill?.classList.contains('fa-toggle-off');sw.setAttribute('aria-checked',String(live));text(onMeta,live?t('这条会按下面的方式发送','Sent as set below'):t('关掉后保留内容，但不会发送','Kept, but not sent'));
+      const v=stateSel?.value;for(const [k,b]of Object.entries(segBtns))b.setAttribute('aria-pressed',String(k===v));text(stMeta,t(...(ST_DESC[v]||ST_DESC.normal)));
+      text(keyHint,v==='constant'?t('常驻条目每次都发送，关键词可以不填。','Constant entries are always sent; keywords are optional.'):v==='vectorized'?t('向量条目按语义相似度触发，关键词可选。','Vectorized entries trigger by similarity; keywords are optional.'):t('聊天里出现任意一个关键词时发送这条。','Sent when any keyword appears in the chat.'));}
+    // 触发：关键词（✨ 在标签行右边）、可选过滤器（逻辑下拉 + ✨）、触发概率（数字 + 开关 = useProbability）。
+    const keyNodes=n=>{const sel=entry.querySelector(`select[name="${n}"]`);return [sel,sel&&s2box(sel),entry.querySelector(`textarea[name="${n}"]`)].filter(Boolean);};
+    const spark=n=>{const b=entry.querySelector(`.${n==='key'?'keyprimary':'keysecondary'} .switch_input_type_icon`);if(b)cls(b,'cww-mini');return b;};
+    const trigSec=make('section','cw-v4-section cww-esec'),trig=card(trigSec);trigSec.prepend(secH(t('触发','Trigger')));
+    const kLab=make('span','cww-lab-row');kLab.append(make('span','',t('关键词','Keywords')),make('span','cww-grow'));const kSpark=spark('key');if(kSpark)M(kSpark,kLab);
+    field(trig,kLab,keyHint,keyNodes('key'),'cww-keys-field');
+    const fLab=make('span','cww-lab-row');fLab.append(make('span','',t('可选过滤器','Optional filter')),make('span','cww-grow'));const logic=Q('entryLogicType');if(logic)M(logic,fLab);const fSpark=spark('keysecondary');if(fSpark)M(fSpark,fLab);
+    field(trig,fLab,t('和上面的关键词一起判断；留空就不用。','Checked with the keywords above; leave empty to skip.'),keyNodes('keysecondary'),'cww-keys-field');
+    const probBox=make('span','cww-inline'),prob=num('probability');if(prob){cls(prob,'cww-w64');M(prob,probBox);}probBox.append(make('span','cww-unit','%'));const probSw=make('span','cw-v4-row-controls cww-sw-box');probBox.append(probSw);const useProb=Q('useProbability');if(useProb)M(showToggle(es,useProb),probSw);
+    inField(trig,t('触发概率','Trigger chance'),t('满足条件后，有多大几率真的发送','Chance to send once matched'),[probBox],'cww-prob');
     // 内容
     const content=Q('content'),cm=content?.nextElementSibling?.matches('.tt-codemirror-editor')?content.nextElementSibling:null,counter=form.querySelector('.world_entry_form_token_counter');
-    const expand=btn(t('放大','Expand'),()=>openBig(),'cwr-btn cww-expand',ICON.expand());
-    const con=sec(t('内容','Content'),expand);con.s.classList.add('cww-content-sec');
-    const cf=field(con.c,'','',[content,cm].filter(Boolean),'cww-content-field');cf.querySelector('.cww-lab').remove();
+    const expand=btn(t('放大','Expand'),()=>openBig(),'cwr-btn cww-btn-sm cww-expand',ICON.expand());
+    const conSec=make('section','cw-v4-section cww-esec cww-content-sec'),con=card(conSec);conSec.prepend(secH(t('内容','Content'),'',expand));
+    const cf=field(con,'',null,[content,cm].filter(Boolean),'cww-content-field');cf.querySelector('.cww-lab').remove();
     const tok=make('div','cww-tok');cf.append(tok);if(counter){M(counter,tok);tok.dataset.pre=t('约 ','~');tok.dataset.suf=t(' Token',' tokens');}
-    // 插入位置（两列）
-    const ins=sec(t('插入位置','Insertion'));const grid=make('div','cww-grid4');ins.c.append(grid);
-    field(grid,t('位置','Position'),'',[Q('position')]);field(grid,t('深度','Depth'),'',[num('depth')]);field(grid,t('顺序','Order'),'',[num('order')]);
-    const prob=make('span','cww-inline');field(grid,t('触发概率','Trigger %'),'',[prob]);M(Q('useProbability'),prob);M(num('probability'),prob);prob.append(make('span','cww-unit','%'));
-    const outlet=field(grid,t('输出口名称','Outlet name'),t('只在「输出口」位置时生效','Only for the Outlet position'),[Q('outletName')],'cww-wide');
-    // 高级（默认收起）
-    const fold=add(make('button','cww-fold'));fold.type='button';const foldT=make('span','cww-fold-t');fold.append(make('span','',t('高级','Advanced')),foldT);
-    const adv=sec('');adv.s.classList.add('cww-adv');adv.s.querySelector('h2').remove();
-    const setRow=(label,desc,nodes)=>{const r=make('div','cw-v4-row cww-set-row'),info=make('div','cw-v4-row-info'),c=make('div','cw-v4-row-controls');info.append(make('div','cw-v4-row-title',label));if(desc)info.append(make('p','',desc));r.append(info,c);for(const n of [].concat(nodes))if(n){n.type==='checkbox'?M(showToggle(es,n),c):M(n,c);}adv.c.append(r);return r;};
-    setRow(t('不被其他条目递归触发','Not triggered by recursion'),'',[Q('excludeRecursion')]);
-    setRow(t('不触发其他条目（防止递归）','Prevent further recursion'),'',[Q('preventRecursion')]);
-    const delayBox=make('span','cww-inline');setRow(t('只在递归时触发','Delay until recursion'),t('可指定递归层级','Optional recursion level'),[delayBox]);M(Q('delay_until_recursion'),delayBox);M(num('delayUntilRecursionLevel'),delayBox);
-    setRow(t('无视预算','Ignore budget'),'',[Q('ignoreBudget')]);
-    const grp=make('span','cww-inline');setRow(t('分组','Group'),t('同组里只发送一条；可设组内优先和权重','One entry per group; priority and weight optional'),[grp]);M(Q('group'),grp);M(Q('groupOverride'),grp);M(num('groupWeight'),grp);
-    const timed=make('span','cww-inline');setRow(t('粘性 / 冷却 / 延迟','Sticky / Cooldown / Delay'),t('触发后保持几轮、隔几轮再触发、从第几轮起','Keep for N turns, wait N turns, start after N'),[timed]);for(const n of ['sticky','cooldown','delay'])M(num(n),timed);
-    const cf2=make('span','cww-inline cww-charfilter');setRow(t('只对这些角色生效','Only for these characters'),t('留空 = 所有角色','Empty = all characters'),[cf2]);
-    const cfSel=Q('characterFilter');if(cfSel){M(cfSel,cf2);const c2=cfSel.nextElementSibling;if(c2?.matches('.select2-container'))M(c2,cf2);}
-    const ex=Q('character_exclusion');if(ex){const l=make('label','cww-mini');cf2.append(l);M(ex,l);l.append(t('排除','Exclude'));}
-    const scan=make('span','cww-inline');setRow(t('扫描设置','Scan settings'),t('留空或「跟随全局」：扫描深度、大小写、整词匹配、组评分','Blank or “use global”: scan depth, case, whole words, group scoring'),[scan]);for(const n of ['scanDepth','caseSensitive','matchWholeWords','useGroupScoring'])M(n==='scanDepth'?num(n):Q(n),scan);
-    setRow(t('自动化 ID','Automation ID'),'',[Q('automationId')]);
-    const trg=Q('triggers');if(trg){const tr=setRow(t('生成类型','Generation types'),t('只在这些生成方式下触发','Only for these generation types'),[]);const c=tr.querySelector('.cw-v4-row-controls');M(trg,c);const c2=trg.nextElementSibling;if(c2?.matches('.select2-container'))M(c2,c);}
-    for(const [n,l] of [['matchPersonaDescription','也匹配用户角色描述'],['matchCharacterDescription','也匹配角色描述'],['matchCharacterPersonality','也匹配角色性格'],['matchCharacterDepthPrompt','也匹配角色备注'],['matchScenario','也匹配场景'],['matchCreatorNotes','也匹配作者的注释']])setRow(L(l),'',[Q(n)]);
-    // ST hides some checkboxes until their section expands; show them as switches here.
-    const shown=[];adv.c.querySelectorAll('input[type=checkbox]').forEach(c=>{if(c.style.display==='none'||c.hidden||c.classList.contains('displayNone')){shown.push([c,c.style.display,c.hidden]);c.style.display='';c.hidden=false;c.classList.add('cw-v4-icon-toggle');}});
-    es.undo.push(()=>{for(const [c,d,hd]of shown){c.style.display=d;c.hidden=hd;c.classList.remove('cw-v4-icon-toggle');}});
-    const paintFold=()=>{const open=!!ui.advOpen;fold.setAttribute('aria-expanded',String(open));text(foldT,open?t('收起','Collapse'):t('展开（递归、分组、粘性、角色过滤……）','Expand (recursion, groups, sticky, character filter…)'));setHidden(adv.s,!open);};
+    // 插入到哪里：位置 / 顺序 / 深度 / 以谁的身份（2×2）。位置和身份背后是同一个原生下拉（@深度 × data-role）。
+    const posSel=Q('position'),depth=num('depth'),order=num('order');
+    const insSec=make('section','cw-v4-section cww-esec'),ins=card(insSec);insSec.prepend(secH(t('插入到哪里','Insertion')));
+    const grid=make('div','cww-grid cww-c2');ins.append(grid);
+    const pSel=make('select','cww-sel'),rSel=make('select','cww-sel');
+    for(const v of ['0','1','5','6','2','3','4','7']){const o=make('option','',t(...POS[v]));o.value=v;pSel.append(o);}
+    for(const [v,zh,en] of [['0','系统','System'],['1','用户','User'],['2','AI','AI']]){const o=make('option','',t(zh,en));o.value=v;rSel.append(o);}
+    const posPark=make('div','cww-park');if(posSel)M(posSel,posPark);
+    const writePos=()=>{if(!posSel)return;const v=pSel.value,role=v==='4'?rSel.value:'';const o=[...posSel.options].find(x=>x.value===v&&(v!=='4'||x.dataset.role===role));if(!o||o.selected)return;o.selected=true;posSel.dispatchEvent(new win.Event('input',{bubbles:true}));posSel.dispatchEvent(new win.Event('change',{bubbles:true}));paintPos();queue();};
+    pSel.addEventListener('change',writePos);rSel.addEventListener('change',writePos);
+    const depthHint=make('span',''),roleHint=make('span','');
+    field(grid,t('位置','Position'),t('放在提示词的哪一段','Where in the prompt'),[pSel]);
+    field(grid,t('顺序','Order'),t('数字大的排在后面，离 AI 更近','Higher goes later, closer to the AI'),[order]);
+    field(grid,t('深度','Depth'),depthHint,[depth]);
+    const roleF=field(grid,t('以谁的身份','As whom'),roleHint,[rSel,posPark]);
+    const outlet=field(ins,t('输出口名称','Outlet name'),t('只在位置选「输出口」时用','Only for the Outlet position'),[Q('outletName')],'cww-outlet');
+    const depthWasDisabled=depth?.disabled;es.undo.push(()=>{if(depth)depth.disabled=depthWasDisabled;});
+    function paintPos(){const o=posSel?.selectedOptions?.[0],v=o?.value??'0',role=o?.dataset.role||'0',isDepth=v==='4';if(pSel.value!==v)pSel.value=v;if(rSel.value!==role)rSel.value=role;rSel.disabled=!isDepth;if(depth)depth.disabled=!isDepth;roleF.classList.toggle('cww-dim',!isDepth);
+      text(depthHint,isDepth?t('插在倒数第几条消息前','Before the Nth last message'):t('只有位置选「@深度」时可用','Only for @Depth'));text(roleHint,isDepth?t('这段内容算作谁说的','Who says this'):t('只有位置选「@深度」时可用','Only for @Depth'));setHidden(outlet,v!=='7');}
+    on(posSel,'input',paintPos);on(posSel,'change',paintPos);
+    // 高级：折叠条第二行写出改过默认值的项。
+    const fold=make('button','cww-fold');fold.type='button';const ft=make('span','cww-ft'),fb=make('b','',t('高级','Advanced')),fs=make('small','');ft.append(fb,fs);fold.append(ft,svg('<path d="m9 6 6 6-6 6"/>',{w:1.9}));
+    const adv=make('div','cww-adv');
+    // 1 递归与预算
+    adv.append(secH(t('递归与预算','Recursion & budget')));const c1=card(adv);
+    swRow(c1,t('不会被其他条目触发','Not triggered by other entries'),t('其他条目的内容里出现这里的关键词，也不激活这条','Keywords in other entries do not activate this one'),Q('excludeRecursion'));
+    swRow(c1,t('不触发其他条目','Do not trigger others'),t('这条的内容不再拿去匹配别的条目','This content is not scanned for other entries'),Q('preventRecursion'));
+    const delayCb=Q('delay_until_recursion'),lvl=num('delayUntilRecursionLevel'),subrow=make('div','cww-subrow');subrow.append(make('span','cww-bar-l'),make('span','',t('从第','From level')));if(lvl){cls(lvl,'cww-w56');M(lvl,subrow);}subrow.append(make('span','',t('层递归开始触发','of recursion')));
+    swRow(c1,t('只在递归时触发','Only during recursion'),t('只能被其他条目带出来，聊天本身不触发','Only activated by other entries, not by the chat'),delayCb,subrow);
+    swRow(c1,t('无视预算','Ignore budget'),t('世界书超出上下文预算时，这条照样发送','Sent even when World Info is over budget'),Q('ignoreBudget'));
+    const paintSub=()=>setHidden(subrow,!delayCb?.checked);on(delayCb,'input',paintSub);on(delayCb,'change',paintSub);
+    // 2 分组
+    adv.append(secH(t('分组','Group'),t('同一组里一次只发送一条','One entry per group at a time')));const c2=card(adv);
+    const group=Q('group');if(group){cls(group,'cww-text');if(group.getAttribute('placeholder')!=null){const old=group.getAttribute('placeholder');group.placeholder=t('例如：人物','e.g. Characters');es.undo.push(()=>group.setAttribute('placeholder',old));}}
+    field(c2,t('组名','Group name'),t('可以填多个，用逗号隔开；留空就不分组','Several, comma-separated; empty = no group'),[group]);
+    const g2=make('div','cww-grid cww-c2');c2.append(g2);
+    field(g2,t('权重','Weight'),t('同组随机挑选时的分量','Weight for random pick in the group'),[num('groupWeight')]);
+    const scoring=Q('useGroupScoring');if(scoring)cls(scoring,'cww-sel');field(g2,t('组评分','Group scoring'),t('按关键词命中数挑选','Pick by keyword hits'),[scoring]);
+    const ov=make('span','cw-v4-row-controls cww-sw-box');inField(c2,t('组内优先','Prioritize in group'),t('同组里优先选这条，不看权重','Picked first in its group, ignoring weight'),[ov]);const gov=Q('groupOverride');if(gov)M(showToggle(es,gov),ov);
+    // 3 时效
+    adv.append(secH(t('时效','Timed effects'),t('单位都是"条消息"，0 = 不用','Counted in messages; 0 = off')));const c3=card(adv);const g3=make('div','cww-grid cww-c3');c3.append(g3);
+    for(const [n,zh,en,hz,he] of [['sticky','粘性','Sticky','触发后连续保持几条','Stays active for N messages'],['cooldown','冷却','Cooldown','触发后隔几条才能再触发','Wait N messages before again'],['delay','延迟','Delay','聊到第几条以后才触发','Only after N messages']])inField(g3,t(zh,en),t(hz,he),[num(n)]);
+    // 4 角色过滤：只对 / 不对（原生 character_exclusion）+ 原生多选。
+    adv.append(secH(t('角色过滤','Character filter')));const c4=card(adv);const fwrap=make('div','cww-field');c4.append(fwrap);
+    const ex=Q('character_exclusion'),fseg=make('div','cww-seg cww-fseg');const fb1=make('button','',t('只对这些角色生效','Only these characters')),fb2=make('button','',t('这些角色不生效','Not these characters'));fb1.type=fb2.type='button';fseg.append(fb1,fb2);
+    const paintEx=()=>{fb1.setAttribute('aria-pressed',String(!ex?.checked));fb2.setAttribute('aria-pressed',String(!!ex?.checked));};
+    const setEx=v=>{if(!ex||ex.checked===v)return;ex.checked=v;ex.dispatchEvent(new win.Event('input',{bubbles:true}));ex.dispatchEvent(new win.Event('change',{bubbles:true}));paintEx();paintSummary();};
+    fb1.addEventListener('click',()=>setEx(false));fb2.addEventListener('click',()=>setEx(true));
+    const cfBox=make('div','cww-ctl cww-cf'),cfSel=Q('characterFilter');fwrap.append(fseg,cfBox);if(cfSel){const c=s2box(cfSel);M(cfSel,cfBox);if(c)M(c,cfBox);}
+    const exPark=make('div','cww-park');if(ex)M(ex,exPark);fwrap.append(exPark);
+    // 5 扫描：留空或「跟随全局」(= 原生 null) 用激活设置的值。
+    adv.append(secH(t('扫描','Scan'),t('留空或"跟随全局"就用激活设置里的值','Blank or "use global" uses Activation settings')));const c5=card(adv);const g5=make('div','cww-grid cww-c3');c5.append(g5);
+    const sd=num('scanDepth');if(sd){const old=sd.getAttribute('placeholder'),i18n=sd.getAttribute('data-i18n');sd.placeholder=t(`跟随全局（${get('world_info_depth')?.value??''}）`,`Global (${get('world_info_depth')?.value??''})`);if(i18n!==null)sd.setAttribute('data-i18n',[...i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')),'[placeholder]'+sd.placeholder].join(';'));es.undo.push(()=>{old===null?sd.removeAttribute('placeholder'):sd.setAttribute('placeholder',old);i18n===null?sd.removeAttribute('data-i18n'):sd.setAttribute('data-i18n',i18n);});}
+    inField(g5,t('扫描深度','Scan depth'),t('往回看几条消息','Messages to scan'),[sd]);
+    for(const [n,zh,en,hz,he] of [['caseSensitive','区分大小写','Case-sensitive','Aa 和 aa 算不算同一个词','Is Aa the same as aa'],['matchWholeWords','整词匹配','Whole words','关键词要不要是完整的词','Match whole words only']]){const s2=Q(n);if(s2)cls(s2,'cww-sel');inField(g5,t(zh,en),t(hz,he),[s2]);}
+    // 6 更多：额外匹配来源（原生 6 个勾选）、生成方式（原生 triggers 多选），用勾选胶囊。
+    adv.append(secH(t('更多','More')));const c6=card(adv);
+    const pillsPark=make('div','cww-park');
+    const srcPills=make('div','cww-pills');
+    const SRC=[['matchPersonaDescription','用户角色描述','Persona description'],['matchCharacterDescription','角色描述','Character description'],['matchCharacterPersonality','角色性格','Character personality'],['matchCharacterDepthPrompt','角色备注（深度提示）',"Character's note"],['matchScenario','场景','Scenario'],['matchCreatorNotes','作者备注',"Creator's notes"]];
+    const pillsPaint=[];
+    for(const [n,zh,en] of SRC){const cb=Q(n);if(!cb)continue;M(cb,pillsPark);const b=make('button','cww-pk',t(zh,en));b.type='button';const paintP=()=>b.setAttribute('aria-pressed',String(cb.checked));b.addEventListener('click',()=>{cb.checked=!cb.checked;cb.dispatchEvent(new win.Event('input',{bubbles:true}));cb.dispatchEvent(new win.Event('change',{bubbles:true}));paintP();paintSummary();});pillsPaint.push(paintP);srcPills.append(b);}
+    field(c6,t('关键词也在这些地方找','Also match keywords in'),t('默认只看聊天消息','Chat messages only by default'),[srcPills]);
+    const trg=Q('triggers'),genPills=make('div','cww-pills');
+    if(trg){const c=s2box(trg);M(trg,pillsPark);if(c)M(c,pillsPark);
+      const GEN={normal:['正常发送','Normal'],continue:['继续','Continue'],impersonate:['AI 帮答','Impersonate'],swipe:['滑动','Swipe'],regenerate:['重新生成','Regenerate'],quiet:['静默生成','Quiet']};
+      for(const o of trg.options){const b=make('button','cww-pk',t(...(GEN[o.value]||[o.textContent.trim(),o.textContent.trim()])));b.type='button';const paintP=()=>b.setAttribute('aria-pressed',String(o.selected));b.addEventListener('click',()=>{o.selected=!o.selected;fire(trg,'input','change');paintP();paintSummary();});pillsPaint.push(paintP);genPills.append(b);}}
+    field(c6,t('只在这些生成方式下触发','Only for these generation types'),t('都不选 = 所有方式','None = all types'),[genPills]);
+    const auto=Q('automationId');if(auto)cls(auto,'cww-text');field(c6,t('自动化 ID','Automation ID'),t('给 Quick Reply 等自动化脚本用；不用就留空','For Quick Reply and other automation; leave empty if unused'),[auto]);
+    c6.append(pillsPark);
+    // 已改：和原生默认值不同的项。
+    function changes(){const out=[],v=n=>Q(n),chk=n=>!!v(n)?.checked,val=n=>String(v(n)?.value??'').trim();
+      if(chk('excludeRecursion'))out.push(t('不被触发','not triggered'));if(chk('preventRecursion'))out.push(t('不触发其他','no recursion'));if(chk('delay_until_recursion'))out.push(t('只在递归时','recursion only'));if(chk('ignoreBudget'))out.push(t('无视预算','ignore budget'));
+      if(val('group'))out.push(t(`分组 ${val('group')}`,`group ${val('group')}`));if(val('groupWeight')&&val('groupWeight')!=='100')out.push(t(`权重 ${val('groupWeight')}`,`weight ${val('groupWeight')}`));if(chk('groupOverride'))out.push(t('组内优先','group priority'));if(val('useGroupScoring')&&val('useGroupScoring')!=='null')out.push(t('组评分','group scoring'));
+      for(const [n,zh,en] of [['sticky','粘性','sticky'],['cooldown','冷却','cooldown'],['delay','延迟','delay']])if(val(n)&&val(n)!=='0')out.push(t(`${zh} ${val(n)}`,`${en} ${val(n)}`));
+      if(chk('character_exclusion')||v('characterFilter')?.selectedOptions?.length)out.push(t('角色过滤','character filter'));
+      if(val('scanDepth'))out.push(t(`扫描深度 ${val('scanDepth')}`,`scan depth ${val('scanDepth')}`));for(const [n,zh,en] of [['caseSensitive','大小写','case'],['matchWholeWords','整词','whole words']])if(val(n)&&val(n)!=='null')out.push(t(zh,en));
+      const extra=SRC.filter(([n])=>chk(n)).length;if(extra)out.push(t(`额外匹配 ${extra} 项`,`${extra} extra sources`));const gen=trg?[...trg.selectedOptions].length:0;if(gen)out.push(t(`生成方式 ${gen} 项`,`${gen} generation types`));if(val('automationId'))out.push(t('自动化 ID','automation ID'));
+      return out;}
+    function paintSummary(){const c=changes();text(fs,c.length?t(`已改：${c.join(' · ')}`,`Changed: ${c.join(' · ')}`):t('都是默认值','All defaults'));fs.classList.toggle('cww-changed',c.length>0);}
+    const paintFold=()=>{const open=!!ui.advOpen;fold.setAttribute('aria-expanded',String(open));setHidden(adv,!open);};
     fold.addEventListener('click',()=>{ui.advOpen=!ui.advOpen;paintFold();});
-    // 底部：删除这条（左）· 完成（右，电脑）。
-    const foot=add(make('div','cww-footbar')),del=btn(t('删除这条','Delete entry'),()=>{const d=hdr?.querySelector('.delete_entry_button');go('book');d?.click();},'cwr-btn cww-danger');
-    foot.append(del,btn(t('完成','Done'),()=>go('book'),'cwr-btn cww-primary cww-desk-only'));
-    view.replaceChildren(back,sh,bar,trig.s,con.s,ins.s,fold,adv.s,foot);
-    for(const x of [trig.s,con.s,ins.s,adv.s])es.created.push(x);
-    paintStatus();paintFold();
-    const posSel=Q('position');const paintOutlet=()=>setHidden(outlet,posSel?.value!=='7');paintOutlet();posSel?.addEventListener('change',paintOutlet);es.undo.push(()=>posSel?.removeEventListener('change',paintOutlet));
-    stateSel?.addEventListener('input',paintStatus);es.undo.push(()=>stateSel?.removeEventListener('input',paintStatus));
-    const tokPaint=()=>{if(!counter&&content){text(tok,t(`约 ${Math.round(content.value.length/1.6)} Token`,`~${Math.round(content.value.length/1.6)} tokens`));}};tokPaint();content?.addEventListener('input',tokPaint);es.undo.push(()=>content?.removeEventListener('input',tokPaint));
-    es.content=content;es.cm=cm;es.counter=counter;es.contentHost=cf;es.title=()=>comment?.value.trim()||t('（无标题）','(Untitled)');
+    on(view,'input',paintSummary);on(view,'change',()=>{paintSummary();for(const p of pillsPaint)p();});
+    // ST hides some checkboxes until their section expands; show them as switches here.
+    const shown=[];view.querySelectorAll?.('input[type=checkbox]');
+    // 底部只留「完成」（电脑）。
+    const foot=make('div','cww-footbar');foot.append(btn(t('完成','Done'),()=>go('book'),'cwr-btn cww-primary cww-desk-only'));
+    view.replaceChildren(back,titleRow,status,trigSec,conSec,insSec,fold,adv,foot);
+    for(const c of view.querySelectorAll('input[type=checkbox]')){if(c.closest('.cw-v4-park'))continue;if(c.style.display==='none'||c.hidden||c.classList.contains('displayNone')){shown.push([c,c.style.display,c.hidden]);c.style.display='';c.hidden=false;c.classList.add('cw-v4-icon-toggle');}}
+    es.undo.push(()=>{for(const [c,d,hd]of shown){c.style.display=d;c.hidden=hd;c.classList.remove('cw-v4-icon-toggle');}});
+    paintStatus();paintPos();paintSub();paintEx();for(const p of pillsPaint)p();paintSummary();paintFold();
+    on(stateSel,'input',paintStatus);
+    const tokPaint=()=>{if(!counter&&content){text(tok,t(`约 ${Math.round(content.value.length/1.6)} Token`,`~${Math.round(content.value.length/1.6)} tokens`));}};tokPaint();on(content,'input',tokPaint);
+    es.content=content;es.cm=cm;es.counter=counter;es.contentHost=cf;es.menu=emenu;es.title=()=>comment?.value.trim()||t('（无标题）','(Untitled)');
     ui.view='entry';ui.panel.dataset.cwwView='entry';for(const [k,n]of Object.entries(ui.views))setHidden(n,k!=='entry');ui.panel.scrollTop=0;
     paintMobileHead();
     if(cm)measureCM(content);
@@ -428,7 +519,7 @@ export function createWorldPage(h) {
       if(v==='home'&&ui.selecting)m.replaceChildren(button(t('取消','Cancel'),()=>stopSelecting(true),'cwr-head-back'),make('h1','',t(`已选 ${ui.selected.size} 本`,`${ui.selected.size} selected`)),button(t('全选','Select all'),()=>selectAll(),'cwr-head-action'));
       else if(v==='home'){const menuBtn=button('',()=>doc.querySelector('.cw-v4-shell .cw-v4-head .cw-v4-menu')?.click(),'cwr-head-back cww-head-ic');menuBtn.append(svg('<path d="M4 7h16M4 12h11M4 17h16"/>'));menuBtn.setAttribute('aria-label',t('菜单','Menu'));const plus=button('',()=>get('world_create_button')?.click(),'cwr-head-action cww-head-ic');plus.append(ICON.plus());plus.setAttribute('aria-label',t('新建世界书','New World Info'));m.replaceChildren(menuBtn,make('h1','',t('世界书','World Info')),plus);}
       else if(v==='book'){const more=button('',()=>{const d=ui.views.book.querySelector('.cww-book-more');if(d)d.open=!d.open;},'cwr-head-action cww-head-ic');more.append(ICON.more());more.setAttribute('aria-label',t('更多','More'));m.replaceChildren(back(t('世界书','World Info'),'home'),make('h1','',currentBook()),more);}
-      else if(v==='entry')m.replaceChildren(back(currentBook(),'book'),make('h1',''),button(t('完成','Done'),()=>go('book'),'cwr-head-action cww-head-done'));
+      else if(v==='entry'){const more=button('',()=>{const d=ui.editing?.menu;if(d)d.open=!d.open;},'cwr-head-action cww-head-ic');more.append(ICON.more());more.setAttribute('aria-label',t('更多','More'));const right=make('span','cww-head-right');right.append(more,button(t('完成','Done'),()=>go('book'),'cwr-head-action cww-head-done'));m.replaceChildren(back(currentBook(),'book'),make('h1',''),right);}
       else m.replaceChildren(back(t('世界书','World Info'),'home'),make('h1','',t('激活设置','Activation settings')),make('span','cww-head-spacer'));
     }
     if(!m.isConnected)head.append(m);
