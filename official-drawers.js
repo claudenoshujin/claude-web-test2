@@ -9,6 +9,7 @@ import { normalizeSettingsSections } from './settings-sections.js?v=2.0.340';
  * English table for other UI languages. */
 import { createExtensionSettings, retainRangeCounter } from './official-extension-settings.js?v=2.0.340';
 import { createPresetList } from './official-preset-list.js?v=2.0.340';
+import { createWorldPage } from './official-world.js?v=2.0.340';
 import { createPromptScroll } from './official-prompt-scroll.js?v=2.0.340';
 import { createExtensionPanel } from './official-extension-panel.js?v=2.0.340';
 export function actionLabel(node,t){
@@ -146,225 +147,12 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
 
   const presetManagerPage=createPresetManagerPage({win,t,make,button,icon,move,cleanup,created});
   const refinements=createInterfaceRefinements({win,t,L,make,button,icon,get,begin,finish,section,row,move,cleanup,created,act,menu,tg,sel,num,txt,presetRow,showToggle,openEditor});
-  /* ---------------- 世界书 ---------------- */
-  function worldChips(s){const box=s.chips;if(!box)return;const names=[...(get('world_info')?.selectedOptions||[])].map(o=>o.textContent.trim());const key=names.join('\n')||'-';if(box.dataset.key===key)return;box.dataset.key=key;box.replaceChildren(...(names.length?names.map(n=>make('span','cw-v4-chip',n)):[make('span','cw-v4-muted',L('无'))]));}
-  function worldSummary(s){const n=s.summary;if(!n)return;const d=get('world_info_depth')?.value,b=get('world_info_budget')?.value,r=get('world_info_recursive')?.checked;const text=t(`扫描深度 ${d} · 上下文 ${b}% · 递归${r?'开':'关'}`,`Scan depth ${d} · Context ${b}% · Recursion ${r?'on':'off'}`);if(n.textContent!==text)n.textContent=text;}
+  /* ---------------- 世界书 ----------------
+   * 2.0.341：整页重排见 official-world.js（首页 / 书页 / 条目页 / 激活设置 / 内容放大）。 */
+  const worldPage=createWorldPage({win,t,L,make,button,icon,get,move,cleanup,state,menu,act,openEditor,showToggle,phoneWide:()=>phoneWide()});
   function world(panel){const started=begin(panel);if(!started)return;const {s,page}=started;
-    const global=section(page,'全局');
-    const chips=make('div','cw-v4-chips cw-v4-created');s.chips=chips;
-    const picker=get('WIMultiSelector');
-    const enabled=row(s,global,'已启用的世界书','对所有聊天生效',[chips,button(L('选择'),()=>openEditor(picker,L('已启用的世界书')))]);
-    const parkSel=make('div','cw-v4-park');enabled.append(parkSel);move(s,picker,parkSel);worldChips(s);
-    // Activation settings: a one-line summary + a dialog of setting rows.
-    if(get('wiActivationSettings')){
-      const R2=(host,id,label,desc)=>rng(s,host,get(id),get(id+'_counter'),label,desc);
-      const T2=(host,id,label,desc)=>tg(s,host,get(id),label,desc);
-      const summary=make('span','cw-v4-summary');s.summary=summary;
-      dialogRow(s,global,'激活设置',summary,'激活设置',box=>{
-        const a=section(box,'扫描');R2(a,'world_info_depth','扫描深度','往回看多少条消息找关键字');R2(a,'world_info_max_recursion_steps','最大递归步数','0 = 不限');
-        const b=section(box,'预算');R2(b,'world_info_budget','上下文占比 %','世界书最多占用多少上下文');R2(b,'world_info_budget_cap','预算上限（Token）','0 = 不设上限');T2(b,'world_info_overflow_alert','超出预算时提醒');
-        const c=section(box,'最少激活');R2(c,'world_info_min_activations','最少激活条数','不够时继续往前扫描');R2(c,'world_info_min_activations_depth_max','最大扫描深度','0 = 不限');
-        const d=section(box,'匹配');sel(s,d,get('world_info_character_strategy'),'插入策略','全局与角色世界书的先后');T2(d,'world_info_include_names','匹配时包含名字');T2(d,'world_info_recursive','递归扫描','已激活条目的内容也能触发其他条目');T2(d,'world_info_case_sensitive','区分大小写');T2(d,'world_info_match_whole_words','完整单词匹配');T2(d,'world_info_use_group_scoring','组评分');
-      });
-      worldSummary(s);
-    }
-    const edit=section(page,'编辑');
-    row(s,edit,'世界书','选一本来编辑它的条目',[get('world_editor_select'),act(s,get('world_create_button'),'新建',true),menu(s,[['导入',get('world_import_button')],['导出',get('world_popup_export')],['改名',get('world_popup_name_button')],['复制一份',get('world_duplicate')],['删除这本世界书',get('world_popup_delete'),true]])]).classList.add('cw-v4-bookrow');
-    const entries=section(page,'条目');entries.classList.add('cw-v4-entries');const b=bar();entries.append(b);
-    b.append(searchBox(s,get('world_info_search'),'搜索条目'));move(s,get('world_info_sort_order'),b);move(s,act(s,get('world_popup_new'),'新建条目',true),b);
-    b.append(menu(s,[['用关键字填充空标题',get('world_backfill_memos')],['把当前排序写入「顺序」',get('world_apply_current_sorting')],['刷新',get('world_refresh')]]));
-    // Entries open in a dialog, so expand / collapse all are kept but not shown.
-    const hidden=make('div','cw-v4-park');entries.append(hidden);for(const id of ['OpenAllWIEntries','CloseAllWIEntries'])move(s,get(id),hidden);
-    move(s,get('world_info_pagination'),entries);move(s,get('world_popup_entries_list'),entries);
-    phoneWorld(s,page,{global,edit,entries,bar:b,picker});
+    worldPage.build(panel,s,page);
     finish(s);
-  }
-  /* 2.0.262 手机：世界书首页照 Profile（标题和内容分开、不放 ›），条目单独一页照 Chats（每条一张白卡片、右下角「+ 新建条目」）。
-   * 电脑那三个小节手机上收起来；点「条目」时 openEditor 把电脑的「条目」小节整块搬进弹出页，关了搬回。
-   * 排序从 14 种合成 5 项 + 「倒序」开关（Lulu：功能项太多）；「自定义」（要拖动）、UID、触发概率手机上不放；「刷新」不要；
-   * 「填充空标题」「写入顺序」挪到首页「更多操作」。 */
-  function phoneWorld(s,page,{global,edit,entries,bar:b,picker}){
-    const book=get('world_editor_select'),hasBook=()=>!!book?.value&&book.selectedIndex>0;
-    global.classList.add('cw-v4-desk-only');edit.classList.add('cw-v4-desk-only');entries.classList.add('cw-v4-desk-only','cw-v4-wi-entries');
-    const pg=pfSec(page,'全局');
-    pfField(pg,'已启用的世界书',()=>picker&&openEditor(picker,L('已启用的世界书')),()=>{const n=[...(get('world_info')?.selectedOptions||[])].map(o=>o.textContent.trim());return [n.join('、')||L('无'),!n.length];},'wi-global');
-    const activation=global.querySelector('.cw-v4-row:has(.cw-v4-summary)>.cw-v4-row-controls>button');
-    if(activation)pfText(page,'激活设置',()=>s.summary?.textContent,()=>activation.click(),'wi-activation');
-    const pe=pfSec(page,'编辑');
-    pfField(pe,'世界书',()=>book&&openSelMenu?.(book),()=>[hasBook()?book.selectedOptions[0].textContent.trim():L('选一本'),!hasBook()],'wi-book');
-    const count=()=>{const nav=get('world_info_pagination')?.querySelector('.paginationjs-nav')?.textContent||'',m=nav.match(/\.\.\s*(\d+)/);const n=m?+m[1]:(get('world_popup_entries_list')?.querySelectorAll('.world_entry').length||0);return t(`${n} 条`,String(n));};
-    // 「+ 新建条目」开着条目页时挂到弹出页上（弹出页有 transform，放在里面 fixed 会跟着内容走），关了放回来。
-    let fab=null;
-    const ent=pfField(pe,'编辑条目',()=>{if(!hasBook())return;openEditor(entries,t('条目','Entries'),'',{onClose:()=>{if(fab)entries.append(fab);}});const d=entries.closest('dialog');if(d&&fab)d.append(fab);},()=>[count(),false],'wi-entries');ent.classList.add('cw-v4-pf-go');
-    const pa=pfSec(page,'');
-    for(const [l,id] of [['新建世界书','world_create_button'],['导入','world_import_button']]){const x=pfBtn('cw-v4-pf-blue',()=>get(id)?.click());x.textContent=L(l);pa.append(x);}
-    const pb=pfSec(page,'这本世界书','cw-v4-wi-book');
-    for(const [l,id] of [['改名','world_popup_name_button'],['复制一份','world_duplicate'],['导出','world_popup_export']]){const x=pfBtn('cw-v4-pf-blue',()=>get(id)?.click());x.textContent=L(l);pb.append(x);}
-    const more=sheetMenu('cw-v4-pf-moreops',make('span','',L('更多操作')),ui=>{ui.opt(L('用关键字填充空标题'),false,()=>get('world_backfill_memos')?.click());ui.opt(L('把当前排序写入「顺序」'),false,()=>get('world_apply_current_sorting')?.click());});
-    more.querySelector('summary').setAttribute('aria-label',L('更多操作'));pb.append(more);
-    const del=pfDelete(page,'删除这本世界书',()=>get('world_popup_delete')?.click(),'cw-v4-wi-book');
-    paints.push(()=>{const on=hasBook();setFlag(ent,'cw-v4-hide',!on);setFlag(pb,'cw-v4-hide',!on);setFlag(del,'cw-v4-hide',!on);});
-    // 条目页：搜索框右端调节图标（排序 5 项 + 倒序）；右下角「+ 新建条目」。
-    const so=get('world_info_sort_order'),SORTS=[['优先级','0','0'],['顺序','7','8'],['标题','1','2'],['Token 数','3','4'],['深度','5','6']];
-    const setSort=v=>{if(!so||so.value===v)return;so.value=v;so.dispatchEvent(new win.Event('change',{bubbles:true}));};
-    b.append(sheetMenu('cw-v4-phone-filter',sliders(),ui=>{
-      const v=so?.value,cur=SORTS.find(([,a,d])=>v===a||v===d),desc=!!cur&&cur[1]!==cur[2]&&v===cur[2];
-      ui.head('排序');for(const [l,a,d] of SORTS)ui.opt(L(l),!!cur&&cur[1]===a,()=>setSort(desc&&a!==d?d:a));
-      const rev=ui.keep(L('倒序'),()=>{if(cur&&cur[1]!==cur[2])setSort(desc?cur[1]:cur[2]);},desc);if(!cur||cur[1]===cur[2])rev.classList.add('cw-dis');
-    }));
-    fab=button('',()=>get('world_popup_new')?.click(),'cw-v4-wi-fab cw-v4-phone-only');fab.append(icon('plus'),make('span','',L('新建条目')));entries.append(fab);
-  }
-  /* World info entries (design wi.js entryRow / editEntry). The row shows
-   * read-only text painted from the native fields; the native header inputs
-   * stay in the header and move into the dialog only while it is open, so
-   * ST's own handlers and re-renders are untouched. */
-  const POS={'0':'角色定义之前','1':'角色定义之后','5':'示例消息之前','6':'示例消息之后','2':'作者注释之前','3':'作者注释之后','4':'按深度插入','7':'输出口'};
-  const POS_EN={'角色定义之前':'Before character','角色定义之后':'After character','示例消息之前':'Before examples','示例消息之后':'After examples','作者注释之前':"Before Author's Note",'作者注释之后':"After Author's Note",'按深度插入':'At depth','输出口':'Outlet'};
-  const STATE={constant:['常驻','Constant','blue'],normal:['关键字触发','Keyword','green'],vectorized:['向量匹配','Vectorized','link']};
-  const posLabel=v=>t(POS[v]||'',POS_EN[POS[v]]||'');
-  function paintEntry(entry){
-    const row=entry._cwV4Row;if(!row)return;
-    const q=n=>entry.querySelector(`[name="${n}"]`);
-    const set=(n,v)=>{if(n.textContent!==v)n.textContent=v;};
-    set(row.title,q('comment')?.value.trim()||L('（无标题）'));
-    const st=STATE[q('entryStateSelector')?.value]||STATE.normal;
-    const keyField=entry.querySelector('textarea[name="key"]');
-    const keys=(keyField?keyField.value:(entry._cwV4Keys||'')).trim();
-    set(row.state,t(st[0],st[1])+(keys&&st[2]!=='blue'?` · ${keys}`:''));
-    if(row.dot.dataset.kind!==st[2])row.dot.dataset.kind=st[2];
-    const pos=q('position')?.value;
-    set(row.pos,posLabel(pos)+(pos==='4'?` · ${t('深度','Depth')} ${q('depth')?.value}`:''));
-    set(row.ord,L(`顺序 ${q('order')?.value??''}`));
-    const off=q('entryKillSwitch')?.classList.contains('fa-toggle-off');row.line.classList.toggle('cw-v4-off',!!off);
-  }
-  // Keywords live in ST's lazily built editor; until an entry is opened, read
-  // them from ST's own cache of the book (read-only).
-  let wiModule=null,wiLoading=false;
-  function cachedKeys(panel){
-    const need=[...panel.querySelectorAll('.world_entry')].filter(e=>e._cwV4Keys==null&&!e.querySelector('textarea[name="key"]'));
-    if(!need.length)return;
-    if(!wiModule){if(!wiLoading){wiLoading=true;import(new URL('/scripts/world-info.js',win.location.href).href).then(m=>{wiModule=m;need.forEach(paintEntry);cachedKeys(panel);need.forEach(paintEntry);}).catch(()=>{});}return;}
-    const book=get('world_editor_select')?.selectedOptions?.[0]?.textContent.trim();
-    const data=book&&wiModule.worldInfoCache?.get(book);if(!data?.entries)return;
-    for(const e of need){const uid=e.getAttribute('uid')??e.dataset.uid;const k=data.entries[uid]?.key;e._cwV4Keys=Array.isArray(k)?k.join(', '):'';paintEntry(e);}
-  }
-  function worldEntries(panel){
-    cachedKeys(panel);
-    panel.querySelectorAll('.world_entry').forEach(entry=>{
-      if(entry._cwV4Row){paintEntry(entry);return;}
-      const header=entry.querySelector('.inline-drawer-header');if(!header)return;
-      const s=state(entry),line=make('div','cw-v4-entry-line'),info=make('div','cw-v4-entry-info'),title=make('div','cw-v4-entry-title'),meta=make('div','cw-v4-entry-meta'),dot=make('span','cw-v4-dot'),stateText=make('span',''),pos=make('div','cw-v4-entry-pos'),ord=make('div','cw-v4-entry-ord');
-      meta.append(dot,stateText);info.append(title,meta);
-      header.append(line);s.created.push(line);header.classList.add('cw-v4-entry-head');
-      const kill=entry.querySelector('[name="entryKillSwitch"]');move(s,kill,line);
-      const q=sel_=>header.querySelector(sel_);
-      const more=menu(s,[['复制这条',q('.duplicate_entry_button')],['移到其他世界书',q('.move_entry_button')],['删除',q('.delete_entry_button'),true]]);
-      const edit=button(L('配置'),e=>{e.stopPropagation();editEntry(entry);},'cw-v4-button cw-v4-entry-edit');
-      line.append(info,pos,ord,edit,more);
-      // The header is ST's drawer toggle; the row itself must not expand the inline form.
-      line.addEventListener('click',e=>{if(!e.target.closest('[name="entryKillSwitch"]'))e.stopPropagation();});
-      line.addEventListener('dblclick',e=>{if(!e.target.closest('button,[name="entryKillSwitch"],summary'))editEntry(entry);});
-      // 2.0.262 手机：点一下整行就进编辑（电脑照旧双击 / 点「配置」）。
-      line.addEventListener('click',e=>{if(phoneWide()&&!e.target.closest('button,[name="entryKillSwitch"],summary,details'))editEntry(entry);});
-      const repaint=()=>paintEntry(entry);entry.addEventListener('input',repaint);entry.addEventListener('change',repaint);kill?.addEventListener('click',()=>setTimeout(repaint,0));
-      entry._cwV4Row={line,title,state:stateText,dot,pos,ord};entry.classList.add('cw-v4-world-row');
-      s.cleanup=()=>{header.classList.remove('cw-v4-entry-head');entry.classList.remove('cw-v4-world-row');entry.removeEventListener('input',repaint);entry.removeEventListener('change',repaint);delete entry._cwV4Row;};
-      paintEntry(entry);
-    });
-    // Page controls only when there is more than one page (the design shows none).
-    const pager=get('world_info_pagination');if(pager){const single=!pager.querySelector('.paginationjs')||(!!pager.querySelector('.paginationjs-prev.disabled')&&!!pager.querySelector('.paginationjs-next.disabled'));pager.classList.toggle('cw-v4-single-page',single);}
-  }
-  function editEntry(entry){
-    const drawer=entry.querySelector('.inline-drawer');
-    // ST creates the editor lazily on this native event.
-    if(!entry.querySelector('.world_entry_edit'))drawer?.dispatchEvent(new win.CustomEvent('inline-drawer-toggle',{bubbles:true,detail:{open:true}}));
-    const form=entry.querySelector('.world_entry_edit');if(!form)return;
-    const Q=n=>entry.querySelector(`[name="${n}"]`);
-    const es={moves:[],created:[],root:form},box=make('div','cw-v4-dialog-box cw-v4-wi-edit');
-    entry.append(box);
-    // Head: title field · state · on/off (a switch mirroring the native kill switch).
-    const head=make('div','cw-v4-wi-edit-head'),kill=Q('entryKillSwitch');
-    const comment=Q('comment');if(comment){comment.classList.add('cw-v4-title-field');move(es,comment,head);}
-    const stateSel=Q('entryStateSelector');const stateText=[];
-    if(stateSel){[...stateSel.options].forEach(o=>{stateText.push([o,o.textContent]);const st=STATE[o.value];if(st){o.textContent=t(st[0],st[1]);o.dataset.cwDot=st[2];}});stateSel.classList.add('cw-v4-state-sel');move(es,stateSel,head);}
-    // 2.0.242（Lulu：像原版那样有蓝灯绿灯）：状态下拉左边一颗灯，跟着当前状态变色；下拉列表里每项前面也有（openSelMenu 读 data-cw-dot）。
-    const stDot=make('span','cw-v4-dot cw-v4-state-dot');const paintDot=()=>{const k=STATE[stateSel?.value]?.[2]||'green';if(stDot.dataset.kind!==k)stDot.dataset.kind=k;};
-    if(stateSel){stateSel.before(stDot);es.created.push(stDot);paintDot();stateSel.addEventListener('input',paintDot);stateSel.addEventListener('change',paintDot);}
-    const sw=make('input','');sw.type='checkbox';sw.checked=!kill?.classList.contains('fa-toggle-off');sw.addEventListener('change',()=>{kill?.click();});head.append(sw);
-    const posSel=Q('position'),posText=[];
-    if(posSel)[...posSel.options].forEach(o=>{posText.push([o,o.textContent]);const k=o.getAttribute('data-i18n')||'';const zh={'Before Char Defs':['角色定义之前','Before character'],'After Char Defs':['角色定义之后','After character'],'Before EM':['示例消息之前','Before examples'],'After EM':['示例消息之后','After examples'],'Before AN':['作者注释之前',"Before Author's Note"],'After AN':['作者注释之后',"After Author's Note"],'at Depth System':['按深度 · 系统','At depth · System'],'at Depth User':['按深度 · 用户','At depth · User'],'at Depth AI':['按深度 · AI','At depth · AI'],'Outlet':['输出口','Outlet']}[k];if(zh)o.textContent=t(...zh);});
-    const num=n=>{const x=Q(n);if(x){x.classList.add('cw-v4-num');es.created.push({remove:()=>x.classList.remove('cw-v4-num')});}return x;};
-    const inline=(...nodes)=>{const d=make('div','cw-v4-inline');es.created.push(d);for(const n of nodes)if(n)typeof n==='string'?d.append(make('span','cw-v4-unit',n)):move(es,n,d);return d;};
-    const keyNodes=n=>[entry.querySelector(`select[name="${n}"]`),entry.querySelector(`textarea[name="${n}"]`)].filter(Boolean);
-    const content=Q('content'),tokens=make('span','cw-v4-unit');
-    const tk=()=>{tokens.textContent=L(`约 ${Math.round((content?.value.length||0)/1.6)} Token`);};tk();content?.addEventListener('input',tk);
-    const charF=inline(Q('characterFilter'));const exLabel=make('label','cw-v4-mini');charF.append(exLabel);if(Q('character_exclusion'))move(es,Q('character_exclusion'),exLabel);exLabel.append(L('排除'));
-    let x=section(box,'触发');
-    row(es,x,'关键字','逗号分隔；常驻条目可以不填',keyNodes('key'),'cw-v4-stack');
-    row(es,x,'逻辑','可选过滤器怎样配合关键字',[Q('entryLogicType')]);
-    row(es,x,'可选过滤器','逗号分隔；为空则忽略',keyNodes('keysecondary'),'cw-v4-stack');
-    x=section(box,'内容');row(es,x,'',tokens,[content],'cw-v4-stack cw-v4-content-row');
-    x=section(box,'插入');row(es,x,'插入位置','',[posSel]);row(es,x,'深度','只在「按深度」时生效',[num('depth')]);row(es,x,'输出口名称','只在「输出口」时生效',[Q('outletName')]);row(es,x,'顺序','数字越大越靠后',[num('order')]);row(es,x,'触发概率','关掉则每次都触发',[inline(Q('useProbability'),num('probability'),'%')]);
-    x=section(box,'匹配');row(es,x,'扫描深度','留空 = 用全局设置',[num('scanDepth')]);row(es,x,'区分大小写','',[Q('caseSensitive')]);row(es,x,'完整单词','',[Q('matchWholeWords')]);row(es,x,'组评分','',[Q('useGroupScoring')]);row(es,x,'自动化 ID','',[Q('automationId')]);
-    x=section(box,'递归');row(es,x,'不能被递归激活','',[Q('excludeRecursion')]);row(es,x,'阻止进一步递归','',[Q('preventRecursion')]);row(es,x,'延迟到递归','可指定递归层级',[inline(Q('delay_until_recursion'),Q('delayUntilRecursionLevel'))]);row(es,x,'无视预算','',[Q('ignoreBudget')]);
-    x=section(box,'分组');row(es,x,'包含组','同组只激活一条',[Q('group')]);row(es,x,'组内优先','',[Q('groupOverride')]);row(es,x,'组权重','',[num('groupWeight')]);
-    x=section(box,'时效');row(es,x,'黏性','激活后保持几条消息',[num('sticky')]);row(es,x,'冷却','激活后隔几条消息才能再触发',[num('cooldown')]);row(es,x,'延迟','聊天满几条消息后才可触发',[num('delay')]);
-    x=section(box,'过滤');row(es,x,'绑定到角色或标签','',[charF]);row(es,x,'生成类型','只在这些生成方式下触发',[Q('triggers')]);
-    x=section(box,'额外匹配来源');for(const [n,l] of [['matchPersonaDescription','用户设定描述'],['matchCharacterDescription','角色描述'],['matchCharacterPersonality','角色性格'],['matchCharacterDepthPrompt','角色备注'],['matchScenario','场景'],['matchCreatorNotes','作者的注释']])row(es,x,l,'',[Q(n)]);
-    // Checkboxes ST keeps hidden until a section is expanded become visible switches here.
-    const shown=[];box.querySelectorAll('input[type=checkbox]').forEach(c=>{if(c.style.display==='none'||c.hidden||c.classList.contains('displayNone')){shown.push([c,c.style.display,c.hidden]);c.style.display='';c.hidden=false;c.classList.add('cw-v4-icon-toggle');}});
-    const del=button(L('删除这条'),()=>{dialog?.close();entry.querySelector('.delete_entry_button')?.click();},'cw-v4-button cw-v4-danger');
-    let dialog=null;
-    openEditor(box,'',undefined,{head,foot:del,onClose:()=>{
-      content?.removeEventListener('input',tk);
-      for(const [c,d,h] of shown){c.style.display=d;c.hidden=h;c.classList.remove('cw-v4-icon-toggle');}
-      for(const [o,v] of [...stateText,...posText])o.textContent=v;
-      if(stateSel){stateSel.removeEventListener('input',paintDot);stateSel.removeEventListener('change',paintDot);for(const o of stateSel.options)delete o.dataset.cwDot;}
-      comment?.classList.remove('cw-v4-title-field');stateSel?.classList.remove('cw-v4-state-sel');
-      for(const [node,mark] of [...es.moves].reverse())if(mark.parentNode)mark.replaceWith(node);
-      es.created.forEach(n=>n.remove());box.remove();paintEntry(entry);
-    }});
-    dialog=box.closest('dialog');dialog?.classList.add('cw-v4-wi-dialog');
-    const contentSection=box.querySelector('.cw-v4-content-row')?.closest('section');
-    const expand=button('',()=>toggleContent(),'cw-v4-button cw-v4-wi-expand');
-    const expandText=make('span','',t('放大','Expand'));
-    expand.append(icon('expand'),expandText);expand.setAttribute('aria-expanded','false');
-    contentSection?.querySelector('h2')?.append(expand);
-    let expanded=false,measureFrame=0,cmModule=null;
-    const companion=()=>content?.nextElementSibling?.matches('.tt-codemirror-editor')?content.nextElementSibling:null;
-    const measure=()=>{
-      if(measureFrame)win.cancelAnimationFrame(measureFrame);
-      measureFrame=win.requestAnimationFrame(()=>{
-        measureFrame=0;
-        if(!dialog?.open)return;
-        const cm=companion();
-        if(cm&&cmModule)cmModule.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();
-        else if(cm&&!cmModule)import(new URL('/scripts/tauri/codemirror-editor.js',win.location.href).href)
-          .then(m=>{cmModule=m;if(dialog?.open)m.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();}).catch(()=>{});
-      });
-    };
-    function toggleContent(){
-      if(!dialog?.open)return;
-      const scroll=companion()?.querySelector('.cm-scroller')||content;
-      const savedScroll=[scroll?.scrollLeft||0,scroll?.scrollTop||0];
-      expanded=!expanded;dialog.classList.toggle('cw-v4-wi-expanded',expanded);
-      box.style.setProperty('display',expanded?'flex':'block','important');
-      expandText.textContent=expanded?t('收起','Collapse'):t('放大','Expand');
-      expand.setAttribute('aria-expanded',String(expanded));
-      if(scroll){scroll.scrollLeft=savedScroll[0];scroll.scrollTop=savedScroll[1];}
-      measure();
-    }
-    const escapeContent=e=>{
-      if(e.key!=='Escape'||!expanded||!dialog?.open)return;
-      const top=[...doc.querySelectorAll('dialog[open]')].at(-1);
-      if(top!==dialog||doc.querySelector('.select2-container--open'))return;
-      e.preventDefault();e.stopImmediatePropagation();toggleContent();expand.focus({preventScroll:true});
-    };
-    win.addEventListener('keydown',escapeContent,true);
-    const resize=win.ResizeObserver?new win.ResizeObserver(measure):null;
-    resize?.observe(dialog);
-    dialog.addEventListener('close',()=>{win.removeEventListener('keydown',escapeContent,true);resize?.disconnect();if(measureFrame)win.cancelAnimationFrame(measureFrame);},{once:true});
-
   }
 
   /* ---------------- 背景 ---------------- */
@@ -950,12 +738,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       if(panel.id==='PersonaManagement'){personaRows(panel);personaName(state(panel));}
       if(panel.id==='left-nav-panel'){promptRows(panel);presetList.mount(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
       if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
-      if(panel.id==='WorldInfo'){
-        const s=state(panel);worldChips(s);worldSummary(s);
-        const select=get('world_editor_select'),visible=get('select2-world_editor_select-container')?.closest('.select2-container');
-        if(select&&visible&&visible.parentElement!==select.parentElement)move(s,visible,select.parentElement);
-        worldEntries(panel);
-      }
+      if(panel.id==='WorldInfo')worldPage.sync(panel);
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
       presetManagerPage.sync(panel);refinements.sync(panel,state(panel));(morePages||=createMorePages({win,make,button,icon,get,move,cleanup,created,state,act,menu,setting,t,L})).sync(panel);
       normalizeSettingsSections(panel,make);

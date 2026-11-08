@@ -667,7 +667,7 @@ export function installOfficialLayout(win = window) {
     /* 2.0.297 bug：颜色选择器自带的色块按钮 48×24，比我们 34 的框宽，露在框外成了两层。让它画成 22 的方块，居中在框里。 */
     panel.querySelectorAll('toolcool-color-picker:not([button-width])').forEach(c => { c.setAttribute('button-width', '22px'); c.setAttribute('button-height', '22px'); c.setAttribute('button-padding', '0'); });
     panel.querySelectorAll('textarea').forEach(ta => {
-      if (ta.closest('.cwr-page') || ta.dataset.cwV4Text || ta.matches('.select2-search__field') || ta.closest('.select2-container,[data-v-app],#extensions_settings,#extensions_settings2,.world_entry,dialog') || ta.id === 'settingsSearch' || ta.classList.contains('displayNone') || ta.style.display === 'none') return;
+      if (ta.closest('.cwr-page') || ta.dataset.cwV4Text || ta.matches('.select2-search__field') || ta.closest('.select2-container,[data-v-app],#extensions_settings,#extensions_settings2,.world_entry,.cww-view,.cww-big,dialog') || ta.id === 'settingsSearch' || ta.classList.contains('displayNone') || ta.style.display === 'none') return;
       ta.dataset.cwV4Text = '1';
       const row = make('div', 'cw-v4-text-row'), preview = make('span', 'cw-v4-text-preview');
       const title = labelFor(ta);
