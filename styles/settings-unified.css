@@ -777,7 +777,18 @@ html[data-cw-settings-unified] #WorldInfo .cww-footbar{position:sticky!important
 html[data-cw-settings-unified] #WorldInfo .cww-danger{color:var(--cww-warn)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-head .cw-v4-primary{background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-primary{background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
-html[data-cw-settings-unified] .cww-big{position:absolute!important;inset:0!important;background:var(--cwus-surface)!important;display:flex!important;flex-direction:column!important;z-index:60!important;border-radius:inherit!important;overflow:hidden!important}
+html[data-cw-settings-unified] .cww-big-host .cww-mobile-head{visibility:hidden!important;pointer-events:none!important}
+html[data-cw-settings-unified] .cww-big{position:absolute!important;inset:0!important;background:var(--cwus-surface)!important;display:flex!important;flex-direction:column!important;z-index:2147483000!important;pointer-events:auto!important;border-radius:inherit!important;overflow:hidden!important}
+html[data-cw-settings-unified] #WorldInfo.cww-big-open{visibility:hidden!important;pointer-events:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-back{border-radius:0!important;font-weight:var(--cwus-normal-weight)!important;line-height:19px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-book-more>summary{width:45px!important;min-width:45px!important}
+html[data-cw-settings-unified] #WorldInfo :is(.cww-sort,.cww-grid4,.cww-lab-row) select{height:32px!important;min-height:32px!important;font-size:13px!important;padding-left:10px!important;border-radius:8px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-lab{line-height:normal!important}
+html[data-cw-settings-unified] #WorldInfo .cww-num{padding:0 10px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-fold{border-radius:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-row .cw-v4-row-info>p{text-overflow:ellipsis!important}
+html[data-cw-settings-unified] #WorldInfo .cww-v-home.cww-selecting{padding-bottom:80px!important}
+html[data-cw-settings-unified] .cww-big .cww-shrink{font-size:13.5px!important;padding:0 14px!important}
 html[data-cw-settings-unified] .cww-big .cww-bh{display:flex!important;align-items:center!important;gap:10px!important;padding:16px 22px 12px!important;border-bottom:1px solid var(--cwus-soft)!important;flex:none!important}
 html[data-cw-settings-unified] .cww-big .cww-bh-t{flex:1 1 0!important;min-width:0!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;font-size:16px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:var(--cwus-ink)!important}
 html[data-cw-settings-unified] .cww-big .cww-shrink{height:32px!important;min-height:32px!important;display:inline-flex!important;align-items:center!important;gap:6px!important}
