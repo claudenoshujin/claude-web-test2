@@ -974,3 +974,12 @@ html[data-cw-settings-unified] #WorldInfo .cww-k84{flex:1 1 0!important;width:au
 html[data-cw-settings-unified] #WorldInfo .cww-kt{order:9!important;flex:1 1 100%!important}
 html[data-cw-settings-unified] #WorldInfo .cww-kv>select{height:30px!important;min-height:30px!important}
 }}
+/* round2 尺寸对齐（稿 v2）：组名框内边距、手机递归层级框 64、手机第三行行高 */
+@layer cw-settings-spec {
+html[data-cw-settings-unified] #WorldInfo input.cww-text[name=group]{padding:0 8px!important}
+}
+@media(max-width:700px){@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo .cww-subrow input.cww-num{width:64px!important;min-width:64px!important;max-width:64px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-meta2{line-height:normal!important}
+}}
+
