@@ -10,6 +10,7 @@ import { normalizeSettingsSections } from './settings-sections.js?v=2.0.341';
 import { createExtensionSettings, retainRangeCounter } from './official-extension-settings.js?v=2.0.341';
 import { createPresetList } from './official-preset-list.js?v=2.0.341';
 import { createWorldPage } from './official-world.js?v=2.0.341';
+import { createPresetEdit } from './official-preset-edit.js?v=2.0.341';
 import { createPromptScroll } from './official-prompt-scroll.js?v=2.0.341';
 import { createExtensionPanel } from './official-extension-panel.js?v=2.0.341';
 export function actionLabel(node,t){
@@ -65,6 +66,9 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       if(el)move(s,el,park);}
     return m;
   }
+  // popify(): v2 .pop menu look for an existing menu() — 16px icon + text per item, thin rules before the given labels.
+  const POP_ICONS={pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',trash:'<path d="M5 7h14M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>',sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'};
+  function popify(m,icons,breaks=[]){m.classList.add('cwr-pop');const list=m.querySelector('.cw-v4-more-list');for(const b of list.querySelectorAll(':scope>.cw-v4-more-item')){const label=b.textContent.trim(),k=Object.entries(icons).find(([l])=>L(l)===label||l===label)?.[1];if(k){const s2=doc.createElementNS('http://www.w3.org/2000/svg','svg');s2.setAttribute('viewBox','0 0 24 24');s2.setAttribute('fill','none');s2.setAttribute('stroke','currentColor');s2.setAttribute('stroke-width','1.8');s2.setAttribute('stroke-linecap','round');s2.setAttribute('stroke-linejoin','round');s2.setAttribute('aria-hidden','true');s2.innerHTML=POP_ICONS[k];b.prepend(s2);}if(breaks.some(l=>L(l)===label||l===label))b.before(make('hr','cwr-pop-hr'));}return m;}
   // asBtn(): a native control drawn as a text button.
   function act(s,n,label,plus,primary){if(!n)return n;n.classList.add('cw-v4-as-btn');if(primary)n.classList.add('cw-v4-primary');const text=make('span','cw-v4-action-label'+(plus?' cw-v4-plus':''),L(label));n.append(text);s.created.push(text);(s.buttons||=[]).push(n);return n;}
   function begin(root){const s=state(root);if(s.page)return null;const page=make('div','cw-v4-drawer-page');s.page=page;root.append(page);s.created.push(page);root.classList.add('cw-v4-reflow');return {s,page};}
@@ -149,6 +153,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   const refinements=createInterfaceRefinements({win,t,L,make,button,icon,get,begin,finish,section,row,move,cleanup,created,act,menu,tg,sel,num,txt,presetRow,showToggle,openEditor});
   /* ---------------- 世界书 ----------------
    * 2.0.341：整页重排见 official-world.js（首页 / 书页 / 条目页 / 激活设置 / 内容放大）。 */
+  const presetEdit=createPresetEdit({win,t,make,button,icon,phoneWide:()=>phoneWide()});
   const worldPage=createWorldPage({win,t,L,make,button,icon,get,move,cleanup,state,menu,act,openEditor,showToggle,phoneWide:()=>phoneWide()});
   function world(panel){const started=begin(panel);if(!started)return;const {s,page}=started;
     worldPage.build(panel,s,page);
@@ -181,8 +186,11 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const presetRoot=get('openai_api-presets');
     if(presetRoot){const ps=begin(presetRoot);if(ps){const group=section(ps.page,'对话补全预设');
       const select=get('settings_preset_openai');if(select){select.classList.add('cw-v4-preset-sel');cleanup(ps.s,()=>select.classList.remove('cw-v4-preset-sel'));}
-      presetManagerPage.header(ps.s,group,select,[act(ps.s,get('update_oai_preset'),'保存'),menu(ps.s,[['另存为新的',get('new_oai_preset')],['改名',presetRoot.querySelector('[data-preset-manager-rename="openai"]')],['导入',get('import_oai_preset')],['导出',get('export_oai_preset')],['预设增强菜单',get('open_s_preset_menu')],['删除',get('delete_oai_preset'),true]])]).querySelector('.cw-v4-more')?.classList.add('cw-v4-preset-menu');
-      tg(ps.s,group,get('bind_preset_to_connection'),'绑定到 API 连接','切换连接配置时自动切换预设');
+      {const pm=menu(ps.s,[['重命名',presetRoot.querySelector('[data-preset-manager-rename="openai"]')],['另存为新预设',get('new_oai_preset')],['导入预设',get('import_oai_preset')],['导出当前预设',get('export_oai_preset')],['预设增强菜单',get('open_s_preset_menu')],['删除当前预设',get('delete_oai_preset'),true]]);
+        // v2 .pop：图标 + 文字，分组细线（重命名 / 另存为 | 导入 / 导出 | 删除）。原生没有「恢复默认值」，不做。
+        popify(pm,{'重命名':'pencil','另存为新预设':'copy','导入预设':'imp','导出当前预设':'exp','预设增强菜单':'sliders','删除当前预设':'trash'},['导入预设','删除当前预设']);pm.classList.add('cw-v4-preset-menu');
+        presetManagerPage.header(ps.s,group,select,[act(ps.s,get('update_oai_preset'),'保存'),pm]);}
+      {const br=tg(ps.s,group,get('bind_preset_to_connection'),'绑定到 API 连接','切换连接配置时自动切换预设');if(br){const ib=make('span','cwr-entry-icon');ib.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5M15 4v5M7 9h10v3a5 5 0 0 1-10 0zM12 17v3"/></svg>';br.prepend(ib);ps.s.created.push(ib);br.classList.add('cwr-preset-bind');}}
       finish(ps.s);
     }}
     const ranges=get('range_block_openai');
@@ -242,7 +250,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const insert=footer?.querySelector('.fa-chain,.fa-link');
     if(insert&&!insert.cwOpenPicker){const s=state(footer);const open=()=>{const select=footer.querySelector('select');if(!select)return;const marker=doc.createComment('cw-insert-select'),box=make('div','cwr-insert-picker');select.before(marker);box.append(select,button(L('插入'),()=>{box.closest('dialog')?.close();insert.click();},'cw-v4-button'));panel.append(box);openEditor(box,L('插入提示词'),'',{onClose:()=>{if(marker.parentNode)marker.replaceWith(select);box.remove();}});};insert.cwOpenPicker=open;const click=e=>{if(e.isTrusted){e.preventDefault();e.stopImmediatePropagation();open();}};insert.addEventListener('click',click,true);cleanup(s,()=>{insert.removeEventListener('click',click,true);delete insert.cwOpenPicker;});}
     const footerMore=footer?.querySelector('.cw-v4-more'),topMore=panel.querySelector('.cw-pm-more>.cw-v4-more-list');
-    if(footerMore&&topMore&&!footerMore.hidden){for(const old of topMore.querySelectorAll('.cwr-footer-native-action'))old.remove();for(const item of [...footerMore.querySelector('.cw-v4-more-list').children]){item.classList.add('cwr-footer-native-action');move(state(footer),item,topMore);}footerMore.hidden=true;}
+    if(footerMore)footerMore.hidden=true;
     // SPreset (third-party) injects a banner into the prompts area later; offer it from the preset menu instead.
     const spreset=panel.querySelector('.spreset-btn'),pmenu=panel.querySelector('.cw-v4-preset-menu>.cw-v4-more-list');
     if(spreset&&pmenu&&!pmenu.querySelector('.cw-v4-spreset')){const b=button(spreset.textContent.replace(/[→\s]+$/,'').trim()||'SPreset Editor',e=>{e.stopPropagation();pmenu.parentElement.open=false;spreset.click();},'cw-v4-more-item cw-v4-spreset');pmenu.insertBefore(b,pmenu.lastElementChild);}
@@ -261,10 +269,8 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       const marker=item.querySelector('.fa-thumb-tack,.fa-thumbtack');
       if(name&&marker){const meta=make('span','cw-v4-pm-meta',L('占位'));name.append(meta);s.created.push(meta);}
       if(edit){move(s,edit,item);const label=make('span','cw-v4-action-label',L('编辑'));edit.append(label);s.created.push(label);edit.setAttribute('role','button');}
-      const inspect=item.querySelector('.prompt-manager-inspect-action');
-      const more=menu(s,[inspect?['查看实际内容',null,false,()=>inspect.click()]:null,['从列表移除',item.querySelector('.prompt-manager-detach-action'),true]]);
-      if(inspect){const b=more.querySelector('.cw-v4-more-item');more.addEventListener('toggle',()=>{if(more.open)markInspect(item,b);});}
-      item.append(more);s.created.push(more);
+      // v2：行尾是小开关 + ›，单击整行打开编辑；查看实际内容 / 从列表删除挪进编辑页的 ⋯。
+      const chev=make('span','cw-pm-chev');chev.setAttribute('aria-hidden','true');chev.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';item.append(chev);s.created.push(chev);
     });
   }
   // ST's handleInspect only opens when the prompt was part of the last dry run (promptManager.messages);
@@ -736,7 +742,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       ({WorldInfo:world,Backgrounds:backgrounds,AdvancedFormatting:formatting,'left-nav-panel':presets,PersonaManagement:personas,'right-nav-panel':characters,rm_api_block:api,rm_extensions_block:extensions})[panel.id]?.(panel);
       // The extension catalog checks versions on entry, not on layout redraws.
       if(panel.id==='PersonaManagement'){personaRows(panel);personaName(state(panel));}
-      if(panel.id==='left-nav-panel'){promptRows(panel);presetList.mount(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
+      if(panel.id==='left-nav-panel'){promptRows(panel);presetList.mount(panel);presetEdit.install(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
       if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
       if(panel.id==='WorldInfo')worldPage.sync(panel);
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
@@ -744,6 +750,6 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       normalizeSettingsSections(panel,make);
       for(const f of paints)f();
     },
-    restore(){presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;const all=[...states.values()].reverse();for(const s of all){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}}for(const [node,mark] of all.flatMap(s=>s.moves).sort((a,b)=>(b[2]||0)-(a[2]||0)))if(mark.parentNode)mark.replaceWith(node);for(const s of all){s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
+    restore(){presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();presetEdit.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;const all=[...states.values()].reverse();for(const s of all){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}}for(const [node,mark] of all.flatMap(s=>s.moves).sort((a,b)=>(b[2]||0)-(a[2]||0)))if(mark.parentNode)mark.replaceWith(node);for(const s of all){s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
   };
 }
