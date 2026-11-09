@@ -67,10 +67,19 @@ export function createWorldPage(h) {
     ui.panel.scrollTop=0;ui.page.closest('.cw-v4-panel')?.scrollTo?.(0,0);
     paint();
   }
+  // 筛选胶囊交给原生的 worldInfoFilter：原生先筛再分页，所以「已停用 6」能看到不在第一页的 6 条，
+  // 分页条也显示筛过后的条数（round3 补拍发现：原来只筛当前这一页）。
+  const FKEY='cw-world-state';
+  const stateOf=e=>e.constant?'const':e.vectorized?'vec':'key';
+  function setFilter(k,{repaint=true,silent=false}={}){if(ui)ui.filter=k;const F=wi?.worldInfoFilter;
+    if(F?.filterFunctions){if(!F.filterFunctions[FKEY])F.filterFunctions[FKEY]=data=>{const f=F.filterData[FKEY];if(!f||f==='all'||!Array.isArray(data))return data;return data.filter(e=>f==='off'?!!e.disable:stateOf(e)===f);};F.setFilterData(FKEY,k,silent);}
+    if(repaint)paint();}
+  function dropFilter(){const F=wi?.worldInfoFilter;if(!F?.filterFunctions?.[FKEY])return;if(F.filterData[FKEY]&&F.filterData[FKEY]!=='all')F.setFilterData(FKEY,'all');delete F.filterFunctions[FKEY];delete F.filterData[FKEY];}
   function openBook(value){
     const s=editor();if(!s)return;
     if(s.value!==String(value)){s.value=String(value);win.jQuery?win.jQuery(s).trigger('change'):s.dispatchEvent(new win.Event('change',{bubbles:true}));}
-    ui.filter='all';go('book');
+    // 换书时原生会自己重画列表；这里只静默清掉筛选，不能再触发一次重画（两次重画会把两本书的条目叠在一起）。
+    setFilter('all',{repaint:false,silent:true});go('book');
   }
 
   /* ---------- 首页 ---------- */
@@ -203,7 +212,7 @@ export function createWorldPage(h) {
       cleanup(s,()=>{old===null?search.removeAttribute('placeholder'):search.setAttribute('placeholder',old);i18n===null?search.removeAttribute('data-i18n'):search.setAttribute('data-i18n',i18n);});search.classList.add('cwr-search');cleanup(s,()=>search.classList.remove('cwr-search'));move(s,search,find);}
     tools.append(find);const sort=get('world_info_sort_order');if(sort){const box=make('span','cww-sort');tools.append(box);move(s,sort,box);}
     const chips=make('div','cww-chips');chips.setAttribute('role','group');chips.setAttribute('aria-label',t('筛选','Filter'));
-    ui.chipBtns={};for(const k of ['all','const','key','vec','off']){const b=make('button','cww-chip');b.type='button';b.dataset.filter=k;b.addEventListener('click',()=>{ui.filter=k;paint();});chips.append(b);ui.chipBtns[k]=b;}
+    ui.chipBtns={};for(const k of ['all','const','key','vec','off']){const b=make('button','cww-chip');b.type='button';b.dataset.filter=k;b.addEventListener('click',()=>setFilter(k));chips.append(b);ui.chipBtns[k]=b;}
     // 色点图例放在筛选胶囊下面（第二行只写关键词或策略名）。
     const legend=make('div','cww-legend');for(const k of ['constant','normal','vectorized']){const [zh,en,kind]=STATE[k],it=make('span',''),d=make('i','cww-dot');d.dataset.kind=kind;it.append(d,doc.createTextNode(t(zh,en)));legend.append(it);}
     const ehead=make('div','cww-ehead');for(const [zh,en] of [['条目','Entry'],['插入位置','Position'],['顺序','Order'],['启用','On'],['','']])ehead.append(make('span','',t(zh,en)));
@@ -608,7 +617,7 @@ export function createWorldPage(h) {
     queue();
   }
   function destroy(){
-    if(!ui)return;const u=ui;closeBig();closeEntry();u.mobileHead?.remove();if(frame){win.cancelAnimationFrame(frame);frame=0;}ui=null;
+    if(!ui)return;const u=ui;dropFilter();closeBig();closeEntry();u.mobileHead?.remove();if(frame){win.cancelAnimationFrame(frame);frame=0;}ui=null;
   }
   return {build,sync,destroy,go:v=>go(v),state:()=>ui&&{view:ui.view,book:currentBook(),selecting:ui.selecting,selected:[...ui.selected]}};
 }
