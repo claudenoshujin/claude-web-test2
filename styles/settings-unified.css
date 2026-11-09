@@ -1170,3 +1170,7 @@ html[data-cw-settings-unified] #WorldInfo .cww-where-row>.cww-val{min-width:0!im
 html[data-cw-settings-unified] #WorldInfo .cww-head .cw-v4-as-btn.cww-has-ic{display:inline-flex!important;align-items:center!important;gap:6px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-head .cw-v4-as-btn>svg.cww-btn-ic{display:block!important;width:15px!important;height:15px!important;flex:none!important}
 }
+/* 停用的数字框（深度在位置不是 @深度 时）：照稿子 .num:disabled 只降透明度，不换成原生的深灰底。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo input.cww-num:disabled{background:var(--cwus-canvas)!important;color:var(--cwus-ink)!important;opacity:.5!important;border-color:var(--cwus-line)!important;-webkit-text-fill-color:currentColor!important}
+}
