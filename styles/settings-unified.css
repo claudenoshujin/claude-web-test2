@@ -982,4 +982,10 @@ html[data-cw-settings-unified] #WorldInfo input.cww-text[name=group]{padding:0 8
 html[data-cw-settings-unified] #WorldInfo .cww-subrow input.cww-num{width:64px!important;min-width:64px!important;max-width:64px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-meta2{line-height:normal!important}
 }}
+/* 对齐验收：胶囊组占满整行；行内开关贴到行尾 */
+@layer cw-settings-spec {
+html[data-cw-settings-unified] #WorldInfo .cww-ctl>.cww-pills{flex:1 1 100%!important;width:100%!important}
+html[data-cw-settings-unified] #WorldInfo .cww-fin .cww-sw-box{margin:0!important;padding:0!important;width:auto!important;min-width:max-content!important;justify-content:flex-end!important}
+html[data-cw-settings-unified] #WorldInfo .cww-sw-box input[type=checkbox]{margin:0!important}
+}
 
