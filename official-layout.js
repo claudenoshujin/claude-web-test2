@@ -531,7 +531,7 @@ export function installOfficialLayout(win = window) {
     const build = q => {
       list.replaceChildren(); selItems = []; let group = null;
       for (const o of opts) {
-        const label = (o.textContent || '').trim() || o.value;
+        const label = (o.getAttribute('label') || o.textContent || '').trim() || o.value;
         if (q && !label.toLocaleLowerCase().includes(q)) continue;
         const g = o.parentElement?.tagName === 'OPTGROUP' ? o.parentElement.label : null;
         if (g && g !== group) list.append(make('div', 'cw-v4-selmenu-group', g));

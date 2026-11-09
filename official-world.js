@@ -419,6 +419,14 @@ export function createWorldPage(h) {
     field(c6,t('只在这些生成方式下触发','Only for these generation types'),t('都不选 = 所有方式','None = all types'),[genPills]);
     const auto=Q('automationId');if(auto)cls(auto,'cww-text');field(c6,t('自动化 ID','Automation ID'),t('给 Quick Reply 等自动化脚本用；不用就留空','For Quick Reply and other automation; leave empty if unused'),[auto]);
     c6.append(pillsPark);
+    // 下拉选项、组名占位用稿子 v2 的文案；原生值不变，关掉条目页时换回原文。
+    // 写在 option 的 label 属性上：ST 的翻译观察器在选项进页面后会重写 textContent（data-i18n 也不能删，它对属性变化会读到 null），
+    // label 的显示优先于文字内容，翻译碰不到它。
+    const relabel=(sel,map)=>{if(!sel)return;for(const o of sel.options){const v=map[o.value];if(!v)continue;const had=o.getAttribute('label');o.setAttribute('label',t(...v));es.undo.push(()=>{had===null?o.removeAttribute('label'):o.setAttribute('label',had);});}};
+    const TRI={null:['跟随全局','Use global'],true:['是','Yes'],false:['否','No']};
+    for(const n of ['caseSensitive','matchWholeWords','useGroupScoring'])relabel(NAT[n],TRI);
+    relabel(NAT.entryLogicType,{0:['且 · 包含任意一个','AND · any'],3:['且 · 全部包含','AND · all'],1:['非 · 不全包含','NOT · all'],2:['非 · 一个都不包含','NOT · any']});
+    if(group){const i18n=group.getAttribute('data-i18n'),ph=group.getAttribute('placeholder');group.placeholder=t('例如：人物','e.g. Characters');if(i18n!==null)group.setAttribute('data-i18n',i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')).join(';'));es.undo.push(()=>{ph===null?group.removeAttribute('placeholder'):group.setAttribute('placeholder',ph);i18n===null?group.removeAttribute('data-i18n'):group.setAttribute('data-i18n',i18n);});}
     // 已改：和原生默认值不同的项。
     function changes(){const out=[],v=n=>NAT[n],chk=n=>!!v(n)?.checked,val=n=>String(v(n)?.value??'').trim();
       if(chk('excludeRecursion'))out.push(t('不被触发','not triggered'));if(chk('preventRecursion'))out.push(t('不触发其他','no recursion'));if(chk('delay_until_recursion'))out.push(t('只在递归时','recursion only'));if(chk('ignoreBudget'))out.push(t('无视预算','ignore budget'));
