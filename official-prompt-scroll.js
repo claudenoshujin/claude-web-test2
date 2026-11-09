@@ -13,7 +13,17 @@ export function createPromptScroll({win,enabled}) {
   };
   const popupOpen=()=>doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer');
   const promptPage=()=>panel?.dataset.cwPresetTab==='prompts';
+  // The owner is fixed while a tab is shown; reading computed overflow on every
+  // scroll frame forced a full style recalc (96 prompts: ~70% of scroll time).
+  let ownerCache=null;
+  // Layout switches (phone <-> desktop) can change which pane scrolls.
+  const dropOwner=()=>{ownerCache=null;};win.addEventListener('resize',dropOwner);disposers.push(()=>win.removeEventListener('resize',dropOwner));
   function scrollOwner() {
+    const page=promptPage(),current=list();
+    if(ownerCache&&ownerCache.page===page&&ownerCache.list===current&&ownerCache.node?.isConnected&&ownerCache.node.contains(manager))return ownerCache.node;
+    const node=findOwner();ownerCache=node?{node,page,list:current}:null;return node;
+  }
+  function findOwner() {
     // The native UL is now the only prompt scroller; it is a descendant of
     // manager, so an ancestor-only search would choose the wrong pane.
     const current=list();
@@ -118,12 +128,15 @@ export function createPromptScroll({win,enabled}) {
     // The panel observer queues CW's sync before this observer queues restore.
     // Restore only in rAF, after CW has adapted the new native rows.
   }
-  function disconnect(){cancel();observer?.disconnect();resize?.disconnect();observer=resize=null;panel=manager=null;blockedList=blockedFirst=null;}
+  function disconnect(){ownerCache=null;cancel();observer?.disconnect();resize?.disconnect();observer=resize=null;panel=manager=null;blockedList=blockedFirst=null;}
   const listen=(target,type,fn,options)=>{target.addEventListener(type,fn,options);disposers.push(()=>target.removeEventListener(type,fn,options));};
   listen(doc,'contentvisibilityautostatechange',e=>{
     if(pending&&manager?.contains(e.target)){pending.changedAt=win.performance.now();pending.stable=0;queueRestore();}
   },true);
-  listen(doc,'scroll',e=>{if(e.target===(snapshot?.scroller||pending?.scroller))captureSoon();},{capture:true,passive:true});
+  // Re-anchor after the user stops scrolling, not on every scroll frame: capture()
+  // reads row geometry, and mid-scroll that forced a full style/layout pass per frame.
+  let settle=0;disposers.push(()=>win.clearTimeout(settle));
+  listen(doc,'scroll',e=>{if(e.target!==(snapshot?.scroller||pending?.scroller))return;if(pending){captureSoon();return;}win.clearTimeout(settle);settle=win.setTimeout(captureSoon,120);},{capture:true,passive:true});
   const intent=e=>{
     if(e.target.closest?.('.cw-pm-tabs')){cancel();captureSoon();return;}
     const scroller=pending?.scroller||snapshot?.scroller||scrollOwner();

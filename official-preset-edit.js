@@ -48,6 +48,8 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     const view=button('',()=>inspectBtn()?.click(),'cwr-btn cwp-inspect');view.append(svg(ICO.eye),make('span','',t('查看实际内容','View actual content')));
     const more=make('details','cw-v4-more cwr-pop cwp-more'),sum=make('summary','','⋯');sum.setAttribute('aria-label',t('更多','More'));const list=make('div','cw-v4-more-list');more.append(sum,list);
     const del=button('',async()=>{more.open=false;const r=rowNow(),d=r?.querySelector('.prompt-manager-detach-action');if(!d)return;if(!win.confirm(t('把这条提示词从当前列表里删掉？原提示词保留，可以再插入。','Remove this prompt from the list? It stays available to insert again.')))return;close?.click();win.setTimeout(()=>rowNow()?.querySelector('.prompt-manager-detach-action')?.click(),60);},'cw-v4-more-item cw-v4-danger');del.append(svg(ICO.trash),make('span','',t('从列表删除','Remove from list')));list.append(del);
+    // ST only offers Remove for prompts it allows deleting (isPromptDeletionAllowed); system prompts have none.
+    if(!rowNow()?.querySelector('.prompt-manager-detach-action')){del.disabled=true;del.title=t('酒馆自带的提示词不能从列表删除，可以关掉它','Built-in prompts cannot be removed; turn them off instead');}
     if(!isNew&&!marker)head.append(view);if(!isNew)head.append(more);
     const viewPhone=button('',()=>inspectBtn()?.click(),'cwr-btn cwp-inspect-phone');viewPhone.append(svg(ICO.eye),make('span','',t('查看实际内容','View actual content')));
     page.append(back,head);if(!isNew&&!marker)page.append(viewPhone);

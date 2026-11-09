@@ -15,7 +15,7 @@ export function createPresetList({win,make,button,t}) {
   function removeVisibleControls(u,row){if(!u.decoratedRows?.delete(row))return;row.querySelectorAll('.cw-pm-select,.cw-pm-number,.cw-pm-state').forEach(n=>n.remove());}
   function clearVisibleControls(u){u.rowObserver?.disconnect();u.rowObserver=null;u.viewportRoot=null;for(const row of u.decoratedRows||[])removeVisibleControls(u,row);u.observedRows?.clear();u.inView?.clear();}
   function trackVisibleControls(all){
-    const u=ui;u.decoratedRows||=new Set();if(!win.IntersectionObserver)return false;
+    const u=ui;u.decoratedRows||=new Set();if(!win.IntersectionObserver||u.decorateAll)return false;
     const list=u.manager.querySelector('#completion_prompt_manager_list');if(!list)return false;// The unified layout makes the panel scroll and the list visible (settings-unified.css);
     // reading overflow there forced a full style recalc on every repaint.
     const root=doc.documentElement.hasAttribute('data-cw-settings-unified')&&!list.closest('.bai-bai-preset-vue-list-host')?u.panel:/auto|scroll/.test(win.getComputedStyle(list).overflowY)?list:u.panel;
@@ -74,7 +74,7 @@ export function createPresetList({win,make,button,t}) {
   function paint(){
     if(!ui)return;
     if(ui.context!==key()){reset();return;}
-    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){hideFloating(ui);delete ui.panel.dataset.cwPresetTab;clearVisibleControls(ui);return;}
+    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){hideFloating(ui);delete ui.panel.dataset.cwPresetTab;clearVisibleControls(ui);ui.decorateAll=false;ui.decorateAllQueued=false;return;}
     if(!ui.manager.contains(ui.tools)){ui.manager.prepend(ui.tools,ui.filterLine,ui.selectionLine);ui.manager.append(ui.empty,ui.bottom);}
     if(ui.manager.lastElementChild!==ui.bottom)ui.manager.append(ui.empty,ui.bottom);
     {const list=ui.manager.querySelector('#completion_prompt_manager_list');if(list&&!list.closest('.bai-bai-preset-vue-list-host')&&list.nextElementSibling!==ui.addRow)list.after(ui.addRow);}
@@ -117,6 +117,10 @@ export function createPresetList({win,make,button,t}) {
       text(status,allowed(r)?(on(r)?t('开','On'):t('关','Off')):t('固定','Fixed'));
       }else removeVisibleControls(ui,r);
     }
+    // Open with only the visible rows decorated (fast open), then finish the rest when idle:
+    // decorating rows as they scrolled into view mutated the list on every frame and
+    // forced a full style pass each time (96 prompts: ~20ms per frame, 2.0.341 v2 §5).
+    if(viewportControls&&!ui.decorateAllQueued){const u=ui;u.decorateAllQueued=true;const go=()=>{if(ui!==u)return;if(!u.panel.classList.contains('openDrawer')||u.panel.classList.contains('cw-v4-inactive')){u.decorateAllQueued=false;return;}u.decorateAll=true;u.rowObserver?.disconnect();u.rowObserver=null;u.viewportRoot=null;paint();};if(win.requestIdleCallback){const h=win.requestIdleCallback(go,{timeout:1000});u.dispose.push(()=>win.cancelIdleCallback(h));}else{const h=win.setTimeout(go,300);u.dispose.push(()=>win.clearTimeout(h));}}
     ui.visible=visible.map(id);ui.rangeVisible=visible.filter(e=>node(e)&&!node(e).closest('.bai-bai-preset-group-collapsed')).map(id);
     // An empty list can be the middle of native renderTemplateAsync, not a deletion.
     const invisible=[...ui.selected].filter(k=>!ui.visible.includes(k)).length;
