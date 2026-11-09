@@ -1196,3 +1196,12 @@ html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list:popover-open::backdrop{
 html[data-cw-settings-unified] .cwr-pop .cw-v4-more-cancel{display:none!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list:popover-open>.cw-v4-more-item{border-top:0!important}
 }}
+/* 预设页 v2 round1：组件对照表里和稿子差 1px 以上的几处照稿子改。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] #left-nav-panel .cwr-preset-current .cwr-select-host select,html[data-cw-settings-unified] #left-nav-panel .cwp-edit select.cww-sel{height:34px!important;min-height:34px!important;font-size:13.5px!important}
+html[data-cw-settings-unified] #left-nav-panel .cwp-title input.cwp-name{height:34px!important}
+html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-seg>button{padding:5px 10px!important}
+html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-btn-sm{height:30px!important;min-height:30px!important;padding:0 11px!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow{min-height:56px!important;font-size:14px!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow .cw-pm-add-label{font-size:14px!important}
+}
