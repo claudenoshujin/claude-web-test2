@@ -35,6 +35,8 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     // Fields ST hides for this prompt (markers have no editable content; some have no override switch).
     const hasPrompt=visible(prompt?.closest('.completion_prompt_manager_popup_entry_form_control')||prompt),hasForbid=visible($('completion_prompt_manager_forbid_overrides_block')),hasTrig=visible(trig?.closest('.completion_prompt_manager_popup_entry_form_control')||trig);
     const marker=!!rowNow()?.querySelector('.fa-thumb-tack,.fa-thumbtack');
+    // ST 1.18 对占位条目不藏内容框，只是把它设成不可用；这里照方案只写一句说明（也不给「放大」）。
+    const editable=hasPrompt&&!marker&&!prompt?.disabled;
     const scrollBox=panel,scroll=scrollBox.scrollTop;
     const page=make('section','cwp-edit cwr-subpage'),field=(host,label,hint,nodes,extra='')=>{const f=make('div','cww-field'+(extra?' '+extra:'')),lab=make('div','cww-lab',label);f.append(lab);if(hint)f.append(make('div','cww-hint',hint));const box=make('div','cww-ctl');f.append(box);for(const n of [].concat(nodes))if(n)n.parentNode?M(n,box):box.append(n);host.append(f);return f;};
     const card=(host,c='')=>{const n=make('div','cw-v4-card cww-ecard'+(c?' '+c:''));host.append(n);return n;};
@@ -76,9 +78,9 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     // 3 内容：原生 prompt 文本框 + 放大；占位条目只写一句说明。
     let big=null;
     const expand=button('',()=>openBig(),'cwr-btn cww-btn-sm cww-expand cwp-expand');expand.append(svg(ICO.expand),make('span','',t('放大','Expand')));
-    secH(t('内容','Content'),hasPrompt?expand:null);const c3=card(page);
+    secH(t('内容','Content'),editable?expand:null);const c3=card(page);
     const tokenText=()=>{const tk=rowNow()?.querySelector('.prompt_manager_prompt_tokens')?.textContent.trim();return /\d/.test(tk||'')?t(`约 ${tk} Token`,`~${tk} tokens`):t('Token 尚未统计','Tokens not counted');};
-    if(hasPrompt&&prompt){const f=field(c3,'',null,[prompt],'cww-content-field cwp-content');f.querySelector('.cww-lab').remove();cls(prompt,'cwp-prompt');f.append(make('div','cww-tok',tokenText()));}
+    if(editable&&prompt){const f=field(c3,'',null,[prompt],'cww-content-field cwp-content');f.querySelector('.cww-lab').remove();cls(prompt,'cwp-prompt');f.append(make('div','cww-tok',tokenText()));}
     else c3.append(make('div','cww-field cwp-marker-note',t('这是占位项，内容由酒馆在发送时自动填入（例如用户角色描述），这里不能编辑。','This is a placeholder; SillyTavern fills it in when sending, so it cannot be edited here.')));
     function openBig(){if(big||!prompt)return;const host=$('cw-v4-settings')||panel,b=make('div','cww-big'),bh=make('div','cww-bh'),sh=button('',()=>closeBig(),'cwr-btn cww-shrink');sh.append(svg(ICO.shrink),make('span','',t('收起','Collapse')));bh.append(sh,make('div','cww-bh-t',t(`${name?.value||''} · 内容`,`${name?.value||''} · Content`)),make('span','cww-tok',tokenText()));b.append(bh);
       for(const type of ['click','mousedown','touchstart','pointerdown'])b.addEventListener(type,e=>e.stopPropagation());const mark=doc.createComment('cwp-big');prompt.before(mark);b.append(prompt);host.append(b);host.classList.add('cww-big-host');panel.classList.add('cww-big-open');
@@ -90,7 +92,7 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     paintPos();
     // 手机顶栏：‹ 提示词 · ⋯ · 完成
     let mhead=null;const shellHead=doc.querySelector('.cw-v4-shell .cw-v4-head');
-    if(phoneWide()&&shellHead){mhead=make('div','cwr-mobile-head cww-mobile-head cwp-mobile-head');const bk=button('',()=>close?.click(),'cwr-head-back cww-head-back');bk.append(svg(ICO.back,1.9),make('span','',t('提示词','Prompts')));const right=make('span','cww-head-right');if(!isNew){const m2=button('',()=>{more.open=!more.open;},'cwr-head-action cww-head-ic');m2.append(dots());m2.setAttribute('aria-label',t('更多','More'));right.append(m2);}right.append(button(t('完成','Done'),()=>save?.click(),'cwr-head-action cww-head-done'));mhead.append(bk,make('h1',''),right);shellHead.append(mhead);}
+    if(phoneWide()&&shellHead){mhead=make('div','cwr-mobile-head cww-mobile-head cwp-mobile-head');const bk=button('',()=>close?.click(),'cwr-head-back cww-head-back');bk.append(svg(ICO.back,1.9),make('span','',t('提示词','Prompts')));const right=make('span','cww-head-right');if(!isNew){const m2=button('',()=>{more.cwAnchor=m2;more.open=!more.open;},'cwr-head-action cww-head-ic');m2.append(dots());m2.setAttribute('aria-label',t('更多','More'));right.append(m2);}right.append(button(t('完成','Done'),()=>save?.click(),'cwr-head-action cww-head-done'));mhead.append(bk,make('h1',''),right);shellHead.append(mhead);}
     ed={page,moves,undo,closeBig,mhead,scroll,scrollBox,id};
   }
   function close(){

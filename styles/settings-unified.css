@@ -1029,6 +1029,8 @@ html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item:disabl
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item.cw-v4-danger{color:var(--cwus-red)!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item>svg{width:16px!important;height:16px!important;flex:none!important;color:currentColor!important;opacity:.85!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item.cw-v4-danger>svg{opacity:1!important;color:var(--cwus-red)!important}
+/* 图标都是描边图标；别处给危险项 svg 设了 fill，这里改回不填充（否则「重置」画成一个红色实心圆）。 */
+html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item>svg{fill:none!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr{border:0!important;border-top:1px solid var(--cwus-soft)!important;margin:4px 2px!important;height:0!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr:first-child,html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr+.cwr-pop-hr{display:none!important}
 /* 手机专属菜单项（电脑外面已有多选、调整顺序） */
@@ -1125,11 +1127,14 @@ html[data-cw-settings-unified] #left-nav-panel .cwr-preset-current>.cwr-entry-ic
 html[data-cw-settings-unified] #left-nav-panel .cwr-preset-current>.cw-v4-row-info>p{display:none!important}
 html[data-cw-settings-unified] #left-nav-panel .cwr-preset-current>.cw-v4-row-controls{flex:1 1 100%!important;width:100%!important;display:flex!important;gap:8px!important}
 html[data-cw-settings-unified] #left-nav-panel .cwr-preset-current .cwr-select-host{flex:1 1 0!important;width:auto!important}
-html[data-cw-settings-unified] #left-nav-panel .cwp-edit :is(.cww-back,.cwp-inspect,.cwp-more,.cwp-foot){display:none!important}
+html[data-cw-settings-unified] #left-nav-panel .cwp-edit :is(.cww-back,.cwp-inspect,.cwp-foot){display:none!important}
+/* 编辑页 ⋯ 手机上由顶栏 ⋯ 打开：菜单本体留在渲染树里（display:none 时弹层画不出来），零尺寸、summary 藏起。 */
+html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cwp-more{display:block!important;position:absolute!important;width:0!important;height:0!important;min-width:0!important;overflow:visible!important;margin:0!important;padding:0!important;border:0!important}
+html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cwp-more>summary{display:none!important}
 html[data-cw-settings-unified] #left-nav-panel .cwp-inspect-phone{display:flex!important;width:100%!important;justify-content:center!important;margin:-4px 0 14px!important}
 html[data-cw-settings-unified] #left-nav-panel .cwp-title input.cwp-name{font-size:19px!important}
 html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-c2{grid-template-columns:1fr!important}
-html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-c2>.cww-field{border-right:0!important}
+html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-c2>.cww-field:nth-child(n){border-right:0!important}
 html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-c2>.cww-field+.cww-field{border-top:1px solid var(--cwus-soft)!important}
 html[data-cw-settings-unified] #left-nav-panel .cwp-edit textarea.cwp-prompt{min-height:180px!important}
 html.cwp-editing .cww-mobile-head .cww-head-right{display:flex!important;align-items:center!important;gap:2px!important}
@@ -1174,3 +1179,20 @@ html[data-cw-settings-unified] #WorldInfo .cww-head .cw-v4-as-btn>svg.cww-btn-ic
 @layer cw-settings-spec{
 html[data-cw-settings-unified] #WorldInfo input.cww-num:disabled{filter:none!important;background:var(--cwus-canvas)!important;color:var(--cwus-ink)!important;opacity:.5!important;border-color:var(--cwus-line)!important;-webkit-text-fill-color:currentColor!important}
 }
+/* 预设页 v2 round1（照世界书几轮的检测）：手机当前预设一行是 flex（原来被别的规则改成 block，下拉只有 106px）；
+   手机上预设下拉、编辑页下拉 34px、1px 边框、surface 底、CW 下箭头；停用框抵掉 tailwind 的 brightness。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] #left-nav-panel .cwp-edit :is(input,select,textarea):disabled{filter:none!important}
+}
+@media(max-width:700px){@layer cw-settings-spec{
+html[data-cw-settings-unified] #left-nav-panel#left-nav-panel .cwr-preset-current{display:flex!important;flex-wrap:wrap!important;align-items:center!important}
+html[data-cw-settings-unified] #left-nav-panel#left-nav-panel .cwr-preset-current>.cw-v4-row-controls{flex:1 1 100%!important;width:100%!important;max-width:none!important;min-width:0!important}
+html[data-cw-settings-unified] #left-nav-panel :is(.cwr-preset-current,.cwp-edit) select:not([multiple]):not(.select2-hidden-accessible){-webkit-appearance:none!important;appearance:none!important;height:34px!important;min-height:34px!important;max-height:34px!important;box-sizing:border-box!important;border:1px solid var(--cwus-line)!important;border-radius:8px!important;background:var(--cwus-surface) var(--v4-chev) right 9px center/15px no-repeat!important;padding:0 30px 0 10px!important;color:var(--cwus-ink)!important;box-shadow:none!important}
+}}
+/* 共用 .pop 菜单在手机上照稿子从 ⋯ 下方弹出（official-layout.js 写 --cw-mx / --cw-my），不用底部抽屉。 */
+@media(max-width:700px){@layer cw-settings-spec{
+html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list:popover-open{inset:auto!important;left:var(--cw-mx,8px)!important;top:var(--cw-my,56px)!important;right:auto!important;bottom:auto!important;width:auto!important;min-width:220px!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 16px)!important;padding:5px!important;border:1px solid var(--cwus-line)!important;border-radius:12px!important;background:var(--cwus-surface)!important;box-shadow:0 12px 36px rgba(50,45,35,.12)!important;animation:none!important;gap:0!important}
+html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list:popover-open::backdrop{background:transparent!important}
+html[data-cw-settings-unified] .cwr-pop .cw-v4-more-cancel{display:none!important}
+html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list:popover-open>.cw-v4-more-item{border-top:0!important}
+}}

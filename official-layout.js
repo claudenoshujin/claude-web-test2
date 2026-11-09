@@ -652,11 +652,16 @@ export function installOfficialLayout(win = window) {
       on(menu,'toggle',()=>{
         if(!menu.open){if(list.matches(':popover-open'))list.hidePopover();return;}
         doc.querySelectorAll('.cw-v4-more[open]').forEach(other=>{if(other!==menu)other.open=false;});
-        if(mobile())list.append(cancel);else cancel.remove();
+        // 341：v2 的 .pop 菜单（共用 menu() 带图标 / 分隔线时）手机上也照稿子从 ⋯ 下方弹出，不用底部抽屉和「取消」。
+        // 顶栏上的 ⋯ 打开别处的菜单时，菜单上挂 cwAnchor，按它定位。
+        const pop=menu.classList.contains('cwr-pop');
+        if(mobile()&&!pop)list.append(cancel);else cancel.remove();
         list.showPopover();
-        const anchor=summary.getBoundingClientRect(),box=list.getBoundingClientRect();
-        list.style.left=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8))+'px';
-        list.style.top=Math.max(8,Math.min(anchor.bottom+6,win.innerHeight-box.height-8))+'px';
+        const a=menu.cwAnchor?.isConnected?menu.cwAnchor:summary,anchor=a.getBoundingClientRect(),box=list.getBoundingClientRect();
+        const x=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8));
+        const y=anchor.bottom+6+box.height>win.innerHeight-8?Math.max(8,anchor.top-6-box.height):anchor.bottom+6;
+        list.style.left=x+'px';list.style.top=y+'px';
+        if(pop){list.style.setProperty('--cw-mx',x+'px');list.style.setProperty('--cw-my',y+'px');}
       });
       on(list,'click',e=>{if(e.target===list||e.target.closest('.menu_button,button'))menu.open=false;});
       const dispose=popoverDisposer(new win.WeakRef(list));disposers.push(dispose);promptListenerCleanup.register(list,dispose,dispose);
@@ -1800,7 +1805,9 @@ export function installOfficialLayout(win = window) {
     if (destroyed) return;
     const pm = pmEl();
     // 提示词编辑页：酒馆摘掉 openDrawer 后 200ms 就 display:none，比我们的下滑短；收起期间挂 data-cw-closing，CSS 让它多显示一会儿播完。
-    const pmOpen = Boolean(pm?.classList.contains('openDrawer'));
+    // 341 预设页 v2：编辑改在面板里的 .cwp-edit 页（html.cwp-editing），原生弹窗只是藏着的数据源，不当底部弹出页处理，
+    // 否则手机上会被搬进最上层、并把后面那页（也就是编辑页本身）缩小压暗。
+    const pmOpen = Boolean(pm?.classList.contains('openDrawer')) && !doc.documentElement.classList.contains('cwp-editing');
     // 2.0.217 提速：酒馆开 / 关它时用 jQuery slideDown / slideUp(200)，每帧改行内高度、重排；高度和动作都由我们的 CSS 管，直接让它跳到结束。
     if (pm && pmOpen !== pmWasOpen && mobile() && enabled()) win.jQuery?.(pm).stop(true, true);
     if (pm && pmWasOpen && !pmOpen && mobile()) { pm.setAttribute('data-cw-closing', ''); win.clearTimeout(pmCloseTimer); pmCloseTimer = win.setTimeout(() => { pm.removeAttribute('data-cw-closing'); unhostPm(); }, SHEET_MS + 40); }
@@ -2134,6 +2141,8 @@ export function installOfficialLayout(win = window) {
     observe(doc.body, hook, {childList:true});
     const pm = pmEl();
     if (pm) { observe(pm, syncSheet, {attributes:true, attributeFilter:['class']}); decoratePromptPopup(pm); }
+    // 341：预设页 v2 的编辑页开关（html.cwp-editing）也要重算一次，见 syncSheet 里的 pmOpen。
+    observe(doc.documentElement, syncSheet, {attributes:true, attributeFilter:['class']});
     on(win, 'resize', syncSheet);
     disposers.push(() => { win.clearTimeout(sheetAnimTimer); win.clearTimeout(pmCloseTimer); unhostPm(); dimEl?.remove(); for (const a of ['data-cw-sheet','data-cw-sheet-anim','data-cw-sheet-deep','data-cw-sheet-drag']) root.removeAttribute(a); });
     disposers.push(() => { for (const d of yieldedSheets) d.removeAttribute('data-cw-sheet-yielded'); yieldedSheets.clear(); root.removeAttribute('data-cw-sheet-yield'); });
