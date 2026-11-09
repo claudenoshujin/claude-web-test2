@@ -59,7 +59,7 @@ export function installOfficialLayout(win = window) {
   };
   const observe = (node, fn, options) => { const mo = new win.MutationObserver(fn); mo.observe(node, options); observers.push(mo); return mo; };
   // One delegated pair replaces document listeners that captured every old menu.
-  on(doc,'click',e=>{for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)&&!menu.contains(e.target))menu.open=false;});
+  on(doc,'click',e=>{for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)&&!menu.contains(e.target)&&!menu.cwAnchor?.contains?.(e.target))menu.open=false;});
   on(doc,'keydown',e=>{if(e.key!=='Escape')return;let closed=false;for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)){menu.open=false;closed=true;}if(closed){e.preventDefault();e.stopPropagation();}},true);
   const nativeToggle = panel => panel.closest('.drawer')?.querySelector(':scope > .drawer-toggle');
   /* Preferences: the design's PAGES table (app.js). R.* take the real

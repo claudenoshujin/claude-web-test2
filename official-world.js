@@ -85,7 +85,7 @@ export function createWorldPage(h) {
   function buildHome(s,view){
     const head=make('div','cwr-list-head cww-head'),actions=make('div','cwr-list-actions');head.append(make('h2','',t('世界书','World Info')),actions);
     const imp=get('world_import_button'),create=get('world_create_button');
-    if(imp){act(s,imp,'导入');move(s,imp,actions);}
+    if(imp){act(s,imp,'导入');const ic=ICON.imp();ic.classList.add('cww-btn-ic');ic.setAttribute('aria-hidden','true');imp.prepend(ic);imp.classList.add('cww-has-ic');cleanup(s,()=>{ic.remove();imp.classList.remove('cww-has-ic');});move(s,imp,actions);}
     if(create){act(s,create,'新建世界书',true,true);move(s,create,actions);}
     view.append(head,make('p','cwr-lede cww-sub',t('世界书在三个地方生效：全局（每段聊天都用）、绑在角色上、绑在这段聊天上。','World Info applies in three places: globally (every chat), bound to a character, or bound to this chat.')));
     const where=make('section','cw-v4-section cww-where');where.append(make('h2','',t('正在生效','Active now')));const card=make('div','cw-v4-card');where.append(card);view.append(where);
@@ -191,7 +191,7 @@ export function createWorldPage(h) {
   function buildBook(s,view){
     const back=btn(t('世界书','World Info'),()=>go('home'),'cwr-back cww-back',ICON.back());
     const head=make('div','cwr-list-head cww-head'),title=make('h2',''),actions=make('div','cwr-list-actions');head.append(title,actions);
-    const more=menu(s,[['重命名',get('world_popup_name_button')],['复制一份',get('world_duplicate')],['导出',get('world_popup_export')],['用关键词填充空标题',get('world_backfill_memos')],['把当前排序写入「顺序」',get('world_apply_current_sorting')],['刷新',get('world_refresh')],['删除这本世界书',get('world_popup_delete'),true]]);
+    const more=menu(s,[['重命名',get('world_popup_name_button'),false,null,'pencil'],['复制一份',get('world_duplicate'),false,null,'copy'],['导出',get('world_popup_export'),false,null,'exp'],'-',['用关键词填充空标题',get('world_backfill_memos'),false,null,'spark'],['把当前排序写入「顺序」',get('world_apply_current_sorting'),false,null,'sort'],['刷新',get('world_refresh'),false,null,'refresh'],'-',['删除这本世界书',get('world_popup_delete'),true,null,'trash']]);
     more.classList.add('cww-book-more');
     const add=get('world_popup_new');if(add){act(s,add,'新建条目',true,true);}
     actions.append(more);if(add)move(s,add,actions);
@@ -319,7 +319,9 @@ export function createWorldPage(h) {
     const titleRow=make('div','cww-etitle'),comment=Q('comment');
     if(comment){cls(comment,'cww-memo');M(comment,titleRow);if(!comment.getAttribute('placeholder')){comment.placeholder=t('给这条起个名字','Name this entry');es.undo.push(()=>comment.removeAttribute('placeholder'));}}
     const del=hdr?.querySelector('.delete_entry_button');
-    const emenu=menu(es,[['复制这条',hdr?.querySelector('.duplicate_entry_button')],['移到其他世界书…',hdr?.querySelector('.move_entry_button')],['删除这条',del,true,()=>{go('book');del?.click();}]]);emenu.classList.add('cww-entry-more');titleRow.append(emenu);
+    const emenu=menu(es,[['复制这条',hdr?.querySelector('.duplicate_entry_button'),false,null,'copy'],['移到其他世界书…',hdr?.querySelector('.move_entry_button'),false,null,'move'],'-',['删除这条',del,true,()=>{go('book');del?.click();},'trash']]);emenu.classList.add('cww-entry-more');
+    // 手机：顶栏 ⋯ 打开时，列表贴在顶栏 ⋯ 下方、右对齐（共用逻辑按 summary 定位，这里 summary 是藏起来的）。
+    emenu.addEventListener('toggle',()=>{const a=emenu.cwAnchor;if(!emenu.open||!a?.isConnected||!phoneWide())return;win.requestAnimationFrame(()=>{const l=emenu.querySelector(':scope>.cw-v4-more-list');if(!l)return;l.querySelector(':scope>.cw-v4-more-cancel')?.remove();const r=a.getBoundingClientRect(),w=l.getBoundingClientRect().width;l.style.setProperty('--cww-mx',Math.max(8,Math.min(r.right-w,win.innerWidth-w-8))+'px');l.style.setProperty('--cww-my',Math.round(r.bottom+4)+'px');});});titleRow.append(emenu);
     // 状态卡：启用一行、触发方式一行。
     const status=make('div','cw-v4-card cww-ecard cww-status'),kill=Q('entryKillSwitch'),stateSel=Q('entryStateSelector');
     const onRow=make('div','cw-v4-row cww-set-row'),onInfo=make('div','cw-v4-row-info'),onMeta=make('p',''),sw=make('button','cww-tg');sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));onInfo.append(make('div','cw-v4-row-title',t('启用','Enabled')),onMeta);const onCtl=make('div','cw-v4-row-controls');onCtl.append(sw);onRow.append(onInfo,onCtl);
@@ -341,9 +343,10 @@ export function createWorldPage(h) {
       // ST re-translates moved nodes asynchronously; set ours once more after that pass.
       win.setTimeout(()=>{if(ui?.editing===es&&n.placeholder!==v&&n.dataset.cwwPh!=='live')n.placeholder=v;},120);if(i18n!==null)n.setAttribute('data-i18n',i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')).join(';'));es.undo.push(()=>{ph===null?n.removeAttribute('placeholder'):n.setAttribute('placeholder',ph);i18n===null?n.removeAttribute('data-i18n'):n.setAttribute('data-i18n',i18n);});};
     const kvRow=(label,name,extra)=>{const r=make('div','cw-v4-row cww-set-row cww-kv'),k=make('span','cww-k84',label),box=make('div','cww-ctl cww-kt');r.append(k);if(extra)M(extra,r);r.append(box);for(const n of keyNodes(name))M(n,box);const sp=spark(name);if(sp)M(sp,r);status.append(r);return r;};
+    // 先取文本框：kvRow 会把它们搬出 entry，之后再在 entry 里找就找不到了（round2 #9 占位没换的原因）。
+    const keyTa=entry.querySelector('textarea[name="key"]'),fltTa=entry.querySelector('textarea[name="keysecondary"]');
     kvRow(t('关键词','Keywords'),'key');
     kvRow(t('可选过滤器','Optional filter'),'keysecondary',Q('entryLogicType'));
-    const keyTa=entry.querySelector('textarea[name="key"]'),fltTa=entry.querySelector('textarea[name="keysecondary"]');
     setPh(fltTa,t('留空就不用','Leave empty to skip'));
     const prob=num('probability'),useProb=Q('useProbability');
     const probRow=make('div','cw-v4-row cww-set-row'),probInfo=make('div','cw-v4-row-info'),suf=make('span','cww-suf');probInfo.append(make('div','cw-v4-row-title',t('触发概率','Trigger chance')),make('p','',t('100% = 满足条件就一定发送','100% = always sent when matched')));probRow.append(probInfo,suf);
@@ -408,6 +411,11 @@ export function createWorldPage(h) {
     const setEx=v=>{if(!ex||ex.checked===v)return;ex.checked=v;ex.dispatchEvent(new win.Event('input',{bubbles:true}));ex.dispatchEvent(new win.Event('change',{bubbles:true}));paintEx();paintSummary();};
     fb1.addEventListener('click',()=>setEx(false));fb2.addEventListener('click',()=>setEx(true));
     const cfBox=make('div','cww-ctl cww-cf'),cfSel=Q('characterFilter');fwrap.append(fseg,cfBox);if(cfSel){const c=s2box(cfSel);M(cfSel,cfBox);if(c)M(c,cfBox);}
+    // round2 #1：占位换成稿子文案。select2 把占位存在自己的 selection 上，每次重画都从那里写回搜索框，所以改那里；关掉条目页还原。
+    if(cfSel){const inst=win.jQuery?.(cfSel).data?.('select2'),sel=inst?.selection,ph=t('选择角色或标签，留空 = 所有角色','Pick characters or tags; empty = all characters');
+      const paint=()=>{const f=inst?.$container?.[0]?.querySelector('.select2-search__field');if(f&&!cfSel.selectedOptions.length&&f.placeholder!==ph)f.placeholder=ph;};
+      if(sel&&'placeholder' in sel){const old=sel.placeholder;sel.placeholder={id:'',text:ph};es.undo.push(()=>{sel.placeholder=old;try{win.jQuery(cfSel).trigger('change.select2');}catch{}});}
+      paint();win.setTimeout(paint,120);}
     const exPark=make('div','cww-park');if(ex)M(ex,exPark);fwrap.append(exPark);
     // 5 扫描：留空或「跟随全局」(= 原生 null) 用激活设置的值。
     adv.append(secH(t('扫描','Scan'),t('留空或"跟随全局"就用激活设置里的值','Blank or "use global" uses Activation settings')));const c5=card(adv);const g5=make('div','cww-grid cww-c3');c5.append(g5);
@@ -439,25 +447,29 @@ export function createWorldPage(h) {
     if(group){const i18n=group.getAttribute('data-i18n'),ph=group.getAttribute('placeholder');group.placeholder=t('例如：人物','e.g. Characters');if(i18n!==null)group.setAttribute('data-i18n',i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')).join(';'));es.undo.push(()=>{ph===null?group.removeAttribute('placeholder'):group.setAttribute('placeholder',ph);i18n===null?group.removeAttribute('data-i18n'):group.setAttribute('data-i18n',i18n);});}
     // 已改：和原生默认值不同的项。
     function changes(){const out=[],v=n=>NAT[n],chk=n=>!!v(n)?.checked,val=n=>String(v(n)?.value??'').trim();
-      if(chk('excludeRecursion'))out.push(t('不被触发','not triggered'));if(chk('preventRecursion'))out.push(t('不触发其他','no recursion'));if(chk('delay_until_recursion'))out.push(t('只在递归时','recursion only'));if(chk('ignoreBudget'))out.push(t('无视预算','ignore budget'));
-      if(val('group'))out.push(t(`分组 ${val('group')}`,`group ${val('group')}`));if(val('groupWeight')&&val('groupWeight')!=='100')out.push(t(`权重 ${val('groupWeight')}`,`weight ${val('groupWeight')}`));if(chk('groupOverride'))out.push(t('组内优先','group priority'));if(val('useGroupScoring')&&val('useGroupScoring')!=='null')out.push(t('组评分','group scoring'));
+      if(chk('excludeRecursion'))out.push(t('不会被其他条目触发','not triggered by others'));if(chk('preventRecursion'))out.push(t('不触发其他条目','does not trigger others'));if(chk('delay_until_recursion'))out.push(t('只在递归时触发','only during recursion'));if(chk('ignoreBudget'))out.push(t('无视预算','ignore budget'));
+      if(val('group'))out.push(t(`组名 ${val('group')}`,`group ${val('group')}`));if(val('groupWeight')&&val('groupWeight')!=='100')out.push(t(`权重 ${val('groupWeight')}`,`weight ${val('groupWeight')}`));if(chk('groupOverride'))out.push(t('组内优先','group priority'));if(val('useGroupScoring')&&val('useGroupScoring')!=='null')out.push(t('组评分','group scoring'));
       for(const [n,zh,en] of [['sticky','粘性','sticky'],['cooldown','冷却','cooldown'],['delay','延迟','delay']])if(val(n)&&val(n)!=='0')out.push(t(`${zh} ${val(n)}`,`${en} ${val(n)}`));
       if(chk('character_exclusion')||v('characterFilter')?.selectedOptions?.length)out.push(t('角色过滤','character filter'));
-      if(val('scanDepth'))out.push(t(`扫描深度 ${val('scanDepth')}`,`scan depth ${val('scanDepth')}`));for(const [n,zh,en] of [['caseSensitive','大小写','case'],['matchWholeWords','整词','whole words']])if(val(n)&&val(n)!=='null')out.push(t(zh,en));
+      if(val('scanDepth'))out.push(t(`扫描深度 ${val('scanDepth')}`,`scan depth ${val('scanDepth')}`));for(const [n,zh,en] of [['caseSensitive','区分大小写','case-sensitive'],['matchWholeWords','整词匹配','whole words']])if(val(n)&&val(n)!=='null')out.push(t(zh,en));
       const extra=SRC.filter(([n])=>chk(n)).length;if(extra)out.push(t(`额外匹配 ${extra} 项`,`${extra} extra sources`));const gen=trg?[...trg.selectedOptions].length:0;if(gen)out.push(t(`生成方式 ${gen} 项`,`${gen} generation types`));if(val('automationId'))out.push(t('自动化 ID','automation ID'));
       return out;}
-    function paintSummary(){const c=changes();text(fs,c.length?t(`已改：${c.join(' · ')}`,`Changed: ${c.join(' · ')}`):t('都是默认值','All defaults'));fs.classList.toggle('cww-changed',c.length>0);}
+    // 摘要放不下时按整项省略（「等 N 项」），不把字段名截掉一半（round2 #8）。
+    function paintSummary(){const c=changes();fs.classList.toggle('cww-changed',c.length>0);if(!c.length){text(fs,t('都是默认值','All defaults'));fs.removeAttribute('title');return;}
+      const fmt=k=>k<c.length?t(`已改：${c.slice(0,k).join(' · ')} 等 ${c.length} 项`,`Changed: ${c.slice(0,k).join(' · ')} and ${c.length-k} more`):t(`已改：${c.join(' · ')}`,`Changed: ${c.join(' · ')}`);
+      const full=fmt(c.length);if(fs.title!==full)fs.title=full;let k=c.length;text(fs,full);while(k>1&&fs.clientWidth&&fs.scrollWidth>fs.clientWidth+1){k--;text(fs,fmt(k));}}
     const paintFold=()=>{const open=!!ui.advOpen;fold.setAttribute('aria-expanded',String(open));setHidden(adv,!open);};
     fold.addEventListener('click',()=>{ui.advOpen=!ui.advOpen;paintFold();});
     on(view,'input',paintSummary);on(view,'change',()=>{paintSummary();for(const p of pillsPaint)p();});
     // ST hides some checkboxes until their section expands; show them as switches here.
     const shown=[];view.querySelectorAll?.('input[type=checkbox]');
     // 底部只留「完成」（电脑）。
-    const foot=make('div','cww-footbar');foot.append(btn(t('完成','Done'),()=>go('book'),'cwr-btn cww-primary cww-desk-only'));
+    // 吸底渐变要渐到页面底色（面板的背景色随设备、配色变，读实际值），不是卡片色（round2 #10）。
+    const foot=make('div','cww-footbar');{const pg=win.getComputedStyle(ui.panel).backgroundColor;if(pg&&pg!=='rgba(0, 0, 0, 0)'&&pg!=='transparent')foot.style.setProperty('--cww-page',pg);}foot.append(btn(t('完成','Done'),()=>go('book'),'cwr-btn cww-primary cww-desk-only'));
     view.replaceChildren(back,titleRow,status,conSec,insSec,fold,adv,foot);
     for(const c of view.querySelectorAll('input[type=checkbox]')){if(c.closest('.cw-v4-park'))continue;if(c.style.display==='none'||c.hidden||c.classList.contains('displayNone')){shown.push([c,c.style.display,c.hidden]);c.style.display='';c.hidden=false;c.classList.add('cw-v4-icon-toggle');}}
     es.undo.push(()=>{for(const [c,d,hd]of shown){c.style.display=d;c.hidden=hd;c.classList.remove('cw-v4-icon-toggle');}});
-    paintStatus();paintPos();paintSub();paintEx();for(const p of pillsPaint)p();paintSummary();paintFold();
+    paintStatus();paintPos();paintSub();paintEx();for(const p of pillsPaint)p();paintSummary();paintFold();win.requestAnimationFrame(()=>{if(ui?.editing===es)paintSummary();});
     on(stateSel,'input',paintStatus);
     const tokPaint=()=>{if(!counter&&content){text(tok,t(`约 ${Math.round(content.value.length/1.6)} Token`,`~${Math.round(content.value.length/1.6)} tokens`));}};tokPaint();on(content,'input',tokPaint);
     es.content=content;es.cm=cm;es.counter=counter;es.contentHost=cf;es.menu=emenu;es.title=()=>comment?.value.trim()||t('（无标题）','(Untitled)');
@@ -505,13 +517,13 @@ export function createWorldPage(h) {
     const back=btn(t('世界书','World Info'),()=>go('home'),'cwr-back cww-back',ICON.back()),head=make('div','cwr-list-head cww-head');head.append(make('h2','',t('激活设置','Activation settings')));
     view.append(back,head,make('p','cwr-lede cww-sub',t('对所有世界书生效。不确定的保持默认就行。','Applies to all World Info. Keep the defaults if unsure.')));
     const sec=title=>{const x=make('section','cw-v4-section');x.append(make('h2','',title));const c=make('div','cw-v4-card');x.append(c);view.append(x);return c;};
-    const numField=(host,id,label,hint)=>{const counter=get(id+'_counter')||get(id);const f=make('div','cww-field'),box=make('div','cww-ctl');f.append(make('div','cww-lab',label),make('div','cww-hint',hint),box);host.append(f);if(counter){counter.classList.add('cw-v4-num','cww-num');cleanup(s,()=>counter.classList.remove('cw-v4-num','cww-num'));move(s,counter,box);}
+    const numField=(host,id,label,hint,unit)=>{const counter=get(id+'_counter')||get(id);const f=make('div','cww-field'),box=make('div','cww-ctl');f.append(make('div','cww-lab',label),make('div','cww-hint',hint),box);host.append(f);let at=box;if(unit){at=make('span','cww-suf');box.append(at);}if(counter){counter.classList.add('cw-v4-num','cww-num');cleanup(s,()=>counter.classList.remove('cw-v4-num','cww-num'));move(s,counter,at);}if(unit)at.append(make('i','',unit));
       // The slider stays live but hidden: the counter is the visible control and
       // writes through ST's own delegated handler (2.0.340 A).
       const slider=get(id);if(slider&&slider!==counter){const park=make('div','cw-v4-park');f.append(park);move(s,slider,park);}return f;};
-    const scan=sec(t('扫描','Scan')),grid=make('div','cww-grid4');scan.append(grid);
+    const scan=sec(t('扫描','Scan')),grid=make('div','cww-grid4 cww-agrid');scan.append(grid);
     numField(grid,'world_info_depth',t('扫描深度','Scan depth'),t('往回看几条消息找关键词','How many messages to scan'));
-    numField(grid,'world_info_budget',t('上下文占比 %','Context %'),t('世界书最多占上下文多少','Maximum share of the context'));
+    numField(grid,'world_info_budget',t('上下文占比','Context share'),t('世界书最多占上下文多少','Maximum share of the context'),'%');
     numField(grid,'world_info_budget_cap',t('预算上限','Budget cap'),t('0 = 不额外限制（Token）','0 = no extra limit (tokens)'));
     numField(grid,'world_info_min_activations',t('最少激活','Min activations'),t('至少激活几条','Activate at least N entries'));
     numField(grid,'world_info_min_activations_depth_max',t('最少激活时最多扫到','Max depth for min activations'),t('0 = 不限','0 = unlimited'));
@@ -539,7 +551,7 @@ export function createWorldPage(h) {
       if(v==='home'&&ui.selecting)m.replaceChildren(button(t('取消','Cancel'),()=>stopSelecting(true),'cwr-head-back'),make('h1','',t(`已选 ${ui.selected.size} 本`,`${ui.selected.size} selected`)),button(t('全选','Select all'),()=>selectAll(),'cwr-head-action'));
       else if(v==='home'){const menuBtn=button('',()=>doc.querySelector('.cw-v4-shell .cw-v4-head .cw-v4-menu')?.click(),'cwr-head-back cww-head-ic');menuBtn.append(svg('<path d="M4 7h16M4 12h11M4 17h16"/>'));menuBtn.setAttribute('aria-label',t('菜单','Menu'));const plus=button('',()=>get('world_create_button')?.click(),'cwr-head-action cww-head-ic');plus.append(ICON.plus());plus.setAttribute('aria-label',t('新建世界书','New World Info'));m.replaceChildren(menuBtn,make('h1','',t('世界书','World Info')),plus);}
       else if(v==='book'){const more=button('',()=>{const d=ui.views.book.querySelector('.cww-book-more');if(d)d.open=!d.open;},'cwr-head-action cww-head-ic');more.append(ICON.more());more.setAttribute('aria-label',t('更多','More'));m.replaceChildren(back(t('世界书','World Info'),'home'),make('h1','',currentBook()),more);}
-      else if(v==='entry'){const more=button('',()=>{const d=ui.editing?.menu;if(d)d.open=!d.open;},'cwr-head-action cww-head-ic');more.append(ICON.more());more.setAttribute('aria-label',t('更多','More'));const right=make('span','cww-head-right');right.append(more,button(t('完成','Done'),()=>go('book'),'cwr-head-action cww-head-done'));m.replaceChildren(back(currentBook(),'book'),make('h1',''),right);}
+      else if(v==='entry'){const more=button('',()=>{const d=ui.editing?.menu;if(!d)return;d.cwAnchor=more;d.open=!d.open;},'cwr-head-action cww-head-ic');more.append(ICON.more());more.setAttribute('aria-label',t('更多','More'));const right=make('span','cww-head-right');right.append(more,button(t('完成','Done'),()=>go('book'),'cwr-head-action cww-head-done'));m.replaceChildren(back(currentBook(),'book'),make('h1',''),right);}
       else m.replaceChildren(back(t('世界书','World Info'),'home'),make('h1','',t('激活设置','Activation settings')),make('span','cww-head-spacer'));
     }
     if(!m.isConnected)head.append(m);

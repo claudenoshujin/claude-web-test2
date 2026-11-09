@@ -759,7 +759,7 @@ html[data-cw-settings-unified] #WorldInfo .cww-charfilter .select2-container{min
 html[data-cw-settings-unified] #WorldInfo .cww-adv{margin-top:0!important}
 html[data-cw-settings-unified] #WorldInfo .cww-set-row{min-height:52px!important;cursor:default!important}
 html[data-cw-settings-unified] #WorldInfo .cww-set-row .cw-v4-row-controls{flex-wrap:wrap!important;justify-content:flex-end!important}
-html[data-cw-settings-unified] #WorldInfo .cww-footbar{position:sticky!important;bottom:-40px!important;display:flex!important;justify-content:space-between!important;align-items:center!important;padding:12px 0 0!important;margin-top:18px!important;background:linear-gradient(to bottom,transparent,var(--cwus-surface) 30%)!important;z-index:2!important}
+html[data-cw-settings-unified] #WorldInfo .cww-footbar{position:sticky!important;bottom:-40px!important;display:flex!important;justify-content:space-between!important;align-items:center!important;padding:12px 0 0!important;margin-top:18px!important;background:linear-gradient(to bottom,transparent,var(--cww-page,var(--cwus-surface)) 30%)!important;z-index:2!important}
 html[data-cw-settings-unified] #WorldInfo .cww-danger{color:var(--cww-warn)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-head .cw-v4-primary{background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-primary{background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
@@ -785,7 +785,7 @@ html[data-cw-settings-unified] .cww-big>.tt-codemirror-editor{flex:1 1 0!importa
 html[data-cw-settings-unified] #WorldInfo .cww-phone-only{display:block!important}
 html[data-cw-settings-unified] #WorldInfo :is(.cww-desk-only,.cww-head,.cww-back){display:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-book-sub{margin-top:0!important}
-html[data-cw-settings-unified] #WorldInfo .cww-footbar{background:linear-gradient(to bottom,transparent,var(--cwus-canvas) 30%)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-footbar{background:linear-gradient(to bottom,transparent,var(--cww-page,var(--cwus-canvas)) 30%)!important}
 html[data-cw-settings-unified] .cww-big{position:fixed!important;background:var(--cwus-canvas)!important;border-radius:0!important}
 html[data-cw-settings-unified] .cww-big .cww-bh{padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px!important}
 html[data-cw-settings-unified] .cww-big>textarea{padding:14px 16px!important;font-size:16px!important}
@@ -904,7 +904,7 @@ html[data-cw-settings-unified] #WorldInfo .cww-bar-l{width:2px!important;align-s
 /* 高级折叠条（第二行写已改） */
 html[data-cw-settings-unified] #WorldInfo button.cww-fold{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;border:1px solid var(--cwus-soft)!important;background:var(--cwus-surface)!important;border-radius:14px!important;padding:13px 14px!important;height:auto!important;min-height:0!important;cursor:pointer!important;text-align:left!important;margin:18px 0 0!important;color:var(--cwus-ink)!important;font-size:14px!important;font-weight:var(--cwus-normal-weight)!important;box-shadow:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-ft{flex:1 1 0!important;min-width:0!important}
-html[data-cw-settings-unified] #WorldInfo .cww-ft>b{display:block!important;font-weight:500!important;font-size:14px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-ft>b{display:block!important;font-weight:400!important;font-size:14px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-ft>small{display:block!important;font-size:12.5px!important;color:var(--cwus-muted)!important;margin-top:2px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
 html[data-cw-settings-unified] #WorldInfo button.cww-fold>svg{width:16px!important;height:16px!important;color:var(--cwus-muted)!important;transition:transform .15s!important;flex:none!important}
 html[data-cw-settings-unified] #WorldInfo button.cww-fold[aria-expanded=true]>svg{transform:rotate(90deg)!important}
@@ -928,7 +928,12 @@ html[data-cw-settings-unified] #WorldInfo .cww-meta2{display:block!important;fon
 html[data-cw-settings-unified] #WorldInfo .cww-con{flex:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-cend{flex:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-etitle textarea.cww-memo{font-size:19px!important}
-html[data-cw-settings-unified] #WorldInfo .cww-entry-more{display:none!important}
+/* round2 #3：手机条目 ⋯ 由顶栏 ⋯ 打开；details 要留在渲染树里（display:none 时弹层画不出来），自身零尺寸、summary 藏起，列表照稿子从顶栏 ⋯ 下方右对齐弹出，不用底部抽屉。 */
+html[data-cw-settings-unified] #WorldInfo .cww-entry-more{display:block!important;position:absolute!important;width:0!important;height:0!important;min-width:0!important;overflow:visible!important;margin:0!important;padding:0!important;border:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-entry-more>summary{display:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-entry-more>.cw-v4-more-list:popover-open{inset:auto!important;left:var(--cww-mx,8px)!important;top:var(--cww-my,56px)!important;right:auto!important;bottom:auto!important;width:auto!important;min-width:220px!important;max-width:calc(100vw - 16px)!important;padding:5px!important;border:1px solid var(--cwus-line)!important;border-radius:12px!important;background:var(--cwus-surface)!important;box-shadow:0 12px 36px rgba(50,45,35,.12)!important;animation:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-entry-more>.cw-v4-more-list:popover-open::backdrop{background:transparent!important}
+html[data-cw-settings-unified] #WorldInfo .cww-entry-more .cw-v4-more-cancel{display:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-st-row{flex-direction:column!important;align-items:stretch!important;gap:10px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-st-row>.cww-seg,html[data-cw-settings-unified] #WorldInfo .cww-fseg{display:flex!important;width:100%!important}
 html[data-cw-settings-unified] #WorldInfo :is(.cww-st-row>.cww-seg,.cww-fseg)>button{flex:1 1 0!important}
@@ -967,6 +972,9 @@ html[data-cw-settings-unified] #WorldInfo .cww-mini::before{content:""!important
 html[data-cw-settings-unified] #WorldInfo .cww-suf{position:relative!important;display:inline-flex!important;width:84px!important;flex:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-suf>input.cww-num{width:100%!important;padding-right:26px!important;text-align:right!important}
 html[data-cw-settings-unified] #WorldInfo .cww-suf>i{position:absolute!important;right:10px!important;top:50%!important;transform:translateY(-50%)!important;font-style:normal!important;font-size:13px!important;color:var(--cww-muted2)!important;pointer-events:none!important}
+/* round2 #7：✨ 和输入框上下居中（原生按钮的 padding / 行高把图标顶高了 3–4px）。 */
+html[data-cw-settings-unified] #WorldInfo .cww-kv>.cww-mini{display:inline-flex!important;align-items:center!important;justify-content:center!important;align-self:center!important;padding:0!important;margin:0!important;line-height:0!important;vertical-align:middle!important;top:auto!important;bottom:auto!important;transform:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-kv>.cww-mini::before{margin:0!important;flex:none!important;position:static!important;transform:none!important}
 }
 @media(max-width:700px){@layer cw-settings-spec{
 html[data-cw-settings-unified] #WorldInfo .cww-kv{flex-wrap:wrap!important;align-items:center!important;row-gap:6px!important}
@@ -1020,6 +1028,7 @@ html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item:hover{
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item:disabled{opacity:.45!important;cursor:default!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item.cw-v4-danger{color:var(--cwus-red)!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item>svg{width:16px!important;height:16px!important;flex:none!important;color:currentColor!important;opacity:.85!important}
+html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item.cw-v4-danger>svg{opacity:1!important;color:var(--cwus-red)!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr{border:0!important;border-top:1px solid var(--cwus-soft)!important;margin:4px 2px!important;height:0!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr:first-child,html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr+.cwr-pop-hr{display:none!important}
 /* 手机专属菜单项（电脑外面已有多选、调整顺序） */
@@ -1125,3 +1134,39 @@ html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-c2>.cww-field+.cww
 html[data-cw-settings-unified] #left-nav-panel .cwp-edit textarea.cwp-prompt{min-height:180px!important}
 html.cwp-editing .cww-mobile-head .cww-head-right{display:flex!important;align-items:center!important;gap:2px!important}
 }}
+
+/* 2.0.341 世界书 round3（审阅 round2 意见）。 */
+@layer cw-settings-spec{
+/* #1 角色过滤：只留一层框，和组名框同高同边框；select2 里的搜索框不再画框，占位 14px。 */
+html[data-cw-settings-unified] #WorldInfo .cww-cf>.select2-container{width:100%!important;display:block!important}
+html[data-cw-settings-unified] #WorldInfo .cww-cf .select2-selection--multiple{display:flex!important;align-items:center!important;flex-wrap:wrap!important;min-height:38px!important;height:auto!important;padding:3px 8px!important;border:1px solid var(--cwus-line)!important;border-radius:9px!important;background:var(--cwus-canvas)!important;box-shadow:none!important;box-sizing:border-box!important;cursor:text!important}
+html[data-cw-settings-unified] #WorldInfo .cww-cf .select2-selection__rendered{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px!important;margin:0!important;padding:0!important;flex:0 1 auto!important;min-width:0!important;list-style:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-cf .select2-search--inline{flex:1 1 80px!important;text-align:left!important;min-width:80px!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important}
+html[data-cw-settings-unified] #WorldInfo .cww-cf .select2-search__field{display:block!important;width:100%!important;height:28px!important;min-height:0!important;max-height:28px!important;margin:0!important;padding:0 2px!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;font-size:14px!important;line-height:28px!important;color:var(--cwus-ink)!important;resize:none!important;overflow:hidden!important;text-align:left!important}
+html[data-cw-settings-unified] #WorldInfo .cww-cf .select2-search__field::placeholder{font-size:14px!important;color:var(--cwus-muted)!important;opacity:1!important}
+html[data-cw-settings-unified] #WorldInfo .cww-cf .select2-selection__choice{margin:0!important;font-size:13px!important}
+}
+/* #2 手机下拉（世界书各页）和电脑同一套：34px 高、1px 边框、surface 底、CW 下箭头（手机主题文件把边框设成透明、底色设成灰，这里压回）。 */
+@media(max-width:700px){@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo select:not([multiple]):not(.select2-hidden-accessible):not(.cww-park *):not(.cw-v4-park *){-webkit-appearance:none!important;appearance:none!important;height:34px!important;min-height:34px!important;max-height:34px!important;box-sizing:border-box!important;border:1px solid var(--cwus-line)!important;border-radius:8px!important;background:var(--cwus-surface) var(--v4-chev) right 9px center/15px no-repeat!important;padding:0 30px 0 10px!important;color:var(--cwus-ink)!important;box-shadow:none!important}
+}}
+/* #5 激活设置：两列网格（电脑、手机都是），第五格在第三行左边；% 在数字框里。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo .cww-agrid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-agrid>.cww-field{border:0!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-agrid>.cww-field:nth-child(odd){border-right:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-agrid>.cww-field:nth-child(n+3){border-top:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-agrid>.cww-field>.cww-ctl>.cww-suf{width:100%!important}
+html[data-cw-settings-unified] #WorldInfo .cww-agrid .cww-suf>input.cww-num{text-align:left!important;width:100%!important;min-width:0!important;max-width:none!important;flex:1 1 auto!important}
+}
+/* #6 「正在生效」说明单行，放不下就省略号（原来 p 是 flex 容器，text-overflow 不起作用，字被切开）。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo .cww-where-row>.cw-v4-row-info{flex:1 1 0!important;min-width:0!important;overflow:hidden!important}
+html[data-cw-settings-unified] #WorldInfo .cww-where-row>.cw-v4-row-info>:is(p,.cw-v4-row-title){display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-where-row>.cww-val{min-width:0!important;flex:0 1 auto!important}
+}
+/* #11 首页「导入」按钮加稿子的导入图标。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo .cww-head .cw-v4-as-btn.cww-has-ic{display:inline-flex!important;align-items:center!important;gap:6px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-head .cw-v4-as-btn>svg.cww-btn-ic{display:block!important;width:15px!important;height:15px!important;flex:none!important}
+}

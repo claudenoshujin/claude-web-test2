@@ -56,19 +56,24 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     if([].concat(nodes||[]).some(n=>n?.closest?.('[data-cc-null]')))r.setAttribute('data-cc-null','');
     return r;
   }
-  // moreMenu(): short hand-written labels; the native buttons stay inside,
+  // menu(): the shared ⋯ menu. Short hand-written labels; the native buttons stay inside,
   // hidden, so their IDs and delegated handlers keep working.
+  // Item: [label, nativeEl, danger, run, icon]. '-' draws a thin rule between groups.
+  // An icon (a POP_ICONS key) or a rule switches the menu to the v2 .pop look:
+  // 16px icon + 14px text, 36px rows, danger icon and text both red.
+  const POP_ICONS={pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',trash:'<path d="M5 7h14M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>',sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',move:'<path d="M5 12h12M13 7l5 5-5 5"/>',spark:'<path d="M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z"/>',sort:'<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>',refresh:'<path d="M19 12a7 7 0 1 1-2.05-4.95M19 5v4h-4"/>'};
+  function popIcon(k){const s2=doc.createElementNS('http://www.w3.org/2000/svg','svg');s2.setAttribute('viewBox','0 0 24 24');s2.setAttribute('fill','none');s2.setAttribute('stroke','currentColor');s2.setAttribute('stroke-width','1.8');s2.setAttribute('stroke-linecap','round');s2.setAttribute('stroke-linejoin','round');s2.setAttribute('aria-hidden','true');s2.innerHTML=POP_ICONS[k]||'';return s2;}
   function menu(s,items){
     const m=make('details','cw-v4-more cw-v4-created'),h=make('summary','','⋯'),list=make('div','cw-v4-more-list'),park=make('div','cw-v4-more-park');
-    h.setAttribute('aria-label',L('更多'));m.append(h,list,park);
-    for(const it of items){if(!it)continue;const [label,el,danger,run]=it;if(!el&&!run)continue;
-      const b=button(L(label),e=>{e.stopPropagation();m.open=false;run?run():el.click();},'cw-v4-more-item'+(danger?' cw-v4-danger':''));list.append(b);
+    h.setAttribute('aria-label',L('更多'));m.append(h,list,park);let pop=false,rule=false;
+    for(const it of items){if(it==='-'){rule=true;continue;}if(!it)continue;const [label,el,danger,run,ico]=it;if(!el&&!run)continue;
+      if(rule&&list.childElementCount){list.append(make('hr','cwr-pop-hr'));pop=true;}rule=false;
+      const b=button(L(label),e=>{e.stopPropagation();m.open=false;run?run():el.click();},'cw-v4-more-item'+(danger?' cw-v4-danger':''));
+      if(ico){b.prepend(popIcon(ico));pop=true;}list.append(b);
       if(el)move(s,el,park);}
+    if(pop)m.classList.add('cwr-pop');
     return m;
   }
-  // popify(): v2 .pop menu look for an existing menu() — 16px icon + text per item, thin rules before the given labels.
-  const POP_ICONS={pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',trash:'<path d="M5 7h14M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>',sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'};
-  function popify(m,icons,breaks=[]){m.classList.add('cwr-pop');const list=m.querySelector('.cw-v4-more-list');for(const b of list.querySelectorAll(':scope>.cw-v4-more-item')){const label=b.textContent.trim(),k=Object.entries(icons).find(([l])=>L(l)===label||l===label)?.[1];if(k){const s2=doc.createElementNS('http://www.w3.org/2000/svg','svg');s2.setAttribute('viewBox','0 0 24 24');s2.setAttribute('fill','none');s2.setAttribute('stroke','currentColor');s2.setAttribute('stroke-width','1.8');s2.setAttribute('stroke-linecap','round');s2.setAttribute('stroke-linejoin','round');s2.setAttribute('aria-hidden','true');s2.innerHTML=POP_ICONS[k];b.prepend(s2);}if(breaks.some(l=>L(l)===label||l===label))b.before(make('hr','cwr-pop-hr'));}return m;}
   // asBtn(): a native control drawn as a text button.
   function act(s,n,label,plus,primary){if(!n)return n;n.classList.add('cw-v4-as-btn');if(primary)n.classList.add('cw-v4-primary');const text=make('span','cw-v4-action-label'+(plus?' cw-v4-plus':''),L(label));n.append(text);s.created.push(text);(s.buttons||=[]).push(n);return n;}
   function begin(root){const s=state(root);if(s.page)return null;const page=make('div','cw-v4-drawer-page');s.page=page;root.append(page);s.created.push(page);root.classList.add('cw-v4-reflow');return {s,page};}
@@ -186,9 +191,9 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const presetRoot=get('openai_api-presets');
     if(presetRoot){const ps=begin(presetRoot);if(ps){const group=section(ps.page,'对话补全预设');
       const select=get('settings_preset_openai');if(select){select.classList.add('cw-v4-preset-sel');cleanup(ps.s,()=>select.classList.remove('cw-v4-preset-sel'));}
-      {const pm=menu(ps.s,[['重命名',presetRoot.querySelector('[data-preset-manager-rename="openai"]')],['另存为新预设',get('new_oai_preset')],['导入预设',get('import_oai_preset')],['导出当前预设',get('export_oai_preset')],['预设增强菜单',get('open_s_preset_menu')],['删除当前预设',get('delete_oai_preset'),true]]);
+      {const pm=menu(ps.s,[['重命名',presetRoot.querySelector('[data-preset-manager-rename="openai"]'),false,null,'pencil'],['另存为新预设',get('new_oai_preset'),false,null,'copy'],'-',['导入预设',get('import_oai_preset'),false,null,'imp'],['导出当前预设',get('export_oai_preset'),false,null,'exp'],['预设增强菜单',get('open_s_preset_menu'),false,null,'sliders'],'-',['删除当前预设',get('delete_oai_preset'),true,null,'trash']]);
         // v2 .pop：图标 + 文字，分组细线（重命名 / 另存为 | 导入 / 导出 | 删除）。原生没有「恢复默认值」，不做。
-        popify(pm,{'重命名':'pencil','另存为新预设':'copy','导入预设':'imp','导出当前预设':'exp','预设增强菜单':'sliders','删除当前预设':'trash'},['导入预设','删除当前预设']);pm.classList.add('cw-v4-preset-menu');
+        pm.classList.add('cw-v4-preset-menu');
         presetManagerPage.header(ps.s,group,select,[act(ps.s,get('update_oai_preset'),'保存'),pm]);}
       {const br=tg(ps.s,group,get('bind_preset_to_connection'),'绑定到 API 连接','切换连接配置时自动切换预设');if(br){const ib=make('span','cwr-entry-icon');ib.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5M15 4v5M7 9h10v3a5 5 0 0 1-10 0zM12 17v3"/></svg>';br.prepend(ib);ps.s.created.push(ib);br.classList.add('cwr-preset-bind');}}
       finish(ps.s);
