@@ -98,7 +98,7 @@ export function createWorldPage(h) {
     ui.act=whereRow('act',ICON.gear(),t('激活设置','Activation settings'),'',()=>go('act'));ui.act.val.remove();
     card.append(ui.global.r,ui.char.r,ui.chat.r,ui.act.r);
     // 全部世界书
-    const all=make('section','cw-v4-section cww-books'),h2=make('h2','',t('全部世界书','All World Info')),n=make('span','cww-n'),side=make('span','cww-sec-actions');h2.append(n);all.append(h2);
+    const all=make('div','cww-books'),h2=make('h2','cww-sub-h cww-books-h',t('全部世界书','All World Info')),n=make('span','cww-n'),side=make('span','cww-sec-actions');h2.append(n);all.append(h2);
     const pick=btn(t('选择','Select'),()=>startSelecting(),'cww-text-btn'),pickAll=btn(t('全选','Select all'),()=>selectAll(),'cww-text-btn'),done=btn(t('完成','Done'),()=>stopSelecting(true),'cww-text-btn');
     side.append(pick,pickAll,make('span','cww-dot-sep','·'),done);h2.append(side);
     const tools=make('div','cww-tools'),find=make('label','cwr-search-box cww-find'),q=make('input','cwr-search');q.type='search';q.placeholder=t('搜索世界书','Search World Info');q.setAttribute('aria-label',q.placeholder);find.append(icon('search'),q);tools.append(find);
@@ -328,21 +328,31 @@ export function createWorldPage(h) {
     const segBtns={};for(const [v,[zh,en,k]]of Object.entries(STATE)){const b=make('button','');b.type='button';const d=make('span','cww-dot');d.dataset.kind=k;b.append(d,make('span','',t(zh,en)));b.addEventListener('click',()=>{if(!stateSel||stateSel.value===v)return;stateSel.value=v;stateSel.dispatchEvent(new win.Event('input',{bubbles:true}));stateSel.dispatchEvent(new win.Event('change',{bubbles:true}));paintStatus();});seg.append(b);segBtns[v]=b;}
     const statePark=make('div','cww-park');if(stateSel)M(stateSel,statePark);
     status.append(onRow,stRow,statePark);
-    const keyHint=make('span','');
+    const keyHint=make('span','');let onStateChange=null;
     const ST_DESC={constant:['每次都发送','Always sent'],normal:['聊天里出现关键词时发送','Sent when a keyword appears'],vectorized:['按语义相似度触发','Triggered by similarity']};
     function paintStatus(){const live=!kill?.classList.contains('fa-toggle-off');sw.setAttribute('aria-checked',String(live));text(onMeta,live?t('这条会按下面的方式发送','Sent as set below'):t('关掉后保留内容，但不会发送','Kept, but not sent'));
-      const v=stateSel?.value;for(const [k,b]of Object.entries(segBtns))b.setAttribute('aria-pressed',String(k===v));text(stMeta,t(...(ST_DESC[v]||ST_DESC.normal)));
+      const v=stateSel?.value;for(const [k,b]of Object.entries(segBtns))b.setAttribute('aria-pressed',String(k===v));text(stMeta,t(...(ST_DESC[v]||ST_DESC.normal)));onStateChange?.(v);
       text(keyHint,v==='constant'?t('常驻条目每次都发送，关键词可以不填。','Constant entries are always sent; keywords are optional.'):v==='vectorized'?t('向量条目按语义相似度触发，关键词可选。','Vectorized entries trigger by similarity; keywords are optional.'):t('聊天里出现任意一个关键词时发送这条。','Sent when any keyword appears in the chat.'));}
-    // 触发：关键词（✨ 在标签行右边）、可选过滤器（逻辑下拉 + ✨）、触发概率（数字 + 开关 = useProbability）。
+    // 触发并进状态卡（稿 v2 11-08 再改）：关键词、可选过滤器是「左标签 84px + 输入」一行（手机标签一行、输入一行），
+    // ✨ 是原生的切换按钮（换成稿子的图标）；触发概率只剩一个数字框：100% = 原生 useProbability 关，填小于 100 就打开。
     const keyNodes=n=>{const sel=entry.querySelector(`select[name="${n}"]`);return [sel,sel&&s2box(sel),entry.querySelector(`textarea[name="${n}"]`)].filter(Boolean);};
     const spark=n=>{const b=entry.querySelector(`.${n==='key'?'keyprimary':'keysecondary'} .switch_input_type_icon`);if(b)cls(b,'cww-mini');return b;};
-    const trigSec=make('section','cw-v4-section cww-esec'),trig=card(trigSec);trigSec.prepend(secH(t('触发','Trigger')));
-    const kLab=make('span','cww-lab-row');kLab.append(make('span','',t('关键词','Keywords')),make('span','cww-grow'));const kSpark=spark('key');if(kSpark)M(kSpark,kLab);
-    field(trig,kLab,keyHint,keyNodes('key'),'cww-keys-field');
-    const fLab=make('span','cww-lab-row');fLab.append(make('span','',t('可选过滤器','Optional filter')),make('span','cww-grow'));const logic=Q('entryLogicType');if(logic)M(logic,fLab);const fSpark=spark('keysecondary');if(fSpark)M(fSpark,fLab);
-    field(trig,fLab,t('和上面的关键词一起判断；留空就不用。','Checked with the keywords above; leave empty to skip.'),keyNodes('keysecondary'),'cww-keys-field');
-    const probBox=make('span','cww-inline'),prob=num('probability');if(prob){cls(prob,'cww-w64');M(prob,probBox);}probBox.append(make('span','cww-unit','%'));const probSw=make('span','cw-v4-row-controls cww-sw-box');probBox.append(probSw);const useProb=Q('useProbability');if(useProb)M(showToggle(es,useProb),probSw);
-    inField(trig,t('触发概率','Trigger chance'),t('满足条件后，有多大几率真的发送','Chance to send once matched'),[probBox],'cww-prob');
+    const setPh=(n,v)=>{if(!n)return;const ph=n.getAttribute('placeholder'),i18n=n.getAttribute('data-i18n');n.placeholder=v;
+      // ST re-translates moved nodes asynchronously; set ours once more after that pass.
+      win.setTimeout(()=>{if(ui?.editing===es&&n.placeholder!==v&&n.dataset.cwwPh!=='live')n.placeholder=v;},120);if(i18n!==null)n.setAttribute('data-i18n',i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')).join(';'));es.undo.push(()=>{ph===null?n.removeAttribute('placeholder'):n.setAttribute('placeholder',ph);i18n===null?n.removeAttribute('data-i18n'):n.setAttribute('data-i18n',i18n);});};
+    const kvRow=(label,name,extra)=>{const r=make('div','cw-v4-row cww-set-row cww-kv'),k=make('span','cww-k84',label),box=make('div','cww-ctl cww-kt');r.append(k);if(extra)M(extra,r);r.append(box);for(const n of keyNodes(name))M(n,box);const sp=spark(name);if(sp)M(sp,r);status.append(r);return r;};
+    kvRow(t('关键词','Keywords'),'key');
+    kvRow(t('可选过滤器','Optional filter'),'keysecondary',Q('entryLogicType'));
+    const keyTa=entry.querySelector('textarea[name="key"]'),fltTa=entry.querySelector('textarea[name="keysecondary"]');
+    setPh(fltTa,t('留空就不用','Leave empty to skip'));
+    const prob=num('probability'),useProb=Q('useProbability');
+    const probRow=make('div','cw-v4-row cww-set-row'),probInfo=make('div','cw-v4-row-info'),suf=make('span','cww-suf');probInfo.append(make('div','cw-v4-row-title',t('触发概率','Trigger chance')),make('p','',t('100% = 满足条件就一定发送','100% = always sent when matched')));probRow.append(probInfo,suf);
+    if(prob){M(prob,suf);if(useProb&&!useProb.checked&&prob.value!=='100'){const old=prob.value;prob.value='100';es.undo.push(()=>{if(!useProb.checked)prob.value=old;});}}suf.append(make('i','','%'));
+    const probPark=make('div','cww-park');if(useProb)M(useProb,probPark);probRow.append(probPark);status.append(probRow);
+    const syncProb=()=>{if(!prob||!useProb)return;const want=Number(prob.value)<100;if(useProb.checked!==want){useProb.checked=want;useProb.dispatchEvent(new win.Event('input',{bubbles:true}));useProb.dispatchEvent(new win.Event('change',{bubbles:true}));}};
+    on(prob,'input',syncProb);on(prob,'change',syncProb);
+    const KEY_PH={constant:['常驻条目可以不填','Optional for constant entries'],vectorized:['向量条目可以不填','Optional for vectorized entries'],normal:['输入后回车添加','Type and press Enter']};
+    setPh(keyTa,t(...(KEY_PH[stateSel?.value]||KEY_PH.normal)));onStateChange=v=>{if(keyTa)keyTa.placeholder=t(...(KEY_PH[v]||KEY_PH.normal));};
     // 内容
     const content=Q('content'),cm=content?.nextElementSibling?.matches('.tt-codemirror-editor')?content.nextElementSibling:null,counter=form.querySelector('.world_entry_form_token_counter');
     const expand=btn(t('放大','Expand'),()=>openBig(),'cwr-btn cww-btn-sm cww-expand',ICON.expand());
@@ -444,7 +454,7 @@ export function createWorldPage(h) {
     const shown=[];view.querySelectorAll?.('input[type=checkbox]');
     // 底部只留「完成」（电脑）。
     const foot=make('div','cww-footbar');foot.append(btn(t('完成','Done'),()=>go('book'),'cwr-btn cww-primary cww-desk-only'));
-    view.replaceChildren(back,titleRow,status,trigSec,conSec,insSec,fold,adv,foot);
+    view.replaceChildren(back,titleRow,status,conSec,insSec,fold,adv,foot);
     for(const c of view.querySelectorAll('input[type=checkbox]')){if(c.closest('.cw-v4-park'))continue;if(c.style.display==='none'||c.hidden||c.classList.contains('displayNone')){shown.push([c,c.style.display,c.hidden]);c.style.display='';c.hidden=false;c.classList.add('cw-v4-icon-toggle');}}
     es.undo.push(()=>{for(const [c,d,hd]of shown){c.style.display=d;c.hidden=hd;c.classList.remove('cw-v4-icon-toggle');}});
     paintStatus();paintPos();paintSub();paintEx();for(const p of pillsPaint)p();paintSummary();paintFold();
