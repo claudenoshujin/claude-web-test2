@@ -944,3 +944,11 @@ html[data-cw-settings-unified] #WorldInfo .cww-c3 select.cww-sel{width:132px!imp
 html[data-cw-settings-unified]:not([data-claude-integrated-theme=night]) #WorldInfo button.cww-fold{border-color:transparent!important}
 html[data-cw-settings-unified] .cww-mobile-head .cww-head-right{display:flex!important;align-items:center!important;gap:2px!important}
 }}
+@layer cw-settings-spec {
+html[data-cw-settings-unified] #WorldInfo :is(.cww-sort,.cww-lab-row) select{height:32px!important;min-height:32px!important;font-size:13px!important;padding-left:10px!important;border-radius:8px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-lab-row .cww-mini{height:28px!important;min-height:28px!important;max-height:28px!important;width:28px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-subrow input.cww-num{width:56px!important;min-width:56px!important;max-width:56px!important;flex:none!important}
+html[data-cw-settings-unified] #WorldInfo input.cww-text[name=automationId]{height:32px!important;min-height:32px!important;border-radius:8px!important}
+html[data-cw-settings-unified] .cww-big .cww-shrink{height:28px!important;min-height:28px!important;font-size:13px!important;padding:0 10px!important;border-radius:8px!important}
+html[data-cw-settings-unified] .cww-big .cww-shrink svg{width:14px!important;height:14px!important}
+}

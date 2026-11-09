@@ -300,6 +300,8 @@ export function createWorldPage(h) {
     const es={moves:[],created:[],undo:[],entry},view=ui.entryHost;ui.editing=es;
     const M=(n,host,before)=>{if(!n)return null;const mark=doc.createComment('cww-entry-return');n.before(mark);es.moves.push([n,mark]);before?host.insertBefore(n,before):host.append(n);return n;};
     const Q=n=>q(entry,n);
+    // Keep references before anything moves out of the entry (the summary reads them later).
+    const NAT={};for(const n of entry.querySelectorAll('[name]')){const k=n.getAttribute('name');if(!(k in NAT))NAT[k]=n;}
     const on=(n,type,fn)=>{if(!n)return;n.addEventListener(type,fn);es.undo.push(()=>n.removeEventListener(type,fn));};
     const cls=(n,...c)=>{if(!n)return n;const added=c.filter(x=>!n.classList.contains(x));n.classList.add(...added);es.undo.push(()=>n.classList.remove(...added));return n;};
     const fire=(n,...types)=>{if(!n)return;for(const ty of types){if(win.jQuery)win.jQuery(n).trigger(ty);else n.dispatchEvent(new win.Event(ty,{bubbles:true}));}};
@@ -418,7 +420,7 @@ export function createWorldPage(h) {
     const auto=Q('automationId');if(auto)cls(auto,'cww-text');field(c6,t('自动化 ID','Automation ID'),t('给 Quick Reply 等自动化脚本用；不用就留空','For Quick Reply and other automation; leave empty if unused'),[auto]);
     c6.append(pillsPark);
     // 已改：和原生默认值不同的项。
-    function changes(){const out=[],v=n=>Q(n),chk=n=>!!v(n)?.checked,val=n=>String(v(n)?.value??'').trim();
+    function changes(){const out=[],v=n=>NAT[n],chk=n=>!!v(n)?.checked,val=n=>String(v(n)?.value??'').trim();
       if(chk('excludeRecursion'))out.push(t('不被触发','not triggered'));if(chk('preventRecursion'))out.push(t('不触发其他','no recursion'));if(chk('delay_until_recursion'))out.push(t('只在递归时','recursion only'));if(chk('ignoreBudget'))out.push(t('无视预算','ignore budget'));
       if(val('group'))out.push(t(`分组 ${val('group')}`,`group ${val('group')}`));if(val('groupWeight')&&val('groupWeight')!=='100')out.push(t(`权重 ${val('groupWeight')}`,`weight ${val('groupWeight')}`));if(chk('groupOverride'))out.push(t('组内优先','group priority'));if(val('useGroupScoring')&&val('useGroupScoring')!=='null')out.push(t('组评分','group scoring'));
       for(const [n,zh,en] of [['sticky','粘性','sticky'],['cooldown','冷却','cooldown'],['delay','延迟','delay']])if(val(n)&&val(n)!=='0')out.push(t(`${zh} ${val(n)}`,`${en} ${val(n)}`));
