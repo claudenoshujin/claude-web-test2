@@ -226,7 +226,7 @@ export function createWorldPage(h) {
     const nativeHost=make('div','cww-native-list'),pager=get('world_info_pagination'),entries=get('world_popup_entries_list');
     if(entries)move(s,entries,nativeHost);if(pager)move(s,pager,nativeHost);
     const hiddenTools=make('div','cw-v4-park');for(const id of ['OpenAllWIEntries','CloseAllWIEntries'])if(get(id))move(s,get(id),hiddenTools);
-    const opts=make('div','cw-v4-card cww-opts cww-phone-only'),r=make('div','cw-v4-row cww-row');r.append(iconBox(ICON.plus()),make('div','cw-v4-row-title',t('新建条目','New entry')));r.tabIndex=0;r.setAttribute('role','button');r.addEventListener('click',()=>get('world_popup_new')?.click());opts.append(r);
+    const opts=make('div','cw-v4-card cww-opts cww-phone-only'),r=make('div','cw-v4-row cww-row');{const info=make('div','cw-v4-row-info');info.append(make('div','cw-v4-row-title',t('新建条目','New entry')));r.append(iconBox(ICON.plus()),info);}r.tabIndex=0;r.setAttribute('role','button');r.addEventListener('click',()=>get('world_popup_new')?.click());opts.append(r);
     view.append(back,head,sub,tools,chips,legend,ehead,card,nativeHost,hiddenTools,opts);
     Object.assign(ui,{bookTitle:title,bookSub:sub,entryList:list,entryEmpty:empty,entryCard:card,pagerBar,pagerText,prevBtn:prev,nextBtn:next,ehead,legend,nativeHost,chips});
     // Rows are rebuilt from the native list once per frame; CW's own nodes live outside it.
@@ -383,13 +383,16 @@ export function createWorldPage(h) {
     pSel.addEventListener('change',writePos);rSel.addEventListener('change',writePos);
     const depthHint=make('span',''),roleHint=make('span','');
     field(grid,t('位置','Position'),t('放在提示词的哪一段','Where in the prompt'),[pSel]);
-    field(grid,t('顺序','Order'),t('数字大的排在后面，离 AI 更近','Higher goes later, closer to the AI'),[order]);
+    // 手机两列格里说明要一行放得下，否则左右两格的控件上下错开（round3 #4）。
+    const short=(long,sh)=>phoneWide()?sh:long;
+    field(grid,t('顺序','Order'),short(t('数字大的排在后面，离 AI 更近','Higher goes later, closer to the AI'),t('数字大的离 AI 更近','Higher = closer to AI')),[order]);
     field(grid,t('深度','Depth'),depthHint,[depth]);
     const roleF=field(grid,t('以谁的身份','As whom'),roleHint,[rSel,posPark]);
-    const outlet=field(ins,t('输出口名称','Outlet name'),t('只在位置选「输出口」时用','Only for the Outlet position'),[Q('outletName')],'cww-outlet');
+    const outletIn=cls(Q('outletName'),'cww-text');// 和组名框同一套：14px、1px 边框、canvas 底（round3 #3）
+    const outlet=field(ins,t('输出口名称','Outlet name'),t('只在位置选「输出口」时用','Only for the Outlet position'),[outletIn],'cww-outlet');
     const depthWasDisabled=depth?.disabled;es.undo.push(()=>{if(depth)depth.disabled=depthWasDisabled;});
     function paintPos(){const o=posSel?.selectedOptions?.[0],v=o?.value??'0',role=o?.dataset.role||'0',isDepth=v==='4';if(pSel.value!==v)pSel.value=v;if(rSel.value!==role)rSel.value=role;rSel.disabled=!isDepth;if(depth)depth.disabled=!isDepth;roleF.classList.toggle('cww-dim',!isDepth);
-      text(depthHint,isDepth?t('插在倒数第几条消息前','Before the Nth last message'):t('只有位置选「@深度」时可用','Only for @Depth'));text(roleHint,isDepth?t('这段内容算作谁说的','Who says this'):t('只有位置选「@深度」时可用','Only for @Depth'));setHidden(outlet,v!=='7');}
+      text(depthHint,isDepth?t('插在倒数第几条消息前','Before the Nth last message'):short(t('只有位置选「@深度」时可用','Only for @Depth'),t('仅 @深度 可用','@Depth only')));text(roleHint,isDepth?t('这段内容算作谁说的','Who says this'):short(t('只有位置选「@深度」时可用','Only for @Depth'),t('仅 @深度 可用','@Depth only')));setHidden(outlet,v!=='7');}
     on(posSel,'input',paintPos);on(posSel,'change',paintPos);
     // 高级：折叠条第二行写出改过默认值的项。
     const fold=make('button','cww-fold');fold.type='button';const ft=make('span','cww-ft'),fb=make('b','',t('高级','Advanced')),fs=make('small','');ft.append(fb,fs);fold.append(ft,svg('<path d="m9 6 6 6-6 6"/>',{w:1.9}));
