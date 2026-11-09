@@ -58,7 +58,8 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     // 「查看实际内容」只在这条进了上次的发送时有内容（原生 handleInspect 的条件）。
     const markInspect=()=>{if(!pmModule){import(new URL('/scripts/openai.js',win.location.href).href).then(m=>{pmModule=m;markInspect();},()=>{});return;}let can=false;try{can=pmModule.promptManager?.messages?.hasItemWithIdentifier(id)===true;}catch{}for(const b of [view,viewPhone]){b.disabled=!can;b.title=can?'':t('这条现在不会发送，没有实际内容可看','Not sent right now, so there is nothing to inspect');}};if(!isNew)markInspect();
     // 1 启用：和列表行上同一个开关。
-    if(!isNew){const c1=card(page),en=swRow(c1,t('启用','Enabled'),''),sw=make('button','cww-tg');sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));en.c.append(sw);
+    if(!isNew){const c1=card(page),en=swRow(c1,t('启用','Enabled'),''),sw=make('button','cww-tg');en.r.querySelector('.cw-v4-row-info').append(en.p);// 说明跟着开关变（稿：这条会发送给模型 / 关掉后保留内容，但不会发送）
+      sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));en.c.append(sw);
       const paintOn=()=>{const tg=rowNow()?.querySelector('.prompt-manager-toggle-action'),on=!!tg&&!tg.classList.contains('fa-toggle-off')&&!rowNow()?.classList.contains('completion_prompt_manager_prompt_disabled');sw.setAttribute('aria-checked',String(on));text(en.p,on?t('这条会发送给模型','Sent to the model'):t('关掉后保留内容，但不会发送','Kept, but not sent'));};
       sw.addEventListener('click',()=>{rowNow()?.querySelector('.prompt-manager-toggle-action')?.click();win.setTimeout(paintOn,120);});paintOn();ed&&(ed.paintOn=paintOn);page._paintOn=paintOn;}
     // 2 发送方式：身份 · 位置（相对 / 聊天中）；聊天中多一行深度 · 顺序；生成方式胶囊；不让角色卡覆盖。
