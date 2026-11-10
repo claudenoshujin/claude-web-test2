@@ -1029,8 +1029,6 @@ html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item:disabl
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item.cw-v4-danger{color:var(--cwus-red)!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item>svg{width:16px!important;height:16px!important;flex:none!important;color:currentColor!important;opacity:.85!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item.cw-v4-danger>svg{opacity:1!important;color:var(--cwus-red)!important}
-/* 图标都是描边图标；别处给危险项 svg 设了 fill，这里改回不填充（否则「重置」画成一个红色实心圆）。 */
-html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item>svg{fill:none!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr{border:0!important;border-top:1px solid var(--cwus-soft)!important;margin:4px 2px!important;height:0!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr:first-child,html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr+.cwr-pop-hr{display:none!important}
 /* 手机专属菜单项（电脑外面已有多选、调整顺序） */
@@ -1214,4 +1212,20 @@ html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-t>small{display:bl
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-done{height:34px!important;min-height:34px!important;padding:0 14px!important;border-radius:9px!important;flex:none!important;background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-v4-prompt-row>.drag-handle{width:18px!important;min-width:18px!important;height:18px!important;opacity:1!important;font-size:0!important;color:var(--cwus-muted)!important;background:currentColor!important;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='7' r='2.1'/%3E%3Ccircle cx='15' cy='7' r='2.1'/%3E%3Ccircle cx='9' cy='12' r='2.1'/%3E%3Ccircle cx='15' cy='12' r='2.1'/%3E%3Ccircle cx='9' cy='17' r='2.1'/%3E%3Ccircle cx='15' cy='17' r='2.1'/%3E%3C/svg%3E") center/18px 18px no-repeat!important;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='7' r='2.1'/%3E%3Ccircle cx='15' cy='7' r='2.1'/%3E%3Ccircle cx='9' cy='12' r='2.1'/%3E%3Ccircle cx='15' cy='12' r='2.1'/%3E%3Ccircle cx='9' cy='17' r='2.1'/%3E%3Ccircle cx='15' cy='17' r='2.1'/%3E%3C/svg%3E") center/18px 18px no-repeat!important;align-self:center!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-v4-prompt-row>.drag-handle::before{content:none!important;display:none!important}
+}
+/* 预设页 v2 复看 #2：多选浮条的「取消」是 ghost 按钮（无边框、透明底，悬停 soft）；手机稿没有取消。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] .cw-pm-batch .cw-pm-batch-cancel{border-color:transparent!important;background:transparent!important;box-shadow:none!important}
+html[data-cw-settings-unified] .cw-pm-batch .cw-pm-batch-cancel:hover{background:var(--cwp-soft,var(--cwus-soft))!important}
+}
+@media(max-width:700px){@layer cw-settings-spec{
+html[data-cw-settings-unified] .cw-pm-batch .cw-pm-batch-cancel{display:none!important}
+}}
+/* 预设页 v2 复看 #4：编辑页 ⋯ 里灰掉的删除下面的说明。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwp-more-note{padding:2px 10px 8px 36px!important;font-size:12px!important;line-height:1.45!important;color:var(--cwus-muted)!important;white-space:nowrap!important}
+}
+/* 预设页 v2 复看补拍：原生名字后面的「@ 深度」小标在 CW 行里另起一行，行变成三行；第二行已经写了「聊天中 @N」，藏掉原生这个。 */
+@layer cw-settings-spec{
+html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list .cw-v4-prompt-row .prompt-manager-injection-depth{display:none!important}
 }

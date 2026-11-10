@@ -2472,7 +2472,8 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
   border-color:color-mix(in srgb,var(--cw-mark) 42%,var(--cw-rule-hairline)) !important;
 }
 
-:is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i]) :is(svg,.fa-solid,.fa-regular) {
+/* 341：只给本来就是实心的图标（Font Awesome / SPreset）上色填充；CW 自己画的描边图标写了 fill="none"，不能被填成实心（› 变 ▸、「重置」变实心圆）。 */
+:is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i]) :is(svg:not([fill="none"]),.fa-solid,.fa-regular) {
   color:var(--cw-text-muted) !important;
   fill:currentColor;
 }
