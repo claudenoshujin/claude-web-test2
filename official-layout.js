@@ -732,8 +732,10 @@ export function installOfficialLayout(win = window) {
         const a=menu.cwAnchor?.isConnected?menu.cwAnchor:summary,anchor=a.getBoundingClientRect(),box=list.getBoundingClientRect();
         const x=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8));
         const y=anchor.bottom+6+box.height>win.innerHeight-8?Math.max(8,anchor.top-6-box.height):anchor.bottom+6;
-        list.style.left=x+'px';list.style.top=y+'px';
-        if(pop){list.style.setProperty('--cw-mx',x+'px');list.style.setProperty('--cw-my',y+'px');}
+        // 电脑端设置窗口等比缩放时，菜单在 zoom 里面：left / top 也会被乘上比例，所以写「屏幕坐标 ÷ 比例」。
+        const z=list.currentCSSZoom||1;
+        list.style.left=x/z+'px';list.style.top=y/z+'px';
+        if(pop){list.style.setProperty('--cw-mx',x/z+'px');list.style.setProperty('--cw-my',y/z+'px');}
       });
       on(list,'click',e=>{if(e.target===list||e.target.closest('.menu_button,button'))menu.open=false;});
       const dispose=popoverDisposer(new win.WeakRef(list));disposers.push(dispose);promptListenerCleanup.register(list,dispose,dispose);
