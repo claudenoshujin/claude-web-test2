@@ -665,3 +665,7 @@ html[data-cw-settings-unified] .cw2-api .cw2-cols.cw2-stretch{align-items:start!
 html[data-cw-settings-unified] .cw2-api .cw2-col>.cw2-src.cw2-grow{flex:none!important}
 html[data-cw-settings-unified] .cw2-api .cw2-src>.cw-v4-card{align-content:start!important;flex:none!important}
 }
+@layer cw-settings-v2d {
+/* v2d 补充 二-2：高级 · 自定义 CSS 卡片底部说明和卡片下边留 16（和其他边一样） */
+html[data-cw-settings-unified] .cw2-p-adv .cw-v4-card>.cw-v4-row.cw2-css{padding:14px 16px 16px!important}
+}
