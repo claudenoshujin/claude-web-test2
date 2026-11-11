@@ -365,4 +365,23 @@ html[data-cw-settings-unified] .cw2-p-adv .cw2-css textarea{flex:1 1 0!important
 html[data-cw-settings-unified] .cw2-p-adv .cw2-css>.cw-v4-row-info{align-self:stretch!important;width:100%!important}
 @media (min-width:701px){html[data-cw-settings-unified]:not([data-claude-layout="mobile"]) .cw-v4-panel.openDrawer:not(.closedDrawer):is(.cw2,:has(>.cw-v4-pref-pages>.cw2:not([hidden]))){padding-bottom:28px!important}}
 @media (min-width:701px){html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor>.cw-v4-editor-head{background:transparent!important}html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor>.cw-v4-editor-head>.cw-v4-editor-x{border:0!important;background:transparent!important;width:30px!important;height:30px!important;margin-right:-6px!important}}
+
+/* R5 按钮组：带字的按钮（主题文件）不压成方块；删除用警示色 */
+html[data-cw-settings-unified] .cw2-pref .cw-v4-row-controls>.cw-v4-icononly[data-cw-label]{--cwus-button-w:auto;width:auto!important;min-width:0!important;padding:0 11px!important}
+html[data-cw-settings-unified] .cw2-pref .cw-v4-row-controls>.cw-v4-danger{color:var(--cwus-red)!important}
+/* R6 文本框（如屏蔽词）用字段块：标题在上 */
+html[data-cw-settings-unified] .cw2-pref .cw-v4-card>.cw-v4-row:not(.cw2-css):has(>.cw-v4-row-controls>textarea){display:block!important;padding:14px 16px 16px!important;min-height:0!important}
+html[data-cw-settings-unified] .cw2-pref .cw-v4-card>.cw-v4-row:not(.cw2-css):has(>.cw-v4-row-controls>textarea)>.cw-v4-row-info{margin:0 0 9px!important}
+html[data-cw-settings-unified] .cw2-pref .cw-v4-card>.cw-v4-row:not(.cw2-css):has(>.cw-v4-row-controls>textarea)>.cw-v4-row-controls{width:100%!important;display:block!important}
+html[data-cw-settings-unified] .cw2-pref .cw-v4-card>.cw-v4-row:not(.cw2-css)>.cw-v4-row-controls>textarea{width:100%!important;height:72px!important;min-height:72px!important;resize:vertical!important;box-sizing:border-box!important;border:1px solid var(--cwus-line)!important;border-radius:10px!important;background:var(--cwus-canvas)!important;padding:8px 10px!important;font-size:13.5px!important;line-height:1.6!important}
+/* 颜色 */
+html[data-cw-settings-unified] .cw2-pref .cw2-cgrid>.cw-v4-row{min-height:52px!important}
+html[data-cw-settings-unified] .cw2-pref .cw2-cgrid>.cw-v4-row>.cw-v4-row-controls{gap:10px!important}
+html[data-cw-settings-unified] .cw2-pref .cw2-cgrid toolcool-color-picker{width:28px!important;height:28px!important}
+@media (min-width:701px){html[data-cw-settings-unified]:not([data-claude-layout="mobile"]) .cw-v4-panel.openDrawer:not(.closedDrawer):is(.cw2,:has(>.cw-v4-pref-pages>.cw2:not([hidden]))){padding-top:22px!important}}
+@media (max-width:700px){
+ html[data-cw-settings-unified] .cw2-pref .cw-v4-card>.cw-v4-row:has(>.cw-v4-row-controls>.cw-v4-icononly[data-cw-label]+.cw-v4-icononly[data-cw-label]){flex-direction:column!important;align-items:stretch!important;gap:8px!important;padding-top:11px!important;padding-bottom:12px!important}
+ html[data-cw-settings-unified] .cw2-pref .cw-v4-card>.cw-v4-row:has(>.cw-v4-row-controls>.cw-v4-icononly[data-cw-label]+.cw-v4-icononly[data-cw-label])>.cw-v4-row-controls{width:100%!important;flex-wrap:wrap!important;justify-content:flex-start!important}
+ html[data-cw-settings-unified] .cw2-pref .cw-v4-card>.cw-v4-row:has(>.cw-v4-row-controls>.cw-v4-icononly[data-cw-label]+.cw-v4-icononly[data-cw-label])>.cw-v4-row-controls>*{flex:1 0 28%!important;justify-content:center!important;height:34px!important}
+}
 }

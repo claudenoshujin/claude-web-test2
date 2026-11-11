@@ -208,10 +208,10 @@ export function installOfficialLayout(win = window) {
   }
   /* 设置页 v2d（稿 design-settings-pages-v2d.html，修改单第 1 / 4 / 7 节）：偏好页改成「标题行 + 两栏」。
      页面和行都是这里新建的（restorePrefs 整页移除），原生控件仍由 pm() 记录、还原。手机和窄窗口单栏，按 style.order 回到原来的分组顺序。 */
-  const V2D_PREFS = new Set(['adv']);
+  const V2D_PREFS = new Set(['look', 'ui', 'char', 'chat', 'gen', 'adv', 'acct']);
   function v2dSplit(secs) {
     // 第一组固定在左栏；其余组在「两栏高度最接近、尽量少打乱原顺序」里挑（同稿子 _pages2d.js 的 split()）。
-    const h = secs.map(sec => 44 + [...sec.children].filter(n => n.matches('.cw-v4-row,.cwr-font-weight,.cw2-cgrid')).reduce((t, r) => t + (r.matches('.cw2-cgrid') ? Math.ceil(r.children.length / 2) * 52 : r.matches('.cwr-font-weight') ? 300 : r.querySelector('textarea') ? 150 : r.querySelector('.cw-v4-row-info>p') ? 62 : 52), 0));
+    const h = secs.map(sec => 44 + [...sec.children].filter(n => n.matches('.cw-v4-row,.cwr-font-weight,.cw2-cgrid')).reduce((t, r) => t + (r.matches('.cw2-cgrid') ? Math.ceil(r.children.length / 2) * 52 : r.matches('.cwr-font-weight') ? 380 : r.querySelector('textarea') ? 150 : r.querySelector('.cw-v4-row-info>p') ? 62 : 52), 0));
     const n = secs.length; let best = null;
     for (let m = 1; m < (1 << n); m += 2) { let l = 0, r = 0, brk = 0, last = 1; for (let i = 0; i < n; i++) { const left = (m >> i) & 1; if (left) l += h[i]; else r += h[i]; if (i && left !== last) brk++; last = left; } const sc = Math.abs(l - r) + brk * 14; if (!best || sc < best.sc) best = { sc, m }; }
     return [secs.filter((_, i) => (best.m >> i) & 1), secs.filter((_, i) => !((best.m >> i) & 1))];
@@ -223,6 +223,16 @@ export function installOfficialLayout(win = window) {
     const secs = [...page.querySelectorAll(':scope>.cw-v4-pref-sec')], by = k => secs.find(sec => sec.dataset.cwSec === k);
     // 说明只占一行，鼠标停上去看全文（G5）。
     for (const p of page.querySelectorAll('.cw-v4-row-info>p')) if (!p.title && p.textContent.trim()) p.title = p.textContent.trim();
+    // R4 颜色：电脑两个一行（名字 / 色值 / 色块），手机一个一行。
+    const colors = by('颜色'), pickRows = colors ? [...colors.querySelectorAll(':scope>.cw-v4-row')].filter(r => r.querySelector('toolcool-color-picker')) : [];
+    if (pickRows.length) {
+      const grid = make('div', 'cw2-cgrid'); pickRows[0].before(grid);
+      for (const r of pickRows) {
+        grid.append(r); const pk = r.querySelector('toolcool-color-picker'), hex = make('span', 'cw2-hex'); pk.before(hex);
+        const paint = () => { let v = ''; try { v = pk.hex || pk.getAttribute('color') || ''; } catch { v = pk.getAttribute('color') || ''; } v = String(v).replace(/^#?([0-9a-f]{6})(ff)?$/i, '#$1').toLowerCase(); if (hex.textContent !== v) hex.textContent = v; };
+        paint(); on(pk, 'change', paint); win.setTimeout(paint, 400);
+      }
+    }
     let left, right;
     if (key === 'adv') { right = ['自定义 CSS', '窗口拖动（MovingUI）', '调试与维护'].map(by).filter(Boolean); left = secs.filter(sec => !right.includes(sec)); v2dAdv(page, by); }
     else if (key === 'acct' || secs.length < 2) { left = secs; right = []; }
@@ -1091,7 +1101,7 @@ export function installOfficialLayout(win = window) {
         let hits=0;
         n.querySelectorAll('.cw-v4-pref-sec').forEach(sec=>{
           const inSec=!!searchQuery&&sec.firstElementChild.textContent.toLocaleLowerCase().includes(searchQuery);let secHits=0;
-          sec.querySelectorAll(':scope>.cw-v4-card>.cw-v4-pref-row').forEach(row=>{const ok=!searchQuery||inSec||row.querySelector('.cw-v4-row-info')?.textContent.toLocaleLowerCase().includes(searchQuery);if(row.hidden===!!ok)row.hidden=!ok;if(ok)secHits++;});
+          sec.querySelectorAll(':scope>.cw-v4-card>.cw-v4-pref-row,:scope>.cw-v4-card>.cw2-cgrid>.cw-v4-pref-row').forEach(row=>{const ok=!searchQuery||inSec||row.querySelector('.cw-v4-row-info')?.textContent.toLocaleLowerCase().includes(searchQuery);if(row.hidden===!!ok)row.hidden=!ok;if(ok)secHits++;});
           if(sec.hidden===!!secHits)sec.hidden=!secHits;hits+=secHits;
         });
         const hide=searchQuery ? !hits : !mobile()&&n.dataset.page!==prefPage;if(n.hidden!==hide)n.hidden=hide;
