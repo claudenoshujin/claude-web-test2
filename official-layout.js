@@ -267,6 +267,11 @@ export function installOfficialLayout(win = window) {
         for (const [id, label] of [['stscript_autocomplete_width_left', '左侧宽度'], ['stscript_autocomplete_width_right', '右侧宽度']]) {
           const input = $(id); if (!input) continue;
           const r = prow(t(label, label === '左侧宽度' ? 'Left width' : 'Right width'), '', [], 'cw-v4-range cw2-wrange'); const box = make('div', 'cw-v4-rangebox'); r.lastElementChild.append(box); pm(input, box); extra.push(r);
+          // v2d 补充：滑杆右边的数字框（宽 62），和滑杆双向同步；范围、步长照原生滑杆，写回走原生滑杆的 input 事件。
+          const num = make('input', 'cw-v4-num cw2-wnum'); num.type = 'number'; num.min = input.min; num.max = input.max; num.step = input.step || '1'; num.value = input.value; num.setAttribute('aria-label', t(label, label === '左侧宽度' ? 'Left width' : 'Right width')); r.lastElementChild.append(num);
+          on(num, 'input', () => { if (num.value === '') return; const v = Math.min(+input.max, Math.max(+input.min, +num.value)); if (String(v) === input.value) return; input.value = String(v); input.dispatchEvent(new win.Event('input', { bubbles: true })); });
+          on(num, 'change', () => { num.value = input.value; });
+          on(input, 'input', () => { if (num.value !== input.value) num.value = input.value; });
         }
         const lists = [...pair.querySelectorAll('datalist')]; for (const dl of lists) pm(dl, extra[0] || widthRow);
       }
