@@ -68,17 +68,48 @@ export function createPresetManagerPage({win,t,make,button,icon,move,cleanup,cre
   const svgIcon=paths=>{const n=doc.createElementNS('http://www.w3.org/2000/svg','svg');n.setAttribute('viewBox','0 0 24 24');n.setAttribute('fill','none');n.setAttribute('stroke','currentColor');n.setAttribute('stroke-width','1.7');n.setAttribute('stroke-linecap','round');n.setAttribute('stroke-linejoin','round');n.setAttribute('aria-hidden','true');n.innerHTML=paths;return n;};
   const LIST='<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>';
   function header(s,group,select,controls){
-    // 1 当前预设：这一行不可点（没有悬停底色），右边是原生下拉、保存、⋯。
-    const cur=make('div','cw-v4-row cwr-preset-current'),ci=make('div','cw-v4-row-info'),cIcon=make('span','cwr-entry-icon'),box=make('div','cw-v4-row-controls');
-    cIcon.append(icon('sliders'));ci.append(make('div','cw-v4-row-title',t('当前预设','Current preset')),make('p','',t('改了提示词或参数后点“保存”','Choose Save after changing prompts or parameters')));cur.append(cIcon,ci,box);
-    if(select){const host=make('span','cwr-select-host');box.append(host);move(s,select,host);host.append(icon('chevd'));}for(const n of controls)if(n)move(s,n,box);
-    // 2 全部预设 · N 个：整行可点，整张卡片只有这一行带 ›。
-    const r=make('div','cw-v4-row cwr-preset-entry'),info=make('div','cw-v4-row-info'),iconBox=make('span','cwr-entry-icon');iconBox.append(svgIcon(LIST));
-    const title=make('div','cw-v4-row-title',t('全部预设','All presets'));title.append(make('span','cwr-preset-cnt',''),discovery.badge);
-    info.append(title,make('p','cwr-preset-count',t('一起导出、删除不用的','Export together or delete unused ones')));r.append(iconBox,info,icon('chevr'));r.tabIndex=0;r.setAttribute('role','button');
-    const paintCount=()=>{const c=r.querySelector('.cwr-preset-cnt');const v=t(`${options().length} 个`,`${options().length}`);if(c&&c.textContent!==v)c.textContent=v;};paintCount();
-    const sel=native();if(sel){const mo=new win.MutationObserver(paintCount);mo.observe(sel,{childList:true});cleanup(s,()=>mo.disconnect());}
-    r.addEventListener('click',()=>open(doc.getElementById('left-nav-panel')));r.addEventListener('keydown',e=>{if(e.target===r&&['Enter',' '].includes(e.key)){e.preventDefault();open(doc.getElementById('left-nav-panel'))}});
-    group.append(cur,r);cleanup(s,close);return cur;}
+    const [save,more]=controls;
+    const cur=make('div','cw2 cw2-bar cw2-mbar cwp-bar');
+    const title=make('h2','',t('预设','Presets'));
+    const host=make('span','cwr-select-host');
+    if(select)move(s,select,host);
+    cur.append(title,host);
+    if(save)move(s,save,cur);
+    if(more)move(s,more,cur);
+
+    const list=more?.querySelector('.cw-v4-more-list');
+    if(list){
+      const all=button('',()=>{more.open=false;open(doc.getElementById('left-nav-panel'));},'cw-v4-more-item cwr-preset-all');
+      const count=make('span','cwr-preset-cnt');
+      all.append(svgIcon(LIST),make('span','',t('全部预设','All presets')),count,discovery.badge);
+      const line=make('hr','cwr-pop-hr');
+      const bind=doc.getElementById('bind_preset_to_connection');
+      const bindMobile=button(t('绑定到 API 连接','Bind to API connection'),()=>{bind?.click();paintCount();},'cw-v4-more-item cwp-bind-menu');
+      const paintCount=()=>{
+        text(count,t(`${options().length} 个`,`${options().length}`));
+        bindMobile.setAttribute('aria-pressed',String(!!bind?.checked));
+      };
+      list.prepend(all,line);
+      if(bind){
+        const binding=make('label','cwp-bind',t('绑定到 API 连接','Bind to API connection'));
+        move(s,bind,binding);
+        cur.append(binding);
+        line.before(bindMobile);
+        bind.addEventListener('change',paintCount);
+        cleanup(s,()=>bind.removeEventListener('change',paintCount));
+      }
+      paintCount();
+      const sel=native();
+      if(sel){
+        const observer=new win.MutationObserver(paintCount);
+        observer.observe(sel,{childList:true});
+        cleanup(s,()=>observer.disconnect());
+      }
+    }
+    group.classList.add('cwp-header');
+    group.append(cur);
+    cleanup(s,close);
+    return cur;
+  }
   return {header,close,sync:panel=>{if(ui&&panel!==ui.panel)close();for(const h of doc.querySelectorAll('.cwr-preset-cnt'))text(h,t(`${options().length} 个`,`${options().length}`));},destroy:close};
 }

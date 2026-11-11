@@ -20,13 +20,15 @@ export function createPromptScroll({win,enabled}) {
   const dropOwner=()=>{ownerCache=null;};win.addEventListener('resize',dropOwner);disposers.push(()=>win.removeEventListener('resize',dropOwner));
   function scrollOwner() {
     const page=promptPage(),current=list();
-    if(ownerCache&&ownerCache.page===page&&ownerCache.list===current&&ownerCache.node?.isConnected&&ownerCache.node.contains(manager))return ownerCache.node;
+    if(ownerCache&&ownerCache.page===page&&ownerCache.list===current&&ownerCache.node?.isConnected&&(ownerCache.node.contains(manager)||manager?.contains(ownerCache.node)))return ownerCache.node;
     const node=findOwner();ownerCache=node?{node,page,list:current}:null;return node;
   }
   function findOwner() {
-    // The native UL is now the only prompt scroller; it is a descendant of
-    // manager, so an ancestor-only search would choose the wrong pane.
     const current=list();
+    if(promptPage()&&panel?.querySelector('.cwp-dock')&&!panel.classList.contains('cwp-phone')){
+      const column=current?.closest('.range-block');
+      if(column)return column;
+    }
     if(promptPage()&&current&&/auto|scroll/.test(win.getComputedStyle(current).overflowY))return current;
     for(let n=manager?.parentElement;n;n=n.parentElement){
       if(/auto|scroll/.test(win.getComputedStyle(n).overflowY)&&n.scrollHeight>n.clientHeight+1)return n;
@@ -65,7 +67,7 @@ export function createPromptScroll({win,enabled}) {
     }
     const r=row?.getBoundingClientRect();
     const visible=r&&r.top<rect.bottom&&r.bottom>top;
-    snapshot={list:current,first:rows[0],last:rows[rows.length-1],scroller,ownerIsList:scroller===current,key:context(),top:scroller.scrollTop,identifier:visible?row.dataset.pmIdentifier:null,offset:visible?(r.top-top)/scale:0};
+    snapshot={list:current,first:rows[0],last:rows[rows.length-1],scroller,ownerInManager:manager.contains(scroller),key:context(),top:scroller.scrollTop,identifier:visible?row.dataset.pmIdentifier:null,offset:visible?(r.top-top)/scale:0};
   }
   function captureSoon(){
     if(!captureFrame)captureFrame=win.requestAnimationFrame(()=>{captureFrame=0;capture();});
@@ -76,8 +78,14 @@ export function createPromptScroll({win,enabled}) {
     if(!enabled()||!promptPage()||!panel?.isConnected||!manager?.isConnected||pending.key!==context()){cancel();return;}
     const current=list(),rows=current?.querySelectorAll(rowSelector);
     if(!rows?.length){if(win.performance.now()<pending.expires)queueRestore();else cancel();return;}
-    if(pending.ownerIsList&&current!==pending.scroller){
-      restoreOverflow();pending.scroller=current;pending.anchorStyle=current.style.getPropertyValue('overflow-anchor');pending.anchorPriority=current.style.getPropertyPriority('overflow-anchor');current.style.setProperty('overflow-anchor','none');
+    if(pending.ownerInManager&&!pending.scroller.contains(current)){
+      const next=findOwner();
+      if(!next){cancel();return;}
+      restoreOverflow();
+      pending.scroller=next;
+      pending.anchorStyle=next.style.getPropertyValue('overflow-anchor');
+      pending.anchorPriority=next.style.getPropertyPriority('overflow-anchor');
+      next.style.setProperty('overflow-anchor','none');
     }
     if(!pending.scroller.isConnected){cancel();return;}
     const p=pending,rect=p.scroller.getBoundingClientRect(),scale=rect.height/p.scroller.offsetHeight||1;

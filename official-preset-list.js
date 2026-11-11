@@ -1,8 +1,8 @@
 // Native PromptManager adapter. No prompt bodies or private manager state are written.
-export function createPresetList({win,make,button,t}) {
+export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
   const doc=win.document;
   let ui=null;
-  const SVG={multi:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="m14 7 1.5 1.5L19 5"/>',sort:'<path d="M8 5v14M5 8l3-3 3 3M16 19V5M13 16l3 3 3-3"/>',ins:'<path d="M4 7h10M4 12h10M4 17h6M18 14v6M15 17h6"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',reload:'<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6M4 4v4.6h4.6"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="m9 6 6 6-6 6"/>'};
+  const SVG={multi:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="m14 7 1.5 1.5L19 5"/>',ins:'<path d="M4 7h10M4 12h10M4 17h6M18 14v6M15 17h6"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',reload:'<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6M4 4v4.6h4.6"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="m9 6 6 6-6 6"/>'};
   function svgIcon(k){const s=doc.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','1.8');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.setAttribute('aria-hidden','true');s.innerHTML=SVG[k];return s;}
   const ROW='.completion_prompt_manager_prompt[data-pm-identifier]';
   const canonical=r=>r?.matches?.(ROW)&&r.dataset.presetFavoriteMirror!=='true'&&r.closest('ul')?.matches('#completion_prompt_manager_list,.bai-bai-preset-group-list');
@@ -12,19 +12,6 @@ export function createPresetList({win,make,button,t}) {
   const toggle=r=>node(r)?.querySelector('.prompt-manager-toggle-action');
   const allowed=r=>{if(!r)return false;const n=toggle(r);return n?!n.matches('[disabled],[aria-disabled="true"],.disabled'):!!r.prompt&&ui?.nativePM?.isPromptToggleAllowed?.(r.prompt)===true;};
   const on=r=>{const n=toggle(r);return n?n.classList.contains('fa-toggle-on'):r?.order?r.order.enabled!==false:!!node(r)&&!node(r).classList.contains('completion_prompt_manager_prompt_disabled');};
-  function removeVisibleControls(u,row){if(!u.decoratedRows?.delete(row))return;row.querySelectorAll('.cw-pm-select,.cw-pm-number,.cw-pm-state').forEach(n=>n.remove());}
-  function clearVisibleControls(u){u.rowObserver?.disconnect();u.rowObserver=null;u.viewportRoot=null;for(const row of u.decoratedRows||[])removeVisibleControls(u,row);u.observedRows?.clear();u.inView?.clear();}
-  function trackVisibleControls(all){
-    const u=ui;u.decoratedRows||=new Set();if(!win.IntersectionObserver||u.decorateAll)return false;
-    const list=u.manager.querySelector('#completion_prompt_manager_list');if(!list)return false;// The unified layout makes the panel scroll and the list visible (settings-unified.css);
-    // reading overflow there forced a full style recalc on every repaint.
-    const root=doc.documentElement.hasAttribute('data-cw-settings-unified')&&!list.closest('.bai-bai-preset-vue-list-host')?u.panel:/auto|scroll/.test(win.getComputedStyle(list).overflowY)?list:u.panel;
-    if(u.viewportRoot!==root){clearVisibleControls(u);u.viewportRoot=root;u.observedRows=new Set();u.inView=new Set();u.rowObserver=new win.IntersectionObserver(records=>{if(ui!==u||u.viewportRoot!==root)return;for(const entry of records){if(!u.observedRows.has(entry.target)||!root.contains(entry.target)){u.inView.delete(entry.target);continue;}entry.isIntersecting?u.inView.add(entry.target):u.inView.delete(entry.target);}u.queuePaint?.();},{root,rootMargin:'240px 0px',threshold:0});}
-    const current=new Set(all.map(node).filter(Boolean));
-    for(const row of u.observedRows)if(!current.has(row)){u.rowObserver.unobserve(row);u.observedRows.delete(row);u.inView.delete(row);removeVisibleControls(u,row);}
-    for(const row of current)if(!u.observedRows.has(row)){u.observedRows.add(row);u.rowObserver.observe(row);}
-    return true;
-  }
   function entries(){
     const mounted=new Map(rows().map(r=>[id(r),r])),pm=ui?.nativePM;
     const order=pm?.getPromptOrderForCharacter?.(pm.activeCharacter),defs=pm?.serviceSettings?.prompts;
@@ -43,15 +30,15 @@ export function createPresetList({win,make,button,t}) {
   function sortables(block){
     const list=ui.manager.querySelector('#completion_prompt_manager_list');if(!list)return;
     const found=new Map(),$=win.jQuery;
-    if(!list.closest('.bai-bai-preset-vue-list-host')&&$&&$(list).hasClass('ui-sortable')){const instance=$(list).sortable('instance');if(instance)found.set(instance,{node:list,alive:()=>list.isConnected&&$(list).hasClass('ui-sortable')&&$(list).sortable('instance')===instance,get:k=>instance.option(k),set:(k,v)=>instance.option(k,v)});}
+    if(!list.closest('.bai-bai-preset-vue-list-host')&&$&&$(list).hasClass('ui-sortable')){const instance=$(list).sortable('instance');if(instance)found.set(instance,{node:list,delegatedHandle:true,alive:()=>list.isConnected&&$(list).hasClass('ui-sortable')&&$(list).sortable('instance')===instance,get:k=>instance.option(k),set:(k,v)=>instance.option(k,v)});}
     for(const ul of [list,...list.querySelectorAll('.bai-bai-preset-group-list')])for(const k of Object.keys(ul)){const v=ul[k];if(k.startsWith('Sortable')&&v&&typeof v.option==='function')found.set(v,{node:ul,get:k=>v.option(k),set:(k,x)=>v.option(k,x)});}
     for(const [instance,e]of ui.sortables)if(!found.has(instance)){restoreSort(e);ui.sortables.delete(instance);}
     for(const [instance,api]of found){let e=ui.sortables.get(instance);if(!e){e={...api,original:{disabled:api.get('disabled'),handle:api.get('handle')},applied:{}};ui.sortables.set(instance,e);}for(const k of ['disabled','handle'])if(k in e.applied&&e.get(k)!==e.applied[k])e.original[k]=e.get(k);
       e.locked=()=>{const group=e.get('group');if(list.classList.contains('bai-bai-preset-drag-locked')||group?.pull===false)return true;try{return typeof group?.checkPull==='function'&&group.checkPull(instance,instance,null,null)===false;}catch{return true;}};const locked=e.locked();
       const desired={disabled:block||!!e.original.disabled||locked,handle:api.node===list&&list.closest('.bai-bai-preset-vue-list-host')?'.drag-handle, .bai-bai-preset-group-header':'.drag-handle'};
-      // A disabled native sorter cannot start; assigning its handle walks every row.
-      // Apply the handle only when sort mode actually enables dragging.
-      for(const k of ['disabled',...(!desired.disabled?['handle']:[])]){if(e.get(k)!==desired[k])e.set(k,desired[k]);e.applied[k]=desired[k];}
+      // Stock jQuery UI refreshes every sortable row when its handle option changes.
+      // Its own restrictions stay in force, with the CW handle enforced at the list.
+      for(const k of ['disabled',...(!desired.disabled&&!api.delegatedHandle?['handle']:[])]){if(e.get(k)!==desired[k])e.set(k,desired[k]);e.applied[k]=desired[k];}
     }
   }
   const key=()=>{const c=win.SillyTavern?.getContext?.();return JSON.stringify([doc.getElementById('settings_preset_openai')?.value,c?.characterId,c?.groupId,c?.chatId]);};
@@ -62,49 +49,56 @@ export function createPresetList({win,make,button,t}) {
   const prop=(el,name,value)=>{if(el[name]!==value)el[name]=value;};
   function hideFloating(u){if(u.bottom.matches(':popover-open'))u.bottom.hidePopover();u.bottom.removeAttribute('popover');}
   function floating(u){
+    if(!phoneWide()){hideFloating(u);return;}
     if(!u.multi||!u.selected.size||u.tab!=='prompts'||doc.getElementById('main_api')?.value!=='openai'||!u.panel.classList.contains('openDrawer')||u.panel.classList.contains('cw-v4-inactive')||u.panel.classList.contains('cwr-presets-open')){hideFloating(u);return;}
     if(!u.bottom.hasAttribute('popover'))u.bottom.setAttribute('popover','manual');
     if(!u.bottom.matches(':popover-open'))u.bottom.showPopover();
-    const r=u.panel.getBoundingClientRect(),phone=win.innerWidth<=700,values={'--cw-pm-batch-x':r.x+(phone?12:34)+'px','--cw-pm-batch-w':r.width-(phone?24:92)+'px','--cw-pm-batch-bottom':win.innerHeight-r.bottom+(phone?22:16)+'px'};
+    const r=u.panel.getBoundingClientRect(),values={'--cw-pm-batch-x':r.x+12+'px','--cw-pm-batch-w':r.width-24+'px','--cw-pm-batch-bottom':win.innerHeight-r.bottom+'px'};
     for(const [key,value]of Object.entries(values))if(u.bottom.style.getPropertyValue(key)!==value)u.bottom.style.setProperty(key,value);
   }
   function rememberHidden(r){if(!ui.hidden.has(r)){ui.hidden.set(r,r.hidden);const ref=new win.WeakRef(r);ui.hiddenRefs.add(ref);ui.hiddenFinalizer.register(r,ref,ref);}}
   function* hiddenNodes(u){for(const ref of u.hiddenRefs){const r=ref.deref();if(r)yield r;else u.hiddenRefs.delete(ref);}}
-  function reset(){if(!ui)return;if(ui.context===key())restoreGroups();else{ui.expanded.clear();ui.expanding.clear();}ui.epoch++;ui.selected.clear();ui.lastStates.clear();ui.undo=null;ui.frozen=null;ui.anchor=null;ui.multi=false;ui.sort=false;ui.context=key();text(ui.message,'');paint();}
+  function reset(){if(!ui)return;if(ui.context===key())restoreGroups();else{ui.expanded.clear();ui.expanding.clear();}ui.epoch++;ui.selected.clear();ui.lastStates.clear();ui.undo=null;ui.frozen=null;ui.anchor=null;ui.multi=false;ui.autoSelect=true;ui.context=key();text(ui.message,'');paint();}
   function paint(){
     if(!ui)return;
-    if(ui.context!==key()){reset();return;}
-    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){hideFloating(ui);delete ui.panel.dataset.cwPresetTab;clearVisibleControls(ui);ui.decorateAll=false;ui.decorateAllQueued=false;return;}
-    if(!ui.manager.contains(ui.tools)){ui.manager.prepend(ui.tools,ui.filterLine,ui.selectionLine);ui.manager.append(ui.empty,ui.bottom);}
-    if(ui.manager.lastElementChild!==ui.bottom)ui.manager.append(ui.empty,ui.bottom);
+    if(ui.context!==key()){onLeave();reset();return;}
+    if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){hideFloating(ui);delete ui.panel.dataset.cwPresetTab;return;}
+    const phone=phoneWide();
+    const bottomHost=phone?ui.column:ui.dock;
+    if(ui.bottom.parentNode!==bottomHost)bottomHost.append(ui.bottom);
+    if(!ui.manager.contains(ui.empty))ui.manager.append(ui.empty);
     {const list=ui.manager.querySelector('#completion_prompt_manager_list');if(list&&!list.closest('.bai-bai-preset-vue-list-host')&&list.nextElementSibling!==ui.addRow)list.after(ui.addRow);}
     const active=doc.getElementById('main_api')?.value==='openai';hidden(ui.tabBar,!active);
     if(active){if(ui.panel.dataset.cwPresetTab!==ui.tab)ui.panel.dataset.cwPresetTab=ui.tab;}else delete ui.panel.dataset.cwPresetTab;
     if(ui.dragging)return;
-    const all=entries();const tabLabel=ui.tabBar.querySelector('[data-tab=prompts]');let tabCount=tabLabel?.querySelector('.cw-pm-tab-count');if(tabLabel&&!tabCount){tabCount=make('span','cw-pm-tab-count');tabLabel.append(tabCount);}if(tabCount)text(tabCount,all.filter(on).length+'/'+all.length);const query=ui.search.value.trim().toLocaleLowerCase(),filtering=!!query||ui.filter!=='all';
+    const all=entries();
+    flag(ui.manager,'cw-pm-long',all.length>=150);
+    const tabLabel=ui.tabBar.querySelector('[data-tab=prompts]');let tabCount=tabLabel?.querySelector('.cw-pm-tab-count');if(tabLabel&&!tabCount){tabCount=make('span','cw-pm-tab-count');tabLabel.append(tabCount);}if(tabCount)text(tabCount,all.filter(on).length+'/'+all.length);const query=ui.search.value.trim().toLocaleLowerCase(),filtering=!!query||ui.filter!=='all';
     const match=e=>ui.busy&&ui.actionRows?.has(id(e))||(ui.frozen?ui.frozen.has(id(e)):e.name.toLocaleLowerCase().includes(query)&&(ui.filter==='all'||on(e)===(ui.filter==='on')));
-    const visible=all.filter(match),visibleKeys=new Set(visible.map(id)),viewportControls=trackVisibleControls(all);
+    const visible=all.filter(match),visibleKeys=new Set(visible.map(id));
     flag(ui.manager,'cw-pm-filtering',filtering);
     if(!filtering&&!ui.busy)restoreGroups();
     for(const group of ui.manager.querySelectorAll('.bai-bai-preset-group')){rememberHidden(group);const has=visible.some(e=>e.group===group.dataset.presetGroupId);hidden(group,filtering&&!has);if(filtering&&has)expandGroup(group);}
-    for(const [index,entry] of all.entries()){
+    for(const entry of all){
       const r=node(entry);if(!r)continue;rememberHidden(r);flag(r,'cw-pm-row',true);flag(r,'cw-pm-native-row',!!r.closest('.bai-bai-preset-vue-list-host'));
       const name=r.querySelector('.completion_prompt_manager_prompt_name');
       if(name){attr(name,'tabindex','0');attr(name,'role','button');}
-      const label=entry.name;hidden(r,!visibleKeys.has(id(r)));if(!r.closest('.bai-bai-preset-vue-list-host')&&name){let meta=name.querySelector('.cw-pm-description');if(!meta){meta=make('span','cw-pm-description');name.append(meta);}const token=r.querySelector('.prompt_manager_prompt_tokens')?.textContent.trim(),marker=entry.prompt?.marker||!!r.querySelector('.fa-thumb-tack,.fa-thumbtack');if(marker){if(!meta.querySelector('.cw-pm-placeholder')){meta.replaceChildren(make('span','cw-pm-placeholder',t('占位','Placeholder')),doc.createTextNode(' '+t('由酒馆自动填入','Filled by SillyTavern')));}}else{const inChat=entry.prompt?.injection_position===1,d=entry.prompt?.injection_depth;text(meta,t(({system:'系统',user:'用户',assistant:'AI'}[entry.prompt?.role]||'系统')+' · '+(/\d/.test(token||'')?'约 '+token+' Token':'Token 尚未统计')+(inChat?` · 聊天中 @${d??''}`:''),({system:'System',user:'User',assistant:'AI'}[entry.prompt?.role]||'System')+' · '+(/\d/.test(token||'')?'~ '+token+' tokens':'tokens not counted')+(inChat?` · In chat @${d??''}`:'')));}}
-      const decorate=!viewportControls||ui.inView.has(r)||r.contains(doc.activeElement);
-      if(decorate){ui.decoratedRows.add(r);
-      let box=r.querySelector('.cw-pm-select'),number=r.querySelector('.cw-pm-number');
-      if(!box){box=make('input','cw-pm-select');box.type='checkbox';box.setAttribute('aria-label',t('选择提示词','Select prompt')+': '+label);r.prepend(box);}
-      if(!number){number=make('span','cw-pm-number');r.prepend(number);}
-      text(number,String(index+1).padStart(2,'0'));prop(box,'checked',ui.selected.has(id(r)));prop(box,'disabled',!allowed(r)||ui.busy);
-      prop(box,'title',allowed(r)?'':t('原生不允许启停','Native prompt cannot be toggled'));
-      }
+      const label=entry.name;hidden(r,!visibleKeys.has(id(r)));if(!r.closest('.bai-bai-preset-vue-list-host')&&name){let meta=name.querySelector('.cw-pm-description');if(!meta){meta=make('span','cw-pm-description');name.append(meta);}const token=r.querySelector('.prompt_manager_prompt_tokens')?.textContent.trim(),marker=entry.prompt?.marker||!!r.querySelector('.fa-thumb-tack,.fa-thumbtack');if(marker){if(!meta.querySelector('.cw-pm-placeholder')){meta.replaceChildren(make('span','cw-pm-placeholder',t('占位','Placeholder')),make('span','cw-pm-marker-detail',' '+t('由酒馆自动填入','Filled by SillyTavern')));}}else{const inChat=entry.prompt?.injection_position===1,d=entry.prompt?.injection_depth;text(meta,t(({system:'系统',user:'用户',assistant:'AI'}[entry.prompt?.role]||'系统') + (/\d/.test(token||'')?' · 约 '+token+' Token':'')+(inChat?` · 聊天中 @${d??''}`:''),({system:'System',user:'User',assistant:'AI'}[entry.prompt?.role]||'System') + (/\d/.test(token||'')?' · ~ '+token+' tokens':'')+(inChat?` · In chat @${d??''}`:'')));}}
+      let box=r.querySelector('.cw-pm-select');
+      if(ui.multi){
+        if(!box){box=make('input','cw-pm-select');box.type='checkbox';r.prepend(box);}
+        attr(box,'aria-label',t('选择提示词','Select prompt')+': '+label);
+        const canToggle=allowed(r);
+        prop(box,'checked',ui.selected.has(id(r)));
+        prop(box,'disabled',!canToggle||ui.busy);
+        prop(box,'title',canToggle?'':t('原生不允许启停','Native prompt cannot be toggled'));
+      }else if(box)box.remove();
       flag(r,'cw-pm-selected',ui.selected.has(id(r)));
+      flag(r,'cw-pm-current',!phone&&ui.panel.dataset.cwpCurrent===id(r));
       const baiAction=!!(ui.busy&&ui.baiAction&&ui.actionRows?.has(id(r))&&r.closest('.bai-bai-preset-vue-list-host'));flag(r,'cw-pm-bai-action-row',baiAction);if(baiAction)(ui.actionRowNodes||=new Set()).add(r);
       // The legacy TT fallback owns an inline !important display value.
       const handle=r.querySelector(':scope > .clawd-prompt-drag-handle');
-      if(handle){const display=ui.sort?'inline-flex':'none';if(handle.style.getPropertyValue('display')!==display)handle.style.setProperty('display',display,'important');}
+      if(handle){const display=ui.multi?'none':'inline-flex';if(handle.style.getPropertyValue('display')!==display)handle.style.setProperty('display',display,'important');}
       const n=toggle(r);if(n)attr(n,'aria-checked',on(r));
       if(ui.undo&&!ui.busy&&ui.lastStates.has(id(r))&&ui.lastStates.get(id(r))!==on(r))for(const task of ui.undo)if(task.id===id(r)){
         // A native batch can finish while closed, leaving our DOM-state cache behind.
@@ -112,34 +106,52 @@ export function createPresetList({win,make,button,t}) {
         if(!entry||(entry.enabled!==false)!==task.after)task.conflict=true;
       }
       ui.lastStates.set(id(r),on(r));
-      if(decorate){
-      let status=r.querySelector('.cw-pm-state');if(!status){status=make('span','cw-pm-state');r.append(status);}
-      text(status,allowed(r)?(on(r)?t('开','On'):t('关','Off')):t('固定','Fixed'));
-      }else removeVisibleControls(ui,r);
     }
-    // Open with only the visible rows decorated (fast open), then finish the rest when idle:
-    // decorating rows as they scrolled into view mutated the list on every frame and
-    // forced a full style pass each time (96 prompts: ~20ms per frame, 2.0.341 v2 §5).
-    if(viewportControls&&!ui.decorateAllQueued){const u=ui;u.decorateAllQueued=true;const go=()=>{if(ui!==u)return;if(!u.panel.classList.contains('openDrawer')||u.panel.classList.contains('cw-v4-inactive')){u.decorateAllQueued=false;return;}u.decorateAll=true;u.rowObserver?.disconnect();u.rowObserver=null;u.viewportRoot=null;paint();};if(win.requestIdleCallback){const h=win.requestIdleCallback(go,{timeout:1000});u.dispose.push(()=>win.cancelIdleCallback(h));}else{const h=win.setTimeout(go,300);u.dispose.push(()=>win.clearTimeout(h));}}
     ui.visible=visible.map(id);ui.rangeVisible=visible.filter(e=>node(e)&&!node(e).closest('.bai-bai-preset-group-collapsed')).map(id);
     // An empty list can be the middle of native renderTemplateAsync, not a deletion.
     const invisible=[...ui.selected].filter(k=>!ui.visible.includes(k)).length;
-    text(ui.count,t(`${all.filter(on).length} 条启用 · 共 ${all.length} 条`,`${all.filter(on).length} enabled · ${all.length} total`));
     text(ui.selection,t(`已选 ${ui.selected.size} 条${invisible?`，其中 ${invisible} 条不在当前筛选中`:''}`,`${ui.selected.size} selected${invisible?`, ${invisible} hidden`:''}`));
     text(ui.multiButton,ui.multi?t('完成','Done'):t('多选','Select'));
     attr(ui.multiButton,'aria-pressed',ui.multi);
-    text(ui.sortButton,ui.sort?t('完成排序','Done sorting'):t('调整顺序','Reorder'));
-    flag(ui.manager,'cw-pm-multi',ui.multi);flag(ui.manager,'cw-pm-sort',ui.sort);
-    hidden(ui.selectionLine,!ui.multi);hidden(ui.addRow,ui.multi||ui.sort||!!ui.search.value.trim()||ui.filter!=='all'||!!ui.manager.querySelector('.bai-bai-preset-vue-list-host'));hidden(ui.batch,!ui.multi);hidden(ui.empty,visible.length!==0);
-    hidden(ui.feedback,!ui.message.textContent&&!ui.undo&&!ui.busy);attr(ui.manager,'aria-busy',ui.busy);
+
+    flag(ui.panel,'cwp-phone',phone);
+    flag(ui.manager,'cw-pm-multi',ui.multi);
+    flag(ui.dock,'cwp-dock-multi',ui.multi);
+    flag(ui.manager,'cw-pm-has-selection',ui.multi&&!!ui.selected.size);
+    for(const n of [ui.search,ui.filterLine,ui.more])hidden(n,ui.multi);
+    hidden(ui.selectionLine,!ui.multi);hidden(ui.addRow,ui.multi||!!ui.manager.querySelector('.bai-bai-preset-vue-list-host'));hidden(ui.batch,!ui.multi||(phone&&!ui.selected.size));hidden(ui.empty,visible.length!==0);
+    const hasFeedback=!!(ui.message.textContent||ui.undo||ui.busy);
+    hidden(ui.feedback,!hasFeedback);
+    flag(ui.dock,'cwp-dock-feedback',hasFeedback);
+    attr(ui.manager,'aria-busy',ui.busy);
     hidden(ui.undoButton,!ui.undo);prop(ui.undoButton,'disabled',ui.busy);
     for(const b of [ui.enable,ui.disable,ui.clear,ui.remove])prop(b,'disabled',ui.busy||!ui.selected.size);
-    prop(ui.allButton,'disabled',ui.busy||!visible.some(allowed));prop(ui.multiButton,'disabled',ui.busy);prop(ui.sortButton,'disabled',ui.busy||ui.multi);
+    prop(ui.allButton,'disabled',ui.busy||!visible.some(allowed));prop(ui.done,'disabled',ui.busy);
     prop(ui.search,'disabled',ui.busy);
-    for(const b of ui.filters){prop(b,'disabled',ui.busy);attr(b,'aria-pressed',b.dataset.filter===ui.filter);}
+    for(const b of ui.filters){
+      prop(b,'disabled',ui.busy);
+      const active=b.dataset.filter===ui.filter;
+      attr(b,'aria-pressed',active);
+      if(active)text(ui.filterLine.querySelector('summary'),b.textContent);
+    }
+    text(ui.selectionLine.querySelector('.cw-pm-selection'),t(`已选 ${ui.selected.size} 条`,`${ui.selected.size} selected`));
     floating(ui);
     // Gate every existing sorter; keep plugin groups, callbacks and movement rules.
-    sortables(!ui.sort||ui.multi||ui.busy||!!query||ui.filter!=='all');
+    sortables(ui.multi||ui.busy||filtering);
+    if(!phone&&ui.tab==='prompts'&&!ui.multi&&ui.autoSelect){
+      const u=ui;
+      const first=visible.find(e=>node(e)?.querySelector('.prompt-manager-edit-action'));
+      if(first){
+        u.autoSelect=false;
+        const firstId=id(first),context=u.context;
+        win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>{
+          if(ui!==u||u.tab!=='prompts'||u.multi||u.context!==context||phoneWide()||!u.panel.classList.contains('openDrawer')||u.panel.classList.contains('cw-v4-inactive')||doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer'))return;
+          const list=u.manager.querySelector('#completion_prompt_manager_list');
+          const action=list?.querySelector(`[data-pm-identifier="${win.CSS.escape(firstId)}"] .prompt-manager-edit-action`);
+          if(action&&!onEdit(action))action.click();
+        }));
+      }
+    }
   }
 
   function select(r,shift){
@@ -189,79 +201,112 @@ export function createPresetList({win,make,button,t}) {
   function mount(panel){
     const manager=panel.querySelector('#completion_prompt_manager');if(!manager)return;
     if(ui?.manager===manager){paint();return;}destroy();
-    const tabBar=make('div','cw-pm-tabs'),tools=make('div','cw-pm-tools'),filters=make('div','cw-pm-filters'),selectionLine=make('div','cw-pm-selection-line'),batch=make('div','cw-pm-batch'),feedback=make('div','cw-pm-feedback'),bottom=make('div','cw-pm-bottom');
+    const tabBar=make('div','cw-pm-tabs'),tools=make('div','cw-pm-tools'),filters=make('details','cw-v4-more cwr-pop cw-pm-filters'),selectionLine=make('div','cw-pm-selection-line'),batch=make('div','cw-pm-batch'),feedback=make('div','cw-pm-feedback'),bottom=make('div','cw-pm-bottom');
     tabBar.setAttribute('role','tablist');tabBar.setAttribute('aria-label',t('预设内容','Preset content'));
     const search=make('input','cw-pm-search');search.type='search';search.placeholder=t('搜索提示词名称','Search prompt names');search.setAttribute('aria-label',search.placeholder);
     const btn=(label,fn)=>button(label,fn,'cw-v4-button');
-    const multiButton=btn(t('多选','Select'),()=>{ui.multi=!ui.multi;ui.sort=false;ui.selected.clear();ui.frozen=null;paint();});
-    const sortButton=btn(t('调整顺序','Reorder'),()=>{ui.sort=!ui.sort;if(ui.sort){ui.search.value='';ui.filter='all';ui.frozen=null;}paint();});
-    const count=make('span','cw-pm-count'),selection=make('span','cw-pm-selection'),message=make('span','');feedback.setAttribute('role','status');
-    const allButton=btn(t('全选当前结果','Select current results'),()=>{for(const r of entries())if(ui.visible.includes(id(r))&&allowed(r))ui.selected.add(id(r));paint();});
-    const clear=btn(t('清除选择','Clear selection'),()=>{ui.selected.clear();paint();});
+    const multiButton=btn(t('多选','Select'),()=>{onLeave();ui.multi=!ui.multi;ui.autoSelect=!ui.multi;ui.selected.clear();ui.frozen=null;paint();});
+
+    const selection=make('span','cw-pm-selection'),message=make('span','');feedback.setAttribute('role','status');
+    const allButton=btn(t('全选','Select all'),()=>{for(const r of entries())if(ui.visible.includes(id(r))&&allowed(r))ui.selected.add(id(r));paint();});
+    const clear=btn(t('清除','Clear'),()=>{ui.selected.clear();paint();});
     const enable=btn(t('启用','Enable selected'),()=>run(true)),disable=btn(t('停用','Disable selected'),()=>run(false)),undoButton=btn(t('撤销','Undo'),()=>run(false,true));
     const more=make('details','cw-v4-more cw-pm-more cwr-pop'),summary=make('summary','','⋯'),menu=make('div','cw-v4-more-list');summary.setAttribute('aria-label',t('提示词工具','Prompt tools'));more.append(summary,menu);
-    // v2：分组用细线隔开；多选 / 调整顺序只在手机菜单里（电脑外面已经有按钮）。原生只有「整个列表」的导入导出，没有单条的。
+    // 原生只提供整个提示词列表的导入导出。
     const popItem=(ico,label,run,cls='')=>{const b=button('',()=>{more.open=false;run();},'cw-v4-more-item'+(cls?' '+cls:''));b.append(svgIcon(ico),make('span','',label));menu.append(b);return b;};
     const popHr=cls=>{const h=make('hr','cwr-pop-hr'+(cls?' '+cls:''));menu.append(h);};
-    popItem('multi',t('多选','Select'),()=>multiButton.click(),'cw-pm-phone-item');popItem('sort',t('调整顺序','Reorder'),()=>{if(ui.multi)multiButton.click();sortButton.click();},'cw-pm-phone-item');popHr('cw-pm-phone-item');
+    popItem('multi',t('多选','Select'),()=>multiButton.click());
     popItem('ins',t('插入已有提示词…','Insert an existing prompt…'),()=>manager.querySelector('.fa-chain,.fa-link')?.cwOpenPicker?.());popHr();
     popItem('imp',t('导入整个提示词列表','Import prompt list'),()=>doc.getElementById('prompt-manager-import')?.click());popItem('exp',t('导出整个提示词列表','Export prompt list'),()=>doc.getElementById('prompt-manager-export')?.click());popHr();
-    popItem('reload',t('重置当前角色的列表','Reset this character\'s list'),()=>doc.getElementById('prompt-manager-reset-character')?.click(),'cw-v4-danger');const reorderHint=make('div','cw-pm-reorder-hint');{const tx=make('div','cw-pm-reorder-t');tx.append(make('b','',t('按住左边的把手拖动排序','Drag the handles to reorder')),make('small','',t('顺序就是发送给模型的顺序；改完点“完成”保存。','This is the order sent to the model; choose Done to save.')));const done=btn(t('完成','Done'),()=>sortButton.click());done.classList.add('cw-v4-primary','cw-pm-reorder-done');reorderHint.append(tx,done);}tools.append(reorderHint,search,multiButton,sortButton,more);selectionLine.append(allButton,clear);const remove=btn(t('删除','Remove'),()=>removeSelected());remove.classList.add('cw-pm-remove');const trash=make('span','cw-pm-trash');trash.setAttribute('aria-hidden','true');remove.prepend(trash);// 稿子电脑浮条：已选 N 条 · 取消 · 启用 · 停用 · 删除（手机稿没有取消）。取消 = 退出多选，和上面的「完成」一样。
-const cancelSel=btn(t('取消','Cancel'),()=>{if(ui.multi)multiButton.click();});cancelSel.classList.add('cw-pm-batch-cancel');batch.append(selection,cancelSel,enable,disable,remove);feedback.append(message,undoButton);bottom.append(batch,feedback);
+    popItem('reload',t('重置当前角色的列表','Reset this character\'s list'),()=>doc.getElementById('prompt-manager-reset-character')?.click(),'cw-v4-danger');
+    const done=btn(t('完成','Done'),()=>multiButton.click());
+    const countPicked=make('span','cw-pm-selection');
+    const column=make('div','cwp-list-column'),dock=make('div','cwp-dock');
+    // PromptManager replaces its own children on every render. Keep CW tools
+    // and open menus in the column, outside the subtree ST owns.
+    manager.before(column,dock);
+    column.append(tools,manager);
+    const emptyEdit=make('p','cwp-dock-empty',t('选择一条提示词进行编辑','Select a prompt to edit'));
+    dock.append(emptyEdit);
+    tools.append(search,filters,more,selectionLine);
+    selectionLine.append(countPicked,allButton,clear,done);
+    const remove=btn(t('删除','Remove'),()=>removeSelected());
+    remove.classList.add('cw-pm-remove');
+    const trash=make('span','cw-pm-trash');trash.setAttribute('aria-hidden','true');
+    remove.prepend(trash);
+    batch.append(selection,enable,disable,remove);
+    feedback.append(message,undoButton);
+    bottom.append(batch,feedback);
     const empty=make('p','cw-pm-empty',t('没有匹配的提示词','No matching prompts'));
     const addRow=make('div','cw-pm-addrow');addRow.tabIndex=0;addRow.setAttribute('role','button');const addIco=make('span','cw-pm-number cw-pm-add-ico');addIco.append(svgIcon('plus'));addRow.append(addIco,make('span','cw-pm-add-label',t('新建提示词','New prompt')));const addRun=()=>{const n=manager.querySelector('.fa-plus-square,.fa-square-plus');(n?.closest('.menu_button')||n)?.click();};addRow.addEventListener('click',addRun);addRow.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();addRun();}});
-    ui={addRow,panel,manager,tabBar,tools,filterLine:filters,count,search,multiButton,sortButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,sort:false,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
+    ui={addRow,panel,manager,tabBar,tools,filterLine:filters,more,column,dock,done,search,multiButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,autoSelect:true,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
     const u=ui;
     // Keep fragment-staged nodes restorable without retaining replaced trees.
     // Finalization removes dead wrappers without repeatedly dereferencing live ones.
     u.hiddenFinalizer=new win.FinalizationRegistry(ref=>u.hiddenRefs.delete(ref));
     import(new win.URL('/scripts/openai.js',win.location.href).href).then(m=>{if(ui===u){u.nativePM=m.promptManager;paint();}}).catch(()=>{});
-    for(const [value,label] of [['all',t('全部','All')],['on',t('已启用','Enabled')],['off',t('已停用','Disabled')]]){const b=btn(label,()=>{ui.filter=value;ui.frozen=null;ui.sort=false;paint();});b.dataset.filter=value;u.filters.push(b);filters.append(b);}filters.append(count);
-    const scroll=()=>{if(u.tab==='prompts')return manager.querySelector('#completion_prompt_manager_list')||panel;for(let n=manager.parentElement;n;n=n.parentElement)if(/auto|scroll/.test(win.getComputedStyle(n).overflowY))return n;return panel;};
+    const filterSummary=make('summary','','');
+    const filterMenu=make('div','cw-v4-more-list');
+    filters.append(filterSummary,filterMenu);
+    for(const [value,label] of [['all',t('全部','All')],['on',t('已启用','Enabled')],['off',t('已停用','Disabled')]]){const b=btn(label,()=>{ui.filter=value;ui.frozen=null;filters.open=false;paint();});b.className='cw-v4-more-item';b.dataset.filter=value;u.filters.push(b);filterMenu.append(b);}
+    const scroll=()=>{if(u.tab==='prompts')return phoneWide()?panel:manager.querySelector(':scope>.range-block')||panel;for(let n=manager.parentElement;n;n=n.parentElement)if(/auto|scroll/.test(win.getComputedStyle(n).overflowY))return n;return panel;};
     const tabs=[];
-    for(const [value,label] of [['prompts',t('提示词','Prompts')],['params',t('参数','Parameters')]]){const b=btn(label,()=>{u.positions[u.tab]=scroll().scrollTop;u.tab=value;panel.dataset.cwPresetTab=value;for(const el of tabs)attr(el,'aria-selected',el.dataset.tab===value);scroll().scrollTop=u.positions[value];});b.setAttribute('role','tab');b.dataset.tab=value;attr(b,'aria-selected',value==='prompts');tabs.push(b);tabBar.append(b);}
-    const preset=panel.querySelector('#openai_api-presets .cw-v4-section');if(preset)preset.after(tabBar);else panel.querySelector(':scope>.cw-v4-drawer-page').append(tabBar);
-    manager.prepend(tools,filters,selectionLine);manager.append(empty,bottom);panel.dataset.cwPresetTab='prompts';manager.classList.add('cw-pm-list');
+    for(const [value,label] of [['prompts',t('提示词','Prompts')],['params',t('参数','Parameters')]]){const b=btn(label,()=>{onLeave();u.positions[u.tab]=scroll().scrollTop;u.tab=value;u.autoSelect=value==='prompts';panel.dataset.cwPresetTab=value;for(const el of tabs)attr(el,'aria-selected',el.dataset.tab===value);scroll().scrollTop=u.positions[value];paint();});b.setAttribute('role','tab');b.dataset.tab=value;attr(b,'aria-selected',value==='prompts');tabs.push(b);tabBar.append(b);}
+    const preset=panel.querySelector('#respective-presets-block');
+    if(preset)preset.after(tabBar);
+    else panel.querySelector(':scope>.cw-v4-drawer-page')?.prepend(tabBar);
+    manager.append(empty);panel.dataset.cwPresetTab='prompts';manager.classList.add('cw-pm-list');
     const listen=(node,type,fn,options)=>{node.addEventListener(type,fn,options);u.dispose.push(()=>node.removeEventListener(type,fn,options));};
-    listen(win,'resize',()=>floating(u));
+    listen(win,'resize',()=>paint());
     // Bai captures clicks on document before our manager listener. Lock user row
     // actions one level earlier, while allowing the adapter's own toggle clicks.
     listen(win,'click',e=>{if(!u.busy||e.target===u.nativeAction||e.target?.nodeType!==1||!u.manager.contains(e.target))return;const r=e.target.closest?.(ROW);if(r?.closest('.bai-bai-preset-vue-list-host')){e.preventDefault();e.stopImmediatePropagation();}},true);
-    listen(search,'input',()=>{u.frozen=null;u.sort=false;paint();});
+    listen(search,'input',()=>{u.frozen=null;paint();});
     listen(manager,'click',e=>{
       const r=e.target.closest('[data-pm-identifier]');if(!canonical(r))return;
       if(e.target===u.nativeAction)return;
       if(e.target.closest('.prompt-manager-toggle-action')&&u.undo)for(const task of u.undo)if(task.id===id(r))task.conflict=true;
       if(u.busy){e.preventDefault();e.stopImmediatePropagation();return;}
       if(u.multi){if(!e.target.matches('.cw-pm-select'))e.preventDefault();e.stopImmediatePropagation();select(r,e.shiftKey);return;}
-      const name=e.target.closest('.completion_prompt_manager_prompt_name');
       // The native inspect action is also invoked by the row's More menu.
       // Let that explicit programmatic action reach its original listener.
       if(!e.isTrusted&&e.target.matches('.prompt-manager-inspect-action'))return;
       // The name is ST's inspect link; like 340, a click on it opens the editor instead.
-      if(!e.target.closest('.prompt-manager-toggle-action,.cw-pm-select,.clawd-prompt-drag-handle,.drag-handle,.prompt-manager-injection-depth,.prompt-manager-overridden,.prompt-manager-edit-action,.prompt-manager-detach-action,input')&&!u.sort){const native=r.querySelector('.prompt-manager-edit-action')||r.querySelector('.prompt-manager-inspect-action');if(native){e.preventDefault();e.stopImmediatePropagation();if(!(u.editing===id(r)&&doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer'))){u.editing=id(r);native.click();}}}
+      if(!e.target.closest('.prompt-manager-toggle-action,.cw-pm-select,.clawd-prompt-drag-handle,.drag-handle,.prompt-manager-injection-depth,.prompt-manager-overridden,.prompt-manager-edit-action,.prompt-manager-detach-action,input') ){const native=r.querySelector('.prompt-manager-edit-action')||r.querySelector('.prompt-manager-inspect-action');if(native){e.preventDefault();e.stopImmediatePropagation();if(panel.dataset.cwpCurrent!==id(r)&&!(phoneWide()&&u.editing===id(r)&&doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer'))){u.editing=id(r);if(!native.matches('.prompt-manager-edit-action')||!onEdit(native))native.click();}}}
     },true);
-    for(const type of ['pointerdown','touchstart','mousedown'])listen(manager,type,e=>{if((!u.sort||u.multi||u.busy||u.search.value.trim()||u.filter!=='all')&&e.target.closest?.('.bai-bai-preset-group-header')&&!e.target.closest('button,input,select,a,.menu_button'))e.stopPropagation();},{capture:true,passive:true});
+    for(const type of ['pointerdown','touchstart','mousedown'])listen(manager,type,e=>{
+      const target=e.target,blocked=u.multi||u.busy||!!u.search.value.trim()||u.filter!=='all';
+      if(blocked&&target.closest?.('.bai-bai-preset-group-header')&&!target.closest('button,input,select,a,.menu_button')){
+        e.stopPropagation();
+        return;
+      }
+      if(type==='pointerdown')return;
+      const row=target.closest?.(ROW);
+      if(!canonical(row)||row.closest('.bai-bai-preset-vue-list-host'))return;
+      // Stop the sorter from seeing presses on the row body. Do not cancel default
+      // behavior: focus, scrolling and the later click must still work.
+      if(!target.closest('.drag-handle'))e.stopPropagation();
+    },{capture:true,passive:true});
     for(const type of ['start','sortstart'])listen(manager,type,()=>{u.dragging=true;});for(const type of ['end','sortstop'])listen(manager,type,()=>{u.dragging=false;paint();});
     listen(manager,'keydown',e=>{const r=e.target.closest('[data-pm-identifier]');if(r&&e.target.matches('.prompt-manager-toggle-action,.completion_prompt_manager_prompt_name')&&['Enter',' '].includes(e.key)){e.preventDefault();e.target.click();}});
-    listen(panel,'change',e=>{if(e.target.id==='settings_preset_openai')reset();});
-    const ctx=win.SillyTavern?.getContext?.();for(const name of ['CHAT_CHANGED','CHAT_LOADED','OAI_PRESET_CHANGED_BEFORE','OAI_PRESET_CHANGED_AFTER']){const type=ctx?.eventTypes?.[name];if(type&&ctx.eventSource?.on){const fn=()=>reset();ctx.eventSource.on(type,fn);u.dispose.push(()=>ctx.eventSource.removeListener(type,fn));}}
+    listen(panel,'change',e=>{if(e.target.id==='settings_preset_openai'){onLeave();u.autoSelect=false;win.requestAnimationFrame(()=>{if(ui===u)reset();});}},true);
+    const ctx=win.SillyTavern?.getContext?.();for(const name of ['CHAT_CHANGED','CHAT_LOADED','OAI_PRESET_CHANGED_BEFORE','OAI_PRESET_CHANGED_AFTER']){const type=ctx?.eventTypes?.[name];if(type&&ctx.eventSource?.on){const fn=()=>{onLeave();if(name!=='OAI_PRESET_CHANGED_BEFORE')reset();};ctx.eventSource.on(type,fn);u.dispose.push(()=>ctx.eventSource.removeListener(type,fn));}}
     // Native row events are installed by PromptManager before our existing adapter.
     let pruneTimer,paintFrame=0;
     const queuePaint=()=>{if(paintFrame||ui!==u)return;paintFrame=win.requestAnimationFrame(()=>{paintFrame=0;if(ui===u)paint();});};
-    u.queuePaint=queuePaint;for(const type of ['focusin','focusout'])listen(manager,type,e=>{if(e.target.closest?.(ROW))queuePaint();});
-    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active)queuePaint();else{hideFloating(u);delete panel.dataset.cwPresetTab;clearVisibleControls(u);}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
-    const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.addRow.contains(e)||u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select,.cw-pm-number,.cw-pm-state')||!!e.closest('.cw-pm-number,.cw-pm-state'));};
+    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active){u.autoSelect=true;queuePaint();}else{onLeave();hideFloating(u);delete panel.dataset.cwPresetTab;}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
+    const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.addRow.contains(e)||u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select')||!!e.closest('.cw-pm-description'));};
     const ownMutation=r=>{if(r.type==='attributes'){const old=new Set((r.oldValue||'').split(/\s+/).filter(Boolean)),now=new Set(r.target.classList);const changed=[...[...old].filter(k=>!now.has(k)),...[...now].filter(k=>!old.has(k))];return changed.every(k=>k.startsWith('cw-pm-'));}return owned(r.target)||[...r.addedNodes,...r.removedNodes].every(owned);};
     const observer=new win.MutationObserver(records=>{if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
     paint();
   }
-  function destroy(){if(!ui)return;const u=ui;hideFloating(u);clearVisibleControls(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
+  function destroy(){if(!ui)return;onLeave();const u=ui;hideFloating(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
     restoreGroups(u);for(const e of u.sortables.values())restoreSort(e);
-    for(const n of [u.tabBar,u.tools,u.count.parentElement,u.selectionLine,u.bottom,u.empty,u.addRow])n.remove();u.manager.removeAttribute('aria-busy');
-    delete u.panel.dataset.cwPresetTab;u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering');
+    u.column.replaceWith(u.manager);
+    for(const n of [u.tabBar,u.bottom,u.empty,u.addRow,u.dock])n.remove();u.manager.removeAttribute('aria-busy');
+    delete u.panel.dataset.cwPresetTab;u.panel.classList.remove('cwp-phone');u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering','cw-pm-long');
     // Restore live nodes even while native TT holds them outside the manager.
-    for(const r of hiddenNodes(u)){if(u.hidden.has(r))r.hidden=u.hidden.get(r);if(!r.matches('.cw-pm-row'))continue;r.classList.remove('cw-pm-selected','cw-pm-row','cw-pm-native-row');r.querySelectorAll('.cw-pm-select,.cw-pm-number,.cw-pm-state,.cw-pm-description').forEach(n=>n.remove());const name=r.querySelector('.completion_prompt_manager_prompt_name');name?.removeAttribute('role');name?.removeAttribute('tabindex');}
+    for(const r of hiddenNodes(u)){if(u.hidden.has(r))r.hidden=u.hidden.get(r);if(!r.matches('.cw-pm-row'))continue;r.classList.remove('cw-pm-selected','cw-pm-current','cw-pm-row','cw-pm-native-row');r.querySelectorAll('.cw-pm-select,.cw-pm-description').forEach(n=>n.remove());const name=r.querySelector('.completion_prompt_manager_prompt_name');name?.removeAttribute('role');name?.removeAttribute('tabindex');}
     for(const ref of u.hiddenRefs)u.hiddenFinalizer.unregister(ref);u.hiddenRefs.clear();
   }
   return {mount,destroy};

@@ -24,7 +24,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   const doc=win.document, states=new Map();
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
-  const presetList=createPresetList({win,make,button,t});
+  const presetList=createPresetList({win,make,button,t,phoneWide:()=>phoneWide(),onLeave:()=>presetEdit.leave(),onEdit:action=>presetEdit.selectDesktop(action)});
   let morePages=null,v2dPages=null;
   let promptScroll=null;
   const get=id=>doc.getElementById(id);
@@ -196,7 +196,6 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         // v2 .pop：图标 + 文字，分组细线（重命名 / 另存为 | 导入 / 导出 | 删除）。原生没有「恢复默认值」，不做。
         pm.classList.add('cw-v4-preset-menu');
         presetManagerPage.header(ps.s,group,select,[act(ps.s,get('update_oai_preset'),'保存'),pm]);}
-      {const br=tg(ps.s,group,get('bind_preset_to_connection'),'绑定到 API 连接','切换连接配置时自动切换预设');if(br){const ib=make('span','cwr-entry-icon');ib.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5M15 4v5M7 9h10v3a5 5 0 0 1-10 0zM12 17v3"/></svg>';br.prepend(ib);ps.s.created.push(ib);br.classList.add('cwr-preset-bind');}}
       finish(ps.s);
     }}
     const ranges=get('range_block_openai');
@@ -206,7 +205,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         setting(st,length,'oai_max_context_unlocked','解锁上下文上限','移除上下文滑块的最大值限制');
         setting(st,length,'openai_max_context','上下文长度','Token','openai_max_context_counter');
         setting(st,length,'openai_max_tokens','最大回复长度','Token',null,'num');
-        setting(st,length,'n_openai','每次生成几个备选回复','',null,'num');
+        setting(st,length,'n_openai','每次生成几个备选回复','一次生成多条，左右滑动挑选',null,'num');
         setting(st,length,'stream_toggle','流式传输','回复边生成边显示');
         const sampling=section(target,'采样');
         for(const [id,n,label,desc] of [['temp_openai','temp_counter_openai','温度','越高越随机'],['freq_pen_openai','freq_pen_counter_openai','频率惩罚'],['pres_pen_openai','pres_pen_counter_openai','存在惩罚'],['top_p_openai','top_p_counter_openai','Top P']])setting(st,sampling,id,label,desc||'',n);
@@ -254,7 +253,32 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       footer.append(more);s.created.push(more);footer.classList.add('cw-v4-pm-footer');s.cleanup=()=>footer.classList.remove('cw-v4-pm-footer','cw-v4-pm-no-insert');
     }
     const insert=footer?.querySelector('.fa-chain,.fa-link');
-    if(insert&&!insert.cwOpenPicker){const s=state(footer);const open=()=>{const select=footer.querySelector('select');if(!select)return;const marker=doc.createComment('cw-insert-select'),box=make('div','cwr-insert-picker');select.before(marker);box.append(select,button(L('插入'),()=>{box.closest('dialog')?.close();insert.click();},'cw-v4-button'));panel.append(box);openEditor(box,L('插入提示词'),'',{onClose:()=>{if(marker.parentNode)marker.replaceWith(select);box.remove();}});};insert.cwOpenPicker=open;const click=e=>{if(e.isTrusted){e.preventDefault();e.stopImmediatePropagation();open();}};insert.addEventListener('click',click,true);cleanup(s,()=>{insert.removeEventListener('click',click,true);delete insert.cwOpenPicker;});}
+    if(insert&&!insert.cwOpenPicker){
+      const s=state(footer);
+      const open=()=>{
+        const select=footer.querySelector('select');
+        if(!select?.options.length)return;
+        const box=make('div','cwr-insert-picker'),picker=select.cloneNode(true);
+        picker.removeAttribute('id');
+        picker.value=select.value;
+        picker.setAttribute('aria-label',L('插入提示词'));
+        box.append(picker,button(L('插入'),()=>{
+          const current=panel.querySelector('.completion_prompt_manager_footer');
+          const native=current?.querySelector('select');
+          const action=current?.querySelector('.fa-chain,.fa-link');
+          if(!native||!action||![...native.options].some(o=>o.value===picker.value))return;
+          native.value=picker.value;
+          box.closest('dialog')?.close();
+          action.click();
+        },'cw-v4-button'));
+        panel.append(box);
+        openEditor(box,L('插入提示词'),'',{onClose:()=>box.remove()});
+      };
+      insert.cwOpenPicker=open;
+      const click=e=>{if(e.isTrusted){e.preventDefault();e.stopImmediatePropagation();open();}};
+      insert.addEventListener('click',click,true);
+      cleanup(s,()=>{insert.removeEventListener('click',click,true);delete insert.cwOpenPicker;});
+    }
     const footerMore=footer?.querySelector('.cw-v4-more'),topMore=panel.querySelector('.cw-pm-more>.cw-v4-more-list');
     if(footerMore)footerMore.hidden=true;
     // SPreset (third-party) injects a banner into the prompts area later; offer it from the preset menu instead.
@@ -748,7 +772,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       ({WorldInfo:world,Backgrounds:backgrounds,AdvancedFormatting:formatting,'left-nav-panel':presets,PersonaManagement:personas,'right-nav-panel':characters,rm_api_block:api,rm_extensions_block:extensions})[panel.id]?.(panel);
       // The extension catalog checks versions on entry, not on layout redraws.
       if(panel.id==='PersonaManagement'){personaRows(panel);personaName(state(panel));}
-      if(panel.id==='left-nav-panel'){promptRows(panel);presetList.mount(panel);presetEdit.install(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
+      if(panel.id==='left-nav-panel'){promptRows(panel);presetEdit.install(panel);presetList.mount(panel);promptScroll||=createPromptScroll({win,enabled:()=>doc.documentElement.hasAttribute('data-cw-v4')});promptScroll.sync(panel);}
       if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
       if(panel.id==='WorldInfo')worldPage.sync(panel);
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);

@@ -10,23 +10,85 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
   const text=(n,v)=>{if(n&&n.textContent!==v)n.textContent=v;};
   const setHidden=(n,v)=>{if(n&&n.hidden!==v)n.hidden=v;};
   let panel=null,observer=null,lastId=null,ed=null,onClick=null,pmModule=null;
+  function flush() {
+    const e=ed;
+    if(!e?.desktop||!e.dirty)return;
+    win.clearTimeout(e.timer);
+    const pm=pmModule?.promptManager;
+    if(!pm)return;
+    const id=e.save?.dataset.pmPrompt;
+    if(!id)return;
+    const prompt=pm.getPromptById(id);
+    const target=prompt||{};
+    pm.updatePromptWithPromptEditForm(target);
+    if(!prompt)pm.addPrompt(target,id);
+    if(['main','nsfw','jailbreak'].includes(id))pm.updateQuickEdit(id,target);
+    e.dirty=false;
+    pm.renderDebounced();
+    Promise.resolve(pm.saveServiceSettings()).catch(()=>{
+      if(ed===e)e.dirty=true;
+      win.toastr?.error?.(t('提示词自动保存失败','Could not autosave the prompt'));
+    });
+  }
+  function leave(replacing=false) {
+    if(!ed?.desktop)return;
+    flush();
+    if(!replacing)ed.nativeClose?.click();
+    close(replacing);
+  }
+  function selectDesktop(action){
+    const native=pmModule?.promptManager, pop=$(P), form=$(P+'_edit');
+    const source=action?.closest('[data-pm-identifier]'), id=source?.dataset.pmIdentifier;
+    if(phoneWide()||!panel?.querySelector('.cwp-dock')||!id||!pop||!form||source.closest('.bai-bai-preset-vue-list-host'))return false;
+    if(!native?.getPromptById||!native.clearEditForm||!native.clearInspectForm||!native.loadPromptIntoEditForm)return false;
+    const prompt=native.getPromptById(id);
+    if(!prompt)return false;
+    leave(true);
+    lastId=id;
+    // Keep the native edit fields and load routine. The popup is hidden by CW,
+    // so running its native slide animation would force style and layout for no visible effect.
+    native.clearEditForm();
+    native.clearInspectForm();
+    native.loadPromptIntoEditForm(prompt);
+    doc.documentElement.classList.add('cwp-editing');
+    form.style.display='flex';
+    pop.classList.add('openDrawer');
+    sync();
+    return true;
+  }
   const row=id=>id&&doc.querySelector(`#completion_prompt_manager_list [data-pm-identifier="${CSS.escape(id)}"]`);
   const visible=n=>!!n&&n.isConnected&&win.getComputedStyle(n).display!=='none';
   function install(p){
     if(panel===p)return;destroy();panel=p;
     const pop=$(P);if(!pop)return;
+    import(new URL('/scripts/openai.js',win.location.href).href).then(m=>{pmModule=m;flush();},()=>{});
     // The row the user opened (native reads the identifier from the clicked row too).
-    onClick=e=>{const a=e.target.closest?.('.prompt-manager-edit-action');if(a)lastId=a.closest('[data-pm-identifier]')?.dataset.pmIdentifier||null;else if(e.target.closest?.('.fa-plus-square,.fa-square-plus')||e.target.querySelector?.(':scope>.fa-plus-square,:scope>.fa-square-plus'))lastId=null;};
+    onClick=e=>{
+      const a=e.target.closest?.('.prompt-manager-edit-action');
+      const add=e.target.closest?.('.fa-plus-square,.fa-square-plus')||e.target.querySelector?.(':scope>.fa-plus-square,:scope>.fa-square-plus');
+      if(a||add){
+        leave(true);
+        lastId=a?.closest('[data-pm-identifier]')?.dataset.pmIdentifier||null;
+      }else if(e.target.closest?.('.cw-pm-tabs button,.cw-v4-close,.cwr-preset-all')){
+        leave();
+      }else if(e.target.closest?.('.cwp-inspect,.prompt-manager-inspect-action')){
+        flush();
+      }
+    };
     doc.addEventListener('click',onClick,true);
-    let frame=0;observer=new win.MutationObserver(()=>{if(!frame)frame=win.requestAnimationFrame(()=>{frame=0;sync();});});
-    observer.observe(pop,{attributes:true,attributeFilter:['class','style']});for(const id of [P+'_edit',P+'_inspect']){const n=$(id);if(n)observer.observe(n,{attributes:true,attributeFilter:['class','style']});}
+    observer=new win.MutationObserver(sync);
+    observer.observe(panel,{attributes:true,attributeFilter:['class']});
+    observer.observe(pop,{attributes:true,attributeFilter:['class']});
+    const form=$(P+'_edit');if(form)observer.observe(form,{attributes:true,attributeFilter:['class','style']});
     sync();
   }
   function editing(){const pop=$(P);// The popup itself is display:none while CW shows the page, so only its state and edit section count.
-    return !!pop&&pop.classList.contains('openDrawer')&&(ed||visible(pop))&&visible($(P+'_edit'))&&!!panel?.classList.contains('openDrawer');}
-  function sync(){if(editing()){if(!ed)open();}else if(ed)close();}
+    const form=$(P+'_edit');
+    return !!pop&&pop.classList.contains('openDrawer')&&!!form&&form.style.display!=='none'&&!form.hidden&&!!panel?.classList.contains('openDrawer');}
+  function sync(){if(ed?.desktop&&(!panel.classList.contains('openDrawer')||panel.classList.contains('cw-v4-inactive'))){leave();return;}if(editing()){if(!ed)open();}else if(ed)close();else doc.documentElement.classList.remove('cwp-editing');}
   function open(){
     const pop=$(P),form=$(P+'_edit');if(!form||!panel)return;
+    const dock=!phoneWide()&&panel.querySelector('.cwp-dock');
     const moves=[],undo=[];const M=(n,host)=>{if(!n)return null;const mark=doc.createComment('cwp-return');n.before(mark);moves.push([n,mark]);host.append(n);return n;};
     const cls=(n,...c)=>{if(!n)return n;const added=c.filter(x=>!n.classList.contains(x));n.classList.add(...added);undo.push(()=>n.classList.remove(...added));return n;};
     const F=n=>$(P+'_entry_form_'+n);
@@ -37,7 +99,7 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     const marker=!!rowNow()?.querySelector('.fa-thumb-tack,.fa-thumbtack');
     // ST 1.18 对占位条目不藏内容框，只是把它设成不可用；这里照方案只写一句说明（也不给「放大」）。
     const editable=hasPrompt&&!marker&&!prompt?.disabled;
-    const scrollBox=panel,scroll=scrollBox.scrollTop;
+    const scrollBox=panel,scroll=dock?0:scrollBox.scrollTop;
     const page=make('section','cwp-edit cwr-subpage'),field=(host,label,hint,nodes,extra='')=>{const f=make('div','cww-field'+(extra?' '+extra:'')),lab=make('div','cww-lab',label);f.append(lab);if(hint)f.append(make('div','cww-hint',hint));const box=make('div','cww-ctl');f.append(box);for(const n of [].concat(nodes))if(n)n.parentNode?M(n,box):box.append(n);host.append(f);return f;};
     const card=(host,c='')=>{const n=make('div','cw-v4-card cww-ecard'+(c?' '+c:''));host.append(n);return n;};
     const secH=(title,extra)=>{const h=make('h2','cww-sub-h',title);if(extra){h.append(make('span','cww-grow'),extra);}page.append(h);return h;};
@@ -57,7 +119,7 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     // 原生 isPromptInspectionAllowed 对所有条目都返回 true，占位条目也能查看实际内容（复看 #3）。
     if(!isNew)head.append(view);if(!isNew)head.append(more);
     const viewPhone=button('',()=>inspectBtn()?.click(),'cwr-btn cwp-inspect-phone');viewPhone.append(svg(ICO.eye),make('span','',t('查看实际内容','View actual content')));
-    page.append(back,head);if(!isNew)page.append(viewPhone);
+    page.append(back,head);
     // 「查看实际内容」只在这条进了上次的发送时有内容（原生 handleInspect 的条件）。
     const markInspect=()=>{if(!pmModule){import(new URL('/scripts/openai.js',win.location.href).href).then(m=>{pmModule=m;markInspect();},()=>{});return;}let can=false;try{can=pmModule.promptManager?.messages?.hasItemWithIdentifier(id)===true;}catch{}for(const b of [view,viewPhone]){b.disabled=!can;b.title=can?'':t('这条现在不会发送，没有实际内容可看','Not sent right now, so there is nothing to inspect');}};if(!isNew)markInspect();
     // 1 启用：和列表行上同一个开关。
@@ -81,33 +143,67 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     if(hasForbid&&forbid){const fr=swRow(c2,t('不让角色卡覆盖','Do not let the character card override'),t('角色卡里写了同名提示词时，仍用这一条','Keep this one even if the card has the same prompt'));M(forbid,fr.c);cls(forbid,'cwp-forbid');}
     // 3 内容：原生 prompt 文本框 + 放大；占位条目只写一句说明。
     let big=null;
+    const queueSave=()=>{
+      if(ed?.page!==page||!ed.desktop)return;
+      ed.dirty=true;
+      win.clearTimeout(ed.timer);
+      ed.timer=win.setTimeout(flush,400);
+    };
     const expand=button('',()=>openBig(),'cwr-btn cww-btn-sm cww-expand cwp-expand');expand.append(svg(ICO.expand),make('span','',t('放大','Expand')));
-    secH(t('内容','Content'),editable?expand:null);const c3=card(page);
+    const contentActions=make('span','cwp-content-actions');
+    if(!isNew)contentActions.append(viewPhone);
+    if(editable)contentActions.append(expand);
+    secH(t('内容','Content'),contentActions);const c3=card(page);
     const tokenText=()=>{const tk=rowNow()?.querySelector('.prompt_manager_prompt_tokens')?.textContent.trim();return /\d/.test(tk||'')?t(`约 ${tk} Token`,`~${tk} tokens`):t('Token 尚未统计','Tokens not counted');};
     if(editable&&prompt){const f=field(c3,'',null,[prompt],'cww-content-field cwp-content');f.querySelector('.cww-lab').remove();cls(prompt,'cwp-prompt');f.append(make('div','cww-tok',tokenText()));}
     else c3.append(make('div','cww-field cwp-marker-note',t('这是占位项，内容由酒馆在发送时自动填入（例如用户角色描述），这里不能编辑。','This is a placeholder; SillyTavern fills it in when sending, so it cannot be edited here.')));
     function openBig(){if(big||!prompt)return;const host=$('cw-v4-settings')||panel,b=make('div','cww-big'),bh=make('div','cww-bh'),sh=button('',()=>closeBig(),'cwr-btn cww-shrink');sh.append(svg(ICO.shrink),make('span','',t('收起','Collapse')));bh.append(sh,make('div','cww-bh-t',t(`${name?.value||''} · 内容`,`${name?.value||''} · Content`)),make('span','cww-tok',tokenText()));b.append(bh);
-      for(const type of ['click','mousedown','touchstart','pointerdown'])b.addEventListener(type,e=>e.stopPropagation());const mark=doc.createComment('cwp-big');prompt.before(mark);b.append(prompt);host.append(b);host.classList.add('cww-big-host');panel.classList.add('cww-big-open');
+      for(const type of ['click','mousedown','touchstart','pointerdown'])b.addEventListener(type,e=>e.stopPropagation());
+      b.addEventListener('input',queueSave);
+      b.addEventListener('focusout',flush);
+      const mark=doc.createComment('cwp-big');prompt.before(mark);b.append(prompt);host.append(b);host.classList.add('cww-big-host');panel.classList.add('cww-big-open');
       const esc=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeBig();}};win.addEventListener('keydown',esc,true);big={b,mark,esc,host};prompt.focus({preventScroll:true});}
     function closeBig(){if(!big)return;win.removeEventListener('keydown',big.esc,true);if(big.mark.parentNode)big.mark.replaceWith(prompt);big.b.remove();big.host.classList.remove('cww-big-host');panel.classList.remove('cww-big-open');big=null;}
-    // 完成：照原生保存流程走。
-    // 吸底渐变渐到页面底色（面板实际底色，随设备 / 配色变），不是卡片色——夜间否则是一条亮带（同世界书 round2 #10）。
-    const foot=make('div','cww-footbar cwp-foot');{const pg=win.getComputedStyle(panel).backgroundColor;if(pg&&pg!=='rgba(0, 0, 0, 0)'&&pg!=='transparent')foot.style.setProperty('--cwp-page',pg);}const done=button(t('完成','Done'),()=>save?.click(),'cwr-btn cww-primary cww-desk-only');foot.append(done);page.append(foot);
-    panel.append(page);panel.classList.add('cwp-edit-open');doc.documentElement.classList.add('cwp-editing');panel.scrollTop=0;
+    if(dock){
+      dock.append(page);
+      dock.classList.add('cwp-dock-editing');
+      panel.dataset.cwpCurrent=id||'';
+      rowNow()?.classList.add('cw-pm-current');
+      const mark=()=>{if(ed?.page===page)ed.dirty=true;};
+      page.addEventListener('input',e=>{
+        if(e.target.matches('input,select,textarea'))queueSave();
+      });
+      page.addEventListener('change',e=>{
+        if(e.target.matches('input,select,textarea')){mark();flush();}
+      });
+      page.addEventListener('focusout',flush);
+      page.addEventListener('click',e=>{
+        if(e.target.closest('.cww-pk,.cwp-seg button')){mark();flush();}
+      });
+    }else{
+      panel.append(page);
+      panel.classList.add('cwp-edit-open');
+      panel.scrollTop=0;
+    }
+    doc.documentElement.classList.add('cwp-editing');
     paintPos();
     // 手机顶栏：‹ 提示词 · ⋯ · 完成
     let mhead=null;const shellHead=doc.querySelector('.cw-v4-shell .cw-v4-head');
     if(phoneWide()&&shellHead){mhead=make('div','cwr-mobile-head cww-mobile-head cwp-mobile-head');const bk=button('',()=>close?.click(),'cwr-head-back cww-head-back');bk.append(svg(ICO.back,1.9),make('span','',t('提示词','Prompts')));const right=make('span','cww-head-right');if(!isNew){const m2=button('',()=>{more.cwAnchor=m2;more.open=!more.open;},'cwr-head-action cww-head-ic');m2.append(dots());m2.setAttribute('aria-label',t('更多','More'));right.append(m2);}right.append(button(t('完成','Done'),()=>save?.click(),'cwr-head-action cww-head-done'));mhead.append(bk,make('h1',''),right);shellHead.append(mhead);}
-    ed={page,moves,undo,closeBig,mhead,scroll,scrollBox,id};
+    ed={page,moves,undo,closeBig,mhead,scroll,scrollBox,id,desktop:!!dock,save,nativeClose:close,dirty:false,timer:0};
   }
-  function close(){
-    const e=ed;if(!e)return;ed=null;e.closeBig();
+  function close(replacing=false){
+    const e=ed;if(!e)return;ed=null;win.clearTimeout(e.timer);e.closeBig();
+    row(e.id)?.classList.remove('cw-pm-current');
+    if(panel)delete panel.dataset.cwpCurrent;
     for(const f of e.undo.splice(0).reverse())try{f();}catch{}
     for(const [n,mark]of e.moves.splice(0).reverse())if(mark.parentNode)mark.replaceWith(n);
-    e.page.remove();e.mhead?.remove();panel?.classList.remove('cwp-edit-open');doc.documentElement.classList.remove('cwp-editing');
+    e.page.parentElement?.classList.remove('cwp-dock-editing');
+    e.page.remove();e.mhead?.remove();panel?.classList.remove('cwp-edit-open');if(!replacing)doc.documentElement.classList.remove('cwp-editing');
     // 列表滚动位置不变：保存会让原生整表重画，等它画完再放回去。
+    if(e.desktop)return;
     const box=e.scrollBox,y=e.scroll;let n=0;const put=()=>{if(!box?.isConnected)return;box.scrollTop=y;if(++n<6)win.requestAnimationFrame(put);};put();win.setTimeout(put,250);
   }
-  function destroy(){close();observer?.disconnect();observer=null;if(onClick)doc.removeEventListener('click',onClick,true);onClick=null;panel=null;}
-  return {install,destroy};
+  function destroy(){leave();close();observer?.disconnect();observer=null;if(onClick)doc.removeEventListener('click',onClick,true);onClick=null;panel=null;}
+  return {install,destroy,leave,selectDesktop};
 }

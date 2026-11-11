@@ -5606,7 +5606,7 @@ if (CLAUDE_ENABLED) {
         const presetList = row.closest('.cw-pm-list');
         Object.entries({
           position: 'static',
-          display: presetList && !presetList.classList.contains('cw-pm-sort') ? 'none' : 'inline-flex',
+          display: presetList?.classList.contains('cw-pm-multi') ? 'none' : 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           width: '28px',
