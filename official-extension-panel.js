@@ -74,7 +74,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   function paintHead(view){if(!mobileHead&&win.innerWidth>700&&doc.documentElement.dataset.claudeLayout!=='mobile')return;mobileHead||=make('div','cwex-mobile-head');mobileHead.replaceChildren();
     const left=view==='list'?action('☰',()=>doc.querySelector('.cw-v4-shell .cw-v4-menu')?.click(),'cwex-mobile-menu'):(()=>{const b=action('',back,'cwex-mobile-back');b.append(icon('chevl'));if(view==='detail')b.append(make('span','cwex-btn-label',t('扩展','Extensions')));return b;})();left.setAttribute('aria-label',view==='list'?t('设置导航','Settings navigation'):t('返回扩展','Back to extensions'));
     mobileHead.append(left,make('h1','cwex-mobile-title',view==='list'?t('扩展','Extensions'):view==='sort'?t('排序和隐藏','Order and visibility'):nativeOpen||active?.label||''));
-    const right=make('div','cwex-mobile-right');if(view==='sort')right.append(action(t('完成','Done'),back));mobileHead.append(right);
+    const right=make('div','cwex-mobile-right');if(view==='sort')right.append(action(t('完成','Done'),back));else if(view==='list'&&host){const plus=action('',()=>host.openThirdPartyExtensionMenu(),'cwex-mobile-install');plus.append(icon('plus'));plus.setAttribute('aria-label',t('安装扩展','Install extension'));right.append(plus);}mobileHead.append(right);
     if(!mobileHead.isConnected)doc.querySelector('.cw-v4-shell .cw-v4-head')?.append(mobileHead);
   }
   function back(){returnRoot?.();returnRoot=null;nativeReturn?.();nativeReturn=null;nativeOpen=false;active=null;sorting=false;show('list');paint();}
@@ -99,7 +99,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     const card=make('div','cwex-card');for(const [title,desc,control]of [[t('启用这个扩展','Enable this extension'),t('改动刷新酒馆后生效','Reload to apply changes'),switchButton(e)],[t('在扩展列表里显示','Show in extension list'),t('关掉只是不显示，扩展照常运行','Hidden extensions keep running'),switchButton(e,true)]]){const r=make('div','cwex-row'),info=make('div','cwex-text');info.append(make('div','cwex-name',title),make('div','cwex-meta',desc));r.append(info,control);card.append(r);}detail.append(card,make('h3','cwex-section-title',e.label+' '+t('自己的设置','settings')));
     const native=make('div','cwex-native-settings');detail.append(native);show('detail');
     const roots=e.roots.filter(r=>r.isConnected);if(e.id.split('/').at(-1)==='st-chatu8'&&(doc.getElementById('option_toggle_AN88')||typeof win.showChatuSettingsPanel==='function')){native.append(action(t('打开 st-chatu8 的设置','Open st-chatu8 settings'),()=>{const trigger=doc.getElementById('option_toggle_AN88');if(trigger)trigger.click();else win.showChatuSettingsPanel();}));}else if(roots.length){for(const r of roots)settings.open(r,e.label,{openEditor:present,preserve:/柏宝箱|酒馆助手|QR助手|st-chatu8|菜单精简器|Tavern Helper/i.test(e.label)});}else native.append(make('p','cwex-empty',enabled(e)?t('这个扩展没有独立设置页。','This extension has no separate settings page.'):t('扩展已停用，启用并刷新后可查看设置。','Enable and reload to view this extension’s settings.')));
-    if(third(e)){detail.append(make('h3','cwex-section-title',t('移除','Remove')));const danger=make('div','cwex-card cwex-danger-zone'),del=actionRow('trash',t('删除这个扩展','Delete this extension'),t('会删掉扩展文件夹；它保存的设置不一定一起删除','Deletes the extension folder; saved settings may remain'),()=>remove(e),'cwex-delete');danger.append(del);detail.append(danger);}paint();
+    if(third(e)){detail.append(make('h3','cwex-section-title',t('移除','Remove')));const danger=make('div','cwex-card cwex-danger-zone'),del=actionRow('trash',t('删除这个扩展','Delete this extension'),t('会删掉扩展文件夹；它保存的设置不一定一起删除','Deletes the extension folder; saved settings may remain'),()=>remove(e),'cwex-delete');danger.append(del);detail.append(danger);}v2dDetail(e);paint();
   }
   function ordered(){const r=records(),rank=new Map(r.map((v,i)=>[v.id,i]));return [...entries.values()].filter(e=>!e.deleted).sort((a,b)=>(rank.get(a.id)??1e6)-(rank.get(b.id)??1e6));}
   function reorder(id,before,after=false){const e=entries.get(id),other=entries.get(before);if(!e||!other||third(e)!==third(other)||id===before)return;const r=records(),i=r.findIndex(x=>x.id===id),[item]=r.splice(i,1);r.splice(r.findIndex(x=>x.id===before)+(after?1:0),0,item);save(r);renderSort();}
@@ -140,6 +140,55 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     const status=row('div',t('状态','Status'));take(get('extensions_status'),status.querySelector('.cwex-text'));get('extensions_status')?.classList.add('cwex-meta');take(get('extensions_connect'),status);get('extensions_connect')?.classList.add('cwex-btn');
     detail.append(card);
     nativeReturn=()=>{get('extensions_status')?.classList.remove('cwex-meta');get('extensions_connect')?.classList.remove('cwex-btn');for(const [n,m]of returns.reverse())if(m.parentNode)m.replaceWith(n);};show('detail');paint();}
+  /* v2d（修改单第 5 节，稿 design-settings-pages-v2d.html「扩展」）：功能和原来完全一样，只换排法。
+     列表：标题行（搜索 / 排序和隐藏 / 安装扩展）→ 标签 → 刷新提示 → 两栏 1.5 : 1（我安装的、隐藏提示、酒馆自带 | 更新、选项）。
+     paint() 仍按 class / data-* 在 list 里找这些元素，搬进容器后照样找得到。 */
+  function v2dList(){page.classList.add('cw2','cw2-ext');
+    const q1=sel=>list.querySelector(':scope>'+sel),heading=q1('.cwex-page-heading'),desc=q1('.cwex-description'),search=q1('.cwex-search'),filters=q1('.cwex-filters'),reload=q1('.cwex-reload'),updates=q1('.cwex-updates');
+    if(!heading||!filters)return;heading.classList.add('cw2-bar','cw2-mbar');const sortTop=heading.querySelector('.cwex-sort-top');
+    if(search)heading.insertBefore(search,heading.children[1]);if(desc){desc.classList.add('cw2-note');heading.insertBefore(desc,sortTop);}heading.insertBefore(make('span','cw2-sp'),sortTop);
+    filters.classList.add('cw2-xtabs');heading.after(filters);if(reload)filters.after(reload);
+    const cols=make('div','cw2-cols cw2-w64'),l=make('div','cw2-col'),r=make('div','cw2-col');cols.append(l,r);(reload||filters).after(cols);
+    for(const n of [list.querySelector('[data-group-title=third]'),list.querySelector('.cwex-catalog[data-group=third]'),q1('.cwex-hidden-note'),list.querySelector('[data-group-title=builtin]'),list.querySelector('.cwex-catalog[data-group=builtin]'),q1('.cwex-empty')])if(n)l.append(n);
+    if(updates){const upd=make('section','cw2-upd');upd.append(make('h3','cwex-section-title',t('更新','Updates')),updates);r.append(upd);}
+    const opts=q1('.cwex-options'),optsTitle=opts?.previousElementSibling;if(opts){const os=make('section','cw2-xopts');if(optsTitle?.matches('h3'))os.append(optsTitle);os.append(opts);r.append(os);
+      // 行尾用描边 ›：文字后面的「 ›」拆出来放到行尾。
+      for(const b of opts.querySelectorAll(':scope>.cwex-btn')){const tx=b.textContent;if(/\s›$/.test(tx)){b.textContent=tx.replace(/\s›$/,'');b.append(make('span','cwex-chevron cwex-chevron-always','›'));}}}
+  }
+  // 排序和隐藏：renderSort() 一行不改。它每次重画后（MutationObserver），把标题、说明、恢复默认顺序、完成收进标题行，两组放进两栏。
+  function v2dSort(){if(!editor||editor.querySelector(':scope>.cw2-cols'))return;const top=editor.querySelector(':scope>.cwex-page-heading');if(!top)return;editor.classList.add('cw2-xsort');
+    // 键盘上下键排序后 renderSort 把焦点放回把手；搬进栏里会丢焦点，搬完再放回去。
+    const focused=editor.contains(doc.activeElement)?doc.activeElement:null;
+    const h2=top.querySelector('h2'),done=top.querySelector('.cwex-primary'),desc=editor.querySelector(':scope>.cwex-description'),reset=editor.querySelector(':scope>.cwex-reset');
+    top.classList.add('cw2-bar','cw2-sortbar');const bk=action('',back,'cwex-back cw2-sortback');bk.append(icon('chevl'),make('span','cwex-btn-label',t('扩展','Extensions')));top.prepend(bk);
+    if(desc&&h2){desc.classList.add('cw2-note');h2.after(desc);}const sp=make('span','cw2-sp');(desc||h2||bk).after(sp);if(reset&&done)top.insertBefore(reset,done);
+    const titles=[...editor.querySelectorAll(':scope>.cwex-section-title')],cards=[...editor.querySelectorAll(':scope>.cwex-sort-group')];
+    const cols=make('div','cw2-cols'),l=make('div','cw2-col'),r=make('div','cw2-col');cols.append(l,r);
+    titles.forEach((h,i)=>{const c=cards[i];if(c)h.append(make('span','cwex-count',String(c.querySelectorAll(':scope>.cwex-sort-row').length)));(i?r:l).append(h);if(c)(i?r:l).append(c);});editor.append(cols);
+    if(focused?.isConnected&&doc.activeElement!==focused)focused.focus({preventScroll:true});
+  }
+  // 拖动中的行半透明，落点行顶上一条 2px 蓝线（只加样式钩子，排序逻辑还是 renderSort 里那几行）。
+  function v2dDrag(){const clear=()=>editor.querySelectorAll('.cw2-drag,.cw2-over').forEach(n=>n.classList.remove('cw2-drag','cw2-over'));
+    const over=row=>{if(!row||row.classList.contains('cw2-over'))return;const a=entries.get(dragged),b=entries.get(row.dataset.sortId);if(!a||!b||third(a)!==third(b))return;editor.querySelectorAll('.cw2-over').forEach(n=>n.classList.remove('cw2-over'));row.classList.add('cw2-over');};
+    const h={dragstart:e=>e.target.closest?.('.cwex-sort-row')?.classList.add('cw2-drag'),dragover:e=>over(e.target.closest?.('.cwex-sort-row')),dragend:clear,drop:clear,
+      pointerdown:e=>{if(e.pointerType!=='mouse'&&e.target.closest?.('.cwex-grip'))e.target.closest('.cwex-sort-row')?.classList.add('cw2-drag');},
+      pointermove:e=>{if(e.pointerType==='mouse'||!editor.querySelector('.cw2-drag'))return;over(doc.elementFromPoint(e.clientX,e.clientY)?.closest('.cwex-sort-row'));},pointerup:clear,pointercancel:clear};
+    for(const [k,f] of Object.entries(h)){editor.addEventListener(k,f,true);listeners.push(()=>editor.removeEventListener(k,f,true));}
+  }
+  // 详情：标题行（返回 / 徽标 / 名字 / 元信息）→ 两栏 1.5 : 1（自己的设置 | 这个扩展、版本、移除）。
+  function v2dDetail(e){const q1=sel=>detail.querySelector(':scope>'+sel),bk=q1('.cwex-back'),reload=q1('.cwex-reload'),head=q1('.cwex-detail-head'),actions=q1('.cwex-actions'),native=q1('.cwex-native-settings');if(!head||!native)return;detail.classList.add('cw2-xdetail');
+    const titles=[...detail.querySelectorAll(':scope>h3.cwex-section-title')],switchCard=q1('.cwex-card:not(.cwex-danger-zone)'),danger=q1('.cwex-danger-zone');
+    const bar=make('div','cw2-bar cw2-mbar cw2-xbar');if(bk)bar.append(bk);bar.append(head);detail.prepend(bar);if(reload)bar.after(reload);
+    const cols=make('div','cw2-cols cw2-w64 cw2-stretch'),l=make('div','cw2-col'),r=make('div','cw2-col');cols.append(l,r);detail.append(cols);
+    const own=make('section','cw2-own cw2-grow'),box=make('div','cwex-card cw2-own-card');if(titles[0])own.append(titles[0]);box.append(native);own.append(box);l.append(own);
+    if(switchCard){const s1=make('section','cw2-this');s1.append(make('h3','cwex-section-title',t('这个扩展','This extension')),switchCard);r.append(s1);}
+    if(actions?.children.length){const s2=make('section','cw2-ver'),vc=make('div','cwex-card');s2.append(make('h3','cwex-section-title',t('版本','Version')),vc);
+      const rowFor=(btn,title,meta,label)=>{if(!btn)return;const rr=make('div','cwex-row'),tx=make('div','cwex-text');tx.append(make('div','cwex-name',title));if(meta)tx.append(make('div','cwex-meta',meta));if(label){const lb=btn.querySelector('.cwex-btn-label');if(lb)lb.textContent=label;}rr.append(tx,btn);vc.append(rr);};
+      const chk=actions.querySelector('[data-detail-update]'),home=actions.querySelector('[data-homepage]'),br=[...actions.children].find(b=>b!==chk&&b!==home);
+      rowFor(chk,t('更新','Update'),[e.version&&t('当前 ','Current ')+e.version,e.update?.branch].filter(Boolean).join(' · '));rowFor(br,t('切换分支','Switch branch'),'',t('切换','Switch'));rowFor(home,t('项目主页','Project home'),'',t('打开','Open'));
+      actions.remove();r.append(s2);}
+    if(danger){const s3=make('section','cw2-rm');if(titles[1])s3.append(titles[1]);s3.append(danger);r.append(s3);}
+  }
   function buildList(){list=make('div','cwex-list-view');const heading=make('div','cwex-page-heading');heading.append(make('h2','',t('扩展','Extensions')),iconAction('updown',t('排序和隐藏','Order and visibility'),edit,'cwex-sort-top'),iconAction('plus',t('安装扩展','Install extension'),()=>host.openThirdPartyExtensionMenu(),'cwex-primary cwex-install'));list.append(heading,make('p','cwex-description',t('点一行进入这个扩展的设置；开关决定它是否启用。','Open a row for settings; switches control whether extensions are enabled.')));
     const reload=make('div','cwex-reload');reload.append(make('span','',t('改动刷新后生效','Reload to apply changes')),iconAction('retry',t('现在刷新','Reload now'),()=>win.location.reload()));list.append(reload);const updates=make('div','cwex-updates');const copy=make('div','cwex-update-copy');copy.append(make('div','cwex-update-title'),make('small','cwex-update-names'));updates.append(copy,iconAction('retry',t('全部更新','Update all'),updateAll));list.append(updates);
     const search=make('input','cwex-search');search.type='search';search.placeholder=t('搜索扩展','Search extensions');search.setAttribute('aria-label',search.placeholder);search.addEventListener('input',()=>{q=search.value.trim().toLocaleLowerCase();paint();});list.append(search);
@@ -151,6 +200,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     if(doc.getElementById('extensions_url'))options.append(action(t('旧版 Extras API','Legacy Extras API')+' ›',openExtras,'cwex-extras-option'));
     options.append(action(t('其他原生设置','Other native settings')+' ›',openNativeSettings));list.append(options);
     page.append(list);detail=make('div','cwex-detail-view');editor=make('div','cwex-sort-view');page.append(detail,editor);show('list',false);
+    v2dList();const sortMo=new win.MutationObserver(v2dSort);sortMo.observe(editor,{childList:true});listeners.push(()=>sortMo.disconnect());v2dDrag();
   }
   function reconcile(){if(!host)return;const values=[...entries.values()];for(const e of values)e.roots=e.roots.filter(r=>r.isConnected);for(const c of panel.querySelectorAll('#extensions_settings>div,#extensions_settings2>div')){
       const drawers=c.matches('.inline-drawer')?[c]:[...c.querySelectorAll(':scope>.inline-drawer,:scope>div>.inline-drawer')];for(const d of drawers){const h=d.querySelector('.inline-drawer-header'),label=h?.querySelector('b,strong')?.textContent.trim()||h?.textContent.trim();if(!label)continue;const cleanLabel=label.replace(/\s*new!?$/i,'').trim();const matches=values.filter(e=>norm(e.label)===norm(cleanLabel)||norm(e.manifest.display_name)===norm(cleanLabel));let id=c.id==='claude-web-settings'?own:matches.length===1&&third(matches[0])?matches[0].id:aliases[c.id]|| (matches.length===1?matches[0].id:null);
