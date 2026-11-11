@@ -711,6 +711,8 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel .cw-pm-batch[hidden] {display:none!important}
 #left-nav-panel .cw-pm-search {min-width:0!important;height:36px!important}
 #left-nav-panel .cw-pm-marker-detail {filter:none!important;opacity:1!important;text-shadow:none!important}
+/* 占位条目第二行的「由酒馆自动填入」：原来被挤成 20px 宽、字溢出在盒子外画出来，行一窄就压到开关上。占剩余宽度，放不下省略。 */
+#left-nav-panel .cw-pm-description>.cw-pm-marker-detail {flex:1 1 auto!important;min-width:0!important;width:auto!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
 #left-nav-panel .cw-pm-tools>.cw-pm-filters {display:block!important;width:84px!important;min-width:84px!important}
 #left-nav-panel .cw-pm-tools>.cw-pm-more {width:34px!important;min-width:34px!important}
 #left-nav-panel .cw-pm-filters>summary {width:100%!important;min-width:0!important;padding-inline:10px!important;font-size:13px!important;gap:5px!important}
