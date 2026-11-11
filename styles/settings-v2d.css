@@ -1,0 +1,159 @@
+/* 设置页 v2d 版式（稿 界面优化与新功能-20261103/design-settings-pages-v2d.html，修改单 qa-pages-v2d/给Codex-设置页v2d版式修改单-20261110.md）。
+   层 cw-settings-v2d 在 official-layout.css 第一行声明，排在 cw-settings-spec 前面：!important 时它比 spec / round3 / unified 都强。
+   所以这里的规则一律限定在落地了 v2d 的页面（.cw2）或明确的弹窗 / 菜单上，不碰预设、世界书、角色卡、背景。
+   电脑：窗口 1420×930（屏幕小时跟着缩）；内容区宽度不到约 900px（视口 < 1254px）时两栏退回单栏。手机：≤700px。 */
+@layer cw-settings-v2d {
+
+/* ── G12 窗口：稿子按 1420×930 画 ── */
+html[data-cw-settings-unified] :is(.cw-v4-shell,.cw-v4-panel){--cwus-window-w:min(1420px,calc(100vw - 48px))!important;--cwus-window-h:min(930px,calc(100dvh - 64px))!important}
+
+/* ── 共用语法（只在 .cw2 页面里生效） ── */
+html[data-cw-settings-unified] .cw2{--cw2-ctl:264px;--cw2-short:150px;--cw2-pad:16px}
+/* G10 标题行：标题 20/600 + 主控件 + 灰色说明 */
+html[data-cw-settings-unified] .cw2 .cw2-bar{display:flex!important;align-items:center!important;gap:8px!important;min-height:36px!important;margin:0!important;padding:0!important;flex:none!important}
+html[data-cw-settings-unified] .cw2 .cw2-bar>h2{margin:0 14px 0 0!important;font-size:20px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;line-height:normal!important;white-space:nowrap!important;flex:none!important;color:var(--cwus-ink)!important}
+html[data-cw-settings-unified] .cw2 .cw2-bar>h2:last-child{margin-right:0!important}
+html[data-cw-settings-unified] .cw2 .cw2-note{margin:0 0 0 10px!important;font-size:12.5px!important;font-weight:calc(400 + var(--cw-ui-weight-offset,0))!important;color:var(--cwus-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important;line-height:normal!important}
+html[data-cw-settings-unified] .cw2 .cw2-bar>h2+.cw2-note{margin-left:0!important}
+html[data-cw-settings-unified] .cw2 .cw2-sp{flex:1 1 0!important;min-width:0!important}
+/* G1/G2 两栏 */
+html[data-cw-settings-unified] .cw2 .cw2-cols{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:0 36px!important;align-items:start!important}
+html[data-cw-settings-unified] .cw2 .cw2-cols.cw2-w64{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)!important}
+html[data-cw-settings-unified] .cw2 .cw2-cols.cw2-stretch{align-items:stretch!important}
+html[data-cw-settings-unified] .cw2 .cw2-col{display:flex!important;flex-direction:column!important;min-width:0!important}
+html[data-cw-settings-unified] .cw2 .cw2-col>.cw-v4-section{display:flex!important;flex-direction:column!important;min-width:0!important}
+/* G3 伸长补齐：.cw2-grow 的分组和它的卡片吃掉剩余高度 */
+html[data-cw-settings-unified] .cw2 .cw2-col>.cw2-grow{flex:1 1 auto!important}
+html[data-cw-settings-unified] .cw2 .cw2-grow>.cw-v4-card{flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+html[data-cw-settings-unified] .cw2 .cw2-grow>.cw-v4-card>.cw2-fill{flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+html[data-cw-settings-unified] .cw2 .cw2-grow>.cw-v4-card>.cw2-fill textarea{flex:1 1 0!important;height:0!important;min-height:150px!important;resize:none!important}
+@media (max-width:1253px){
+ html[data-cw-settings-unified] .cw2 .cw2-cols{display:flex!important;flex-direction:column!important}
+ html[data-cw-settings-unified] .cw2 .cw2-col{display:contents!important}
+}
+/* G7 分组标题 */
+html[data-cw-settings-unified] .cw2 .cw-v4-section>h2,html[data-cw-settings-unified] .cw2 .cw2-sec-h{display:flex!important;align-items:center!important;gap:8px!important;margin:24px 2px 10px!important;padding:0!important;font-size:13.5px!important;font-weight:calc(400 + var(--cw-ui-weight-offset,0))!important;color:var(--cwus-muted)!important;line-height:normal!important;height:auto!important;min-height:0!important;border:0!important}
+html[data-cw-settings-unified] .cw2 .cw2-cols:first-child .cw2-col>.cw-v4-section:first-child>h2,html[data-cw-settings-unified] .cw2 .cw2-bar+.cw2-cols .cw2-col>.cw-v4-section:first-child>h2{margin-top:20px!important}
+html[data-cw-settings-unified] .cw2 .cw2-sec-h .cw2-cnt,html[data-cw-settings-unified] .cw2 .cw-v4-section>h2 .cw2-cnt{font-size:12px!important;color:var(--cwus-muted)!important;margin-left:0!important}
+html[data-cw-settings-unified] .cw2 .cw2-link{border:0!important;background:transparent!important;padding:0!important;margin:0 0 0 auto!important;height:auto!important;min-height:0!important;color:var(--cwus-blue)!important;font-size:12.5px!important;cursor:pointer!important;display:inline-flex!important;align-items:center!important;gap:4px!important;box-shadow:none!important;width:auto!important}
+html[data-cw-settings-unified] .cw2 .cw2-link :is(svg,.cw-v4-icon){width:13px!important;height:13px!important}
+/* 卡片 */
+html[data-cw-settings-unified] .cw2 .cw-v4-card{border-radius:14px!important;border:1px solid var(--cwus-soft)!important;background:var(--cwus-surface)!important;padding:0!important;margin:0!important;overflow:hidden!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-card:has(.cw-v4-more[open]){overflow:visible!important}
+/* G5/G6/G9 行：52 / 带说明 62，左右 16；标题 14.5，说明 12.5 一行省略 */
+html[data-cw-settings-unified] .cw2 .cw-v4-card>.cw-v4-row,html[data-cw-settings-unified] .cw2 .cw2-row{display:flex!important;flex-flow:row nowrap!important;align-items:center!important;gap:12px!important;min-height:52px!important;height:auto!important;padding:0 var(--cw2-pad)!important;margin:0!important;box-sizing:border-box!important;border:0!important;border-top:1px solid var(--cwus-soft)!important;background:transparent!important;border-radius:0!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-card>:first-child{border-top:0!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-card>*+*{border-top:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-card>.cw-v4-row:has(>.cw-v4-row-info>:is(p,.cw-v4-row-desc)){min-height:62px!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-row>.cw-v4-row-info{flex:1 1 0!important;min-width:0!important;margin:0!important;padding:0!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-row>.cw-v4-row-info>.cw-v4-row-title{font-size:14.5px!important;line-height:1.3!important;margin:0!important;white-space:normal!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-row>.cw-v4-row-info>:is(p,.cw-v4-row-desc){font-size:12.5px!important;line-height:normal!important;margin:2px 0 0!important;color:var(--cwus-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;overflow-wrap:normal!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-row>.cw-v4-row-controls{flex:0 0 auto!important;width:auto!important;max-width:none!important;min-width:0!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;flex-wrap:nowrap!important;margin:0!important;padding:0!important}
+/* G8 / G4 输入框、下拉 36 高；行尾下拉 / 宽输入框 / 滑杆 264，短下拉 150 */
+html[data-cw-settings-unified] .cw2 .cw-v4-row-controls>select,html[data-cw-settings-unified] .cw2 select.cw2-ctl{width:var(--cw2-ctl)!important;min-width:0!important;max-width:100%!important;height:36px!important;min-height:36px!important;max-height:36px!important;flex:0 0 auto!important;font-size:13.5px!important;border-radius:9px!important;background-color:var(--cwus-surface)!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-row-controls>select.cw2-short,html[data-cw-settings-unified] .cw2 select.cw2-short{width:var(--cw2-short)!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-row-controls>input:is([type=text],[type=search],[type=url],[type=password],:not([type])):not(.cw-v4-num),html[data-cw-settings-unified] .cw2 input.cw2-ctl{width:var(--cw2-ctl)!important;height:36px!important;min-height:36px!important;flex:0 0 auto!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-row-controls>input.cw-v4-num,html[data-cw-settings-unified] .cw2 .cw-v4-row-controls>input[type=number]{--cwus-number-w:62px;width:62px!important;min-width:62px!important;max-width:62px!important;flex:0 0 62px!important;height:36px!important;min-height:36px!important;text-align:center!important;padding:0 6px!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-range>.cw-v4-row-controls{width:var(--cw2-ctl)!important;--cwus-controls-width:var(--cw2-ctl);gap:12px!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-range .cw-v4-rangebox{flex:1 1 0!important;width:auto!important;min-width:0!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-range .cw-v4-num{--cwus-number-w:62px;width:62px!important;min-width:62px!important;max-width:62px!important;flex:0 0 62px!important;height:32px!important;min-height:32px!important;text-align:center!important;padding:0 6px!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-rangebox>input[type=range]::-webkit-slider-runnable-track{background:var(--cwus-line)!important}
+html[data-cw-settings-unified] .cw2 .cw-v4-rangebox>input[type=range]::-webkit-slider-thumb{width:16px!important;height:16px!important;margin-top:-6px!important;background:#fff!important;border:1px solid var(--cwus-line)!important;box-shadow:0 1px 2px rgba(0,0,0,.18)!important}
+/* G11 开关：34×20，蓝色（夜间也蓝），圆点上下居中 */
+html[data-cw-settings-unified] .cw2 :is(.cw-v4-row-controls>input[type=checkbox],input[type=checkbox].cw2-switch){width:34px!important;min-width:34px!important;max-width:34px!important;height:20px!important;min-height:20px!important;max-height:20px!important;padding:0!important;border-radius:999px!important}
+html[data-cw-settings-unified] .cw2 :is(.cw-v4-row-controls>input[type=checkbox],input[type=checkbox].cw2-switch)::before{width:14px!important;height:14px!important;left:3px!important;top:3px!important}
+html[data-cw-settings-unified] .cw2 :is(.cw-v4-row-controls>input[type=checkbox],input[type=checkbox].cw2-switch):checked{background:var(--cwus-blue)!important}
+html[data-cw-settings-unified] .cw2 :is(.cw-v4-row-controls>input[type=checkbox],input[type=checkbox].cw2-switch):checked::before{left:17px!important}
+/* 字段块：标题在上，控件在下（A4、R6） */
+html[data-cw-settings-unified] .cw2 .cw2-field{display:block!important;padding:14px 16px 16px!important;min-width:0!important;margin:0!important;border-radius:0!important;background:transparent!important}
+html[data-cw-settings-unified] .cw2 .cw2-lab{display:flex!important;align-items:center!important;gap:10px!important;min-height:20px!important;margin:0 0 9px!important;font-size:14.5px!important;color:var(--cwus-ink)!important;line-height:1.3!important}
+html[data-cw-settings-unified] .cw2 .cw2-hint{font-size:12.5px!important;color:var(--cwus-muted)!important;margin:8px 0 0!important;overflow-wrap:anywhere!important;line-height:1.5!important}
+html[data-cw-settings-unified] .cw2 .cw2-grid2{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+html[data-cw-settings-unified] .cw2 .cw2-grid3{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important}
+html[data-cw-settings-unified] .cw2 :is(.cw2-grid2,.cw2-grid3)>*+*{border-left:1px solid var(--cwus-soft)!important}
+/* 按钮组（R5）：电脑一行靠右 */
+html[data-cw-settings-unified] .cw2 .cw-v4-row-controls>:is(.cw-v4-pref-btn,.menu_button,.cw-v4-button,.cwr-btn){height:30px!important;--cwus-button-h:30px;--cwus-button-p:0 11px;--cwus-button-font:13px}
+/* 颜色（R4）：电脑两个一行，名字 / 色值 / 色块 28 */
+html[data-cw-settings-unified] .cw2 .cw2-cgrid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+html[data-cw-settings-unified] .cw2 .cw2-cgrid>.cw-v4-row{border-top:0!important}
+html[data-cw-settings-unified] .cw2 .cw2-cgrid>.cw-v4-row:nth-child(n+3){border-top:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] .cw2 .cw2-cgrid>.cw-v4-row:nth-child(even){border-left:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] .cw2 .cw2-hex{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace!important;font-size:12px!important;color:var(--cwus-muted)!important;flex:none!important}
+
+/* ── 手机 ── */
+@media (max-width:700px){
+ html[data-cw-settings-unified] .cw2{--cw2-pad:14px}
+ html[data-cw-settings-unified] .cw2 .cw2-bar{display:none!important}
+ html[data-cw-settings-unified] .cw2 .cw2-bar.cw2-mbar{display:flex!important;margin:0!important}
+ html[data-cw-settings-unified] .cw2 .cw2-bar.cw2-mbar>:is(h2,.cw2-note){display:none!important}
+ html[data-cw-settings-unified] .cw2 .cw-v4-section>h2,html[data-cw-settings-unified] .cw2 .cw2-sec-h{margin:18px 2px 8px!important;font-size:13px!important}
+ html[data-cw-settings-unified] .cw2 .cw2-cols .cw2-col>.cw-v4-section:first-child>h2{margin-top:18px!important}
+ html[data-cw-settings-unified] .cw2 .cw-v4-card>.cw-v4-row:has(>.cw-v4-row-info>:is(p,.cw-v4-row-desc)){min-height:60px!important;padding-top:9px!important;padding-bottom:9px!important}
+ html[data-cw-settings-unified] .cw2 .cw-v4-row>.cw-v4-row-info>:is(p,.cw-v4-row-desc){white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+ /* G4 手机：短下拉留在行尾 172；分段、滑杆、宽输入框、按钮组另起一行占满 */
+ html[data-cw-settings-unified] .cw2 .cw-v4-row-controls>select{width:172px!important}
+ html[data-cw-settings-unified] .cw2 .cw-v4-card>.cw-v4-row:is(.cw-v4-range,.cw2-wide,:has(>.cw-v4-row-controls>:is(input:is([type=text],[type=search],[type=url],[type=password]):not(.cw-v4-num),.cw-v4-pref-btn+.cw-v4-pref-btn))){flex-direction:column!important;align-items:stretch!important;gap:8px!important;padding-top:11px!important;padding-bottom:12px!important}
+ html[data-cw-settings-unified] .cw2 .cw-v4-card>.cw-v4-row:is(.cw-v4-range,.cw2-wide,:has(>.cw-v4-row-controls>:is(input:is([type=text],[type=search],[type=url],[type=password]):not(.cw-v4-num),.cw-v4-pref-btn+.cw-v4-pref-btn)))>.cw-v4-row-controls{width:100%!important;flex-wrap:wrap!important;justify-content:flex-start!important}
+ html[data-cw-settings-unified] .cw2 .cw-v4-card>.cw-v4-row:is(.cw-v4-range,.cw2-wide)>.cw-v4-row-controls>:is(select,input:not(.cw-v4-num)){width:100%!important;flex:1 1 auto!important}
+ html[data-cw-settings-unified] .cw2 .cw-v4-card>.cw-v4-row:has(>.cw-v4-row-controls>.cw-v4-pref-btn+.cw-v4-pref-btn)>.cw-v4-row-controls>.cw-v4-pref-btn{flex:1 0 28%!important;justify-content:center!important;height:34px!important}
+ html[data-cw-settings-unified] .cw2 .cw2-field{padding:12px 14px 14px!important}
+ html[data-cw-settings-unified] .cw2 :is(.cw2-grid2,.cw2-grid3){grid-template-columns:minmax(0,1fr)!important}
+ html[data-cw-settings-unified] .cw2 :is(.cw2-grid2,.cw2-grid3)>*+*{border-left:0!important;border-top:1px solid var(--cwus-soft)!important}
+ html[data-cw-settings-unified] .cw2 .cw2-cgrid{grid-template-columns:minmax(0,1fr)!important}
+ html[data-cw-settings-unified] .cw2 .cw2-cgrid>.cw-v4-row:nth-child(n+2){border-top:1px solid var(--cwus-soft)!important}
+ html[data-cw-settings-unified] .cw2 .cw2-cgrid>.cw-v4-row:nth-child(even){border-left:0!important}
+}
+
+/* ── 第 8 节 ⋯ 菜单（所有设置页统一）── 电脑：172 宽起，4 内边距，圆角 10，细边，轻阴影；行 34 / 字 13.5 / 圆角 7 / 图标 15 间距 9 */
+@media (min-width:701px){
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list:popover-open{min-width:172px!important;width:auto!important;max-width:320px!important;padding:4px!important;border-radius:10px!important;border:1px solid var(--cwus-soft)!important;background:var(--cwus-surface)!important;box-shadow:0 4px 14px rgba(40,36,28,.08),0 1px 2px rgba(40,36,28,.05)!important;gap:0!important}
+ html[data-cw-settings-unified][data-claude-integrated-theme="night"] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list:popover-open{background:#2f2f2d!important;border-color:#454541!important;box-shadow:0 6px 18px rgba(0,0,0,.35)!important}
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list>:is(.cw-v4-more-item,.menu_button,button:not(.cw-v4-more-cancel)){display:flex!important;align-items:center!important;gap:9px!important;width:100%!important;height:34px!important;min-height:34px!important;padding:0 10px!important;margin:0!important;border:0!important;border-radius:7px!important;background:transparent!important;font-size:13.5px!important;line-height:normal!important;white-space:nowrap!important;text-align:left!important;justify-content:flex-start!important;color:var(--cwus-ink)!important;box-shadow:none!important}
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list>:is(.cw-v4-more-item,.menu_button,button):hover{background:var(--cwus-hover)!important}
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list>:is(.cw-v4-more-item,.menu_button,button)>:is(svg,.cw-v4-icon){width:15px!important;height:15px!important;flex:none!important}
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list.cw-v4-more-list>:is(.cw-v4-danger,[id*="delete"]):is(*,button){color:var(--cwus-red)!important}
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list>:is(.cw-v4-danger,[id*="delete"])>:is(svg,.cw-v4-icon){color:var(--cwus-red)!important;opacity:1!important}
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list>:is(hr,.cwr-pop-hr){border:0!important;border-top:1px solid var(--cwus-soft)!important;margin:4px 0!important;height:0!important}
+ /* 危险项放最后，上面一条分隔线（没有显式分隔线时补一条） */
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list>:is(.cw-v4-more-item,button):not(:first-child).cw-v4-danger:not(:is(hr,.cwr-pop-hr)+*){margin-top:9px!important;position:relative!important}
+ html[data-cw-settings-unified] body #top-settings-holder :is(.cw-v4-panel,.cw-v4-shell) .cw-v4-more>.cw-v4-more-list>:is(.cw-v4-more-item,button):not(:first-child).cw-v4-danger:not(:is(hr,.cwr-pop-hr)+*)::before{content:''!important;position:absolute!important;left:-4px!important;right:-4px!important;top:-5px!important;border-top:1px solid var(--cwus-soft)!important;display:block!important;width:auto!important;height:0!important;background:none!important;mask:none!important}
+}
+/* 手机：项多的菜单是底部抽屉——顶部圆角 20、抓手条、灰色小标题、每行 50 / 字 15.5 / 图标 19、分隔线、底部通栏「取消」 */
+@media (max-width:700px){
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder .cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop)>.cw-v4-more-list.cw-v4-more-list:popover-open,html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder .cw-v4-more.cw2-sheet>.cw-v4-more-list.cw-v4-more-list:popover-open{inset:auto 0 0 0!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100vw!important;max-width:none!important;border-radius:20px 20px 0 0!important;padding:8px 10px calc(20px + env(safe-area-inset-bottom,0px))!important;background:var(--cwus-surface)!important;border:0!important;box-shadow:0 -6px 24px rgba(0,0,0,.12)!important;gap:0!important}
+ html[data-cw-settings-unified][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open{background:#2f2f2d!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open::before{content:''!important;display:block!important;width:36px!important;height:4px!important;border-radius:2px!important;background:var(--cwus-line)!important;margin:0 auto 8px!important;flex:none!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>.cw2-sheet-t{display:block!important;font-size:12.5px!important;color:var(--cwus-muted)!important;padding:4px 12px 8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>:is(.cw-v4-more-item,.menu_button,button):not(.cw-v4-more-cancel):not([style*="display: none"]):not(.displayNone){display:flex!important;align-items:center!important;gap:12px!important;width:100%!important;height:50px!important;min-height:50px!important;padding:0 12px!important;margin:0!important;border:0!important;border-radius:10px!important;background:transparent!important;font-size:15.5px!important;text-align:left!important;justify-content:flex-start!important;color:var(--cwus-ink)!important;box-shadow:none!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>:is(.cw-v4-more-item,button)>:is(svg,.cw-v4-icon){width:19px!important;height:19px!important;flex:none!important;color:var(--cwus-muted)!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>:is(.cw-v4-danger,[id*="delete"]),html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>.cw-v4-danger>:is(svg,.cw-v4-icon){color:var(--cwus-red)!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>:is(.cw-v4-danger,[id*="delete"]):not(:is(hr,.cwr-pop-hr)+*){border-top:1px solid var(--cwus-soft)!important;border-radius:0 0 10px 10px!important;margin-top:4px!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>:is(hr,.cwr-pop-hr){display:block!important;border:0!important;border-top:1px solid var(--cwus-soft)!important;margin:4px 6px!important;height:0!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open>.cw-v4-more-cancel{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:50px!important;margin:8px 0 0!important;border:0!important;border-radius:10px!important;background:var(--cwus-hover)!important;font-size:15.5px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;color:var(--cwus-ink)!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder :is(.cw2 .cw-v4-more.cw-v4-more:not(.cwr-pop),.cw-v4-more.cw2-sheet)>.cw-v4-more-list.cw-v4-more-list:popover-open::backdrop{background:rgba(20,20,19,.32)!important}
+ /* 项少的（.cwr-pop 小弹层）照电脑样式 */
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder .cw2 .cw-v4-more.cwr-pop:not(.cw2-sheet)>.cw-v4-more-list:popover-open{inset:auto!important;left:var(--cw-mx,8px)!important;top:var(--cw-my,56px)!important;right:auto!important;bottom:auto!important;width:auto!important;min-width:172px!important;padding:4px!important;border-radius:10px!important;border:1px solid var(--cwus-soft)!important;background:var(--cwus-surface)!important;box-shadow:0 4px 14px rgba(40,36,28,.08),0 1px 2px rgba(40,36,28,.05)!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder .cw2 .cw-v4-more.cwr-pop:not(.cw2-sheet)>.cw-v4-more-list:popover-open>.cw-v4-more-item{height:34px!important;min-height:34px!important;font-size:13.5px!important;border-radius:7px!important;gap:9px!important;padding:0 10px!important;border:0!important}
+ html[data-cw-settings-unified] body #top-settings-holder#top-settings-holder .cw2 .cw-v4-more.cwr-pop:not(.cw2-sheet)>.cw-v4-more-list:popover-open::before{display:none!important}
+}
+
+/* ── 第 8 节 弹窗 ── CW 自己的确认框（.cwr-confirm）：居中 420，标题 / 说明 / 右下 取消 + 主按钮；删除类主按钮红色 */
+html[data-cw-settings-unified] .cwr-confirm{width:min(420px,calc(100vw - 32px))!important;border-radius:16px!important;padding:22px 22px 18px!important}
+html[data-cw-settings-unified] .cwr-confirm h2{font-size:17px!important;margin:0 0 8px!important}
+html[data-cw-settings-unified] .cwr-confirm p{font-size:13.5px!important;line-height:1.6!important;color:var(--cwus-muted)!important}
+html[data-cw-settings-unified] .cwr-confirm-actions{display:flex!important;justify-content:flex-end!important;gap:8px!important;margin-top:18px!important}
+@media (max-width:700px){html[data-cw-settings-unified] .cwr-confirm{width:calc(100vw - 32px)!important;padding:20px 18px 16px!important}html[data-cw-settings-unified] .cwr-confirm-actions>*{flex:1 1 0!important;height:40px!important}}
+/* 放大编辑（CW 弹出页里放的是文本框）：电脑 900×680，顶上 标题 / Token / ×，中间编辑框占满，底下灰字 + 完成 */
+@media (min-width:701px){
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor{width:min(900px,calc(100vw - 48px))!important;height:min(680px,calc(100dvh - 48px))!important;max-width:none!important;max-height:none!important;display:flex!important;flex-direction:column!important;padding:18px 22px!important;border-radius:16px!important;border:0!important;box-sizing:border-box!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor[open]>.cw-v4-editor-body{flex:1 1 0!important;min-height:0!important;display:flex!important;flex-direction:column!important;padding:0!important;overflow:hidden!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-body>textarea{flex:1 1 0!important;height:auto!important;min-height:0!important;max-height:none!important;resize:none!important;border-radius:10px!important;font-size:14px!important;line-height:1.7!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor>.cw-v4-editor-head{display:flex!important;align-items:center!important;gap:12px!important;margin:0 0 12px!important;padding:0!important;border:0!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor>.cw-v4-editor-head>h2{font-size:17px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;margin:0!important;flex:1 1 auto!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-footer{display:flex!important;align-items:center!important;gap:8px!important;padding:12px 0 0!important;margin:0!important;border:0!important;background:transparent!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-footer::before{content:'改动直接写回原来的输入框'!important;flex:1 1 auto!important;font-size:12.5px!important;color:var(--cwus-muted,#7b7974)!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-footer>.cw-v4-grow{display:none!important}
+ /* 表单（如附加参数）：宽 560 */
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw2-form{width:min(560px,calc(100vw - 48px))!important;max-width:none!important;padding:20px 22px 18px!important;border-radius:16px!important}
+}
+}

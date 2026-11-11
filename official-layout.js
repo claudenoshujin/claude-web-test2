@@ -654,8 +654,11 @@ export function installOfficialLayout(win = window) {
         doc.querySelectorAll('.cw-v4-more[open]').forEach(other=>{if(other!==menu)other.open=false;});
         // 341：v2 的 .pop 菜单（共用 menu() 带图标 / 分隔线时）手机上也照稿子从 ⋯ 下方弹出，不用底部抽屉和「取消」。
         // 顶栏上的 ⋯ 打开别处的菜单时，菜单上挂 cwAnchor，按它定位。
-        const pop=menu.classList.contains('cwr-pop');
+        // v2d：项多的菜单（.cw2-sheet）手机上仍是底部抽屉，顶上一行灰色小标题写当前对象的名字（menu.cw2Title()）。
+        const sheet=menu.classList.contains('cw2-sheet'),pop=menu.classList.contains('cwr-pop')&&!sheet;
         if(mobile()&&!pop)list.append(cancel);else cancel.remove();
+        list.querySelector(':scope>.cw2-sheet-t')?.remove();
+        if(mobile()&&sheet&&typeof menu.cw2Title==='function'){const name=String(menu.cw2Title()||'').trim();if(name)list.prepend(make('div','cw2-sheet-t',name));}
         list.showPopover();
         const a=menu.cwAnchor?.isConnected?menu.cwAnchor:summary,anchor=a.getBoundingClientRect(),box=list.getBoundingClientRect();
         const x=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8));

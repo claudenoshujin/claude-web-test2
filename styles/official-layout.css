@@ -1,6 +1,9 @@
+/* 层顺序：cw-settings-v2d 排在 spec 前面，!important 时压过 spec / round3 / unified（见 settings-v2d.css 开头）。 */
+@layer cw-settings-visibility,cw-settings-v2d;
 @import url('./settings-round3.css?v=2.0.341');
 @import url("https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300..600&display=swap");
 @import url('./settings-unified.css?v=2.0.341');
+@import url('./settings-v2d.css?v=2.0.341');
 /* Mobile: keep a fixed element in a message from making the root touch-scrollable. */
 html[data-cw-v4][data-claude-layout="mobile"]{overflow-y:hidden!important}
 /* Keep message fixed elements anchored to the viewport, not a scrollable root. */
