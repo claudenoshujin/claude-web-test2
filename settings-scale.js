@@ -96,6 +96,19 @@ export function createSettingsScale({win, mobile, t}) {
       const z = zoom(), o = self.__cwOrigin, m = self.margins || {left: 0, top: 0};
       return {left: (event.pageX - win.scrollX - self.offset.click.left + m.left - o.x) / z, top: (event.pageY - win.scrollY - self.offset.click.top + m.top - o.y) / z};
     };
+    // 拖到边缘自动滚动：jQuery UI 用「滚动容器的屏幕顶边 + offsetHeight」当底边，offsetHeight 是缩放前的值，
+    // 底边被算到屏幕外，缩放时永远滚不动。照它原来的写法重写一遍，只是把 offsetHeight / offsetWidth 乘上比例（容器和列表同一个比例）。
+    const origScroll = inst._scroll;
+    if (typeof origScroll === 'function') inst._scroll = function (event) {
+      const z = zoom(), sp = this.scrollParent?.[0], o = this.options;
+      if (z === 1 || !sp || sp === this.document?.[0] || sp.tagName === 'HTML' || !this.overflowOffset) return origScroll.call(this, event);
+      let scrolled = false; const top = this.overflowOffset.top, left = this.overflowOffset.left;
+      if (top + sp.offsetHeight * z - event.pageY < o.scrollSensitivity) sp.scrollTop = scrolled = sp.scrollTop + o.scrollSpeed;
+      else if (event.pageY - top < o.scrollSensitivity) sp.scrollTop = scrolled = sp.scrollTop - o.scrollSpeed;
+      if (left + sp.offsetWidth * z - event.pageX < o.scrollSensitivity) sp.scrollLeft = scrolled = sp.scrollLeft + o.scrollSpeed;
+      else if (event.pageX - left < o.scrollSensitivity) sp.scrollLeft = scrolled = sp.scrollLeft - o.scrollSpeed;
+      return scrolled;
+    };
     wrap('_mouseStart', function () { this.__cwOrigin = null; });
     wrap('_generatePosition', function (z, [event]) { this.__cwEvent = event; });
     wrap('_convertPositionTo', function (z, [d, pos]) {
