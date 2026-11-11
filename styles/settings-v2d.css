@@ -623,4 +623,5 @@ html[data-cw-settings-unified] .cwr-mobile-head>.cw2-pehead{display:none!importa
 html[data-cw-settings-unified] .cw2-persona .cw2-ptools>.cwr-select-host{flex:0 0 120px!important;width:120px!important;min-width:0!important}
 html[data-cw-settings-unified] .cw2-persona .cw2-ptools>.cwr-select-host>#persona_sort_order{width:100%!important;max-width:none!important}
 html[data-cw-settings-unified] .cw2-persona .cw2-plink{border:0!important;background:transparent!important;padding:0!important;height:auto!important;min-height:0!important;box-shadow:none!important;width:auto!important;line-height:normal!important}
+@media (max-width:700px){html[data-cw-settings-unified] .cw2-fmt .cw-v4-row:has(>.cw-v4-row-controls>select.cw-v4-preset-sel)>.cw-v4-row-controls{flex:1 1 auto!important;min-width:0!important}html[data-cw-settings-unified] .cw2-fmt .cw-v4-row-controls>select.cw-v4-preset-sel{width:auto!important;flex:1 1 0!important;min-width:0!important}}
 }
