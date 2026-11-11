@@ -32,6 +32,12 @@ export function createV2dPages(h) {
     const stat=sec(ps,page,'','cw2-stat',bar.nextSibling);move(ps,statusRow,stat);
     const controls=statusRow.querySelector('.cw-v4-row-controls'),test=get('test_api_button');if(controls&&test&&controls.contains(connect))move(ps,test,controls,connect);
     for(const it of statusRow.querySelectorAll('.cw-v4-more-item'))if(it.textContent.trim()===L('附加参数'))hide(ps,it);
+    // 绿点只在真正连上时显示。酒馆原生只要状态不是「无连接」就加 success（绿点），连「无效的端点 URL。请求可能失败。」
+    // 「已跳过状态检查」这类警告也亮。这里认出这几句警告，给点加 cw2-warn，CSS 藏掉（稿里没有别的颜色，就不显示点）。
+    const WARN=/Invalid (Azure )?endpoint URL|无效的( Azure)? ?端点 URL|Status check bypassed|已跳过状态检查/i;
+    const dotText=statusRow.querySelector('.online_status_text'),dot=statusRow.querySelector('.online_status_indicator');
+    if(dotText&&dot){const paintDot=()=>{const warn=WARN.test(dotText.textContent||'');if(dot.classList.contains('cw2-warn')!==warn)dot.classList.toggle('cw2-warn',warn);};
+      const dmo=new win.MutationObserver(paintDot);dmo.observe(dotText,{childList:true,characterData:true,subtree:true});paintDot();cleanup(ps,()=>{dmo.disconnect();dot.classList.remove('cw2-warn');});}
     const statMenu=statusRow.querySelector('.cw-v4-more');if(statMenu)mark(ps,statMenu,'cw2-stat-more');
     // A4–A6 两栏。
     const [left,right]=cols(ps,page,stat.nextSibling,'cw2-w64 cw2-stretch');

@@ -675,3 +675,6 @@ html[data-cw-settings-unified] .cw2-p-adv .cw-v4-card>.cw-v4-row.cw2-css{padding
 html[data-cw-settings-unified] .cw2-api .cw2-src .cw-v4-api-label>.cw-v4-api-note{padding:0!important}
 html[data-cw-settings-unified] .cw2-api .cw2-src .cw-v4-api-label>.cw-v4-api-note:not(:has(*)){display:none!important}
 }
+@layer cw-settings-v2d {
+html[data-cw-settings-unified] .cw2-api .cw2-stat .online_status_indicator.cw2-warn{display:none!important}
+}
