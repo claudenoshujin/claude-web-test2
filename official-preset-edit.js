@@ -91,7 +91,8 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
       const esc=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeBig();}};win.addEventListener('keydown',esc,true);big={b,mark,esc,host};prompt.focus({preventScroll:true});}
     function closeBig(){if(!big)return;win.removeEventListener('keydown',big.esc,true);if(big.mark.parentNode)big.mark.replaceWith(prompt);big.b.remove();big.host.classList.remove('cww-big-host');panel.classList.remove('cww-big-open');big=null;}
     // 完成：照原生保存流程走。
-    const foot=make('div','cww-footbar cwp-foot');const done=button(t('完成','Done'),()=>save?.click(),'cwr-btn cww-primary cww-desk-only');foot.append(done);page.append(foot);
+    // 吸底渐变渐到页面底色（面板实际底色，随设备 / 配色变），不是卡片色——夜间否则是一条亮带（同世界书 round2 #10）。
+    const foot=make('div','cww-footbar cwp-foot');{const pg=win.getComputedStyle(panel).backgroundColor;if(pg&&pg!=='rgba(0, 0, 0, 0)'&&pg!=='transparent')foot.style.setProperty('--cwp-page',pg);}const done=button(t('完成','Done'),()=>save?.click(),'cwr-btn cww-primary cww-desk-only');foot.append(done);page.append(foot);
     panel.append(page);panel.classList.add('cwp-edit-open');doc.documentElement.classList.add('cwp-editing');panel.scrollTop=0;
     paintPos();
     // 手机顶栏：‹ 提示词 · ⋯ · 完成
