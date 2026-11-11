@@ -659,3 +659,9 @@ html[data-cw-settings-unified] .cw2-fmt .cw-v4-section>h2>.cw2-tok:not(:empty)+.
  html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-footer>.cw2-etok{display:block!important;font-size:12.5px!important;color:var(--cwus-muted,#7b7974)!important}
 }
 }
+@layer cw-settings-v2d {
+/* v2d 补充 二-1：API 左卡不伸长（OpenAI 等没有端点行的来源，三层平分高度时格子里一大片空白）。格子按内容排，这一页两栏底边不强求对齐。 */
+html[data-cw-settings-unified] .cw2-api .cw2-cols.cw2-stretch{align-items:start!important}
+html[data-cw-settings-unified] .cw2-api .cw2-col>.cw2-src.cw2-grow{flex:none!important}
+html[data-cw-settings-unified] .cw2-api .cw2-src>.cw-v4-card{align-content:start!important;flex:none!important}
+}
