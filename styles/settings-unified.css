@@ -193,7 +193,7 @@ html[data-cw-settings-unified] .cw-v4-panel #claude-web-settings .claude-web-fie
 }
 }
 @layer cw-settings-round3 {
-html[data-cw-settings-unified] :is(.cw-v4-shell, .cw-v4-panel) {--cwus-window-w:min(1040px,calc(100vw - 48px));--cwus-window-h:min(760px,calc(100dvh - 64px));--cwus-window-x:calc((100vw - var(--cwus-window-w))/2);--cwus-window-y:calc((100dvh - var(--cwus-window-h))/2);--cwus-accent:#d97757}
+html[data-cw-settings-unified] :is(.cw-v4-shell, .cw-v4-panel) {--cwus-accent:#d97757}
 html[data-cw-settings-unified] .cw-v4-panel .cw-new {display:inline-flex !important;align-items:center !important;vertical-align:middle !important;flex:0 0 auto !important;background:var(--cwus-accent) !important;color:white !important;white-space:nowrap !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-new[hidden] {display:none !important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-link {color:var(--cwus-blue) !important;text-decoration:none !important}

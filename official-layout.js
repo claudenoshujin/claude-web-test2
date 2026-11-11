@@ -1,3 +1,4 @@
+import { createSettingsScale } from './settings-scale.js?v=2.0.341';
 import { createFontWeightControl } from './font-weight.js?v=2.0.341';
 import { preferencesFor } from './preferences.js?v=2.0.341';
 import { officialIcons } from './official-icons.js?v=2.0.341';
@@ -2238,6 +2239,8 @@ export function installOfficialLayout(win = window) {
     }
   }
   if (doc.readyState === 'loading') on(doc,'DOMContentLoaded',start,{once:true}); else start();
+  // 电脑端设置窗口等比缩放（settings-scale.js）。
+  const settingsScale = createSettingsScale({win, mobile, t}); disposers.push(() => settingsScale.destroy());
   return { refresh: sync, activate, editLayout:openLayoutEditor, setExternalModals, destroy() {
     if (destroyed) return;
     destroyed = true;
