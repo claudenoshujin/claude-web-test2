@@ -71,7 +71,8 @@ export function createSettingsScale({win, mobile, t}) {
      量位置用 offset() 和指针坐标（屏幕上的尺寸），拖动中又把屏幕坐标原样写进条目的 left/top（会再被乘一次比例）。
      结果是被拖的条目不跟指针、落点不准。这里不改酒馆文件，也不改各页的代码：在设置窗口里按下指针时（捕获阶段，
      早于 jQuery UI 自己的 mousedown），给所在的 sortable 实例包一层——量出来的尺寸、外边距乘上比例，写回位置时除以比例。
-     比例是 1 时什么都不做。 */
+     尺寸换算在比例为 1 时自然不起作用；拖动位置的换算电脑端 100% 也照样做（Lulu 定：100% 在滚动过的面板里原生本身就偏 60px、
+     自动滚动后条目不跟手，一起修）。手机不缩放，不做位置换算，保持原样。 */
   const patchedSortables = new WeakSet();
   function patchSortable(inst) {
     if (!inst || patchedSortables.has(inst)) return; patchedSortables.add(inst);
@@ -112,12 +113,12 @@ export function createSettingsScale({win, mobile, t}) {
     wrap('_mouseStart', function () { this.__cwOrigin = null; });
     wrap('_generatePosition', function (z, [event]) { this.__cwEvent = event; });
     wrap('_convertPositionTo', function (z, [d, pos]) {
-      if (z === 1 || d !== 'absolute' || pos || !this.__cwEvent || !this.offset?.click || !this.position) return;
+      if (!this.__cwOn || d !== 'absolute' || pos || !this.__cwEvent || !this.offset?.click || !this.position) return;
       if (!this.__cwOrigin || this.__cwOrigin.scroll !== scrollSeq) { this.__cwMeasure = true; return; }
       const p = fixed(this, this.__cwEvent); this.position = {left: p.left, top: p.top};
     });
     wrap('_mouseDrag', function (z, [event]) {
-      if (z === 1 || !this.__cwMeasure) return;
+      if (!this.__cwOn || !this.__cwMeasure) return;
       // 第一帧（或滚动后）：jQuery UI 刚写进去的值作参照，量一次原点，再改成正确的值。
       this.__cwMeasure = false; const h = this.helper?.[0]; if (!h || !event || !this.offset?.click) return;
       const r = h.getBoundingClientRect(); this.__cwOrigin = {x: r.left - (parseFloat(h.style.left) || 0) * z, y: r.top - (parseFloat(h.style.top) || 0) * z, scroll: scrollSeq};
@@ -132,7 +133,7 @@ export function createSettingsScale({win, mobile, t}) {
   const sortableDown = e => {
     const $ = win.jQuery; if (!$?.ui?.sortable || !e.target?.closest) return;
     if (!e.target.closest('.cw-v4-panel,.cw-v4-shell')) return;
-    for (let el = e.target.closest('.ui-sortable'); el; el = el.parentElement?.closest('.ui-sortable')) { let inst = null; try { inst = $(el).sortable('instance'); } catch {} if (inst) { patchSortable(inst); inst.__cwZ = el.currentCSSZoom || 1; } }
+    for (let el = e.target.closest('.ui-sortable'); el; el = el.parentElement?.closest('.ui-sortable')) { let inst = null; try { inst = $(el).sortable('instance'); } catch {} if (inst) { patchSortable(inst); inst.__cwZ = el.currentCSSZoom || 1; inst.__cwOn = !mobile(); } }
   };
   for (const type of ['mousedown', 'touchstart', 'pointerdown']) doc.addEventListener(type, sortableDown, {capture: true, passive: true});
   win.addEventListener('resize', schedule);
