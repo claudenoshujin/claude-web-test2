@@ -206,6 +206,63 @@ export function installOfficialLayout(win = window) {
     if (p && !mobile()) p.scrollTop = 0;
     schedule();
   }
+  /* 设置页 v2d（稿 design-settings-pages-v2d.html，修改单第 1 / 4 / 7 节）：偏好页改成「标题行 + 两栏」。
+     页面和行都是这里新建的（restorePrefs 整页移除），原生控件仍由 pm() 记录、还原。手机和窄窗口单栏，按 style.order 回到原来的分组顺序。 */
+  const V2D_PREFS = new Set(['adv']);
+  function v2dSplit(secs) {
+    // 第一组固定在左栏；其余组在「两栏高度最接近、尽量少打乱原顺序」里挑（同稿子 _pages2d.js 的 split()）。
+    const h = secs.map(sec => 44 + [...sec.children].filter(n => n.matches('.cw-v4-row,.cwr-font-weight,.cw2-cgrid')).reduce((t, r) => t + (r.matches('.cw2-cgrid') ? Math.ceil(r.children.length / 2) * 52 : r.matches('.cwr-font-weight') ? 300 : r.querySelector('textarea') ? 150 : r.querySelector('.cw-v4-row-info>p') ? 62 : 52), 0));
+    const n = secs.length; let best = null;
+    for (let m = 1; m < (1 << n); m += 2) { let l = 0, r = 0, brk = 0, last = 1; for (let i = 0; i < n; i++) { const left = (m >> i) & 1; if (left) l += h[i]; else r += h[i]; if (i && left !== last) brk++; last = left; } const sc = Math.abs(l - r) + brk * 14; if (!best || sc < best.sc) best = { sc, m }; }
+    return [secs.filter((_, i) => (best.m >> i) & 1), secs.filter((_, i) => !((best.m >> i) & 1))];
+  }
+  function v2dPref(page) {
+    const key = page.dataset.page; page.classList.add('cw2', 'cw2-pref', 'cw2-p-' + key);
+    const title = page.querySelector(':scope>.cw-v4-pref-title'), lede = page.querySelector(':scope>.cw-v4-lede');
+    const bar = make('div', 'cw2-bar cw2-pbar'); page.insertBefore(bar, title || page.firstChild); if (title) bar.append(title); if (lede) { lede.classList.add('cw2-note'); bar.append(lede); }
+    const secs = [...page.querySelectorAll(':scope>.cw-v4-pref-sec')], by = k => secs.find(sec => sec.dataset.cwSec === k);
+    // 说明只占一行，鼠标停上去看全文（G5）。
+    for (const p of page.querySelectorAll('.cw-v4-row-info>p')) if (!p.title && p.textContent.trim()) p.title = p.textContent.trim();
+    let left, right;
+    if (key === 'adv') { right = ['自定义 CSS', '窗口拖动（MovingUI）', '调试与维护'].map(by).filter(Boolean); left = secs.filter(sec => !right.includes(sec)); v2dAdv(page, by); }
+    else if (key === 'acct' || secs.length < 2) { left = secs; right = []; }
+    else [left, right] = v2dSplit(secs);
+    const g = make('div', 'cw2-cols'), l = make('div', 'cw2-col'), r = make('div', 'cw2-col'); g.append(l, r); page.append(g);
+    const order = key === 'adv' ? [...left, ...right] : secs; order.forEach((sec, i) => { sec.style.order = String(i); });
+    left.forEach(sec => l.append(sec)); right.forEach(sec => r.append(sec));
+  }
+  // 高级（第 4 节）：自定义 CSS 提到右栏最上面并伸长补齐；自动补全按稿子的顺序，宽度拆成左右两行；按钮行用小按钮。
+  function v2dAdv(page, by) {
+    // 这时偏好页还没挂进文档（buildPrefs 最后才 append），只能在页面里找。
+    const $ = id => page.querySelector('#' + win.CSS.escape(id));
+    const css = by('自定义 CSS'), ta = css && $('customCSS'), row = ta?.closest('.cw-v4-row');
+    if (css && row) {
+      css.classList.add('cw2-grow'); row.classList.add('cw2-fill', 'cw2-css');
+      const zoom = row.querySelector('.editor_maximize'); const h2 = css.querySelector(':scope>h2');
+      if (zoom && h2) { const lab = make('span', 'cw2-link-t', L('放大')); zoom.append(lab); prefParts.push(lab); addClass(zoom, 'cw2-link'); pm(zoom, h2); }
+      // 手机：一行预览 + ›，点进去整页编辑。
+      const prev = button('', () => openEditor(ta, L('自定义 CSS')), 'cw2-prev'), tx = make('span', 'cw2-prev-t'); prev.append(tx, icon('chev'));
+      const paint = () => { const v = (ta.value || '').replace(/\s+/g, ' ').trim() || t('（空）', '(Empty)'); if (tx.textContent !== v) tx.textContent = v; }; paint(); on(ta, 'input', paint); row.after(prev);
+    }
+    const ac = by('自动补全');
+    if (ac) {
+      const rowOf = id => $(id)?.closest('.cw-v4-row');
+      const want = ['stscript_autocomplete_state', 'stscript_matching', 'stscript_autocomplete_style', 'stscript_autocomplete_select', 'stscript_autocomplete_font_scale'].map(rowOf).filter(Boolean);
+      const pair = ac.querySelector('.cw-v4-width-pair'), widthRow = pair?.closest('.cw-v4-row');
+      const tail = ['stscript_autocomplete_autoHide', 'stscript_autocomplete_showInAllMacroFields'].map(rowOf).filter(Boolean);
+      const extra = [];
+      if (pair && widthRow) {
+        for (const [id, label] of [['stscript_autocomplete_width_left', '左侧宽度'], ['stscript_autocomplete_width_right', '右侧宽度']]) {
+          const input = $(id); if (!input) continue;
+          const r = prow(t(label, label === '左侧宽度' ? 'Left width' : 'Right width'), '', [], 'cw-v4-range cw2-wrange'); const box = make('div', 'cw-v4-rangebox'); r.lastElementChild.append(box); pm(input, box); extra.push(r);
+        }
+        const lists = [...pair.querySelectorAll('datalist')]; for (const dl of lists) pm(dl, extra[0] || widthRow);
+      }
+      for (const r of [...want, ...extra, ...tail]) ac.append(r); if (widthRow && extra.length) widthRow.remove();
+    }
+    const mv = by('窗口拖动（MovingUI）');
+    if (mv) addClass($('movingUIPresets'), 'cw2-short');
+  }
   function buildPrefs(panel) {
     if (panel.querySelector('.cw-v4-pref-pages')) return;
     prefPanel = panel;
@@ -218,7 +275,7 @@ export function installOfficialLayout(win = window) {
       page.append(prefTitle);
       if (p.lede) page.append(make('p','cw-v4-lede',L(p.lede)));
       for (const [title,build] of p.sections) {
-        const sec = make('div','cw-v4-section cw-v4-pref-sec'); sec.append(make('h2','',L(title)));
+        const sec = make('div','cw-v4-section cw-v4-pref-sec'); sec.dataset.cwSec = title; sec.append(make('h2','',L(title)));
         for (const r of build()) if (r) sec.append(r);
         page.append(sec);
       }
@@ -233,6 +290,7 @@ export function installOfficialLayout(win = window) {
       for (const n of left) other.append(prow(labelFor(n) || n.id, '', [n]));
       pages.querySelector('[data-page="adv"]')?.append(other);
     }
+    for (const page of pages.querySelectorAll(':scope>.cw-v4-pref-page')) if (V2D_PREFS.has(page.dataset.page)) v2dPref(page);
     const remaining = make('div','cw-v4-pref-remaining');
     while (panel.firstChild) remaining.append(panel.firstChild);
     pages.append(remaining); panel.append(pages);

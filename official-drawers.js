@@ -1,4 +1,5 @@
 import { createMorePages } from './settings-more-pages.js?v=2.0.341';
+import { createV2dPages } from './settings-v2d.js?v=2.0.341';
 import { createPresetManagerPage } from './official-preset-manager.js?v=2.0.341';
 import { createInterfaceRefinements } from './official-interface-refinements.js?v=2.0.341';
 import { normalizeSettingsSections } from './settings-sections.js?v=2.0.341';
@@ -24,7 +25,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
   const presetList=createPresetList({win,make,button,t});
-  let morePages=null;
+  let morePages=null,v2dPages=null;
   let promptScroll=null;
   const get=id=>doc.getElementById(id);
   function state(root){let s=states.get(root);if(!s){s={moves:[],created:[],root};states.set(root,s);}return s;}
@@ -61,7 +62,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   // Item: [label, nativeEl, danger, run, icon]. '-' draws a thin rule between groups.
   // An icon (a POP_ICONS key) or a rule switches the menu to the v2 .pop look:
   // 16px icon + 14px text, 36px rows, danger icon and text both red.
-  const POP_ICONS={pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',trash:'<path d="M5 7h14M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>',sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',move:'<path d="M5 12h12M13 7l5 5-5 5"/>',spark:'<path d="M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z"/>',sort:'<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>',refresh:'<path d="M19 12a7 7 0 1 1-2.05-4.95M19 5v4h-4"/>'};
+  const POP_ICONS={plus:'<path d="M12 5v14M5 12h14"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',key:'<circle cx="8" cy="15" r="3.5"/><path d="m10.5 12.5 8-8M15 8l2.5 2.5M17.5 5.5 20 8"/>',ext:'<path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/>',pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',trash:'<path d="M5 7h14M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>',sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',move:'<path d="M5 12h12M13 7l5 5-5 5"/>',spark:'<path d="M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z"/>',sort:'<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>',refresh:'<path d="M19 12a7 7 0 1 1-2.05-4.95M19 5v4h-4"/>'};
   function popIcon(k){const s2=doc.createElementNS('http://www.w3.org/2000/svg','svg');s2.setAttribute('viewBox','0 0 24 24');s2.setAttribute('fill','none');s2.setAttribute('stroke','currentColor');s2.setAttribute('stroke-width','1.8');s2.setAttribute('stroke-linecap','round');s2.setAttribute('stroke-linejoin','round');s2.setAttribute('aria-hidden','true');s2.innerHTML=POP_ICONS[k]||'';return s2;}
   function menu(s,items){
     const m=make('details','cw-v4-more cw-v4-created'),h=make('summary','','⋯'),list=make('div','cw-v4-more-list'),park=make('div','cw-v4-more-park');
@@ -647,7 +648,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       finish(s);
     }
     const s=state(panel),profiles=get('connection_profiles');
-    if(profiles&&s.profile&&!s.profile.contains(profiles)){
+    if(profiles&&s.profile&&!s.profile.contains(profiles)&&!panel.classList.contains('cw2')){
       profiles.classList.add('cw-v4-preset-sel');cleanup(s,()=>profiles.classList.remove('cw-v4-preset-sel'));
       row(s,s.profile,'配置','保存一整套接口、模型和预设',[profiles,act(s,get('update_connection_profile'),'保存'),act(s,get('create_connection_profile'),'新建',true),menu(s,[['查看详情',get('view_connection_profile')],['编辑',get('edit_connection_profile')],['重新载入',get('reload_connection_profile')],['删除',get('delete_connection_profile'),true]])]);
     }
@@ -751,7 +752,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       if(panel.id==='right-nav-panel'){characterRows(panel);groupEditor();groupMemberRows();}
       if(panel.id==='WorldInfo')worldPage.sync(panel);
       for(const st of states.values())if(panel.contains(st.root))refreshLeftovers(st);
-      presetManagerPage.sync(panel);refinements.sync(panel,state(panel));(morePages||=createMorePages({win,make,button,icon,get,move,cleanup,created,state,act,menu,setting,t,L})).sync(panel);
+      presetManagerPage.sync(panel);refinements.sync(panel,state(panel));(morePages||=createMorePages({win,make,button,icon,get,move,cleanup,created,state,act,menu,setting,t,L})).sync(panel);(v2dPages||=createV2dPages({win,make,button,icon,get,move,cleanup,created,state,act,menu,setting,section,row,t,L})).sync(panel);
       normalizeSettingsSections(panel,make);
       for(const f of paints)f();
     },
