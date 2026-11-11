@@ -1781,6 +1781,14 @@ export function installOfficialLayout(win = window) {
   const SHEET_POPUP = 'dialog.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup)';
   const SMALL_POPUP = 'dialog.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor)';
   const DANGER_TEXT = /删除|移除|清空|永久|Delete|Remove|permanently/i;
+  // 删除类弹窗：只看标题（没有标题就看第一行）和「确定」按钮本身的字。原来拿整段正文去匹配，
+  // 新建连接配置里那句「点击设置名称以将其从连接配置中删除」、导出时「移除敏感字段」都被误判成删除类，确定按钮变红。
+  const DANGER_TITLE = /删除|清空|永久|Delete|permanently/i, DANGER_BUTTON = /^(删除|移除|清空|永久删除|Delete|Remove)$/i;
+  const isDangerPopup = d => {
+    const c = d.querySelector('.popup-content'); if (!c) return false;
+    const head = c.querySelector('h1,h2,h3,h4')?.textContent || (c.innerText || c.textContent || '').trim().split('\n')[0];
+    return DANGER_TITLE.test(head || '') || DANGER_BUTTON.test((d.querySelector('.popup-button-ok')?.textContent || '').trim());
+  };
   // 2.0.255 标签管理 / 其他开场白（design-content-v1，只在电脑尺寸；CSS ㉜）。弹窗每次打开都是新的，装饰一次就行；
   // 标签列表酒馆会重画（新建 / 删除 / 排序），盯着列表补装饰。原来的按钮只是搬位置，事件都在。
   function decorateTagView(d) {
@@ -1904,7 +1912,7 @@ export function installOfficialLayout(win = window) {
       if (d.querySelector('#tag_view_list')) decorateTagView(d); else if (d.querySelector('.alternate_grettings')) decorateGreetings(d);
     }
     for (const d of doc.querySelectorAll(SMALL_POPUP + '[open]')) {
-      const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || '');
+      const danger = isDangerPopup(d);
       if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger);
     }
     let now = [];
@@ -2149,7 +2157,7 @@ export function installOfficialLayout(win = window) {
     if (top._cwShut) top._cwShut(); else top.dispatchEvent(new win.Event('cancel', {cancelable: true}));
   }
   // 2.0.275（Lulu：删除确认的按钮先黑一下再变红）：删除类的标记原来在弹窗显示之后才挂；改成打开的那一刻就挂（酒馆这时已经填好内容）。
-  const tagDanger = d => { if (!enabled() || !d.matches?.(SMALL_POPUP)) return; const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || ''); if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger); };
+  const tagDanger = d => { if (!enabled() || !d.matches?.(SMALL_POPUP)) return; const danger = isDangerPopup(d); if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger); };
   function installLift() {
     const wrappedShowModal = function () { tagDanger(this); if (liftable(this)) return liftDialog(this); return nativeShowModal.call(this); };
     win.HTMLDialogElement.prototype.showModal = wrappedShowModal;
