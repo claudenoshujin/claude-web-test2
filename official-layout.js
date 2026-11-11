@@ -1,3 +1,5 @@
+import { watchTokens, tokenText } from './token-count.js?v=2.0.341';
+import { createSettingsScale } from './settings-scale.js?v=2.0.341';
 import { createFontWeightControl } from './font-weight.js?v=2.0.341';
 import { preferencesFor } from './preferences.js?v=2.0.341';
 import { officialIcons } from './official-icons.js?v=2.0.341';
@@ -206,6 +208,78 @@ export function installOfficialLayout(win = window) {
     if (p && !mobile()) p.scrollTop = 0;
     schedule();
   }
+  /* 设置页 v2d（稿 design-settings-pages-v2d.html，修改单第 1 / 4 / 7 节）：偏好页改成「标题行 + 两栏」。
+     页面和行都是这里新建的（restorePrefs 整页移除），原生控件仍由 pm() 记录、还原。手机和窄窗口单栏，按 style.order 回到原来的分组顺序。 */
+  const V2D_PREFS = new Set(['look', 'ui', 'char', 'chat', 'gen', 'adv', 'acct']);
+  function v2dSplit(secs) {
+    // 第一组固定在左栏；其余组在「两栏高度最接近、尽量少打乱原顺序」里挑（同稿子 _pages2d.js 的 split()）。
+    const h = secs.map(sec => 44 + [...sec.children].filter(n => n.matches('.cw-v4-row,.cwr-font-weight,.cw2-cgrid')).reduce((t, r) => t + (r.matches('.cw2-cgrid') ? Math.ceil(r.children.length / 2) * 52 : r.matches('.cwr-font-weight') ? 380 : r.querySelector('textarea') ? 150 : r.querySelector('.cw-v4-row-info>p') ? 62 : 52), 0));
+    const n = secs.length; let best = null;
+    for (let m = 1; m < (1 << n); m += 2) { let l = 0, r = 0, brk = 0, last = 1; for (let i = 0; i < n; i++) { const left = (m >> i) & 1; if (left) l += h[i]; else r += h[i]; if (i && left !== last) brk++; last = left; } const sc = Math.abs(l - r) + brk * 14; if (!best || sc < best.sc) best = { sc, m }; }
+    return [secs.filter((_, i) => (best.m >> i) & 1), secs.filter((_, i) => !((best.m >> i) & 1))];
+  }
+  function v2dPref(page) {
+    const key = page.dataset.page; page.classList.add('cw2', 'cw2-pref', 'cw2-p-' + key);
+    const title = page.querySelector(':scope>.cw-v4-pref-title'), lede = page.querySelector(':scope>.cw-v4-lede');
+    const bar = make('div', 'cw2-bar cw2-pbar'); page.insertBefore(bar, title || page.firstChild); if (title) bar.append(title); if (lede) { lede.classList.add('cw2-note'); bar.append(lede); }
+    const secs = [...page.querySelectorAll(':scope>.cw-v4-pref-sec')], by = k => secs.find(sec => sec.dataset.cwSec === k);
+    // 说明只占一行，鼠标停上去看全文（G5）。
+    for (const p of page.querySelectorAll('.cw-v4-row-info>p')) if (!p.title && p.textContent.trim()) p.title = p.textContent.trim();
+    // R4 颜色：电脑两个一行（名字 / 色值 / 色块），手机一个一行。
+    const colors = by('颜色'), pickRows = colors ? [...colors.querySelectorAll(':scope>.cw-v4-row')].filter(r => r.querySelector('toolcool-color-picker')) : [];
+    if (pickRows.length) {
+      const grid = make('div', 'cw2-cgrid'); pickRows[0].before(grid);
+      for (const r of pickRows) {
+        grid.append(r); const pk = r.querySelector('toolcool-color-picker'), hex = make('span', 'cw2-hex'); pk.before(hex);
+        const paint = () => { let v = ''; try { v = pk.hex || pk.getAttribute('color') || ''; } catch { v = pk.getAttribute('color') || ''; } v = String(v).replace(/^#?([0-9a-f]{6})(ff)?$/i, '#$1').toLowerCase(); if (hex.textContent !== v) hex.textContent = v; };
+        paint(); on(pk, 'change', paint); win.setTimeout(paint, 400);
+      }
+    }
+    let left, right;
+    if (key === 'adv') { right = ['自定义 CSS', '窗口拖动（MovingUI）', '调试与维护'].map(by).filter(Boolean); left = secs.filter(sec => !right.includes(sec)); v2dAdv(page, by); }
+    else if (key === 'acct' || secs.length < 2) { left = secs; right = []; }
+    else [left, right] = v2dSplit(secs);
+    const g = make('div', 'cw2-cols'), l = make('div', 'cw2-col'), r = make('div', 'cw2-col'); g.append(l, r); page.append(g);
+    const order = key === 'adv' ? [...left, ...right] : secs; order.forEach((sec, i) => { sec.style.order = String(i); });
+    left.forEach(sec => l.append(sec)); right.forEach(sec => r.append(sec));
+  }
+  // 高级（第 4 节）：自定义 CSS 提到右栏最上面并伸长补齐；自动补全按稿子的顺序，宽度拆成左右两行；按钮行用小按钮。
+  function v2dAdv(page, by) {
+    // 这时偏好页还没挂进文档（buildPrefs 最后才 append），只能在页面里找。
+    const $ = id => page.querySelector('#' + win.CSS.escape(id));
+    const css = by('自定义 CSS'), ta = css && $('customCSS'), row = ta?.closest('.cw-v4-row');
+    if (css && row) {
+      css.classList.add('cw2-grow'); row.classList.add('cw2-fill', 'cw2-css');
+      const zoom = row.querySelector('.editor_maximize'); const h2 = css.querySelector(':scope>h2');
+      if (zoom && h2) { const lab = make('span', 'cw2-link-t', L('放大')); zoom.append(lab); prefParts.push(lab); addClass(zoom, 'cw2-link'); pm(zoom, h2); }
+      // 手机：一行预览 + ›，点进去整页编辑。
+      const prev = button('', () => openEditor(ta, L('自定义 CSS')), 'cw2-prev'), tx = make('span', 'cw2-prev-t'); prev.append(tx, icon('chev'));
+      const paint = () => { const v = (ta.value || '').replace(/\s+/g, ' ').trim() || t('（空）', '(Empty)'); if (tx.textContent !== v) tx.textContent = v; }; paint(); on(ta, 'input', paint); row.after(prev);
+    }
+    const ac = by('自动补全');
+    if (ac) {
+      const rowOf = id => $(id)?.closest('.cw-v4-row');
+      const want = ['stscript_autocomplete_state', 'stscript_matching', 'stscript_autocomplete_style', 'stscript_autocomplete_select', 'stscript_autocomplete_font_scale'].map(rowOf).filter(Boolean);
+      const pair = ac.querySelector('.cw-v4-width-pair'), widthRow = pair?.closest('.cw-v4-row');
+      const tail = ['stscript_autocomplete_autoHide', 'stscript_autocomplete_showInAllMacroFields'].map(rowOf).filter(Boolean);
+      const extra = [];
+      if (pair && widthRow) {
+        for (const [id, label] of [['stscript_autocomplete_width_left', '左侧宽度'], ['stscript_autocomplete_width_right', '右侧宽度']]) {
+          const input = $(id); if (!input) continue;
+          const r = prow(t(label, label === '左侧宽度' ? 'Left width' : 'Right width'), '', [], 'cw-v4-range cw2-wrange'); const box = make('div', 'cw-v4-rangebox'); r.lastElementChild.append(box); pm(input, box); extra.push(r);
+          // v2d 补充：滑杆右边的数字框（宽 62），和滑杆双向同步；范围、步长照原生滑杆，写回走原生滑杆的 input 事件。
+          const num = make('input', 'cw-v4-num cw2-wnum'); num.type = 'number'; num.min = input.min; num.max = input.max; num.step = input.step || '1'; num.value = input.value; num.setAttribute('aria-label', t(label, label === '左侧宽度' ? 'Left width' : 'Right width')); r.lastElementChild.append(num);
+          on(num, 'input', () => { if (num.value === '') return; const v = Math.min(+input.max, Math.max(+input.min, +num.value)); if (String(v) === input.value) return; input.value = String(v); input.dispatchEvent(new win.Event('input', { bubbles: true })); });
+          on(num, 'change', () => { num.value = input.value; });
+          on(input, 'input', () => { if (num.value !== input.value) num.value = input.value; });
+        }
+        const lists = [...pair.querySelectorAll('datalist')]; for (const dl of lists) pm(dl, extra[0] || widthRow);
+      }
+      for (const r of [...want, ...extra, ...tail]) ac.append(r); if (widthRow && extra.length) widthRow.remove();
+    }
+    const mv = by('窗口拖动（MovingUI）');
+    if (mv) addClass($('movingUIPresets'), 'cw2-short');
+  }
   function buildPrefs(panel) {
     if (panel.querySelector('.cw-v4-pref-pages')) return;
     prefPanel = panel;
@@ -218,7 +292,7 @@ export function installOfficialLayout(win = window) {
       page.append(prefTitle);
       if (p.lede) page.append(make('p','cw-v4-lede',L(p.lede)));
       for (const [title,build] of p.sections) {
-        const sec = make('div','cw-v4-section cw-v4-pref-sec'); sec.append(make('h2','',L(title)));
+        const sec = make('div','cw-v4-section cw-v4-pref-sec'); sec.dataset.cwSec = title; sec.append(make('h2','',L(title)));
         for (const r of build()) if (r) sec.append(r);
         page.append(sec);
       }
@@ -233,6 +307,7 @@ export function installOfficialLayout(win = window) {
       for (const n of left) other.append(prow(labelFor(n) || n.id, '', [n]));
       pages.querySelector('[data-page="adv"]')?.append(other);
     }
+    for (const page of pages.querySelectorAll(':scope>.cw-v4-pref-page')) if (V2D_PREFS.has(page.dataset.page)) v2dPref(page);
     const remaining = make('div','cw-v4-pref-remaining');
     while (panel.firstChild) remaining.append(panel.firstChild);
     pages.append(remaining); panel.append(pages);
@@ -369,6 +444,9 @@ export function installOfficialLayout(win = window) {
     const backLabel = (parentEditor ? parentEditor.querySelector(':scope>.cw-v4-editor-head>h2')?.textContent : doc.querySelector('.cw-v4-shell .cw-v4-title')?.textContent)?.trim() || L('返回');
     const back = button('', shut, 'cw-v4-button cw-v4-editor-back'); back.append(icon('chevl'), make('span', '', backLabel)); back.setAttribute('aria-label', backLabel); head.prepend(back);
     const footer=make('footer','cw-v4-editor-footer');if(opts.foot){footer.append(opts.foot,make('span','cw-v4-grow'));}else footer.classList.add('cw-v4-editor-footer-done');footer.append(button(L('完成'),shut,'cw-v4-button cw-v4-primary'));
+    // v2d 补充：故事字符串、系统提示词内容、用户角色描述放大时，底栏左边显示「约 N Token」（自定义 CSS 等不显示）。
+    let tokenWatch = null;
+    if (node.matches?.('textarea') && ['context_story_string', 'sysprompt_content', 'persona_description'].includes(node.id)) { const tk = make('span', 'cw2-etok'); footer.prepend(tk); tokenWatch = watchTokens(win, node, n => { const v = tokenText(t, n); if (tk.textContent !== v) tk.textContent = v; }); }
     const body = make('div', 'cw-v4-editor-body');
     if (desc) body.append(make('p','cw-v4-editor-desc',desc));
     if (node.matches('textarea')) dialog.classList.add('cw-v4-text-editor');
@@ -396,6 +474,7 @@ export function installOfficialLayout(win = window) {
     let restored = false;
     const restoreEditor = () => {
       if (restored) return; restored = true;
+      tokenWatch?.stop();
       for(const [adapter,parent,select] of pickerHosts){win.jQuery(select).select2('close');adapter.$dropdownParent=parent;}
       node.hidden = oldHidden; node.style.setProperty('display',oldDisplay,oldPriority); node.classList.remove('cw-v4-editing');
       if (anchor.parentNode) anchor.replaceWith(node);
@@ -654,14 +733,19 @@ export function installOfficialLayout(win = window) {
         doc.querySelectorAll('.cw-v4-more[open]').forEach(other=>{if(other!==menu)other.open=false;});
         // 341：v2 的 .pop 菜单（共用 menu() 带图标 / 分隔线时）手机上也照稿子从 ⋯ 下方弹出，不用底部抽屉和「取消」。
         // 顶栏上的 ⋯ 打开别处的菜单时，菜单上挂 cwAnchor，按它定位。
-        const pop=menu.classList.contains('cwr-pop');
+        // v2d：项多的菜单（.cw2-sheet）手机上仍是底部抽屉，顶上一行灰色小标题写当前对象的名字（menu.cw2Title()）。
+        const sheet=menu.classList.contains('cw2-sheet'),pop=menu.classList.contains('cwr-pop')&&!sheet;
         if(mobile()&&!pop)list.append(cancel);else cancel.remove();
+        list.querySelector(':scope>.cw2-sheet-t')?.remove();
+        if(mobile()&&sheet&&typeof menu.cw2Title==='function'){const name=String(menu.cw2Title()||'').trim();if(name)list.prepend(make('div','cw2-sheet-t',name));}
         list.showPopover();
         const a=menu.cwAnchor?.isConnected?menu.cwAnchor:summary,anchor=a.getBoundingClientRect(),box=list.getBoundingClientRect();
         const x=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8));
         const y=anchor.bottom+6+box.height>win.innerHeight-8?Math.max(8,anchor.top-6-box.height):anchor.bottom+6;
-        list.style.left=x+'px';list.style.top=y+'px';
-        if(pop){list.style.setProperty('--cw-mx',x+'px');list.style.setProperty('--cw-my',y+'px');}
+        // 电脑端设置窗口等比缩放时，菜单在 zoom 里面：left / top 也会被乘上比例，所以写「屏幕坐标 ÷ 比例」。
+        const z=list.currentCSSZoom||1;
+        list.style.left=x/z+'px';list.style.top=y/z+'px';
+        if(pop){list.style.setProperty('--cw-mx',x/z+'px');list.style.setProperty('--cw-my',y/z+'px');}
       });
       on(list,'click',e=>{if(e.target===list||e.target.closest('.menu_button,button'))menu.open=false;});
       const dispose=popoverDisposer(new win.WeakRef(list));disposers.push(dispose);promptListenerCleanup.register(list,dispose,dispose);
@@ -1030,7 +1114,7 @@ export function installOfficialLayout(win = window) {
         let hits=0;
         n.querySelectorAll('.cw-v4-pref-sec').forEach(sec=>{
           const inSec=!!searchQuery&&sec.firstElementChild.textContent.toLocaleLowerCase().includes(searchQuery);let secHits=0;
-          sec.querySelectorAll(':scope>.cw-v4-card>.cw-v4-pref-row').forEach(row=>{const ok=!searchQuery||inSec||row.querySelector('.cw-v4-row-info')?.textContent.toLocaleLowerCase().includes(searchQuery);if(row.hidden===!!ok)row.hidden=!ok;if(ok)secHits++;});
+          sec.querySelectorAll(':scope>.cw-v4-card>.cw-v4-pref-row,:scope>.cw-v4-card>.cw2-cgrid>.cw-v4-pref-row').forEach(row=>{const ok=!searchQuery||inSec||row.querySelector('.cw-v4-row-info')?.textContent.toLocaleLowerCase().includes(searchQuery);if(row.hidden===!!ok)row.hidden=!ok;if(ok)secHits++;});
           if(sec.hidden===!!secHits)sec.hidden=!secHits;hits+=secHits;
         });
         const hide=searchQuery ? !hits : !mobile()&&n.dataset.page!==prefPage;if(n.hidden!==hide)n.hidden=hide;
@@ -1697,6 +1781,14 @@ export function installOfficialLayout(win = window) {
   const SHEET_POPUP = 'dialog.popup:is(.wide_dialogue_popup,.wider_dialogue_popup,.large_dialogue_popup):not(.cw-v4-editor):not(.transparent_dialogue_popup)';
   const SMALL_POPUP = 'dialog.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor)';
   const DANGER_TEXT = /删除|移除|清空|永久|Delete|Remove|permanently/i;
+  // 删除类弹窗：只看标题（没有标题就看第一行）和「确定」按钮本身的字。原来拿整段正文去匹配，
+  // 新建连接配置里那句「点击设置名称以将其从连接配置中删除」、导出时「移除敏感字段」都被误判成删除类，确定按钮变红。
+  const DANGER_TITLE = /删除|清空|永久|Delete|permanently/i, DANGER_BUTTON = /^(删除|移除|清空|永久删除|Delete|Remove)$/i;
+  const isDangerPopup = d => {
+    const c = d.querySelector('.popup-content'); if (!c) return false;
+    const head = c.querySelector('h1,h2,h3,h4')?.textContent || (c.innerText || c.textContent || '').trim().split('\n')[0];
+    return DANGER_TITLE.test(head || '') || DANGER_BUTTON.test((d.querySelector('.popup-button-ok')?.textContent || '').trim());
+  };
   // 2.0.255 标签管理 / 其他开场白（design-content-v1，只在电脑尺寸；CSS ㉜）。弹窗每次打开都是新的，装饰一次就行；
   // 标签列表酒馆会重画（新建 / 删除 / 排序），盯着列表补装饰。原来的按钮只是搬位置，事件都在。
   function decorateTagView(d) {
@@ -1820,7 +1912,7 @@ export function installOfficialLayout(win = window) {
       if (d.querySelector('#tag_view_list')) decorateTagView(d); else if (d.querySelector('.alternate_grettings')) decorateGreetings(d);
     }
     for (const d of doc.querySelectorAll(SMALL_POPUP + '[open]')) {
-      const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || '');
+      const danger = isDangerPopup(d);
       if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger);
     }
     let now = [];
@@ -2065,7 +2157,7 @@ export function installOfficialLayout(win = window) {
     if (top._cwShut) top._cwShut(); else top.dispatchEvent(new win.Event('cancel', {cancelable: true}));
   }
   // 2.0.275（Lulu：删除确认的按钮先黑一下再变红）：删除类的标记原来在弹窗显示之后才挂；改成打开的那一刻就挂（酒馆这时已经填好内容）。
-  const tagDanger = d => { if (!enabled() || !d.matches?.(SMALL_POPUP)) return; const danger = DANGER_TEXT.test(d.querySelector('.popup-content')?.textContent || ''); if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger); };
+  const tagDanger = d => { if (!enabled() || !d.matches?.(SMALL_POPUP)) return; const danger = isDangerPopup(d); if (d.hasAttribute('data-cw-danger') !== danger) d.toggleAttribute('data-cw-danger', danger); };
   function installLift() {
     const wrappedShowModal = function () { tagDanger(this); if (liftable(this)) return liftDialog(this); return nativeShowModal.call(this); };
     win.HTMLDialogElement.prototype.showModal = wrappedShowModal;
@@ -2167,6 +2259,8 @@ export function installOfficialLayout(win = window) {
     }
   }
   if (doc.readyState === 'loading') on(doc,'DOMContentLoaded',start,{once:true}); else start();
+  // 电脑端设置窗口等比缩放（settings-scale.js）。
+  const settingsScale = createSettingsScale({win, mobile, t}); disposers.push(() => settingsScale.destroy());
   return { refresh: sync, activate, editLayout:openLayoutEditor, setExternalModals, destroy() {
     if (destroyed) return;
     destroyed = true;
