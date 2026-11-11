@@ -661,11 +661,17 @@ html[data-cw-settings-unified] .cw2-fmt .cw-v4-section>h2>.cw2-tok:not(:empty)+.
 }
 @layer cw-settings-v2d {
 /* v2d 补充 二-1：API 左卡不伸长（OpenAI 等没有端点行的来源，三层平分高度时格子里一大片空白）。格子按内容排，这一页两栏底边不强求对齐。 */
-html[data-cw-settings-unified] .cw2-api .cw2-cols.cw2-stretch{align-items:start!important}
+@media (min-width:1254px){html[data-cw-settings-unified] .cw2-api .cw2-cols.cw2-stretch{align-items:start!important}}
 html[data-cw-settings-unified] .cw2-api .cw2-col>.cw2-src.cw2-grow{flex:none!important}
 html[data-cw-settings-unified] .cw2-api .cw2-src>.cw-v4-card{align-content:start!important;flex:none!important}
 }
 @layer cw-settings-v2d {
 /* v2d 补充 二-2：高级 · 自定义 CSS 卡片底部说明和卡片下边留 16（和其他边一样） */
 html[data-cw-settings-unified] .cw2-p-adv .cw-v4-card>.cw-v4-row.cw2-css{padding:14px 16px 16px!important}
+}
+@layer cw-settings-v2d {
+/* v2d 补充 二-3：API 字段块里「查看 API 使用情况」这类说明左边对齐标题（手机上原来有 16 的左右内边距）；
+   只剩搬走后返回记号的空说明不占行（它让下面的输入框多空了一截）。 */
+html[data-cw-settings-unified] .cw2-api .cw2-src .cw-v4-api-label>.cw-v4-api-note{padding:0!important}
+html[data-cw-settings-unified] .cw2-api .cw2-src .cw-v4-api-label>.cw-v4-api-note:not(:has(*)){display:none!important}
 }
