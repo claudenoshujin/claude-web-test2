@@ -67,12 +67,67 @@ export function createSettingsScale({win, mobile, t}) {
   }
   function set(s) { user = clamp(s); try { win.localStorage.setItem(KEY, String(user)); } catch {} apply(); }
   function reset(e) { e.preventDefault(); set(DEF); }
+  /* jQuery UI 排序（预设提示词列表等，酒馆的 sortable）不认 CSS zoom：它量条目用 outerWidth/Height（缩放前的尺寸），
+     量位置用 offset() 和指针坐标（屏幕上的尺寸），拖动中又把屏幕坐标原样写进条目的 left/top（会再被乘一次比例）。
+     结果是被拖的条目不跟指针、落点不准。这里不改酒馆文件，也不改各页的代码：在设置窗口里按下指针时（捕获阶段，
+     早于 jQuery UI 自己的 mousedown），给所在的 sortable 实例包一层——量出来的尺寸、外边距乘上比例，写回位置时除以比例。
+     比例是 1 时什么都不做。 */
+  const patchedSortables = new WeakSet();
+  function patchSortable(inst) {
+    if (!inst || patchedSortables.has(inst)) return; patchedSortables.add(inst);
+    // 比例在按下指针时读一次（sortableDown 写 __cwZ），拖动中不再读 currentCSSZoom——它要算计算样式，紧跟在 jQuery UI 写位置之后读会每帧逼出一次样式重算。
+    const zoom = () => inst.__cwZ || 1;
+    const wrap = (name, after) => { const orig = inst[name]; if (typeof orig !== 'function') return; inst[name] = function (...args) { const r = orig.apply(this, args); after.call(this, zoom(), args); return r; }; };
+    wrap('_refreshItemPositions', function (z, [fast]) {
+      if (z === 1 || fast) return;
+      for (const it of this.items || []) { if (this.currentContainer && it.instance !== this.currentContainer && it.item[0] !== this.currentItem?.[0]) continue; it.width *= z; it.height *= z; }
+    });
+    wrap('refreshPositions', function (z) {
+      if (z === 1 || this.options.custom?.refreshContainers) return;
+      for (const c of this.containers || []) { c.containerCache.width = c.element.outerWidth() * z; c.containerCache.height = c.element.outerHeight() * z; }
+    });
+    wrap('_cacheHelperProportions', function (z) { if (z !== 1 && this.helperProportions) { this.helperProportions.width *= z; this.helperProportions.height *= z; } });
+    wrap('_cacheMargins', function (z) { if (z !== 1 && this.margins) { this.margins.left *= z; this.margins.top *= z; } });
+    // 拖动中：jQuery UI 把屏幕坐标原样写进 left/top。屏幕位置 = 原点 + 样式值 × 比例。原点每次拖动只量一次
+    // （开始后的第一帧，或页面滚动过之后）。量好以后，在 jQuery UI 算完位置、写进样式之前就把 this.position 换成正确的样式值，
+    // 每帧只写一次样式、不读布局。不管偏移父元素是谁、外面的面板滚了多少都对（单纯除以比例时，滚动距离会被多除一次）。
+    // 判断交叉用的 positionAbs 在换值之前已经算好（屏幕坐标），不受影响。
+    const fixed = (self, event) => {
+      const z = zoom(), o = self.__cwOrigin, m = self.margins || {left: 0, top: 0};
+      return {left: (event.pageX - win.scrollX - self.offset.click.left + m.left - o.x) / z, top: (event.pageY - win.scrollY - self.offset.click.top + m.top - o.y) / z};
+    };
+    wrap('_mouseStart', function () { this.__cwOrigin = null; });
+    wrap('_generatePosition', function (z, [event]) { this.__cwEvent = event; });
+    wrap('_convertPositionTo', function (z, [d, pos]) {
+      if (z === 1 || d !== 'absolute' || pos || !this.__cwEvent || !this.offset?.click || !this.position) return;
+      if (!this.__cwOrigin || this.__cwOrigin.scroll !== scrollSeq) { this.__cwMeasure = true; return; }
+      const p = fixed(this, this.__cwEvent); this.position = {left: p.left, top: p.top};
+    });
+    wrap('_mouseDrag', function (z, [event]) {
+      if (z === 1 || !this.__cwMeasure) return;
+      // 第一帧（或滚动后）：jQuery UI 刚写进去的值作参照，量一次原点，再改成正确的值。
+      this.__cwMeasure = false; const h = this.helper?.[0]; if (!h || !event || !this.offset?.click) return;
+      const r = h.getBoundingClientRect(); this.__cwOrigin = {x: r.left - (parseFloat(h.style.left) || 0) * z, y: r.top - (parseFloat(h.style.top) || 0) * z, scroll: scrollSeq};
+      const p = fixed(this, event), axis = this.options.axis;
+      if (axis !== 'y') h.style.left = p.left + 'px';
+      if (axis !== 'x') h.style.top = p.top + 'px';
+    });
+  }
+  // 任何滚动都让拖动中的原点作废，下一帧重量一次。
+  let scrollSeq = 0; const onScroll = () => { scrollSeq++; };
+  doc.addEventListener('scroll', onScroll, {capture: true, passive: true});
+  const sortableDown = e => {
+    const $ = win.jQuery; if (!$?.ui?.sortable || !e.target?.closest) return;
+    if (!e.target.closest('.cw-v4-panel,.cw-v4-shell')) return;
+    for (let el = e.target.closest('.ui-sortable'); el; el = el.parentElement?.closest('.ui-sortable')) { let inst = null; try { inst = $(el).sortable('instance'); } catch {} if (inst) { patchSortable(inst); inst.__cwZ = el.currentCSSZoom || 1; } }
+  };
+  for (const type of ['mousedown', 'touchstart', 'pointerdown']) doc.addEventListener(type, sortableDown, {capture: true, passive: true});
   win.addEventListener('resize', schedule);
   const mo = new win.MutationObserver(schedule); mo.observe(root, {attributes: true, attributeFilter: ['data-claude-layout', 'data-cw-settings-unified']});
   apply();
   return {
     get scale() { return active() ? geometry(user).s : 1; },
     refresh: schedule,
-    destroy() { destroyed = true; win.removeEventListener('resize', schedule); mo.disconnect(); if (frame) win.cancelAnimationFrame(frame); for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); root.removeAttribute('data-cw-sz-drag'); edges.remove(); ghost.remove(); },
+    destroy() { destroyed = true; win.removeEventListener('resize', schedule); for (const type of ['mousedown', 'touchstart', 'pointerdown']) doc.removeEventListener(type, sortableDown, {capture: true}); doc.removeEventListener('scroll', onScroll, {capture: true}); mo.disconnect(); if (frame) win.cancelAnimationFrame(frame); for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); root.removeAttribute('data-cw-sz-drag'); edges.remove(); ghost.remove(); },
   };
 }
