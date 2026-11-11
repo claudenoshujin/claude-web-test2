@@ -1,3 +1,4 @@
+import { watchTokens, tokenText } from './token-count.js?v=2.0.341';
 /* The five formatting tabs and the live persona editor use original ST controls. */
 export function createInterfaceRefinements(h) {
   const {win,t,L,make,button,icon,get,begin,finish,section,row,move,cleanup,created,act,menu,tg,sel,num,txt,presetRow,showToggle,openEditor}=h;
@@ -65,7 +66,7 @@ export function createInterfaceRefinements(h) {
     // 系统提示词：「提示词内容」通栏，编辑框伸长到底；原生的「历史后置指令」放在下面。
     pane=views.get('sys');
     toolbar(pane,get('sysprompt_select'),'sysprompt','sysprompt_enabled','启用系统提示词');
-    x=sec2(pane,'提示词内容','cw2-grow cw2-full');zoom(x,'sysprompt_content','提示词内容');preview(x,'sysprompt_content','提示词内容');fld(x,'sysprompt_content','',{cls:'cw2-fill'});
+    x=sec2(pane,'提示词内容','cw2-grow cw2-full');zoom(x,'sysprompt_content','提示词内容');{const n=get('sysprompt_content'),h2=x.querySelector(':scope>h2');if(n&&h2){const tk=make('span','cw2-tok');h2.insertBefore(tk,h2.querySelector('.cw2-link'));const wt=watchTokens(win,n,c=>text(tk,tokenText(t,c)));cleanup(s,()=>wt.stop());}}preview(x,'sysprompt_content','提示词内容');fld(x,'sysprompt_content','',{cls:'cw2-fill'});
     x=sec2(pane,'历史后置指令');fld(x,'sysprompt_post_history','');
 
     // 推理与其他（1 : 1）：左「推理」+「杂项」；右「推理格式」+「终止字符串」+「分词器」。

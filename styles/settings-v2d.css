@@ -646,3 +646,16 @@ html[data-cw-settings-unified] .cw2-api .cw2-stat>.cw-v4-card>.cw-v4-row.cw-v4-r
 html[data-cw-sz-drag],html[data-cw-sz-drag] *{cursor:ew-resize!important;user-select:none!important}
 /* 旧版 v4 的八个调整大小把手：统一排版后窗口位置大小由 --cwus-window-* 决定，它们已经不起作用，还会挡住新的边缘，藏起来。 */
 html[data-cw-settings-unified] .cw-v4-shell>.cw-v4-resize{display:none!important}
+@layer cw-settings-v2d {
+/* v2d 补充：Token 数（系统提示词标题旁、放大弹窗底栏），样式同用户角色描述的「约 N Token」 */
+html[data-cw-settings-unified] .cw2-fmt .cw-v4-section>h2>.cw2-tok{margin-left:auto!important;font-size:12px!important;color:var(--cwus-muted)!important;font-weight:calc(400 + var(--cw-ui-weight-offset,0))!important}
+html[data-cw-settings-unified] .cw2-fmt .cw-v4-section>h2>.cw2-tok:empty{display:none!important}
+html[data-cw-settings-unified] .cw2-fmt .cw-v4-section>h2>.cw2-tok:not(:empty)+.cw2-link{margin-left:10px!important}
+@media (min-width:701px){
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-footer:has(>.cw2-etok:not(:empty))::before{flex:none!important}
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-footer>.cw2-etok{order:0!important;margin:0 auto 0 12px!important;font-size:12.5px!important;color:var(--cwus-muted,#7b7974)!important}
+}
+@media (max-width:700px){
+ html[data-cw-settings-unified] body #top-settings-holder dialog.cw-v4-editor.cw-v4-text-editor>.cw-v4-editor-footer>.cw2-etok{display:block!important;font-size:12.5px!important;color:var(--cwus-muted,#7b7974)!important}
+}
+}
