@@ -511,4 +511,116 @@ html[data-cw-settings-unified] .cw2-ext :is(.cw2-sortbar,.cw2-xbar)>.cwex-back{p
 html[data-cw-settings-unified] .cw2-ext .cwex-sort-row .cwex-eye{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;display:grid!important;place-items:center!important}
 html[data-cw-settings-unified] .cw2-ext .cwex-sort-row .cwex-eye:hover{background:var(--cwus-hover)!important}
 @media (max-width:700px){html[data-cw-settings-unified] .cw2-ext .cwex-sort-view>.cwex-page-heading.cw2-sortbar.cw2-sortbar{display:contents!important}}
+
+/* ── 第 6 节 用户角色（.cw2-persona，稿 v2c） ── */
+html[data-cw-settings-unified] .cw2-persona .cw2-phone{display:none!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pcur{display:none!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-lede{display:none!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-page-heading.cw2-bar{display:flex!important;align-items:center!important;gap:8px!important;margin:0!important;min-height:36px!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-page-heading.cw2-bar>h2{flex:none!important;font-size:20px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;margin:0 14px 0 0!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-page-heading.cw2-bar>:is(.menu_button,.cw-v4-as-btn){--cwus-button-h:34px;height:34px!important;margin:0!important;flex:none!important;background:var(--cwus-surface)!important;color:var(--cwus-ink)!important;border:1px solid var(--cwus-line)!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-page-heading.cw2-bar>.cw-v4-more{position:relative!important;inset:auto!important;flex:0 0 34px!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-page-heading.cw2-bar>.cw2-note{margin-left:10px!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-section-title{margin:24px 2px 10px!important;font-size:13.5px!important;font-weight:calc(400 + var(--cw-ui-weight-offset,0))!important;color:var(--cwus-muted)!important}
+html[data-cw-settings-unified] .cw2-persona .cwr-card{border:1px solid var(--cwus-soft)!important;border-radius:14px!important;background:var(--cwus-surface)!important;overflow:hidden!important;margin:0!important;padding:0!important}
+/* P1 两栏：列表 440 / 编辑区，中间 32，各自滚动 */
+@media (min-width:701px){
+ html[data-cw-settings-unified]:not([data-claude-layout="mobile"]) #PersonaManagement.cw2-ppanel.openDrawer:not(.closedDrawer){overflow:hidden!important;display:flex!important;flex-direction:column!important;padding-bottom:0!important}
+ html[data-cw-settings-unified] #PersonaManagement.cw2-ppanel>.cw-v4-drawer-page.cw2-persona{flex:1 1 auto!important;min-height:0!important;display:flex!important;flex-direction:column!important}
+ html[data-cw-settings-unified] #PersonaManagement.cw2-ppanel>.cw-v4-drawer-page.cw2-persona>*{flex:none!important}
+ html[data-cw-settings-unified] .cw2-persona>.cwr-persona-columns{flex:1 1 auto!important;min-height:0!important;display:grid!important;grid-template-columns:440px minmax(0,1fr)!important;gap:0 32px!important;margin:18px 0 0!important;align-items:stretch!important}
+ html[data-cw-settings-unified] .cw2-persona>.cwr-persona-columns>:is(.cwr-persona-list,.cwr-persona-editor){min-height:0!important;overflow-y:auto!important;padding:0 2px 28px!important;margin:0!important;scrollbar-width:thin!important}
+ html[data-cw-settings-unified] .cw2-persona>.cw-v4-leftovers{margin:0 0 12px!important}
+}
+/* P4 列表：搜索 + 排序同一行；行 60，头像 36，名字、一行描述，右边灰字是绑定情况 */
+html[data-cw-settings-unified] .cw2-persona .cw2-ptools{display:flex!important;gap:8px!important;align-items:center!important;margin:0 0 12px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-ptools>#persona_search_bar{flex:1 1 auto!important;min-width:0!important;height:36px!important;margin:0!important;border:1px solid var(--cwus-line)!important;border-radius:10px!important;background:var(--cwus-surface)!important;padding:0 11px!important;font-size:14px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-ptools :is(#persona_sort_order,.cwr-select-host){flex:none!important;width:auto!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-ptools #persona_sort_order{height:36px!important;min-height:36px!important;width:auto!important;max-width:140px!important;border:1px solid var(--cwus-line)!important;border-radius:9px!important;background-color:var(--cwus-surface)!important;font-size:13.5px!important;padding:0 30px 0 10px!important;margin:0!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block{display:block!important;border:1px solid var(--cwus-soft)!important;border-radius:14px!important;background:var(--cwus-surface)!important;overflow:hidden!important;padding:0!important;margin:0!important;gap:0!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block>.avatar-container{display:flex!important;align-items:center!important;gap:12px!important;min-height:60px!important;padding:0 16px!important;margin:0!important;border:0!important;border-top:1px solid var(--cwus-soft)!important;border-radius:0!important;background:transparent!important;cursor:pointer!important;width:auto!important;position:relative!important;box-shadow:none!important;outline:0!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block>.avatar-container:first-child{border-top:0!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block>.avatar-container.selected{background:var(--cwus-row-soft)!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block>.avatar-container.selected::after{content:''!important;display:block!important;width:16px!important;height:16px!important;flex:none!important;background:var(--cwus-blue)!important;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E") center/contain no-repeat!important;position:static!important;border:0!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .avatar{width:36px!important;height:36px!important;min-width:36px!important;flex:none!important;border-radius:50%!important;overflow:hidden!important;margin:0!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .avatar img{width:36px!important;height:36px!important;border-radius:50%!important;object-fit:cover!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .character_select_container{flex:1 1 0!important;min-width:0!important;display:flex!important;align-items:center!important;gap:10px!important;width:auto!important;flex-wrap:nowrap!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .character_name_block{flex:1 1 0!important;min-width:0!important;display:block!important;width:auto!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .ch_name{display:block!important;font-size:14.5px!important;color:var(--cwus-ink)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .ch_description{display:block!important;font-size:12.5px!important;color:var(--cwus-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;margin:2px 0 0!important;max-height:none!important;-webkit-line-clamp:unset!important;line-clamp:unset!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .character_select_container{flex-direction:column!important;align-items:stretch!important;gap:0!important;position:relative!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .avatar_container_states{position:absolute!important;right:0!important;top:50%!important;transform:translateY(-50%)!important;display:flex!important;gap:4px!important;margin:0!important}
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block .avatar_container_states .menu_button{font-size:11.5px!important;color:var(--cwus-muted)!important;border:0!important;background:transparent!important;padding:0 2px!important;height:auto!important;min-height:0!important}
+html[data-cw-settings-unified] .cw2-persona :is(.cwr-current-pill,.cwr-persona-switch){display:none!important}
+/* P5 编辑区顶部 */
+html[data-cw-settings-unified] .cw2-persona .cw2-phead{display:flex!important;align-items:center!important;gap:14px!important;padding:0!important;margin:0 0 18px!important;border:0!important;background:transparent!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-phead>.cwr-persona-avatar{width:60px!important;height:60px!important;min-width:60px!important;border-radius:50%!important;object-fit:cover!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-phead>.cwr-persona-who{flex:1 1 auto!important;min-width:0!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:4px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pnameline{display:flex!important;align-items:center!important;gap:8px!important;max-width:100%!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pnameline>.cwr-persona-name{font-size:19px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;border:0!important;border-bottom:1px dashed transparent!important;padding:0!important;height:auto!important;min-height:0!important;width:auto!important;field-sizing:content!important;min-width:2em!important;max-width:100%!important;background:transparent!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pnameline>.cwr-persona-name:is(:hover,:focus){border-bottom-color:var(--cwus-line)!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pill{font-size:11px!important;padding:1px 7px!important;border-radius:999px!important;background:var(--cwus-blue-soft)!important;color:var(--cwus-blue)!important;flex:none!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-plink{all:unset;cursor:pointer!important;font-size:12.5px!important;color:var(--cwus-blue)!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-prename{--cwus-button-h:30px;--cwus-button-p:0 11px;--cwus-button-font:13px;height:30px!important;display:inline-flex!important;align-items:center!important;gap:5px!important;flex:none!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-prename :is(svg,.cw-v4-icon){width:14px!important;height:14px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-phead>.cw-v4-more{position:relative!important;inset:auto!important;flex:0 0 34px!important}
+/* 描述卡片：描述（右上 Token、放大）+ 插入位置 */
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cwr-field{padding:14px 16px 16px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc .cwr-field-label{display:flex!important;align-items:center!important;gap:10px!important;margin:0 0 9px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc .cwr-field-label>label{flex:1 1 auto!important;font-size:14.5px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc .cw2-ptok{font-size:12px!important;color:var(--cwus-muted)!important;margin:0!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc .cwr-field-label>.cwr-btn{border:0!important;background:transparent!important;padding:0!important;height:auto!important;color:var(--cwus-blue)!important;font-size:12.5px!important;gap:4px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc .cwr-field-label>.cwr-btn :is(svg,.cw-v4-icon){width:13px!important;height:13px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cwr-field>.cwr-hint{display:none!important}
+html[data-cw-settings-unified] .cw2-persona #persona_description{height:260px!important;min-height:260px!important;resize:vertical!important;border-radius:10px!important;font-size:14px!important;line-height:1.7!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cw-v4-row{display:flex!important;align-items:center!important;min-height:52px!important;padding:0 16px!important;gap:12px!important;border-top:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cw-v4-row .cw-v4-row-controls select,html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cw-v4-row .cwr-select-host{width:264px!important;max-width:100%!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cw-v4-row select{height:36px!important;min-height:36px!important;border-radius:9px!important;font-size:13.5px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>#persona_depth_position_settings:not([style*="display: none"]){display:flex!important;gap:12px!important;padding:12px 16px 14px!important;border-top:1px solid var(--cwus-soft)!important;align-items:center!important;flex-wrap:wrap!important}
+/* 两组并排 */
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroups{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:0 24px!important;align-items:start!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cwr-card>.cw-v4-row{display:flex!important;align-items:center!important;min-height:52px!important;padding:0 16px!important;gap:12px!important;border:0!important;border-top:1px solid var(--cwus-soft)!important;background:transparent!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cwr-card>.cw-v4-row:first-child{border-top:0!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cwr-card>.cw-v4-row:has(.cw-v4-row-info>p){min-height:62px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cw-v4-row-info{flex:1 1 0!important;min-width:0!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cw-v4-row-info>.cw-v4-row-title{font-size:14.5px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cw-v4-row-info>p{font-size:12.5px!important;color:var(--cwus-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;margin:2px 0 0!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cw-v4-row-controls>input[type=checkbox],html[data-cw-settings-unified] .cw2-persona .cw-v4-lock-row :is(#lock_persona_default,#lock_persona_to_char,#lock_user_name){width:34px!important;min-width:34px!important;max-width:34px!important;height:20px!important;min-height:20px!important;max-height:20px!important;padding:0!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cw-v4-row-controls>input[type=checkbox]::before,html[data-cw-settings-unified] .cw2-persona .cw-v4-lock-row :is(#lock_persona_default,#lock_persona_to_char,#lock_user_name)::after{width:14px!important;height:14px!important;left:3px!important;top:3px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cw-v4-row-controls>input[type=checkbox]:checked::before,html[data-cw-settings-unified] .cw2-persona .cw-v4-lock-row :is(#lock_persona_default,#lock_persona_to_char,#lock_user_name).locked::after{left:17px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-pgroup .cw-v4-row-controls>input[type=checkbox]:checked{background:var(--cwus-blue)!important}
+/* 手机顶栏里的编辑页头 */
+html[data-cw-settings-unified] .cwr-mobile-head>.cw2-pehead{display:none!important}
+@media (max-width:700px){
+ html[data-cw-settings-unified]:has(.cw2-persona[data-cw2-view="edit"]) .cwr-mobile-head:has(>.cw2-pehead)>:not(.cw2-pehead){display:none!important}
+ html[data-cw-settings-unified]:has(.cw2-persona[data-cw2-view="edit"]) .cwr-mobile-head>.cw2-pehead{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;height:100%!important;gap:8px!important}
+ html[data-cw-settings-unified] .cwr-mobile-head>.cw2-pehead>.cw2-pename{flex:1 1 auto!important;text-align:center!important;font-size:17px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;margin:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ html[data-cw-settings-unified] .cwr-mobile-head>.cw2-pehead>.cw-v4-more{position:relative!important;inset:auto!important}
+ html[data-cw-settings-unified] .cw2-persona .cwr-page-heading.cw2-bar{display:none!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-phone{display:block!important}
+ html[data-cw-settings-unified] .cw2-persona .cwr-persona-columns{display:block!important;margin:0!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-ptools{position:sticky!important;top:-16px!important;z-index:3!important;background:var(--cwus-canvas)!important;margin:-16px -16px 0!important;padding:12px 16px 8px!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pcur{display:flex!important;align-items:center!important;gap:12px!important;width:100%!important;min-height:68px!important;height:auto!important;padding:10px 14px!important;margin:0!important;border:1px solid var(--cwus-soft)!important;border-radius:14px!important;background:var(--cwus-surface)!important;text-align:left!important;justify-content:flex-start!important;box-shadow:none!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pcur-img{width:44px!important;height:44px!important;border-radius:50%!important;object-fit:cover!important;flex:none!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pcur-t{flex:1 1 0!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:2px!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pcur-n{font-size:15px!important;color:var(--cwus-ink)!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pcur-d{font-size:12.5px!important;color:var(--cwus-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pcur>.cw-v4-icon{width:16px!important;height:16px!important;color:var(--cwus-muted)!important;flex:none!important}
+ html[data-cw-settings-unified] .cw2-persona .cwr-section-title{margin:18px 2px 8px!important;font-size:13px!important}
+ html[data-cw-settings-unified] .cw2-persona #user_avatar_block>.avatar-container{min-height:56px!important;padding:0 14px!important}
+ html[data-cw-settings-unified] .cw2-persona[data-cw2-view="list"] .cwr-persona-editor>:not(.cw2-pgroups){display:none!important}
+ html[data-cw-settings-unified] .cw2-persona[data-cw2-view="list"] .cw2-plocks{display:none!important}
+ html[data-cw-settings-unified] .cw2-persona[data-cw2-view="edit"] :is(.cwr-persona-list,.cw2-pglobal,.cw-v4-leftovers){display:none!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pgroups{display:block!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-phead{flex-direction:column!important;align-items:center!important;text-align:center!important;margin:8px 0 18px!important;gap:8px!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-phead>.cwr-persona-avatar{width:72px!important;height:72px!important;min-width:72px!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-phead>.cwr-persona-who{align-items:center!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-phead>:is(.cw2-prename,.cw-v4-more){display:none!important}
+ html[data-cw-settings-unified] .cw2-persona #persona_description{height:180px!important;min-height:150px!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pdesc .cwr-field-label>.cwr-btn{display:none!important}
+ html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cw-v4-row .cw-v4-row-controls select,html[data-cw-settings-unified] .cw2-persona .cw2-pdesc>.cw-v4-row .cwr-select-host{width:172px!important}
+}
+html[data-cw-settings-unified] .cw2-persona .cw2-ptools>.cwr-select-host{flex:0 0 120px!important;width:120px!important;min-width:0!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-ptools>.cwr-select-host>#persona_sort_order{width:100%!important;max-width:none!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-plink{border:0!important;background:transparent!important;padding:0!important;height:auto!important;min-height:0!important;box-shadow:none!important;width:auto!important;line-height:normal!important}
 }
