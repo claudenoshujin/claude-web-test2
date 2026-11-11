@@ -633,3 +633,16 @@ html[data-cw-settings-unified] .cw2-persona .cw2-plink{border:0!important;backgr
 @media (max-width:700px){html[data-cw-settings-unified] .cw2-fmt .cw-v4-row:has(>.cw-v4-row-controls>select.cw-v4-preset-sel)>.cw-v4-row-controls{flex:1 1 auto!important;min-width:0!important}html[data-cw-settings-unified] .cw2-fmt .cw-v4-row-controls>select.cw-v4-preset-sel{width:auto!important;flex:1 1 0!important;min-width:0!important}}
 html[data-cw-settings-unified] .cw2-api .cw2-stat>.cw-v4-card>.cw-v4-row.cw-v4-row:is(*,:has(>.cw-v4-row-info>p)){min-height:66px!important}
 }
+/* 拖动缩放：边缘层和虚线框都是 body 下独立的 fixed 元素（不跟着缩）。只在设置窗口打开、电脑端时显示。 */
+.cw-sz-edges{position:fixed;z-index:10070;pointer-events:none;box-sizing:border-box}
+.cw-sz-edges[hidden],html:not([data-cw-v4-settings="open"]) .cw-sz-edges,html:not([data-cw-sz]) .cw-sz-edges{display:none!important}
+.cw-sz-edges>div{position:absolute;pointer-events:auto;touch-action:none}
+.cw-sz-edges>.cw-sz-w{left:-3px;top:16px;bottom:16px;width:9px;cursor:ew-resize}
+.cw-sz-edges>.cw-sz-e{right:-3px;top:16px;bottom:16px;width:9px;cursor:ew-resize}
+.cw-sz-edges>.cw-sz-sw{left:-3px;bottom:-3px;width:16px;height:16px;cursor:nesw-resize}
+.cw-sz-edges>.cw-sz-se{right:-3px;bottom:-3px;width:16px;height:16px;cursor:nwse-resize}
+.cw-sz-ghost{position:fixed;z-index:10071;pointer-events:none;box-sizing:border-box;border:1.5px dashed rgba(44,111,223,.85);border-radius:16px;background:rgba(44,111,223,.04)}
+.cw-sz-ghost[hidden]{display:none!important}
+html[data-cw-sz-drag],html[data-cw-sz-drag] *{cursor:ew-resize!important;user-select:none!important}
+/* 旧版 v4 的八个调整大小把手：统一排版后窗口位置大小由 --cwus-window-* 决定，它们已经不起作用，还会挡住新的边缘，藏起来。 */
+html[data-cw-settings-unified] .cw-v4-shell>.cw-v4-resize{display:none!important}

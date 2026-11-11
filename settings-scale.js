@@ -10,7 +10,7 @@ export function createSettingsScale({win, mobile, t}) {
   const clamp = v => Math.min(MAX, Math.max(MIN, Math.round(v * 100) / 100));
   const read = () => { try { const v = parseFloat(win.localStorage.getItem(KEY)); return Number.isFinite(v) ? clamp(v) : DEF; } catch { return DEF; } };
   const VARS = ['--cw-sz', '--cw-sz-w', '--cw-sz-h', '--cw-sz-x', '--cw-sz-y'];
-  let user = read(), applied = '', frame = 0, destroyed = false;
+  let user = read(), applied = '', frame = 0, drag = null, destroyed = false;
   // 屏幕放不下：比例取用户值和 (屏幕宽 − 48) ÷ 1420 里小的，但不低于 85%；到 85% 还放不下就让设计宽度变窄。
   function geometry(u) {
     const vw = win.innerWidth, vh = win.innerHeight, s = Math.max(MIN, Math.min(u, (vw - 48) / W));
@@ -35,13 +35,44 @@ export function createSettingsScale({win, mobile, t}) {
   }
   const schedule = () => { if (!frame) frame = win.requestAnimationFrame(apply); };
   function place(n, g) { const s = n.style; s.left = g.left + 'px'; s.top = g.top + 'px'; s.width = g.w * g.s + 'px'; s.height = g.h * g.s + 'px'; }
-  const edges = {hidden: true, style: {}};
+  // 边缘：独立的 fixed 层（不在窗口里，不跟着缩），只有左右两条和下面两个角接收指针。
+  const edges = doc.createElement('div'); edges.className = 'cw-sz-edges'; edges.hidden = true;
+  const ghost = doc.createElement('div'); ghost.className = 'cw-sz-ghost'; ghost.hidden = true;
+  const tip = t('拖动缩放设置窗口 · 双击恢复 90%', 'Drag to scale the settings window · Double-click to reset to 90%');
+  for (const side of ['w', 'e', 'sw', 'se']) {
+    const h = doc.createElement('div'); h.className = 'cw-sz-' + side; h.title = tip; h.dataset.side = side;
+    h.addEventListener('pointerdown', down); h.addEventListener('dblclick', reset); edges.append(h);
+  }
+  doc.body.append(edges, ghost);
+  function down(e) {
+    if (e.button !== 0 || !active()) return;
+    e.preventDefault(); e.stopPropagation(); e.currentTarget.setPointerCapture?.(e.pointerId);
+    drag = {id: e.pointerId, s: geometry(user).s, x: e.clientX, raf: 0};
+    place(ghost, geometry(user)); ghost.hidden = false; root.setAttribute('data-cw-sz-drag', '');
+    e.currentTarget.addEventListener('pointermove', move); e.currentTarget.addEventListener('pointerup', up); e.currentTarget.addEventListener('pointercancel', up);
+  }
+  // 比例 = 鼠标到窗口中心的水平距离 × 2 ÷ 1420，夹在 85%–100%。拖动中只动虚线框，一帧最多一次。
+  function move(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag.x = e.clientX;
+    if (!drag.raf) drag.raf = win.requestAnimationFrame(() => { if (!drag) return; drag.raf = 0; drag.s = clamp(Math.abs(drag.x - win.innerWidth / 2) * 2 / W); place(ghost, geometry(drag.s)); });
+  }
+  function up(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const h = e.currentTarget; h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+    if (drag.raf) win.cancelAnimationFrame(drag.raf);
+    const s = e.type === 'pointerup' ? clamp(Math.abs(e.clientX - win.innerWidth / 2) * 2 / W) : user;
+    drag = null; ghost.hidden = true; root.removeAttribute('data-cw-sz-drag');
+    set(s);
+  }
+  function set(s) { user = clamp(s); try { win.localStorage.setItem(KEY, String(user)); } catch {} apply(); }
+  function reset(e) { e.preventDefault(); set(DEF); }
   win.addEventListener('resize', schedule);
   const mo = new win.MutationObserver(schedule); mo.observe(root, {attributes: true, attributeFilter: ['data-claude-layout', 'data-cw-settings-unified']});
   apply();
   return {
     get scale() { return active() ? geometry(user).s : 1; },
     refresh: schedule,
-    destroy() { destroyed = true; win.removeEventListener('resize', schedule); mo.disconnect(); if (frame) win.cancelAnimationFrame(frame); for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); },
+    destroy() { destroyed = true; win.removeEventListener('resize', schedule); mo.disconnect(); if (frame) win.cancelAnimationFrame(frame); for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); root.removeAttribute('data-cw-sz-drag'); edges.remove(); ghost.remove(); },
   };
 }
