@@ -1,3 +1,4 @@
+import { watchTokens, tokenText } from './token-count.js?v=2.0.341';
 import { createSettingsScale } from './settings-scale.js?v=2.0.341';
 import { createFontWeightControl } from './font-weight.js?v=2.0.341';
 import { preferencesFor } from './preferences.js?v=2.0.341';
@@ -438,6 +439,9 @@ export function installOfficialLayout(win = window) {
     const backLabel = (parentEditor ? parentEditor.querySelector(':scope>.cw-v4-editor-head>h2')?.textContent : doc.querySelector('.cw-v4-shell .cw-v4-title')?.textContent)?.trim() || L('返回');
     const back = button('', shut, 'cw-v4-button cw-v4-editor-back'); back.append(icon('chevl'), make('span', '', backLabel)); back.setAttribute('aria-label', backLabel); head.prepend(back);
     const footer=make('footer','cw-v4-editor-footer');if(opts.foot){footer.append(opts.foot,make('span','cw-v4-grow'));}else footer.classList.add('cw-v4-editor-footer-done');footer.append(button(L('完成'),shut,'cw-v4-button cw-v4-primary'));
+    // v2d 补充：故事字符串、系统提示词内容、用户角色描述放大时，底栏左边显示「约 N Token」（自定义 CSS 等不显示）。
+    let tokenWatch = null;
+    if (node.matches?.('textarea') && ['context_story_string', 'sysprompt_content', 'persona_description'].includes(node.id)) { const tk = make('span', 'cw2-etok'); footer.prepend(tk); tokenWatch = watchTokens(win, node, n => { const v = tokenText(t, n); if (tk.textContent !== v) tk.textContent = v; }); }
     const body = make('div', 'cw-v4-editor-body');
     if (desc) body.append(make('p','cw-v4-editor-desc',desc));
     if (node.matches('textarea')) dialog.classList.add('cw-v4-text-editor');
@@ -465,6 +469,7 @@ export function installOfficialLayout(win = window) {
     let restored = false;
     const restoreEditor = () => {
       if (restored) return; restored = true;
+      tokenWatch?.stop();
       for(const [adapter,parent,select] of pickerHosts){win.jQuery(select).select2('close');adapter.$dropdownParent=parent;}
       node.hidden = oldHidden; node.style.setProperty('display',oldDisplay,oldPriority); node.classList.remove('cw-v4-editing');
       if (anchor.parentNode) anchor.replaceWith(node);
