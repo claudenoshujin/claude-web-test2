@@ -139,9 +139,9 @@ export function installOfficialLayout(win = window) {
   const prefRangeUndos=[];
   const prefSegmentUndos=[];
   const segmentIds=['stscript_autocomplete_state','stscript_matching','claude-web-theme-auto','claude-web-variant','send_on_enter'];
-  function segmentPreference(select){
+  function mountNativeSegment(select){
     if(!select)return;
-    const row=select.closest('.cw-v4-pref-row');
+    const row=select.closest('.cw-v4-row');
     const title=row?.querySelector('.cw-v4-row-title');
     if(!title)return;
     const group=make('div','cww-seg cw2-segment');
@@ -184,13 +184,14 @@ export function installOfficialLayout(win = window) {
     const size=new win.ResizeObserver(schedule);size.observe(row);
     select.addEventListener('input',schedule);select.addEventListener('change',schedule);
     win.jQuery?.(select).on('change.cwPrefSegment',schedule);
-    prefSegmentUndos.push(()=>{
+    function destroy(){
       changes.disconnect();size.disconnect();win.cancelAnimationFrame(frame);
       select.removeEventListener('input',schedule);select.removeEventListener('change',schedule);
       win.jQuery?.(select).off('change.cwPrefSegment',schedule);
       select.removeAttribute('data-cw-segmented');group.remove();
-    });
+    }
     schedule();
+    return {refresh:schedule,destroy};
   }
   function pm(node,host){if(!node||node===host)return;for(const counter of node.matches?.('input[data-for]')?[node]:node.querySelectorAll?.('input[data-for]')||[]){const undo=retainRangeCounter(counter);if(undo)prefRangeUndos.push(undo);}if(node.parentNode){const mark=doc.createComment('cw-v4-pref-return');node.before(mark);prefMoves.push([node,mark]);}host.append(node);}
   const take = id => { const n=doc.getElementById(id); return n && prefPanel?.contains(n) && !n.closest('.cw-v4-pref-pages') ? n : null; };
@@ -227,7 +228,7 @@ export function installOfficialLayout(win = window) {
     color(id){const el=take(id);if(!el)return null;return prow(textOf(el.nextElementSibling),'',[el]);},
     area(id,label,desc,cls='cw-v4-area'){const el=take(id);if(!el)return null;addClass(el,...cls.split(' '));el.dataset.cwV4Text='1';let lab=el.previousElementSibling;while(lab&&!/^(SMALL|SPAN|LABEL)$/.test(lab.tagName))lab=lab.previousElementSibling;if(!lab)lab=el.parentElement?.previousElementSibling;return prow(label||textOf(lab),desc,[el],'cw-v4-stack');},
   };
-  const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu});
+  const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment});
   function restorePrefs() {
     for(const undo of prefRangeUndos.splice(0).reverse())undo();
     for(const undo of prefSegmentUndos.splice(0).reverse())undo();
@@ -380,7 +381,7 @@ export function installOfficialLayout(win = window) {
     while (panel.firstChild) remaining.append(panel.firstChild);
     pages.append(remaining); panel.append(pages);
     normalizeSettingsSections(pages,make);
-    for(const id of segmentIds)segmentPreference(doc.getElementById(id));
+    for(const id of segmentIds){const segment=mountNativeSegment(doc.getElementById(id));if(segment)prefSegmentUndos.push(segment.destroy);}
     selectPrefs(prefPage);
   }
   const isOpen = p => p.classList.contains('openDrawer') && !p.classList.contains('closedDrawer');
@@ -403,8 +404,8 @@ export function installOfficialLayout(win = window) {
     for (const dialog of dialogs) dialog.close();
     for (const p of panels.values()) if (isOpen(p)) nativeToggle(p)?.click();
   }
-  function closeSettings() {
-    if (mobile() || !current || calm()) { closeNow(); return; }
+  function closeSettings(immediate=false) {
+    if (immediate===true || mobile() || !current || calm()) { closeNow(); return; }
     if (deskClosing) return;
     deskAnim('out', DESK_BD_OUT + 40);
     deskClosing = win.setTimeout(closeNow, DESK_OUT);

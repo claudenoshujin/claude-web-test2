@@ -1,3 +1,4 @@
+import { watchTokens, tokenText } from './token-count.js?v=2.0.341';
 import { createMorePages } from './settings-more-pages.js?v=2.0.341';
 import { createV2dPages } from './settings-v2d.js?v=2.0.341';
 import { createPresetManagerPage } from './official-preset-manager.js?v=2.0.341';
@@ -20,7 +21,7 @@ export function actionLabel(node,t){
   for(const [key,cn,en] of [['delete','删除','Delete'],['restore','恢复默认','Restore defaults'],['rename','改名','Rename'],['import','导入','Import'],['export','导出','Export'],['new','另存为新的','Save as new'],['create','新建','Create'],['edit','编辑','Edit'],['update','保存','Save']])if(node.id?.includes(key)||[...node.attributes].some(a=>a.name===`data-preset-manager-${key}`))return t(cn,en);
   return (node.getAttribute('aria-label')||node.title||node.textContent||'').trim().split(/[\n.。]/)[0].slice(0,32);
 }
-export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu}) {
+export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment}) {
   const doc=win.document, states=new Map();
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
@@ -374,27 +375,9 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     return m;
   }
   const sliders=()=>icon('sliders');
-  // 下拉的每个选项一行，当前项打勾；点了改下拉的值并派发 change（酒馆自己的处理照跑）。
-  function selectOpts(ui,select){if(!select)return;for(const o of [...select.options]){if(o.hidden||o.style.display==='none')continue;ui.opt((o.textContent||'').trim(),o.selected,()=>{if(select.value===o.value)return;select.value=o.value;select.dispatchEvent(new win.Event('input',{bubbles:true}));select.dispatchEvent(new win.Event('change',{bubbles:true}));});}}
-  // 酒馆的三态筛选标签（选中 / 排除 / 不限）：开关只在「选中」和「不限」之间切，点原来的标签直到到达目标状态。
-  const tagState=el=>el?.getAttribute('data-toggle-state')||'UNDEFINED';
-  function setTag(el,on){if(!el)return;for(let i=0;i<3&&(tagState(el)==='SELECTED')!==on;i++)el.click();if(!on)for(let i=0;i<3&&tagState(el)!=='UNDEFINED';i++)el.click();}
-  function filterSheet(ui,controls){
-    if(!controls)return;
-    const sw=[['filterByFavorites','只看收藏'],['filterByGroups','只看群聊'],['filterByFolder','只看文件夹']].map(([c,l])=>[controls.querySelector('.'+c),l]).filter(([el])=>el);
-    if(sw.length){ui.head('筛选');for(const [el,l] of sw)ui.keep(L(l),()=>setTag(el,tagState(el)!=='SELECTED'),tagState(el)==='SELECTED');}
-    const userTags=[...controls.querySelectorAll('.tag:not(.actionable)')].filter(el=>el.querySelector('.tag_name')?.textContent.trim());
-    if(userTags.length){ui.head('按标签');ui.chips(userTags.map(el=>[el.querySelector('.tag_name').textContent.trim(),tagState(el)==='SELECTED',()=>setTag(el,tagState(el)!=='SELECTED')]));}
-  }
-  // 2.0.299：filterByFolder 是酒馆的「Show only folders」（只看文件夹），开着时角色只剩文件夹、其余算「已被隐藏」。
-  // 以前误标成「标签当文件夹显示」还当成默认开着、不算筛选——Lulu 手机上角色全被藏了。现在名字改对，也算进筛选（调节图标会亮）。
-  const filtered=controls=>!!controls?.querySelector(':is(.filterByFavorites,.filterByGroups,.filterByFolder,.tag:not(.actionable)):is([data-toggle-state="SELECTED"],[data-toggle-state="EXCLUDED"])');
   // 排序：一行「排序方式 · 当前值 ⌃⌄」，点了关掉这个弹出、开那个下拉自己的底部列表（openSelMenu，和别的下拉一样）。
   function sortPick(ui,select,menuEl){if(!select)return;const b=ui.opt(L('排序方式'),false,()=>{});b.classList.add('cw-v4-sheet-pick');const v=make('span','cw-v4-sheet-value',(select.selectedOptions[0]?.textContent||'').trim());b.append(v);
     b.addEventListener('click',e=>{e.stopPropagation();menuEl.open=false;win.setTimeout(()=>openSelMenu?.(select),30);},true);}
-  // 只有排序的列表页（用户角色）：调节图标直接开排序的底部列表。
-  function sortButton(select){const b=button('',e=>{e.stopPropagation();if(select)openSelMenu?.(select);},'cw-v4-phone-filter cw-v4-phone-only');b.append(sliders());b.setAttribute('aria-label',L('排序'));return b;}
-
   // 页头：头像在左，名字（点了改名）和 Token 一行灰字在中间，收藏 / 开始聊天在右。
   // 新建角色时酒馆显示 #name_div（输入框），名字按钮让位（CSS）。
   function charHero(s,host){
@@ -576,36 +559,280 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     }});
   }
 
+  function characterDetailV2e(parentState, body, form, hero) {
+    let detail=null;
+    const createLabel=get('create_button_label');
+    if(!createLabel)return;
+
+    function restoreDetail(){
+      if(!detail)return;
+      const {s,host,heroActions,resetTitle}=detail;
+      detail=null;
+      s.cleanups?.forEach(stop=>stop());
+      for(const [node,anchor] of [...s.moves].reverse())if(anchor.parentNode)anchor.replaceWith(node);
+      resetTitle();
+      heroActions?.remove();
+      host.remove();
+      body.classList.remove('cw2-char-detail','cw2-char-advanced');
+    }
+
+    function mountDetail(){
+      const s={moves:[],created:[],root:form},host=make('div','cw2 cw2-char-edit cwr-page');
+      body.classList.add('cw2-char-detail');
+      hero.classList.add('cw2-char-hero');
+      const heroActions=make('div','cw2-char-detail-actions');
+      const back=button('',()=>get('rm_button_characters')?.click(),'cw-v4-button cw2-char-back');
+      back.append(icon('chevl'),make('span','',L('全部角色')));
+      hero.after(host);
+      hero.prepend(back);
+      const tabs=make('div','cwr-tabs cw2-char-tabs'),basic=make('div','cw2-char-pane cw2-char-basic'),advanced=make('div','cw2-char-pane cw2-char-adv');
+      const tab=(key,label)=>button(L(label),()=>switchTab(key),'cwr-tab');
+      const basicTab=tab('basic','基本'),advancedTab=tab('advanced','高级定义');
+      tabs.setAttribute('role','tablist');
+      for(const button of [basicTab,advancedTab])button.setAttribute('role','tab');
+      basic.setAttribute('role','tabpanel');advanced.setAttribute('role','tabpanel');
+      tabs.append(basicTab,advancedTab);host.append(tabs,basic,advanced);
+      function switchTab(key){
+        const advancedOpen=key==='advanced';
+        basic.hidden=advancedOpen;advanced.hidden=!advancedOpen;
+        body.classList.toggle('cw2-char-advanced',advancedOpen);
+        basicTab.setAttribute('aria-selected',String(!advancedOpen));
+        advancedTab.setAttribute('aria-selected',String(advancedOpen));
+      }
+      switchTab('basic');
+      const cols=parent=>{
+        const grid=make('div','cw2-cols cw2-w64 cw2-stretch'),left=make('div','cw2-col'),right=make('div','cw2-col');
+        grid.append(left,right);parent.append(grid);
+        return [left,right];
+      };
+      const field=(parent,id,label,{hint='',mono=false,expand=false}={})=>{
+        const native=get(id);
+        if(!native)return null;
+        const box=make('div','cw2-char-field'),line=make('div','cw2-char-field-head');
+        const lab=make('label','',L(label));lab.htmlFor=id;line.append(lab);
+        if(native.tagName==='TEXTAREA'){
+          const count=make('span','cw2-char-token');
+          line.append(count);
+          const watcher=watchTokens(win,native,n=>setText(count,tokenText(t,n)));
+          cleanup(s,()=>watcher.stop());
+        }
+        if(expand){
+          const big=button('',()=>openEditor(native,L(label)),'cw2-char-link');
+          big.append(icon('expand'),make('span','',L('放大')));line.append(big);
+        }
+        box.append(line);move(s,native,box);
+        if(hint)box.append(make('p','cw2-hint',L(hint)));
+        if(mono)box.classList.add('cw2-char-mono');
+        sectionHost(parent).append(box);
+        return box;
+      };
+      const nativeAction=(label,fn)=>button(L(label),fn,'cw-v4-button');
+      const linked=(parent,label,desc,value,fn)=>{
+        const b=button('',fn,'cw2-char-link-row');
+        const name=make('span','cw2-char-link-value');
+        b.append(name,icon('chev'));b.setAttribute('aria-label',L(label));
+        const r=row(s,parent,label,desc,[b],'cw2-char-row');
+        const paint=()=>setText(name,value());
+        paint();return {r,paint};
+      };
+      const [left,right]=cols(basic);
+      const description=section(left,'');
+      description.classList.add('cw2-char-grow');
+      field(description,'description_textarea','描述',{hint:'外貌、性格、背景……',expand:true});
+      const greeting=section(left,'');
+      greeting.classList.add('cw2-char-greeting');
+      field(greeting,'firstmessage_textarea','开场白',{expand:true});
+      const alt=linked(greeting,'备选开场白','',()=>t(`${charData()?.alternate_greetings?.length||0} 条 · 管理`,`${charData()?.alternate_greetings?.length||0} · Manage`),()=>form.querySelector('.open_alternate_greetings')?.click());
+
+      const info=section(right,'基本信息');
+      const avatar=make('img','cw2-char-mini-avatar');avatar.alt='';
+      row(s,info,'头像','',[avatar,nativeAction('更换头像',()=>get('add_avatar_button')?.click())]);
+      const name=make('span','cw2-char-name');
+      row(s,info,'名字','',[name,nativeAction('改名',()=>pickOption('renameCharButton'))]);
+      row(s,info,'标签','',[get('tags_div')],'cw2-char-tags');
+      const world=section(right,'世界书');
+      const charWorld=linked(world,'角色世界书','只在和这个角色聊天时用',()=>get('character_world')?.value||L('未绑定'),()=>pickOption('set_character_world'));
+      const chatWorld=linked(world,'聊天世界书','只对当前这段聊天生效',()=>chatLore()[0],()=>linkChatLore(form.querySelector('.chat_lorebook_button')));
+      const embedded=row(s,world,'导入角色卡里的世界书','',[nativeAction('导入',()=>pickOption('import_character_info'))]);
+      const display=section(right,'绑定与显示');
+      const personaLinks=linked(display,'已绑定的用户角色','',()=>{
+        const c=win.SillyTavern?.getContext?.(),avatar=c?.characters?.[c.characterId]?.avatar;
+        const count=Object.values(c?.powerUserSettings?.persona_descriptions||{}).filter(p=>p.connections?.some(conn=>conn.type==='character'&&conn.id===avatar)).length;
+        return t(`${count} 个`,`${count} linked`);
+      },()=>get('char_connections_button')?.click());
+      linked(display,'角色设置覆盖','',()=>'',()=>pickOption('set_chat_character_settings'));
+      row(s,display,'允许外部媒体','',[nativeAction('设置',()=>get('character_open_media_overrides')?.click())]);
+      row(s,display,'使用全局样式','',[nativeAction('设置',()=>get('creators_note_styles_button')?.click())]);
+
+      const [a,b]=cols(advanced);
+      const fieldPair=(parent,items)=>{
+        const pair=make('div','cw2-char-pair');sectionHost(parent).append(pair);
+        for(const [id,label,options] of items)field(pair,id,label,options);
+      };
+      fieldPair(section(a,'提示词覆盖'),[
+        ['system_prompt_textarea','系统提示词',{hint:'可用 {{original}} 保留默认内容'}],
+        ['post_history_instructions_textarea','历史后置指令',{hint:'可用 {{original}} 保留默认内容'}],
+      ]);
+      fieldPair(section(a,'性格与场景'),[['personality_textarea','性格摘要'],['scenario_pole','场景']]);
+      const frequency=get('talkativeness_slider');
+      if(frequency){
+        const range=frequency.closest('#talkativeness_div')||frequency;
+        move(s,range,sectionHost(section(a,'群聊')));
+      }
+      const examples=section(a,'');examples.classList.add('cw2-char-grow');
+      field(examples,'mes_example_textarea','示例对话',{mono:true,expand:true,hint:'决定角色的文风'});
+      const note=section(b,'角色备注');
+      field(note,'depth_prompt_prompt','内容');
+      const depth=get('depth_prompt_depth');
+      if(depth)row(s,note,'插入深度','',[depth],'cw2-char-depth');
+      const role=get('depth_prompt_role');
+      let roleSegment=null;
+      if(role){
+        row(s,note,'身份','',[role],'cw2-char-role');
+        roleSegment=mountNativeSegment(role);
+        if(roleSegment)cleanup(s,roleSegment.destroy);
+      }
+      const meta=section(b,'卡片信息');meta.classList.add('cw2-char-grow');
+      for(const [id,label] of [['creator_textarea','创作者'],['character_version_textarea','角色版本'],['tags_textarea','内嵌标签']]){
+        const native=get(id);
+        if(native)row(s,meta,label,'',[native],'cw2-char-short-field');
+      }
+      const creator=field(meta,'creator_notes_textarea','创作者注释');
+      creator?.classList.add('cw2-char-creator-notes');
+
+      const popup=get('character_popup');
+      if(popup){
+        const knownChrome='#character_popup_ok,#character_cross,.editor_maximize,.inline-drawer-icon,.notes-link';
+        const extras=[...popup.querySelectorAll('input,textarea,select,button,.menu_button,[role=button]')].filter(n=>!n.matches(knownChrome)&&!n.closest('.notes-link'));
+        if(extras.length){
+          const other=section(b,'其他设置');
+          for(const extra of extras){
+            const block=extra.closest('label')||extra;
+            move(s,block,sectionHost(other));
+          }
+        }
+      }
+
+      const more=menu(s,[['复制',null,false,()=>get('dupe_button')?.click(),'copy'],['导出',null,false,()=>get('export_button')?.click(),'exp']]);
+      const entries=more.querySelector('.cw-v4-more-list');
+      const base=Array.from(entries.children);
+      const management=get('char-management-dropdown');
+      const separated=new Set(['convert_to_persona','character_source','import_tags','set_as_assistant']);
+      const omitted=new Set(['set_character_world','import_character_info','set_chat_character_settings','renameCharButton']);
+      function fillMore(){
+        entries.replaceChildren(...base);
+        let divider=false;
+        const options=[...(management?.options||[])].filter(o=>o.value!=='default'&&!omitted.has(o.id)&&!o.hidden&&o.style.display!=='none');
+        options.sort((a,b)=>Number(b.id==='replace_update')-Number(a.id==='replace_update'));
+        for(const option of options){
+          if(!divider&&separated.has(option.id)){entries.append(make('hr','cwr-pop-hr'));divider=true;}
+          const item=button(option.textContent.trim(),e=>{
+            e.stopPropagation();more.open=false;
+            option.selected=true;
+            management.dispatchEvent(new win.Event('change',{bubbles:true}));
+          },'cw-v4-more-item');
+          item.disabled=option.disabled;entries.append(item);
+        }
+        entries.append(make('hr','cwr-pop-hr'));
+        entries.append(button(L('删除这个角色'),e=>{
+          e.stopPropagation();more.open=false;get('delete_button')?.click();
+        },'cw-v4-more-item cw-v4-danger'));
+      }
+      more.addEventListener('toggle',()=>{if(more.open)fillMore();});
+      fillMore();
+      heroActions.append(more);hero.append(heroActions);
+
+      const paint=()=>{
+        const heading=doc.querySelector('#rm_button_selected_ch h2');
+        setText(name,heading?.textContent?.trim()||'');
+        const src=hero.querySelector('#avatar_div_div img')?.getAttribute('src')||'';
+        if(avatar.getAttribute('src')!==src)avatar.setAttribute('src',src);
+        const book=get('import_character_info');
+        const embeddedBook=charData()?.character_book;
+        embedded.hidden=!book||book.disabled||book.hidden||book.style.display==='none'||!embeddedBook;
+        for(const widget of [alt,charWorld,chatWorld,personaLinks])widget.paint();
+        roleSegment?.refresh();
+      };
+      detail={s,host,heroActions,paint,resetTitle:()=>{back.remove();hero.classList.remove('cw2-char-hero');}};
+      paint();
+    }
+
+    const sync=()=>{
+      if(createLabel.style.display==='none'){
+        if(!detail)mountDetail();
+        else detail.paint();
+      }else restoreDetail();
+    };
+    const observer=new win.MutationObserver(sync);
+    observer.observe(createLabel,{attributes:true,attributeFilter:['style']});
+    cleanup(parentState,()=>{observer.disconnect();restoreDetail();});
+    paints.push(sync);
+    sync();
+  }
   /* ---------------- 角色卡 ---------------- */
   function characters(panel){const list=get('rm_characters_block');if(!list)return;const started=begin(list);if(!started)return;const {s,page}=started;
     // In the edit view the native list button is the way back to the list.
     const back=get('rm_button_characters');if(back&&!back.querySelector('.cw-v4-action-label')){const label=make('span','cw-v4-action-label',t('全部角色','All characters'));back.append(label);s.created.push(label);back.classList.add('cw-v4-back');s.cleanup=()=>back.classList.remove('cw-v4-back');}
-    const sec=section(page,'');sec.classList.add('cw-v4-desk-only');row(s,sec,'','点角色进入编辑；新建群聊、导入角色在右边 ⋯ 里',[act(s,get('rm_button_create'),'新建角色',true),menu(s,[['新建群聊',get('rm_button_group_chats')],['从文件导入',get('character_import_button')],['从网址导入',get('external_import_button')],['批量编辑',get('bulkEditButton')]])]);
-    // 2.0.263：网格视图不要了（Claude 的列表没有网格；开着也照列表排）。按钮收起来，免得掉进「其他设置」。
-    {const gp=make('div','cw-v4-park');sec.append(gp);move(s,get('charListGridToggle'),gp);}
-    const all=section(page,'全部角色');all.classList.add('cw-v4-entries','cw-v4-chatlist');const b=bar();all.append(b);
-    b.append(searchBox(s,get('character_search_bar'),'搜索角色'));move(s,get('character_sort_order'),b);
+    page.classList.add('cw2','cw2-char-list','cwr-page');
+    const header=make('div','cw2-char-sticky');
+    const head=make('div','cw2-bar cw2-char-bar');
+    const importButton=get('character_import_button'),createButton=get('rm_button_create');
+    head.append(make('h2','',L('角色卡')),searchBox(s,get('character_search_bar'),'搜索角色名、标签、创作者备注'));
+    head.append(make('span','cw2-note',t('点角色卡查看详情','Open a character to view its details')));
+    head.append(make('span','cw2-sp'));
+    if(importButton)move(s,act(s,importButton,'导入'),head);
+    if(createButton)move(s,act(s,createButton,'新建角色',false,true),head);
+    const actions=menu(s,[
+      ['新建群聊',get('rm_button_group_chats'),false,null,'plus'],
+      ['从网址导入',get('external_import_button'),false,null,'ext'],
+      ['批量编辑',get('bulkEditButton'),false,null,'pencil'],
+      ['从文件导入',null,false,()=>importButton?.click(),'imp'],
+    ]);
+    actions.querySelector('.cw-v4-more-item:last-child')?.classList.add('cw2-char-mobile-import');
+    head.append(actions);
+    const mobileCreate=button('',()=>createButton?.click(),'cw2-char-mobile-create');
+    mobileCreate.append(icon('plus'));
+    mobileCreate.setAttribute('aria-label',L('新建角色'));
+    header.append(head,mobileCreate);
+    const filters=make('div','cw2-char-filters');
     const tags=list.querySelector('#charListFixedTop .rm_tag_controls');
-    if(tags){tags.classList.add('cw-v4-tags');move(s,tags,all);cleanup(s,()=>tags.classList.remove('cw-v4-tags'));}
-    // 2.0.263：批量编辑时酒馆的「已选 N / 全选 / 删除」原来落在「其他设置」里看不见；改成列表上方一条操作栏（电脑手机都用），点的还是原来的按钮。
-    const bulk=make('div','cw-v4-bulkbar'),bcount=make('span','cw-v4-bulk-count');bulk.append(bcount,
-      button(L('全选'),()=>get('bulkSelectAllButton')?.click(),'cw-v4-bulk-btn'),button(L('删除'),()=>get('bulkDeleteButton')?.click(),'cw-v4-bulk-btn cw-v4-bulk-del'),button(L('完成'),()=>get('bulkEditButton')?.click(),'cw-v4-bulk-btn cw-v4-bulk-done'));
-    b.after(bulk);paints.push(()=>{const n=parseInt(get('bulkSelectedCount')?.textContent||'0',10)||0;setText(bcount,n?t(`已选 ${n} 个`,`${n} selected`):t('点角色选中','Tap to select'));});
-    // 2.0.261 手机（照 Chats）：搜索框右端调节图标 → 排序 / 筛选 / 工具；右下角悬浮「+ 新建」。
-    const click=id=>()=>get(id)?.click();
-    const flt=sheetMenu('cw-v4-phone-filter',sliders(),ui=>{
-      sortPick(ui,get('character_sort_order'),flt);
-      filterSheet(ui,tags);
-      ui.head('工具');ui.opt(L('管理标签'),false,()=>tags?.querySelector('.manageTags')?.click());ui.opt(L('批量编辑'),false,click('bulkEditButton'));
-      if(filtered(tags))ui.opt(L('清除筛选'),false,()=>tags?.querySelector('.clearAllFilters')?.click()).classList.add('cw-v4-sheet-clear');
+    if(tags){
+      tags.classList.add('cw-v4-tags');
+      move(s,tags,filters);
+      cleanup(s,()=>tags.classList.remove('cw-v4-tags'));
+    }
+    const sort=make('label','cw2-char-sort',L('排序'));
+    move(s,get('character_sort_order'),sort);
+    filters.append(sort);
+    header.append(filters);
+    page.append(header);
+    const bulk=make('div','cw-v4-bulkbar'),bcount=make('span','cw-v4-bulk-count');
+    bulk.append(bcount,
+      button(L('全选'),()=>get('bulkSelectAllButton')?.click(),'cw-v4-bulk-btn'),
+      button(L('删除'),()=>get('bulkDeleteButton')?.click(),'cw-v4-bulk-btn cw-v4-bulk-del'),
+      button(L('完成'),()=>get('bulkEditButton')?.click(),'cw-v4-bulk-btn cw-v4-bulk-done'));
+    header.append(bulk);
+    paints.push(()=>{
+      const count=parseInt(get('bulkSelectedCount')?.textContent||'0',10)||0;
+      setText(bcount,t(`已选 ${count} 个`,`${count} selected`));
     });
-    b.append(flt);paints.push(()=>setFlag(flt,'cw-v4-dot',filtered(tags)));
-    const fab=sheetMenu('cw-v4-phone-fab',make('span','',L('新建')),ui=>{
-      ui.opt(L('新建角色'),false,click('rm_button_create'));ui.opt(L('新建群聊'),false,click('rm_button_group_chats'));
-      ui.opt(L('从文件导入'),false,click('character_import_button'));ui.opt(L('从网址导入'),false,click('external_import_button'));
+    const all=section(page,'全部角色');
+    all.classList.add('cw-v4-entries','cw-v4-chatlist');
+    const count=make('span','cw2-char-count');
+    const title=all.querySelector('h2');
+    title.append(count);
+    const phoneSort=button('',()=>openSelMenu?.(get('character_sort_order')),'cw2-char-phone-sort');
+    phoneSort.append(icon('sliders'));phoneSort.setAttribute('aria-label',L('排序'));
+    title.append(phoneSort);
+    move(s,get('charListGridToggle'),sort);
+    move(s,get('rm_print_characters_pagination'),all);
+    move(s,get('rm_print_characters_block'),all);
+    paints.push(()=>{
+      const pager=get('rm_print_characters_pagination');
+      const total=pager&&win.jQuery?.(pager).data('pagination')?.model?.totalNumber;
+      const current=get('rm_print_characters_block')?.querySelectorAll(':scope>:is(.character_select,.group_select,.bogus_folder_select)').length||0;
+      setText(count,String(Number.isFinite(total)?total:current));
     });
-    fab.querySelector('summary').prepend(icon('plus'));fab.querySelector('summary').setAttribute('aria-label',L('新建'));page.append(fab);
-    move(s,get('rm_print_characters_pagination'),all);move(s,get('rm_print_characters_block'),all);
     // After an import or a new character ST scrolls #rm_print_characters_block to the card and flashes it, but here the
     // panel scrolls, not that block, so the card stayed off screen. Follow ST's flash and scroll the real scroller.
     const printed=get('rm_print_characters_block');if(printed){
@@ -616,13 +843,25 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       }});
       watch.observe(printed,{subtree:true,attributes:true,attributeFilter:['class']});cleanup(s,()=>watch.disconnect());
     }
+    // After loading a character ST programmatically clicks the composer to focus it.
+    // That click must not reach ST's document-level outside-drawer handler from details.
+    const composer=win.jQuery?.(get('send_textarea'));
+    const keepDetails=e=>{
+      const right=get('right-nav-panel'),shell=get('cw-v4-settings');
+      if(!e.isTrigger||shell?.hidden||shell?.dataset.panel!==right?.id||!right?.classList.contains('openDrawer'))return;
+      const edit=get('rm_ch_create_block'),create=get('create_button_label');
+      if(!edit?.getClientRects().length||create?.style.display!=='none')return;
+      e.stopPropagation();
+    };
+    composer?.on('click.cwCharacterDetails',keepDetails);
+    cleanup(s,()=>composer?.off('click.cwCharacterDetails',keepDetails));
     finish(s);
     // Keep the real form and its conditional wrappers, including create-only
     // name/submit controls. Editing an existing name still uses ST's Rename.
     const form=get('form_create'),adapted=form&&begin(form);if(adapted){
       const fs=adapted.s,body=adapted.page;
       // 2.0.255（design-content-v1）：头像 + 名字 + Token 合成页头；原来空着的「名字」行和单独的「头像」行去掉。
-      charHero(fs,body);
+      const hero=charHero(fs,body);
       phoneCharTop(fs,body,form);
       const general=section(body,'');general.classList.add('cw-v4-desk-only','cw-v4-after-hero');
       row(fs,general,'标签','',[get('tags_div')]);
@@ -639,6 +878,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       if(cloreItem){const v=created(fs,make('span','cw-v4-more-value'));cloreItem.classList.add('cw-v4-clore-item');cloreItem.title=L('只对当前这段聊天生效');cloreItem.append(v);paints.push(()=>{const [text,dim]=chatLore();setText(v,text);setFlag(v,'cw-v4-pf-dim',dim);});}
       phoneManage(fs,body);advancedPhone(fs);
       finish(fs);
+      characterDetailV2e(fs,body,form,hero);
     }
   }
   function characterRows(panel){panel.querySelectorAll('#rm_print_characters_block .character_select').forEach(item=>{
@@ -646,16 +886,17 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const s=state(item),actions=make('div','cw-v4-character-actions');s.created.push(actions);
     const select=async(edit,action)=>{
       const id=Number(item.dataset.chid),st=await import(new URL('/script.js',win.location.href).href);
+      if(!edit)closeSettings?.(true);
       await st.selectCharacterById(id,{switchMenu:edit});
       if(String(win.SillyTavern?.getContext?.().characterId)!==String(id))return;
-      if(action)get(action)?.click();else if(!edit)closeSettings?.();
+      if(action)get(action)?.click();
     };
     const run=action=>()=>select(true,action).catch(console.error);
     // 2.0.215（Lulu）：点角色 = 进入编辑（和设置里其他「›」行一样进下一页）；直接去聊天放进 ⋯ 的第一项。原来点整行是开始聊天、「编辑」另有一个按钮。
     const chev=make('span','cw-v4-character-chev');chev.setAttribute('aria-hidden','true');
-    actions.append(menu(s,[['编辑',null,false,()=>select(true).catch(console.error)],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['导出',null,false,run('export_button')],['删除',null,true,run('delete_button')]]),chev);
+    actions.append(menu(s,[['开始聊天',null,false,()=>select(false).catch(console.error),'move'],['编辑',null,false,()=>select(true).catch(console.error),'pencil'],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['导出',null,false,run('export_button')],['删除',null,true,run('delete_button')]]),chev);
     item.append(actions);
-    const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(false).catch(console.error);};
+    const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(true).catch(console.error);};
     item.addEventListener('click',click);s.cleanup=()=>item.removeEventListener('click',click);
   });}
 

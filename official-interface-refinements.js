@@ -107,6 +107,10 @@ export function createInterfaceRefinements(h) {
     const cols=make('div','cwr-persona-columns'),list=make('div','cwr-persona-list'),editor=make('div','cwr-persona-editor');cols.append(list,editor);page.append(cols);
     // 列表：搜索和排序同一行；手机上面多一张「当前」卡片。
     const tools=make('div','cw2-ptools');list.append(tools);move(s,get('persona_search_bar'),tools);move(s,get('persona_sort_order'),tools);
+    move(s,get('persona_grid_toggle'),tools);
+    // Keep upload inputs and the native More actions in their existing form/wrapper.
+    move(s,get('form_upload_avatar'),park);
+    move(s,get('persona-management-dropdown')?.closest('label'),park);
     const current=button('',()=>setView('edit'),'cw2-pcur'),curImg=make('img','cw2-pcur-img'),curText=make('span','cw2-pcur-t'),curName=make('span','cw2-pcur-n'),curDesc=make('span','cw2-pcur-d');curText.append(curName,curDesc);current.append(curImg,curText,icon('chev'));
     list.append(make('h3','cwr-section-title cw2-phone',L('当前')),current,make('h3','cwr-section-title cw2-phone',L('全部')));
     move(s,get('persona_pagination_container'),list);move(s,get('user_avatar_block'),list);
@@ -116,7 +120,13 @@ export function createInterfaceRefinements(h) {
     const setImg=get('persona_set_image_button'),change=button(L('更换头像'),()=>get('persona_set_image_button')?.click(),'cw2-plink');
     who.append(line,change,saved);
     const renameEl=get('persona_rename_button'),renameBtn=button('',()=>get('persona_rename_button')?.click(),'cwr-btn cw2-prename');renameBtn.append(icon('pencil'),make('span','',L('改名')));
-    const items=[['复制一份',get('persona_duplicate_button'),false,null,'copy'],['把所有消息的名字改成这个',get('sync_name_button'),false,null,'pencil'],['用户角色世界书',get('persona_lore_button'),false,null,'imp'],'-',['删除',get('persona_delete_button'),true,null,'trash']];
+    const bindLore=()=>{
+      const select=get('persona-management-dropdown'),option=get('persona_lorebook_link');
+      if(!select||!option)return;
+      option.selected=true;
+      select.dispatchEvent(new win.Event('change',{bubbles:true}));
+    };
+    const items=[['复制一份',get('persona_duplicate_button'),false,null,'copy'],['把所有消息的名字改成这个',get('sync_name_button'),false,null,'pencil'],['用户角色世界书',get('persona_lore_button'),false,null,'imp'],['绑定用户角色世界书',null,false,bindLore,'imp'],'-',['删除',get('persona_delete_button'),true,null,'trash']];
     const pmenu=menu(s,items);top.append(avatar,who,renameBtn,pmenu);editor.append(top);
     if(setImg)move(s,setImg,park);if(renameEl)move(s,renameEl,park);move(s,get('your_name'),park);
     // 一张卡片：描述（右上 Token 数和放大）+ 插入位置（选「聊天中 @ 深度」时原生多出的深度和身份放在下面）。
@@ -124,13 +134,36 @@ export function createInterfaceRefinements(h) {
     const f=field(s,desc,'persona_description','描述',{hint:'会作为 {{persona}} 放进提示词，直接在这里写，写完自动保存',expand:true,min:170});
     const counter=get('persona_description_token_count');if(counter&&f){const tk=make('span','cwr-tokens cw2-ptok');tk.append(doc.createTextNode(L('约')+' '));move(s,counter,tk);tk.append(doc.createTextNode(' Token'));const lab=f.querySelector('.cwr-field-label'),exp=lab?.querySelector('.cwr-btn');lab?.insertBefore(tk,exp||null);}
     sel(s,desc,get('persona_description_position'),'插入位置');const depth=get('persona_depth_position_settings');if(depth)move(s,depth,desc);
+    const connectionList=get('persona_connections_list');
+    const connectionInfo=get('persona_connections_info_block');
+    if(connectionList){
+      const details=make('div','cw2-persona-connections');
+      park.append(details);
+      move(s,connectionInfo,details);
+      move(s,connectionList,details);
+      const value=make('span','cw2-persona-connections-count');
+      const show=button('',()=>openEditor(details,L('绑定情况')),'cw2-persona-connections-open');
+      show.setAttribute('aria-label',L('绑定情况'));
+      show.append(value,icon('chev'));
+      row(s,desc,'绑定情况','',[show]);
+      const paint=()=>{
+        const n=connectionList.querySelectorAll(':scope>.avatar[data-type=character],:scope>.avatar[data-type=group]').length;
+        text(value,n?t(`${n} 个`,`${n} linked`):t('未绑定','Not linked'));
+      };
+      const observer=new win.MutationObserver(paint);
+      observer.observe(connectionList,{childList:true});
+      cleanup(s,()=>observer.disconnect());
+      paint();
+    }
+    const expand=get('persona_description') && panel.querySelector('.editor_maximize[data-for="persona_description"]');
+    if(expand)move(s,expand,park);
     // 两组并排：自动选中 | 全局设置。
     const groups=make('div','cw2-pgroups'),g1=make('section','cw2-pgroup cw2-plocks'),g2=make('section','cw2-pgroup cw2-pglobal');groups.append(g1,g2);editor.append(groups);
     title(g1,'自动选中');const locks=card(g1);for(const [id,label,desc2]of [['lock_persona_default','新聊天默认用这个','开新聊天时自动选中'],['lock_persona_to_char','绑定到当前角色','和这个角色聊天时自动切换过来'],['lock_user_name','绑定到当前聊天','只在这段聊天里固定使用']])row(s,locks,label,desc2,[get(id)]).classList.add('cw-v4-lock-row');
     title(g2,'全局设置');const global=card(g2);for(const [id,label]of [['persona_show_notifications','切换时显示通知'],['persona_allow_multi_connections','允许一个角色绑定多个用户角色'],['persona_auto_lock','自动把选中的用户角色绑定到聊天']])tg(s,global,get(id),label);
     // 手机编辑页的顶栏：返回 / 名字 / ⋯（菜单项直接点原生按钮，不再搬动它们）。
     const editHead=created(s,make('div','cw2-pehead')),eb=button('',()=>setView('list'),'cwr-head-action cw2-peback'),et=make('h1','cw2-pename');eb.append(icon('chevl'));eb.setAttribute('aria-label',L('返回'));
-    editHead.append(eb,et,menu(s,items.map(it=>it==='-'?it:[it[0],null,it[2],()=>get({'复制一份':'persona_duplicate_button','把所有消息的名字改成这个':'sync_name_button','用户角色世界书':'persona_lore_button','删除':'persona_delete_button'}[it[0]])?.click(),it[4]])));
+    editHead.append(eb,et,menu(s,items.map(it=>it==='-'?it:[it[0],null,it[2],it[3]||(()=>get({'复制一份':'persona_duplicate_button','把所有消息的名字改成这个':'sync_name_button','用户角色世界书':'persona_lore_button','删除':'persona_delete_button'}[it[0]])?.click()),it[4]])));
     function setView(v){if(page.dataset.cw2View!==v)page.dataset.cw2View=v;panel.scrollTop=0;placeHead();}
     function placeHead(){if(mobileHead&&headOwner===panel&&editHead.parentNode!==mobileHead)mobileHead.append(editHead);text(et,name.value||ctx()?.name1||'');}
     s.name=name;s.saved=saved;s.avatar=avatar;name.addEventListener('blur',()=>rename(s,name.value));name.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();name.value=ctx()?.name1||'';name.blur();}else if(e.key==='Enter'){e.preventDefault();rename(s,name.value);name.blur();}});

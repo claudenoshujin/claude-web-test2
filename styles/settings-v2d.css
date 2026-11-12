@@ -805,4 +805,193 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel .cwp-bind>input:checked {background:var(--cwus-blue)!important}
 #left-nav-panel .cwp-bind>input::after {content:'';position:absolute;inset:3px auto auto 3px;width:14px;height:14px;border-radius:50%;background:white}
 #left-nav-panel .cwp-bind>input:checked::after {inset-inline-start:17px}
+
+/* v2e World Info pickers share the native compact popup and keep Select2 in its top layer. */
+html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_world_info_selector,.chat_world_info_selector) .popup-body {
+  min-height:0!important;
+}
+html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_world_info_selector,.chat_world_info_selector) .popup-content {
+  min-height:0!important;
+  overflow-y:auto!important;
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-popup #WIMultiSelector {
+  display:block!important;
+  width:100%!important;
+  margin:0!important;
+}
+html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_world_info_selector,.chat_world_info_selector) :is(.select2-selection,.character_world_info_selector,.chat_world_info_selector,#world_info:not(.select2-hidden-accessible)) {
+  min-height:36px!important;
+  border:1px solid var(--cwus-line)!important;
+  border-radius:9px!important;
+  background:var(--cwus-surface)!important;
+  color:var(--cwus-ink)!important;
+}
+
+/* v2e character list and existing-character editor. */
+html[data-cw-settings-unified] .cw2-char-sticky {
+  position:sticky; top:0; z-index:5; background:var(--cwus-canvas);
+  padding-bottom:8px;
+}
+html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:min(300px,35%); flex:0 1 300px}
+html[data-cw-settings-unified] .cw2-char-bar>#rm_button_create {
+  background:var(--cwus-ink)!important; color:var(--cwus-canvas)!important;
+}
+html[data-cw-settings-unified] .cw2-char-filters {display:flex; align-items:center; gap:12px; margin-top:12px}
+html[data-cw-settings-unified] .cw2-char-filters .cw-v4-tags {min-width:0; flex:1}
+html[data-cw-settings-unified] .cw2-char-filters .rm_tag_controls {margin:0!important}
+html[data-cw-settings-unified] .cw2-char-sort {display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--cwus-muted)}
+html[data-cw-settings-unified] .cw2-char-sort>#character_sort_order {width:150px!important; height:36px!important}
+html[data-cw-settings-unified] .cw2-char-list .cw2-char-count {margin-left:12px}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView) {
+  display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); padding:0!important;
+}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:is(.character_select,.group_select,.bogus_folder_select) {
+  width:100%!important; min-width:0!important; min-height:62px!important; padding:10px 16px!important;
+  border-bottom:1px solid var(--cwus-soft)!important; box-sizing:border-box;
+}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:is(.character_select,.group_select,.bogus_folder_select):nth-child(even) {
+  border-inline-start:1px solid var(--cwus-soft)!important;
+}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:nth-last-child(-n+2) {
+  border-bottom:0!important;
+}
+html[data-cw-settings-unified] .cw2-char-list .cw-v4-character-actions>details>summary {
+  border:0!important; background:transparent!important;
+}
+html[data-cw-settings-unified] .cw2-char-list .cw-v4-character-chev,
+html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort,
+html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-create,
+html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-import {display:none!important}
+html[data-cw-settings-unified] .cw2-char-list .character_select.is_fav .ch_name::after {
+  content:'★'; color:#be8a24; font-size:10px; margin-inline-start:5px;
+}
+
+html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {margin-bottom:0}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane[hidden] {display:none!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane .cw-v4-section {min-width:0; margin-top:22px!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane .cw-v4-section>h2 {margin-top:0!important}
+html[data-cw-settings-unified] .cw2-char-hero {gap:8px!important; margin-bottom:8px!important}
+html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-who {
+  display:flex!important; align-items:center; gap:12px; flex:1 1 auto!important;
+}
+html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-name {font-size:20px!important; font-weight:600!important}
+html[data-cw-settings-unified] .cw2-char-hero #result_info {white-space:nowrap}
+html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-chat {
+  background:var(--cwus-ink)!important; color:var(--cwus-canvas)!important;
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-field {
+  min-width:0; padding:14px 16px 16px; display:flex; flex-direction:column; gap:8px;
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-field-head {
+  display:flex; align-items:center; gap:10px; min-width:0; color:var(--cwus-ink);
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-token {margin-inline-start:auto; font-size:12px; color:var(--cwus-muted)}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-field>textarea {
+  box-sizing:border-box!important; margin:0!important; width:100%!important; height:72px!important;
+  min-height:72px!important; max-height:none!important; padding:10px 12px!important;
+  border:1px solid var(--cwus-line)!important; border-radius:10px!important;
+  background:var(--cwus-canvas)!important; color:var(--cwus-ink)!important; line-height:1.65!important;
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-mono>textarea {font-family:ui-monospace,Consolas,monospace!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-greeting textarea {height:150px!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-grow {display:flex; flex:1; flex-direction:column}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-grow>.cw-v4-card {display:flex; flex:1; flex-direction:column}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-grow>.cw-v4-card>.cw2-char-field {flex:1}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-grow>.cw-v4-card>.cw2-char-field>textarea {flex:1}
+html[data-cw-settings-unified] .cw2-char-edit #description_textarea {min-height:220px!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pair {display:grid; grid-template-columns:repeat(2,minmax(0,1fr))}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pair>.cw2-char-field+.cw2-char-field {border-inline-start:1px solid var(--cwus-soft)}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-link-row,
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-link,
+html[data-cw-settings-unified] .cw2-persona .cw2-persona-connections-open {
+  display:inline-flex!important; align-items:center; gap:8px; background:transparent!important;
+  border:0!important; padding:0!important; color:var(--cwus-muted)!important; cursor:pointer;
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-link {color:var(--cwus-blue)!important; font-size:12.5px}
+html[data-cw-settings-unified] .cw2-char-edit :is(.cw2-char-link,.cw2-char-link-row) svg,
+html[data-cw-settings-unified] .cw2-persona .cw2-persona-connections-open svg {width:14px; height:14px}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-mini-avatar {width:36px; height:36px; border-radius:50%; object-fit:cover}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags {display:block!important; padding:12px 16px!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags .cw-v4-row-controls {width:100%!important; margin-top:8px}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags #tags_div {width:100%!important}
+html[data-cw-settings-unified] .cw2-char-edit :is(.cw-v4-card,.cw2-char-tags):has(#tags_div) {overflow:visible!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-short-field textarea {
+  box-sizing:border-box!important; width:min(264px,100%)!important; min-height:36px!important;
+  height:36px!important; margin:0!important; resize:none!important;
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-depth input {width:62px!important}
+html[data-cw-settings-unified] .cw2-persona .cw2-ptools>#persona_grid_toggle {
+  flex:none; width:36px!important; height:36px!important; margin:0!important;
+}
+@media(min-width:701px){
+  html[data-cw-settings-unified] .cw2-char-detail>:is(.cw-v4-desk-only,.cw-v4-desk-more,.cw-v4-leftovers) {display:none!important}
+  html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div,
+  html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div img {width:36px!important; height:36px!important; border-radius:50%!important}
+}
+@media(max-width:700px){
+  html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView) {grid-template-columns:minmax(0,1fr)}
+  html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:nth-child(even) {border-inline-start:0!important}
+  html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:nth-last-child(2) {border-bottom:1px solid var(--cwus-soft)!important}
+  html[data-cw-settings-unified] .cw2-char-bar>:is(h2,.cw2-note,.cw2-sp,#character_import_button,#rm_button_create),
+  html[data-cw-settings-unified] .cw2-char-sort {display:none!important}
+  html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:auto; flex:1}
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-import {display:flex!important}
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort,
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-create {display:inline-flex!important}
+  html[data-cw-settings-unified] .cw2-char-mobile-create {position:fixed; top:12px; right:12px; z-index:8}
+  html[data-cw-settings-unified] .cw2-char-filters {overflow:auto; scrollbar-width:none}
+  html[data-cw-settings-unified] .cw2-char-filters .cw-v4-tags {width:max-content!important; flex:none}
+  html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {position:sticky; top:0; z-index:4; background:var(--cwus-canvas)}
+  html[data-cw-settings-unified] .cw2-char-detail .cw2-char-basic,
+  html[data-cw-settings-unified] .cw2-char-detail .cw2-char-back,
+  html[data-cw-settings-unified] .cw2-char-detail .cw2-char-detail-actions,
+  html[data-cw-settings-unified] .cw2-char-detail .cw-v4-pf-textsec:has([data-for="advanced"],[data-for="creator_notes"]),
+  html[data-cw-settings-unified] .cw2-char-detail.cw2-char-advanced>.cw-v4-phone-only {display:none!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pair {display:block}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pair>.cw2-char-field+.cw2-char-field {border-inline-start:0; border-top:1px solid var(--cwus-soft)}
+}
+html[data-cw-settings-unified] .cw2-char-sticky {background:var(--cwus-surface)}
+html[data-cw-settings-unified] .cw2-char-bar .cwr-search-box {max-width:300px!important}
+html[data-cw-settings-unified] .cw2-char-list:not(:has(#rm_print_characters_block.bulk_select)) .cw-v4-bulkbar {display:none!important}
+html[data-cw-settings-unified] .cw2-char-list:has(#rm_print_characters_block.bulk_select) .cw-v4-bulkbar {
+  display:flex!important; align-items:center; gap:6px; padding:6px 0; margin-top:8px;
+}
+html[data-cw-settings-unified] .cw2-char-list .cw-v4-bulk-count {flex:1}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-field>textarea,
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-short-field textarea {display:block!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw-v4-text-row {display:none!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-greeting .cw2-char-field>textarea {height:150px!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags .cw-v4-row-info {width:auto!important}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags .cw-v4-row-title {white-space:nowrap}
+html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div {
+  display:grid; grid-template-columns:minmax(110px,1fr) minmax(0,264px); gap:0 14px;
+  align-items:center; min-height:76px; padding:12px 16px;
+}
+html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div>h4 {grid-column:1; grid-row:1; margin:0}
+html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div>h5 {grid-column:1; grid-row:2; margin:0; font-weight:400}
+html[data-cw-settings-unified] .cw2-char-edit #talkativeness_slider {grid-column:2; grid-row:1; width:100%; margin:0}
+html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div>.slider_hint {grid-column:2; grid-row:2}
+@media(min-width:701px) {
+  html[data-cw-settings-unified] #right-nav-panel:has(#rm_ch_create_block:not([style*="display: none"]) .cw2-char-detail) #rm_button_characters {display:none!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane .cw-v4-section {padding-top:0!important}
+  html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-meta {margin-inline-start:0!important; margin-inline-end:auto!important}
+}
+@media(max-width:700px) {
+  html[data-cw-settings-unified] .cw2-char-bar .cwr-search-box {max-width:none!important}
+}
+html[data-cw-settings-unified] .cw2-char-filters .manageTags {
+  display:inline-flex!important; align-items:center; gap:5px; border:0!important;
+  background:transparent!important; color:var(--cwus-blue)!important;
+}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block.gridView,
+html[data-cw-settings-unified] .cw2-persona #user_avatar_block.gridView {
+  display:grid!important; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:8px!important; padding:8px!important;
+}
+html[data-cw-settings-unified] :is(.cw2-char-list #rm_print_characters_block.gridView,.cw2-persona #user_avatar_block.gridView)>:is(.character_select,.avatar-container) {
+  display:flex!important; flex-direction:column!important; align-items:center!important;
+  justify-content:center!important; gap:6px!important; min-width:0!important; padding:8px!important;
+}
+html[data-cw-settings-unified] :is(.cw2-char-list #rm_print_characters_block.gridView,.cw2-persona #user_avatar_block.gridView) :is(.ch_name,.persona_name) {
+  display:block!important; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 }

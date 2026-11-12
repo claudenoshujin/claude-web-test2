@@ -91,6 +91,43 @@ export function createWorldPage(h) {
     return {r,nm,mt,val};
   }
   const pills=(host,names,empty)=>{const key=(names.join('\n')||'-')+'|'+empty;if(host.dataset.key===key)return;host.dataset.key=key;host.replaceChildren(...(names.length?names.map(n=>make('span','cww-bk',n)):[make('span','cww-bk cww-bk-none',empty)]));};
+  let globalPopup = null;
+  async function openGlobalWorlds(picker) {
+    if (!picker?.isConnected || globalPopup) return;
+    const active = ui;
+    const {Popup, POPUP_TYPE} = await import(new URL('/scripts/popup.js', win.location.href).href);
+    if (active !== ui || !picker.isConnected || globalPopup) return;
+
+    const content = make('div', 'cw2-world-popup');
+    content.append(make('h3', '', t('全局世界书', 'Global World Info')));
+    content.append(make('p', '', t('选中的世界书会在每段聊天里使用。', 'Selected World Info is used in every chat.')));
+    const popup = new Popup(content, POPUP_TYPE.TEXT, '', {
+      okButton: t('完成', 'Done'), allowVerticalScrolling: true,
+    });
+    const anchor = doc.createComment('cw-world-picker-return');
+    picker.before(anchor);
+    const select = get('world_info');
+    const dropdown = select && win.jQuery?.(select).data('select2')?.dropdown;
+    const parent = dropdown?.$dropdownParent;
+    if (dropdown && parent) dropdown.$dropdownParent = win.jQuery(popup.dlg);
+
+    const restore = () => {
+      if (globalPopup?.popup !== popup) return;
+      globalPopup = null;
+      if (dropdown && parent) {
+        win.jQuery(select).select2('close');
+        dropdown.$dropdownParent = parent;
+      }
+      anchor.replaceWith(picker);
+    };
+    globalPopup = {popup, restore};
+    content.append(picker);
+    try {
+      await popup.show();
+    } finally {
+      restore();
+    }
+  }
   function buildHome(s,view){
     const head=make('div','cwr-list-head cww-head'),actions=make('div','cwr-list-actions');head.append(make('h2','',t('世界书','World Info')),actions);
     const imp=get('world_import_button'),create=get('world_create_button');
@@ -101,7 +138,7 @@ export function createWorldPage(h) {
     const picker=get('WIMultiSelector'),park=make('div','cw-v4-park');view.append(park);if(picker)move(s,picker,park);
     // The book picker is driven by the list rows; keep it (and its select2 box) live but out of sight.
     const ed=editor(),edPark=make('div','cww-park');view.append(edPark);if(ed){const c=s2box(ed);move(s,ed,edPark);if(c)move(s,c,edPark);}
-    ui.global=whereRow('global',ICON.globe(),t('全局','Global'),t('每段聊天都会用','Used in every chat'),()=>picker&&openEditor(picker,t('全局世界书','Global World Info')));
+    ui.global=whereRow('global',ICON.globe(),t('全局','Global'),t('每段聊天都会用','Used in every chat'),()=>openGlobalWorlds(picker).catch(console.error));
     ui.char=whereRow('char',ICON.card(),t('当前角色','Current character'),t('只在和这个角色聊天时用','Only in chats with this character'),()=>{const b=get('world_button');b?.dispatchEvent(new win.MouseEvent('click',{bubbles:true,cancelable:true,shiftKey:true}));});
     ui.chat=whereRow('chat',ICON.chat(),t('当前聊天','Current chat'),t('只在这一段聊天里用','Only in this chat'),()=>{const b=doc.querySelector('.chat_lorebook_button');b?.dispatchEvent(new win.MouseEvent('click',{bubbles:true,cancelable:true,shiftKey:true}));});
     ui.act=whereRow('act',ICON.gear(),t('激活设置','Activation settings'),'',()=>go('act'));ui.act.val.remove();
@@ -620,6 +657,11 @@ export function createWorldPage(h) {
     queue();
   }
   function destroy(){
+    if (globalPopup) {
+      const {popup, restore} = globalPopup;
+      restore();
+      if (popup.dlg.open) popup.dlg.close();
+    }
     if(!ui)return;const u=ui;dropFilter();closeBig();closeEntry();u.mobileHead?.remove();if(frame){win.cancelAnimationFrame(frame);frame=0;}ui=null;
   }
   return {build,sync,destroy,go:v=>go(v),state:()=>ui&&{view:ui.view,book:currentBook(),selecting:ui.selecting,selected:[...ui.selected]}};
