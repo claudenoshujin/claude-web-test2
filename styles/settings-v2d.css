@@ -316,6 +316,7 @@ html[data-cw-settings-unified] .cw2-fmt .cw2-grow:has(.cw2-sqt)>.cw-v4-card{flex
  html[data-cw-settings-unified] .cw2-fmt .cw2-link{display:none!important}
  html[data-cw-settings-unified] .cw2-fmt .cw2-sqt{grid-template-columns:100px minmax(0,1fr) minmax(0,1fr)!important;gap:8px 6px!important;padding:12px 14px 14px!important}
  html[data-cw-settings-unified] .cw2-fmt .cw2-sqt>.cw2-sl{font-size:13px!important;white-space:normal!important}
+ html[data-cw-settings-unified] .cw2-fmt .cw2-sqt>textarea{height:auto!important}
  html[data-cw-settings-unified] .cw2-fmt .cw2-sqt>.cw2-sqhr{margin:4px -14px!important}
  html[data-cw-settings-unified] .cw2-fmt .cw-v4-row-controls>textarea,html[data-cw-settings-unified] .cw2-fmt .cw-v4-row-controls>input:is([type=text],:not([type])):not(.cw-v4-num){width:150px!important}
  html[data-cw-settings-unified] .cw2-fmt .cw2-wide>.cw-v4-row-controls>:is(textarea,input){width:100%!important}
