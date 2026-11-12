@@ -33,7 +33,8 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
   function leave(replacing=false) {
     if(!ed?.desktop)return;
     flush();
-    if(!replacing)ed.nativeClose?.click();
+    // The native target clears the forms. Bubbling would let ST's outside-click handler close the next drawer.
+    if(!replacing)ed.nativeClose?.dispatchEvent(new win.MouseEvent('click',{cancelable:true,view:win}));
     close(replacing);
   }
   function selectDesktop(action){

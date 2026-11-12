@@ -765,6 +765,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   return {
     checkUpdates:checkVersion,
     editExtensions:()=>extensionPanel.edit(),
+    leavePreset:()=>presetEdit.leave(),
     mount(panel){
       // Native PromptManager discards rows on every render. Do not retain all
       // discarded DOM and listeners after a large batch.

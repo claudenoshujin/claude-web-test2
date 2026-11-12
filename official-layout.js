@@ -409,6 +409,14 @@ export function installOfficialLayout(win = window) {
     deskAnim('out', DESK_BD_OUT + 40);
     deskClosing = win.setTimeout(closeNow, DESK_OUT);
   }
+  function closeOtherPanels(target) {
+    for (const panel of panels.values()) {
+      if (panel === target || !isOpen(panel)) continue;
+      // ST counts the hidden PromptManager popup as an open drawer.
+      if (panel.id === 'left-nav-panel') drawerLayouts.leavePreset();
+      if (!panel.classList.contains('pinnedOpen')) nativeToggle(panel)?.click();
+    }
+  }
   function activate(id) {
     if (deskClosing) { win.clearTimeout(deskClosing); deskClosing = 0; deskAnim(null); }
     requestedPanel = id;
@@ -416,7 +424,7 @@ export function installOfficialLayout(win = window) {
     if (p && !isOpen(p)) {
       // ST waits for its closing animation when another unpinned drawer is
       // open. Close it synchronously first, keeping our shared shell mounted.
-      for (const old of panels.values()) if (old !== p && isOpen(old) && !old.classList.contains('pinnedOpen')) nativeToggle(old)?.click();
+      closeOtherPanels(p);
       nativeToggle(p)?.click();
     }
   }
@@ -1199,7 +1207,7 @@ export function installOfficialLayout(win = window) {
       if (e.isTrusted && doc.body.hasAttribute('data-clawd-menu') && !doc.body.classList.contains('clawd-tauritavern-host')) return;
       requestedPanel=panel.id;
       if(!e.isTrusted || isOpen(panel)) return;
-      for (const old of panels.values()) if (old !== panel && isOpen(old) && !old.classList.contains('pinnedOpen')) nativeToggle(old)?.click();
+      closeOtherPanels(panel);
     },true);
     on(doc,'keydown', e => { if (e.key === 'Escape' && current && !doc.querySelector('dialog[open]') && !e.defaultPrevented) { closeSettings(); e.preventDefault(); } });
     // 2.0.229 下拉列表（openSelMenu）：按下下拉时拦下原生列表；点外面 / 滚动 / 改窗口大小关掉；键盘在下面那个 Escape 处理之前先接。
