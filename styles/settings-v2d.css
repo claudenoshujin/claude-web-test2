@@ -842,17 +842,17 @@ html[data-cw-settings-unified] .cw2-char-filters .rm_tag_controls {margin:0!impo
 html[data-cw-settings-unified] .cw2-char-sort {display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--cwus-muted)}
 html[data-cw-settings-unified] .cw2-char-sort>#character_sort_order {width:150px!important; height:36px!important}
 html[data-cw-settings-unified] .cw2-char-list .cw2-char-count {margin-left:12px}
-html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView) {
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block {
   display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); padding:0!important;
 }
-html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:is(.character_select,.group_select,.bogus_folder_select) {
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block>:is(.character_select,.group_select,.bogus_folder_select) {
   width:100%!important; min-width:0!important; min-height:62px!important; padding:10px 16px!important;
   border-bottom:1px solid var(--cwus-soft)!important; box-sizing:border-box;
 }
-html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:is(.character_select,.group_select,.bogus_folder_select):nth-child(even) {
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block>:is(.character_select,.group_select,.bogus_folder_select):nth-child(even) {
   border-inline-start:1px solid var(--cwus-soft)!important;
 }
-html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:nth-last-child(-n+2) {
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block>:nth-last-child(-n+2) {
   border-bottom:0!important;
 }
 html[data-cw-settings-unified] .cw2-char-list .cw-v4-character-actions>details>summary {
@@ -929,9 +929,9 @@ html[data-cw-settings-unified] .cw2-persona .cw2-ptools>#persona_grid_toggle {
   html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div img {width:36px!important; height:36px!important; border-radius:50%!important}
 }
 @media(max-width:700px){
-  html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView) {grid-template-columns:minmax(0,1fr)}
-  html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:nth-child(even) {border-inline-start:0!important}
-  html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block:not(.gridView)>:nth-last-child(2) {border-bottom:1px solid var(--cwus-soft)!important}
+  html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block {grid-template-columns:minmax(0,1fr)}
+  html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block>:nth-child(even) {border-inline-start:0!important}
+  html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block>:nth-last-child(2) {border-bottom:1px solid var(--cwus-soft)!important}
   html[data-cw-settings-unified] .cw2-char-bar>:is(h2,.cw2-note,.cw2-sp,#character_import_button,#rm_button_create),
   html[data-cw-settings-unified] .cw2-char-sort {display:none!important}
   html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:auto; flex:1}
@@ -983,15 +983,15 @@ html[data-cw-settings-unified] .cw2-char-filters .manageTags {
   display:inline-flex!important; align-items:center; gap:5px; border:0!important;
   background:transparent!important; color:var(--cwus-blue)!important;
 }
-html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_block.gridView,
+html[data-cw-settings-unified] body.charListGrid .cw2-char-list #rm_print_characters_block,
 html[data-cw-settings-unified] .cw2-persona #user_avatar_block.gridView {
   display:grid!important; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:8px!important; padding:8px!important;
 }
-html[data-cw-settings-unified] :is(.cw2-char-list #rm_print_characters_block.gridView,.cw2-persona #user_avatar_block.gridView)>:is(.character_select,.avatar-container) {
+html[data-cw-settings-unified] :is(body.charListGrid .cw2-char-list #rm_print_characters_block,.cw2-persona #user_avatar_block.gridView)>:is(.character_select,.avatar-container) {
   display:flex!important; flex-direction:column!important; align-items:center!important;
   justify-content:center!important; gap:6px!important; min-width:0!important; padding:8px!important;
 }
-html[data-cw-settings-unified] :is(.cw2-char-list #rm_print_characters_block.gridView,.cw2-persona #user_avatar_block.gridView) :is(.ch_name,.persona_name) {
+html[data-cw-settings-unified] :is(body.charListGrid .cw2-char-list #rm_print_characters_block,.cw2-persona #user_avatar_block.gridView) :is(.ch_name,.persona_name) {
   display:block!important; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 }
