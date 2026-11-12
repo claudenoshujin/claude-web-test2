@@ -695,6 +695,8 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel .cwp-bar>details>summary {min-height:36px!important}
 #left-nav-panel .cwp-bind {margin-inline-start:auto!important;display:flex!important;align-items:center!important;gap:8px!important;white-space:nowrap!important}
 #left-nav-panel .cwp-bind-menu {display:none!important}
+/* 上面那条压不过本文件前面通用菜单项的 display:flex（特异性更高），电脑端 ⋯ 菜单里又出现了「绑定到 API 连接」。电脑上它在顶部行内，菜单里不该有（修改单 S6）。 */
+#left-nav-panel#left-nav-panel:not(.cwp-phone) .cw-v4-more-list>.cwp-bind-menu {display:none!important}
 #left-nav-panel .cwp-bind-menu[aria-pressed=true]::after {content:'✓';color:var(--cwus-blue);margin-inline-start:auto}
 #left-nav-panel .cw-pm-filters button::before {content:'';width:14px}
 #left-nav-panel .cw-pm-filters button[aria-pressed=true]::before {content:'✓';color:var(--cwus-blue)}
