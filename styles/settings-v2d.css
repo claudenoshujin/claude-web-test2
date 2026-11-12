@@ -828,11 +828,12 @@ html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_worl
 }
 
 /* v2e character list and existing-character editor. */
+.cw-v4-shell .cw2-char-mobile-create {display:none}
 html[data-cw-settings-unified] .cw2-char-sticky {
   position:sticky; top:0; z-index:5; background:var(--cwus-canvas);
   padding-bottom:8px;
 }
-html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:min(300px,35%); flex:0 1 300px}
+html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:min(300px,35%)!important; flex:0 1 300px!important}
 html[data-cw-settings-unified] .cw2-char-bar>#rm_button_create {
   background:var(--cwus-ink)!important; color:var(--cwus-canvas)!important;
 }
@@ -840,7 +841,7 @@ html[data-cw-settings-unified] .cw2-char-filters {display:flex; align-items:cent
 html[data-cw-settings-unified] .cw2-char-filters .cw-v4-tags {min-width:0; flex:1}
 html[data-cw-settings-unified] .cw2-char-filters .rm_tag_controls {margin:0!important}
 html[data-cw-settings-unified] .cw2-char-sort {display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--cwus-muted)}
-html[data-cw-settings-unified] .cw2-char-sort>#character_sort_order {width:150px!important; height:36px!important}
+html[data-cw-settings-unified] .cw2-char-sort :is(#character_sort_order,.cwr-select-host) {width:150px!important; height:36px!important}
 html[data-cw-settings-unified] .cw2-char-list .cw2-char-count {margin-left:12px}
 html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block {
   display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); padding:0!important;
@@ -860,7 +861,6 @@ html[data-cw-settings-unified] .cw2-char-list .cw-v4-character-actions>details>s
 }
 html[data-cw-settings-unified] .cw2-char-list .cw-v4-character-chev,
 html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort,
-html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-create,
 html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-import {display:none!important}
 html[data-cw-settings-unified] .cw2-char-list .character_select.is_fav .ch_name::after {
   content:'★'; color:#be8a24; font-size:10px; margin-inline-start:5px;
@@ -911,9 +911,9 @@ html[data-cw-settings-unified] .cw2-char-edit .cw2-char-link {color:var(--cwus-b
 html[data-cw-settings-unified] .cw2-char-edit :is(.cw2-char-link,.cw2-char-link-row) svg,
 html[data-cw-settings-unified] .cw2-persona .cw2-persona-connections-open svg {width:14px; height:14px}
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-mini-avatar {width:36px; height:36px; border-radius:50%; object-fit:cover}
-html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags {display:block!important; padding:12px 16px!important}
-html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags .cw-v4-row-controls {width:100%!important; margin-top:8px}
-html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags #tags_div {width:100%!important}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-tags {display:flex!important; flex-direction:column!important; align-items:stretch!important; gap:8px!important; padding:12px 16px!important}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-tags>.cw-v4-row-controls {width:100%!important}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-tags #tags_div {width:100%!important}
 html[data-cw-settings-unified] .cw2-char-edit :is(.cw-v4-card,.cw2-char-tags):has(#tags_div) {overflow:visible!important}
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-short-field textarea {
   box-sizing:border-box!important; width:min(264px,100%)!important; min-height:36px!important;
@@ -926,7 +926,7 @@ html[data-cw-settings-unified] .cw2-persona .cw2-ptools>#persona_grid_toggle {
 @media(min-width:701px){
   html[data-cw-settings-unified] .cw2-char-detail>:is(.cw-v4-desk-only,.cw-v4-desk-more,.cw-v4-leftovers) {display:none!important}
   html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div,
-  html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div img {width:36px!important; height:36px!important; border-radius:50%!important}
+  html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div img {width:36px!important; min-width:36px!important; max-width:36px!important; height:36px!important; border-radius:50%!important}
 }
 @media(max-width:700px){
   html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block {grid-template-columns:minmax(0,1fr)}
@@ -934,11 +934,14 @@ html[data-cw-settings-unified] .cw2-persona .cw2-ptools>#persona_grid_toggle {
   html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list #rm_print_characters_block>:nth-last-child(2) {border-bottom:1px solid var(--cwus-soft)!important}
   html[data-cw-settings-unified] .cw2-char-bar>:is(h2,.cw2-note,.cw2-sp,#character_import_button,#rm_button_create),
   html[data-cw-settings-unified] .cw2-char-sort {display:none!important}
-  html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:auto; flex:1}
+  html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:auto!important; flex:1!important}
   html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-import {display:flex!important}
-  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort,
-  html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-create {display:inline-flex!important}
-  html[data-cw-settings-unified] .cw2-char-mobile-create {position:fixed; top:12px; right:12px; z-index:8}
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort {display:inline-flex!important}
+  html[data-cw-settings-unified] body:has(#rm_characters_block:not([hidden],[style*="display: none"]) .cw2-char-list) .cw-v4-shell[data-panel="right-nav-panel"] .cw2-char-mobile-create {
+    display:grid; place-items:center; position:absolute; top:50%; right:44px; transform:translateY(-50%);
+    width:32px; height:32px; border:0; border-radius:8px; background:transparent; color:var(--cwus-ink); pointer-events:auto;
+  }
+  html[data-cw-settings-unified] .cw2-char-mobile-create svg {width:18px; height:18px}
   html[data-cw-settings-unified] .cw2-char-filters {overflow:auto; scrollbar-width:none}
   html[data-cw-settings-unified] .cw2-char-filters .cw-v4-tags {width:max-content!important; flex:none}
   html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {position:sticky; top:0; z-index:4; background:var(--cwus-canvas)}
@@ -961,8 +964,8 @@ html[data-cw-settings-unified] .cw2-char-edit .cw2-char-field>textarea,
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-short-field textarea {display:block!important}
 html[data-cw-settings-unified] .cw2-char-edit .cw-v4-text-row {display:none!important}
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-greeting .cw2-char-field>textarea {height:150px!important}
-html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags .cw-v4-row-info {width:auto!important}
-html[data-cw-settings-unified] .cw2-char-edit .cw2-char-tags .cw-v4-row-title {white-space:nowrap}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-tags .cw-v4-row-info {width:auto!important}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-tags .cw-v4-row-title {white-space:nowrap}
 html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div {
   display:grid; grid-template-columns:minmax(110px,1fr) minmax(0,264px); gap:0 14px;
   align-items:center; min-height:76px; padding:12px 16px;
@@ -974,10 +977,26 @@ html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div>.slider_hint {g
 @media(min-width:701px) {
   html[data-cw-settings-unified] #right-nav-panel:has(#rm_ch_create_block:not([style*="display: none"]) .cw2-char-detail) #rm_button_characters {display:none!important}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane .cw-v4-section {padding-top:0!important}
-  html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-meta {margin-inline-start:0!important; margin-inline-end:auto!important}
+  html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-meta {margin:0 auto 0 0!important}
+  html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-name {flex:0 1 auto!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-pane .cw2-col>.cw-v4-section {margin-top:0!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-pane .cw2-col>.cw-v4-section+.cw-v4-section {margin-top:22px!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-pane .cw2-col>.cw-v4-section>h2 {margin-top:0!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane>.cw2-cols {padding-top:12px; box-sizing:border-box}
+  html[data-cw-settings-unified]:not([data-cw-sz-single]) .cw2-char-basic>.cw2-cols {min-height:718px}
+  html[data-cw-settings-unified]:not([data-cw-sz-single]) .cw2-char-adv>.cw2-cols {min-height:740px}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-greeting .cw2-char-field>#firstmessage_textarea {height:150px!important; min-height:150px!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-short-field>.cw-v4-row-controls,
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-role>.cw-v4-row-controls {width:min(264px,70%)!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-short-field textarea {width:100%!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-role .cw2-segment {width:100%!important; max-width:none!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-adv .cw2-char-grow .cw2-char-field>textarea {height:0!important; min-height:96px!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-adv .cw2-char-grow .cw2-hint {margin-bottom:0}
 }
 @media(max-width:700px) {
   html[data-cw-settings-unified] .cw2-char-bar .cwr-search-box {max-width:none!important}
+  html[data-cw-settings-unified] .cw2-char-bar .cw-v4-more {flex:none!important}
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort {margin-inline-start:auto}
 }
 html[data-cw-settings-unified] .cw2-char-filters .manageTags {
   display:inline-flex!important; align-items:center; gap:5px; border:0!important;

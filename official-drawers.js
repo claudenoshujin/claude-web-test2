@@ -646,7 +646,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
 
       const info=section(right,'基本信息');
       const avatar=make('img','cw2-char-mini-avatar');avatar.alt='';
-      row(s,info,'头像','',[avatar,nativeAction('更换头像',()=>get('add_avatar_button')?.click())]);
+      row(s,info,'头像','角色卡的 PNG 图片',[avatar,nativeAction('更换头像',()=>get('add_avatar_button')?.click())]);
       const name=make('span','cw2-char-name');
       row(s,info,'名字','',[name,nativeAction('改名',()=>pickOption('renameCharButton'))]);
       row(s,info,'标签','',[get('tags_div')],'cw2-char-tags');
@@ -660,9 +660,9 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         const count=Object.values(c?.powerUserSettings?.persona_descriptions||{}).filter(p=>p.connections?.some(conn=>conn.type==='character'&&conn.id===avatar)).length;
         return t(`${count} 个`,`${count} linked`);
       },()=>get('char_connections_button')?.click());
-      linked(display,'角色设置覆盖','',()=>'',()=>pickOption('set_chat_character_settings'));
-      row(s,display,'允许外部媒体','',[nativeAction('设置',()=>get('character_open_media_overrides')?.click())]);
-      row(s,display,'使用全局样式','',[nativeAction('设置',()=>get('creators_note_styles_button')?.click())]);
+      linked(display,'角色设置覆盖','只对这个角色使用的提示词和后缀',()=>'',()=>pickOption('set_chat_character_settings'));
+      row(s,display,'允许外部媒体','控制外链图片和视频的显示',[nativeAction('设置',()=>get('character_open_media_overrides')?.click())]);
+      row(s,display,'使用全局样式','控制创作者注释里的样式作用范围',[nativeAction('设置',()=>get('creators_note_styles_button')?.click())]);
 
       const [a,b]=cols(advanced);
       const fieldPair=(parent,items)=>{
@@ -775,7 +775,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const back=get('rm_button_characters');if(back&&!back.querySelector('.cw-v4-action-label')){const label=make('span','cw-v4-action-label',t('全部角色','All characters'));back.append(label);s.created.push(label);back.classList.add('cw-v4-back');s.cleanup=()=>back.classList.remove('cw-v4-back');}
     page.classList.add('cw2','cw2-char-list','cwr-page');
     const header=make('div','cw2-char-sticky');
-    const head=make('div','cw2-bar cw2-char-bar');
+    const head=make('div','cw2-bar cw2-mbar cw2-char-bar');
     const importButton=get('character_import_button'),createButton=get('rm_button_create');
     head.append(make('h2','',L('角色卡')),searchBox(s,get('character_search_bar'),'搜索角色名、标签、创作者备注'));
     head.append(make('span','cw2-note',t('点角色卡查看详情','Open a character to view its details')));
@@ -790,10 +790,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     ]);
     actions.querySelector('.cw-v4-more-item:last-child')?.classList.add('cw2-char-mobile-import');
     head.append(actions);
-    const mobileCreate=button('',()=>createButton?.click(),'cw2-char-mobile-create');
-    mobileCreate.append(icon('plus'));
-    mobileCreate.setAttribute('aria-label',L('新建角色'));
-    header.append(head,mobileCreate);
+    header.append(head);
     const filters=make('div','cw2-char-filters');
     const tags=list.querySelector('#charListFixedTop .rm_tag_controls');
     if(tags){

@@ -453,7 +453,10 @@ export function installOfficialLayout(win = window) {
     const back = button('', () => { const rail = mobile() && doc.querySelector('.clawd-mobile-menu-button'); if (!rail) { shell.classList.toggle('cw-v4-show-nav'); return; } if (!doc.body.hasAttribute('data-clawd-menu')) rail.click(); }, 'cw-v4-menu'); back.append(icon('menu')); back.setAttribute('aria-label', t('设置导航', 'Settings navigation'));
     const title = make('h1', 'cw-v4-title');
     const close = button('', closeSettings, 'cw-v4-close'); close.append(icon('close')); close.setAttribute('aria-label', t('关闭设置', 'Close settings'));
-    head.append(back, title, close);
+    const newCharacter = button('', () => doc.getElementById('rm_button_create')?.click(), 'cw2-char-mobile-create');
+    newCharacter.append(icon('plus'));
+    newCharacter.setAttribute('aria-label', L('新建角色'));
+    head.append(back, title, newCharacter, close);
     shell.append(nav, head); doc.body.append(shell);
     const backdrop = make('div','cw-v4-backdrop');
     doc.querySelector('#top-settings-holder')?.append(backdrop);
