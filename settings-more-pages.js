@@ -31,9 +31,29 @@ export function createMorePages(h) {
     const raw=(source==='custom'?get('custom_api_url_text')?.value:get('openai_reverse_proxy')?.value)||'';const v=raw.trim();if(!v)return '';
     try{const u=new win.URL(v);return (u.host+u.pathname).replace(/\/+$/,'');}catch{return v.split(/[?#]/)[0].replace(/^[a-z]+:\/\//i,'').replace(/^[^/@]*@/,'').replace(/\/+$/,'');}
   }
+  const textModelIds={
+    aphrodite:'aphrodite_model',dreamgen:'model_dreamgen_select',featherless:'featherless_model',
+    generic:'generic_model_textgenerationwebui',infermaticai:'model_infermaticai_select',
+    llamacpp:'llamacpp_model',mancer:'mancer_model',ollama:'ollama_model',
+    ooba:'custom_model_textgenerationwebui',openrouter:'openrouter_model',tabby:'tabby_model',
+    togetherai:'model_togetherai_select',vllm:'vllm_model',
+  };
+  function activeModel(api,source){
+    if(api==='koboldhorde')return get('horde_model');
+    if(api==='novel')return get('model_novel_select');
+    if(api==='textgenerationwebui')return get(textModelIds[get('textgen_type')?.value]);
+    if(api==='openai'){
+      const direct=get(source==='custom'?'custom_model_id':'model_'+source+'_select');
+      return direct||[...get('openai_api')?.querySelectorAll('select[id*="model"],input[id*="model"]')||[]].find(n=>n.checkVisibility());
+    }
+  }
+  function modelLabel(model){
+    if(!model?.selectedOptions)return model?.value?.trim()||'';
+    return [...model.selectedOptions].filter(o=>!o.disabled&&o.value.trim()).map(o=>o.textContent.trim()||o.value.trim()).join(', ');
+  }
   function api(panel){
     const connect=get('api_button_openai'),connection=connect?.closest('.cw-v4-section'),ps=state(panel);
-    if(connection&&!ps.moreApi){ps.moreApi=true;let frame=0;const refresh=()=>{win.cancelAnimationFrame(frame);frame=win.requestAnimationFrame(()=>api(panel));};panel.addEventListener('input',refresh);panel.addEventListener('change',refresh);cleanup(ps,()=>{win.cancelAnimationFrame(frame);panel.removeEventListener('input',refresh);panel.removeEventListener('change',refresh);});for(const [id,label,desc]of [['openai_bypass_status_check','绕过 API 状态检查','接口不支持状态检查时打开'],['openai_show_external_models','显示外部模型','由 API 提供']])setting(ps,connection,id,label,desc);
+    if(connection&&!ps.moreApi){ps.moreApi=true;let frame=0;const refresh=()=>{win.cancelAnimationFrame(frame);frame=win.requestAnimationFrame(()=>api(panel));};panel.addEventListener('input',refresh);panel.addEventListener('change',refresh);ps.modelObserver=new win.MutationObserver(refresh);cleanup(ps,()=>{ps.modelObserver.disconnect();win.cancelAnimationFrame(frame);panel.removeEventListener('input',refresh);panel.removeEventListener('change',refresh);});for(const [id,label,desc]of [['openai_bypass_status_check','绕过 API 状态检查','接口不支持状态检查时打开'],['openai_show_external_models','显示外部模型','由 API 提供']])setting(ps,connection,id,label,desc);
       const info=connect.closest('.cw-v4-row')?.querySelector('.cw-v4-row-info'),status=info?.querySelector('.online_status')||get('openai_api')?.querySelector(':scope>.online_status');if(status&&info){if(!info.contains(status))move(ps,status,info);info.querySelector('.cw-v4-row-title')?.setAttribute('hidden','');}
       const extra=get('customize_additional_parameters'),more=connect.closest('.cw-v4-row')?.querySelector('.cw-v4-more');if(extra&&more){const item=created(ps,button(L('附加参数'),()=>{more.open=false;extra.click();},'cw-v4-more-item'));more.querySelector('.cw-v4-more-list').prepend(item);move(ps,extra,more.querySelector('.cw-v4-more-park'));}
     }
@@ -41,7 +61,20 @@ export function createMorePages(h) {
       if(!row.classList.contains('cwr-api-field')&&(row.querySelector('input:not([type=checkbox]):not([type=hidden]),textarea')||row.querySelector('select[id*="model"],#custom_prompt_post_processing'))){row.classList.add('cwr-api-field');cleanup(state(row),()=>row.classList.remove('cwr-api-field'));}
       const label=row.querySelector('.cw-v4-api-label'),steps=label?.querySelector('ol');if(steps&&!row.querySelector('.cwr-api-help')){const s=state(row),details=created(s,make('details','cwr-api-help')),summary=make('summary','',L('获取密钥说明'));details.append(summary);move(s,steps,details);label.append(details);}
     }
-    const row=connect?.closest('.cw-v4-row');if(row){const source=get('chat_completion_source')?.value,model=get(source==='custom'?'custom_model_id':'model_'+source+'_select'),status=row.querySelector('.cw-v4-row-info');let info=status?.querySelector('.cwr-connection-model');if(status&&!info){info=created(state(row),make('p','cwr-connection-model'));status.append(info);}if(info){const selected=model||[...panel.querySelectorAll('select[id*="model"],input[id*="model"]')].find(n=>n.checkVisibility?.());const modelName=(selected?.selectedOptions?.[0]?.textContent||selected?.value||'').trim(),addr=endpoint(source),value=[modelName,addr].filter(Boolean).join(' · ');if(info.textContent!==value)info.textContent=value;if(info.title!==value)info.title=value;}}
+    const status=connect?.closest('.cw-v4-row')?.querySelector('.cw-v4-row-info');
+    if(!status)return;
+    let info=status.querySelector('.cwr-connection-model');
+    if(!info){info=created(ps,make('p','cwr-connection-model'));status.append(info);}
+    const main=get('main_api')?.value,source=get('chat_completion_source')?.value;
+    const model=activeModel(main,source);
+    if(ps.modelObserver&&ps.statusModel!==model){
+      ps.modelObserver.disconnect();
+      ps.statusModel=model;
+      if(model?.selectedOptions)ps.modelObserver.observe(model,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['selected','disabled','value','label']});
+    }
+    const value=[modelLabel(model),main==='openai'?endpoint(source):''].filter(Boolean).join(' · ');
+    if(info.textContent!==value)info.textContent=value;
+    if(info.title!==value)info.title=value;
   }
   return {sync(panel){if(panel.id==='right-nav-panel')characters(panel);if(panel.id==='Backgrounds')backgrounds(panel);if(panel.id==='rm_api_block')api(panel);
     firstHeading(panel);

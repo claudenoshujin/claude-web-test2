@@ -242,7 +242,8 @@ html[data-cw-settings-unified] .cw2-api .cw2-opts #prompt_post_processing_form h
 
 html[data-cw-settings-unified] .cw2-api .cw2-stat .cw-v4-row-desc{display:block!important}
 html[data-cw-settings-unified] .cw2-api .cw2-src #openai_api>:is(*,.cw-v4-row:first-child){border-right:0!important;border-bottom:0!important;background:transparent!important;box-shadow:none!important}
-html[data-cw-settings-unified] .cw2-api .cw2-stat .cwr-connection-model{display:block!important}
+html[data-cw-settings-unified] .cw2-api .cw2-stat .cwr-connection-model:not(:empty){display:block!important}
+html[data-cw-settings-unified] .cw2-api .cw2-stat .cwr-connection-model:empty{display:none!important}
 html[data-cw-settings-unified] .cw2-api:has(#openai_api[style*="display: none"]) .cw2-opts :is(.cw2-cc,#prompt_post_processing_form.cw2-cc){display:none!important}
 html[data-cw-settings-unified] .cw2-api:has(#openai_api[style*="display: none"]) .cw2-more{display:none!important}
 html[data-cw-settings-unified] .cw2-api .cw2-src>.cw-v4-card>.cw-v4-card:not([style*="display: none"]){padding:14px 16px 16px!important}
