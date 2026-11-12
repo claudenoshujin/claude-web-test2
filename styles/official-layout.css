@@ -122,7 +122,6 @@ html[data-cw-v4] .cw-v4-shell {
 .cw-v4-nav,.cw-v4-head {background:var(--cw-v4-bg);pointer-events:auto}
 .cw-v4-nav {border-radius:15px 0 0 15px;background:var(--cw-v4-nav-bg)}
 .cw-v4-head {border-radius:0 15px 0 0}
-.cw-v4-grip,.cw-v4-resize {pointer-events:auto}
 .cw-v4-group {font-size:13px;color:var(--cw-v4-muted);padding:12px 10px 6px}
 .cw-v4-navitem {display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;text-align:left;min-height:36px;height:auto;padding:7px 12px!important;margin:0!important;border-radius:7px;color:inherit;font-family:var(--cw-v4-font)!important;font-size:15px!important;font-weight:400!important;line-height:20px!important;cursor:pointer}
 .cw-v4-navitem:hover,.cw-v4-navitem[aria-current] {background:var(--cw-v4-hover)}
@@ -130,12 +129,6 @@ html[data-cw-v4] .cw-v4-shell {
 .cw-v4-title {font-size:17px!important;font-weight:500!important;margin:0!important;flex:1}
 .cw-v4-close,.cw-v4-menu {border:0;background:transparent;color:inherit;font-size:24px;cursor:pointer;width:32px;height:32px}
 .cw-v4-menu {display:none}
-.cw-v4-grip {position:absolute;left:35%;right:35%;top:0;height:14px;cursor:move;touch-action:none}
-.cw-v4-grip::after {content:"";display:block;width:36px;height:4px;border-radius:4px;background:var(--cw-v4-line);margin:5px auto}
-.cw-v4-resize {position:absolute;touch-action:none;z-index:3}
-.cw-v4-n,.cw-v4-s {left:12px;right:12px;height:7px;cursor:ns-resize}.cw-v4-n{top:-3px}.cw-v4-s{bottom:-3px}
-.cw-v4-e,.cw-v4-w {top:12px;bottom:12px;width:7px;cursor:ew-resize}.cw-v4-e{right:-3px}.cw-v4-w{left:-3px}
-.cw-v4-ne,.cw-v4-nw,.cw-v4-se,.cw-v4-sw{width:14px;height:14px}.cw-v4-ne{right:-3px;top:-3px;cursor:nesw-resize}.cw-v4-nw{left:-3px;top:-3px;cursor:nwse-resize}.cw-v4-se{right:-3px;bottom:-3px;cursor:nwse-resize}.cw-v4-sw{left:-3px;bottom:-3px;cursor:nesw-resize}
 /* Keep panels under their native .drawer for ST's selectors and events. */
 html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder .cw-v4-panel:is(#left-nav-panel,#rm_api_block,#AdvancedFormatting,#WorldInfo,#Backgrounds,#rm_extensions_block,#right-nav-panel,#PersonaManagement,#user-settings-block).openDrawer:not(.closedDrawer) {
   position:fixed!important;left:calc(var(--cw-v4-x) + 211px)!important;top:calc(var(--cw-v4-y) + 58px)!important;
@@ -601,7 +594,6 @@ html[data-cw-v4] body #form_sheld #send_form #send_textarea::placeholder{text-al
   html[data-cw-v4] .cw-v4-shell{border-radius:0!important;grid-template-columns:1fr}
   .cw-v4-head{grid-column:1;padding:0 14px}.cw-v4-title{text-align:center;font-size:22px!important}.cw-v4-menu{display:block}
   .cw-v4-nav{display:none}.cw-v4-show-nav .cw-v4-nav{display:block;position:absolute;top:58px;bottom:0;width:210px;background:var(--cw-v4-bg);z-index:4}
-  .cw-v4-grip,.cw-v4-resize{display:none}
   html[data-cw-v4] .cw-v4-shell.cw-v4-show-nav{z-index:3002!important}
   .cw-v4-pref-page+.cw-v4-pref-page{margin-top:30px}
   html[data-cw-v4][data-cw-v4-settings] body #top-settings-holder .cw-v4-panel:is(#left-nav-panel,#rm_api_block,#AdvancedFormatting,#WorldInfo,#Backgrounds,#rm_extensions_block,#right-nav-panel,#PersonaManagement,#user-settings-block).openDrawer:not(.closedDrawer){left:0!important;top:112px!important;width:100vw!important;height:calc(100dvh - 112px)!important;border-radius:0!important;padding:18px!important}

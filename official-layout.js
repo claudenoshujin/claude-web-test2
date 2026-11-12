@@ -388,43 +388,12 @@ export function installOfficialLayout(win = window) {
     const title = make('h1', 'cw-v4-title');
     const close = button('', closeSettings, 'cw-v4-close'); close.append(icon('close')); close.setAttribute('aria-label', t('关闭设置', 'Close settings'));
     head.append(back, title, close);
-    const grip = make('div', 'cw-v4-grip'); grip.title = t('拖动移动 · 双击复位', 'Drag to move · Double click to reset');
-    shell.append(nav, head, grip); doc.body.append(shell);
+    shell.append(nav, head); doc.body.append(shell);
     const backdrop = make('div','cw-v4-backdrop');
     doc.querySelector('#top-settings-holder')?.append(backdrop);
     on(backdrop,'mousedown',e=>e.stopPropagation());
     on(backdrop,'click',closeSettings);
     disposers.push(()=>backdrop.remove());
-    on(grip, 'dblclick', resetGeometry);
-    on(grip, 'pointerdown', e => drag(e, 'move'));
-    for (const edge of ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']) {
-      const handle = make('div', `cw-v4-resize cw-v4-${edge}`);
-      on(handle, 'pointerdown', e => drag(e, edge)); shell.append(handle);
-    }
-  }
-  function resetGeometry() {
-    for (const k of ['x','y','w','h']) root.style.removeProperty('--cw-v4-' + k);
-  }
-  function drag(e, mode) {
-    if (mobile() || e.button !== 0 || e.isPrimary === false) return;
-    e.preventDefault(); const b = shell.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY;
-    const handle = e.currentTarget; handle.setPointerCapture?.(e.pointerId);
-    const move = ev => {
-      if (ev.pointerId !== e.pointerId) return;
-      let x = b.x, y = b.y, w = b.width, h = b.height;
-      const dx = ev.clientX - x0, dy = ev.clientY - y0;
-      const minW = Math.min(620, win.innerWidth), minH = Math.min(420, win.innerHeight);
-      if (mode === 'move') { x = Math.max(0, Math.min(win.innerWidth-w, x+dx)); y = Math.max(0, Math.min(win.innerHeight-h, y+dy)); }
-      else {
-        if (mode.includes('e')) w = Math.min(win.innerWidth-x, Math.max(minW,w+dx));
-        if (mode.includes('s')) h = Math.min(win.innerHeight-y, Math.max(minH,h+dy));
-        if (mode.includes('w')) { x = Math.max(0, Math.min(b.right-minW,x+dx)); w = b.right-x; }
-        if (mode.includes('n')) { y = Math.max(0, Math.min(b.bottom-minH,y+dy)); h = b.bottom-y; }
-      }
-      for (const [k,v] of Object.entries({x,y,w,h})) root.style.setProperty('--cw-v4-'+k, v+'px');
-    };
-    const end = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', end); handle.removeEventListener('pointercancel', end); handle.removeEventListener('lostpointercapture', end); };
-    handle.addEventListener('pointermove', move); ['pointerup','pointercancel','lostpointercapture'].forEach(type => handle.addEventListener(type,end));
   }
   // Dialog stays inside the original form / world entry / extension container
   // (just outside our row wrapper). Delegated events and closest() still work.
@@ -1246,7 +1215,7 @@ export function installOfficialLayout(win = window) {
       e.preventDefault(); e.stopImmediatePropagation();
       if (top) top._cwShut?.(); else closeSettings();
     }, true);
-    on(win,'resize', () => { resetGeometry(); schedule(); });
+    on(win,'resize', schedule);
     // Read-only keyboard flag for the short-screen (phone landscape) composer.
     // The input keeps focus after Back hides the keyboard, so focus alone is not enough.
     // Some WebViews (Via) shrink the whole page instead of reporting a keyboard
