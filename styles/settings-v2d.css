@@ -797,6 +797,7 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel.cwp-phone .cwp-edit .cwp-inspect-phone {width:auto!important;margin:0!important;height:30px!important;padding-inline:8px!important}
 #left-nav-panel.cwp-phone .cw-pm-has-selection {padding-bottom:76px!important}
 #left-nav-panel.cwp-phone .cw-pm-bottom[popover] {bottom:var(--cw-pm-batch-bottom)!important;background:var(--cwp-page)!important}
+#left-nav-panel.cwp-phone .cw-pm-bottom .cw-pm-batch>.cw-pm-selection {min-width:max-content!important}
 #left-nav-panel.cwp-phone .cw-pm-bottom[popover]::before {content:'';position:absolute;inset:-18px 0 auto;height:18px;background:linear-gradient(transparent,var(--cwp-page));pointer-events:none}
 #left-nav-panel.cwp-phone[data-cw-preset-tab=prompts]:not(.cwp-edit-open) {overflow-y:auto!important}
 #left-nav-panel.cwp-phone[data-cw-preset-tab=prompts] :is(.cw-v4-drawer-page,#advanced-ai-config-block,#openai_settings,.cw-v4-prompts) {overflow:visible!important}
