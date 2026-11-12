@@ -137,6 +137,61 @@ export function installOfficialLayout(win = window) {
   const prefMoves = [], prefParts = [], prefClasses = [];
   const chatMoves=[];
   const prefRangeUndos=[];
+  const prefSegmentUndos=[];
+  const segmentIds=['stscript_autocomplete_state','stscript_matching','claude-web-theme-auto','claude-web-variant','send_on_enter'];
+  function segmentPreference(select){
+    if(!select)return;
+    const row=select.closest('.cw-v4-pref-row');
+    const title=row?.querySelector('.cw-v4-row-title');
+    if(!title)return;
+    const group=make('div','cww-seg cw2-segment');
+    group.setAttribute('role','group');
+    group.setAttribute('aria-label',title.textContent.trim());
+    group.inert=true;
+    select.after(group);
+    let frame=0,signature='';
+    function sync(){
+      frame=0;
+      const options=[...select.options];
+      const next=JSON.stringify(options.map(o=>[o.value,o.label]));
+      if(next!==signature){
+        signature=next;
+        group.replaceChildren(...(options.length>1&&options.length<=3?options.map(o=>button(o.label,()=>{
+          if(select.disabled||o.disabled||select.value===o.value)return;
+          select.value=o.value;
+          select.dispatchEvent(new win.Event('input',{bubbles:true}));
+          select.dispatchEvent(new win.Event('change',{bubbles:true}));
+          schedule();
+        },'')):[]));
+      }
+      for(const [i,b] of [...group.children].entries()){
+        b.disabled=select.disabled||options[i].disabled;
+        b.setAttribute('aria-pressed',String(options[i].selected));
+      }
+      const style=win.getComputedStyle(row);
+      const content=row.clientWidth-parseFloat(style.paddingInlineStart)-parseFloat(style.paddingInlineEnd);
+      const text=doc.createRange();text.selectNodeContents(title);
+      const titleWidth=text.getBoundingClientRect().width/(row.currentCSSZoom||1);
+      const available=style.flexDirection==='column'?content:content-titleWidth-12;
+      const fits=group.childElementCount>1&&group.offsetWidth<=Math.min(available,260);
+      group.toggleAttribute('data-cw-fit',fits);
+      group.inert=!fits;
+      select.toggleAttribute('data-cw-segmented',fits);
+    }
+    function schedule(){if(!frame)frame=win.requestAnimationFrame(sync);}
+    const changes=new win.MutationObserver(schedule);
+    changes.observe(select,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['value','label','selected','disabled']});
+    const size=new win.ResizeObserver(schedule);size.observe(row);
+    select.addEventListener('input',schedule);select.addEventListener('change',schedule);
+    win.jQuery?.(select).on('change.cwPrefSegment',schedule);
+    prefSegmentUndos.push(()=>{
+      changes.disconnect();size.disconnect();win.cancelAnimationFrame(frame);
+      select.removeEventListener('input',schedule);select.removeEventListener('change',schedule);
+      win.jQuery?.(select).off('change.cwPrefSegment',schedule);
+      select.removeAttribute('data-cw-segmented');group.remove();
+    });
+    schedule();
+  }
   function pm(node,host){if(!node||node===host)return;for(const counter of node.matches?.('input[data-for]')?[node]:node.querySelectorAll?.('input[data-for]')||[]){const undo=retainRangeCounter(counter);if(undo)prefRangeUndos.push(undo);}if(node.parentNode){const mark=doc.createComment('cw-v4-pref-return');node.before(mark);prefMoves.push([node,mark]);}host.append(node);}
   const take = id => { const n=doc.getElementById(id); return n && prefPanel?.contains(n) && !n.closest('.cw-v4-pref-pages') ? n : null; };
   const addClass=(n,...c)=>{if(!n)return;n.classList.add(...c);prefClasses.push([n,c]);};
@@ -175,6 +230,7 @@ export function installOfficialLayout(win = window) {
   const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu});
   function restorePrefs() {
     for(const undo of prefRangeUndos.splice(0).reverse())undo();
+    for(const undo of prefSegmentUndos.splice(0).reverse())undo();
     const panel = panels.get('user-settings-block'), pages = panel?.querySelector('.cw-v4-pref-pages');
     if (!pages) return;
     const remaining = pages.querySelector('.cw-v4-pref-remaining');
@@ -324,6 +380,7 @@ export function installOfficialLayout(win = window) {
     while (panel.firstChild) remaining.append(panel.firstChild);
     pages.append(remaining); panel.append(pages);
     normalizeSettingsSections(pages,make);
+    for(const id of segmentIds)segmentPreference(doc.getElementById(id));
     selectPrefs(prefPage);
   }
   const isOpen = p => p.classList.contains('openDrawer') && !p.classList.contains('closedDrawer');
