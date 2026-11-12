@@ -4106,3 +4106,17 @@ html[data-cw-v4][data-claude-layout="mobile"] body:not(.clawd-welcome) #chat[dat
 @media(max-width:700px){
   html[data-cw-v4][data-claude-layout="mobile"] body:not([data-clawd-menu]) #top-settings-holder#top-settings-holder{height:54px!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important;overflow:visible!important}
 }
+
+/* SillyTavern's native chat_display choices, shared with the formal line. */
+html[data-cw-v4]{--cw-chat-surface:250,249,245}
+html[data-cw-v4][data-claude-integrated-theme="night"]{--cw-chat-surface:44,44,42}
+html[data-cw-v4] body.bubblechat #chat#chat>.mes[is_user=false] .mes_block{background:rgba(var(--cw-chat-surface),.9)!important;border:1px solid #9993!important;border-radius:20px!important;padding:20px 24px!important;max-width:94%!important}
+html[data-cw-v4] body.bubblechat #chat#chat>.mes[is_user=false] .mes_text{background:none!important;padding:0!important}
+html[data-cw-v4] body.documentstyle #chat#chat>.mes[is_user=false] .mes_block{background:rgba(var(--cw-chat-surface),.97)!important;border:1px solid #9994!important;border-radius:8px!important;padding:28px 34px!important;box-shadow:0 4px 12px #00000004!important}
+html[data-cw-v4] body.documentstyle #chat#chat>.mes[is_user=false] .ch_name::after{content:"　/　阅读稿";font:11px Arial;color:#a69580}
+html[data-cw-v4] body.documentstyle #chat#chat>.mes[is_user=false] .mes_text{font-family:Georgia,"Songti SC",serif!important;background:none!important;padding:0!important}
+html[data-cw-v4] body.documentstyle #chat#chat>.mes[is_user=true] .mes_text{background:none!important;border-radius:0!important;border-left:2px solid #b7896d!important;padding:6px 16px!important;max-width:100%!important;margin-left:0!important}
+@media(max-width:700px){
+  html[data-cw-v4] body.bubblechat #chat#chat>.mes[is_user=false] .mes_block{padding:16px 18px!important;max-width:100%!important}
+  html[data-cw-v4] body.documentstyle #chat#chat>.mes[is_user=false] .mes_block{padding:20px!important}
+}
