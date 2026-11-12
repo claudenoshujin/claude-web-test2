@@ -21,6 +21,9 @@ export function createSettingsScale({win, mobile, t}) {
   // 外壳和面板都加了 zoom，它们的 left / top 也按 zoom 后的坐标算：要落在屏幕 L 处，就写 L ÷ 比例。
   function apply() {
     frame = 0;
+    // The fit-to-screen scale can be the same for two different preferences.
+    const designWidth = Math.min(W, (win.innerWidth - 48) / (supported ? user : 1));
+    root.toggleAttribute('data-cw-sz-single', root.hasAttribute('data-cw-settings-unified') && (mobile() || designWidth < 1206));
     if (!active()) { if (applied) { for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); applied = ''; } edges.hidden = true; return; }
     const g = geometry(user), key = [g.s, g.w, g.h, g.left, g.top].map(n => n.toFixed(2)).join();
     if (key !== applied) {
@@ -142,6 +145,6 @@ export function createSettingsScale({win, mobile, t}) {
   return {
     get scale() { return active() ? geometry(user).s : 1; },
     refresh: schedule,
-    destroy() { destroyed = true; win.removeEventListener('resize', schedule); for (const type of ['mousedown', 'touchstart', 'pointerdown']) doc.removeEventListener(type, sortableDown, {capture: true}); doc.removeEventListener('scroll', onScroll, {capture: true}); mo.disconnect(); if (frame) win.cancelAnimationFrame(frame); for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); root.removeAttribute('data-cw-sz-drag'); edges.remove(); ghost.remove(); },
+    destroy() { destroyed = true; win.removeEventListener('resize', schedule); for (const type of ['mousedown', 'touchstart', 'pointerdown']) doc.removeEventListener(type, sortableDown, {capture: true}); doc.removeEventListener('scroll', onScroll, {capture: true}); mo.disconnect(); if (frame) win.cancelAnimationFrame(frame); for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); root.removeAttribute('data-cw-sz-single'); root.removeAttribute('data-cw-sz-drag'); edges.remove(); ghost.remove(); },
   };
 }

@@ -1,7 +1,7 @@
 /* 设置页 v2d 版式（稿 界面优化与新功能-20261103/design-settings-pages-v2d.html，修改单 qa-pages-v2d/给Codex-设置页v2d版式修改单-20261110.md）。
    层 cw-settings-v2d 在 official-layout.css 第一行声明，排在 cw-settings-spec 前面：!important 时它比 spec / round3 / unified 都强。
    所以这里的规则一律限定在落地了 v2d 的页面（.cw2）或明确的弹窗 / 菜单上，不碰预设、世界书、角色卡、背景。
-   电脑：窗口 1420×930（屏幕小时跟着缩）；内容区宽度不到约 900px（视口 < 1254px）时两栏退回单栏。手机：≤700px。 */
+   电脑：按用户选定比例折算的窗口设计宽度低于 1206px 时使用单栏。手机使用单栏。 */
 @layer cw-settings-v2d {
 
 /* ── G12 窗口：稿子按 1420×930 画 ── */
@@ -34,10 +34,8 @@ html[data-cw-settings-unified] .cw2 .cw2-col>.cw2-grow{flex:1 1 auto!important}
 html[data-cw-settings-unified] .cw2 .cw2-grow>.cw-v4-card{flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
 html[data-cw-settings-unified] .cw2 .cw2-grow>.cw-v4-card>.cw2-fill{flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
 html[data-cw-settings-unified] .cw2 .cw2-grow>.cw-v4-card>.cw2-fill textarea{flex:1 1 0!important;height:0!important;min-height:150px!important;resize:none!important}
-@media (max-width:1253px){
- html[data-cw-settings-unified] .cw2 .cw2-cols{display:flex!important;flex-direction:column!important;align-items:stretch!important}
- html[data-cw-settings-unified] .cw2 .cw2-col{display:contents!important}
-}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2 .cw2-cols{display:flex!important;flex-direction:column!important;align-items:stretch!important}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2 .cw2-col{display:contents!important}
 /* G7 分组标题 */
 html[data-cw-settings-unified] .cw2 .cw-v4-section>h2,html[data-cw-settings-unified] .cw2 .cw2-sec-h{display:flex!important;align-items:center!important;gap:8px!important;margin:24px 2px 10px!important;padding:0!important;font-size:13.5px!important;font-weight:calc(400 + var(--cw-ui-weight-offset,0))!important;color:var(--cwus-muted)!important;line-height:normal!important;height:auto!important;min-height:0!important;border:0!important}
 html[data-cw-settings-unified] .cw2 .cw2-cols:first-child .cw2-col>.cw-v4-section:first-child>h2,html[data-cw-settings-unified] .cw2 .cw2-bar+.cw2-cols .cw2-col>.cw-v4-section:first-child>h2{margin-top:20px!important}
@@ -506,14 +504,12 @@ html[data-cw-settings-unified]:not(:lang(zh)) .cw2-ext .cw2-rm .cwex-delete::aft
  html[data-cw-settings-unified] .cw2-ext .cw2-own{order:3!important}
  html[data-cw-settings-unified] .cw2-ext .cw2-rm{order:4!important}
 }
-@media (max-width:1253px){
- html[data-cw-settings-unified] .cw2-ext .cw2-upd{order:-1!important}
- html[data-cw-settings-unified] .cw2-ext .cw2-xopts{order:1!important}
- html[data-cw-settings-unified] .cw2-ext .cw2-this{order:1!important}
- html[data-cw-settings-unified] .cw2-ext .cw2-ver{order:2!important}
- html[data-cw-settings-unified] .cw2-ext .cw2-own{order:3!important}
- html[data-cw-settings-unified] .cw2-ext .cw2-rm{order:4!important}
-}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2-ext .cw2-upd{order:-1!important}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2-ext .cw2-xopts{order:1!important}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2-ext .cw2-this{order:1!important}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2-ext .cw2-ver{order:2!important}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2-ext .cw2-own{order:3!important}
+html[data-cw-settings-unified][data-cw-sz-single] .cw2-ext .cw2-rm{order:4!important}
 html[data-cw-settings-unified] .cw2-ext .cw2-sortbar>.cwex-reset{padding:0 14px!important;width:auto!important;white-space:nowrap!important}
 html[data-cw-settings-unified] .cw2-ext :is(.cw2-sortbar,.cw2-xbar)>.cwex-back{padding:0 12px 0 8px!important;width:auto!important}
 html[data-cw-settings-unified] .cw2-ext .cwex-sort-row .cwex-eye{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;display:grid!important;place-items:center!important}
@@ -661,7 +657,7 @@ html[data-cw-settings-unified] .cw2-fmt .cw-v4-section>h2>.cw2-tok:not(:empty)+.
 }
 @layer cw-settings-v2d {
 /* v2d 补充 二-1：API 左卡不伸长（OpenAI 等没有端点行的来源，三层平分高度时格子里一大片空白）。格子按内容排，这一页两栏底边不强求对齐。 */
-@media (min-width:1254px){html[data-cw-settings-unified] .cw2-api .cw2-cols.cw2-stretch{align-items:start!important}}
+html[data-cw-settings-unified]:not([data-cw-sz-single]) .cw2-api .cw2-cols.cw2-stretch{align-items:start!important}
 html[data-cw-settings-unified] .cw2-api .cw2-col>.cw2-src.cw2-grow{flex:none!important}
 html[data-cw-settings-unified] .cw2-api .cw2-src>.cw-v4-card{align-content:start!important;flex:none!important}
 }
