@@ -819,6 +819,10 @@ html[data-cw-settings-unified] dialog.popup .cw2-world-popup #WIMultiSelector {
   width:100%!important;
   margin:0!important;
 }
+html[data-cw-settings-unified] dialog.popup .cw2-world-popup #WIMultiSelector .select2-selection--multiple {
+  max-height:none!important;
+  overflow:visible!important;
+}
 html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_world_info_selector,.chat_world_info_selector) :is(.select2-selection,.character_world_info_selector,.chat_world_info_selector,#world_info:not(.select2-hidden-accessible)) {
   min-height:36px!important;
   border:1px solid var(--cwus-line)!important;
