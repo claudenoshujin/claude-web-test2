@@ -75,7 +75,7 @@ export function createSettingsScale({win, mobile, t}) {
      结果是被拖的条目不跟指针、落点不准。这里不改酒馆文件，也不改各页的代码：在设置窗口里按下指针时（捕获阶段，
      早于 jQuery UI 自己的 mousedown），给所在的 sortable 实例包一层——量出来的尺寸、外边距乘上比例，写回位置时除以比例。
      尺寸换算在比例为 1 时自然不起作用；拖动位置的换算电脑端 100% 也照样做（Lulu 定：100% 在滚动过的面板里原生本身就偏 60px、
-     自动滚动后条目不跟手，一起修）。手机不缩放，不做位置换算，保持原样。 */
+     自动滚动后条目不跟手，一起修）。手机提示词列表也做位置换算，比例按 1。 */
   const patchedSortables = new WeakSet();
   function patchSortable(inst) {
     if (!inst || patchedSortables.has(inst)) return; patchedSortables.add(inst);
@@ -136,7 +136,12 @@ export function createSettingsScale({win, mobile, t}) {
   const sortableDown = e => {
     const $ = win.jQuery; if (!$?.ui?.sortable || !e.target?.closest) return;
     if (!e.target.closest('.cw-v4-panel,.cw-v4-shell')) return;
-    for (let el = e.target.closest('.ui-sortable'); el; el = el.parentElement?.closest('.ui-sortable')) { let inst = null; try { inst = $(el).sortable('instance'); } catch {} if (inst) { patchSortable(inst); inst.__cwZ = el.currentCSSZoom || 1; inst.__cwOn = !mobile(); } }
+    for (let el = e.target.closest('.ui-sortable'); el; el = el.parentElement?.closest('.ui-sortable')) {
+      const phone = mobile();
+      if (phone && el.id !== 'completion_prompt_manager_list') continue;
+      let inst = null; try { inst = $(el).sortable('instance'); } catch {}
+      if (inst) { patchSortable(inst); inst.__cwZ = phone ? 1 : (el.currentCSSZoom || 1); inst.__cwOn = true; }
+    }
   };
   for (const type of ['mousedown', 'touchstart', 'pointerdown']) doc.addEventListener(type, sortableDown, {capture: true, passive: true});
   win.addEventListener('resize', schedule);
