@@ -703,14 +703,21 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       const popup=get('character_popup');
       if(popup){
         const knownChrome='#character_popup_ok,#character_cross,.editor_maximize,.inline-drawer-icon,.notes-link';
-        const extras=[...popup.querySelectorAll('input,textarea,select,button,.menu_button,[role=button]')].filter(n=>!n.matches(knownChrome)&&!n.closest('.notes-link'));
-        if(extras.length){
-          const other=section(b,'其他设置');
-          for(const extra of extras){
-            const block=extra.closest('label')||extra;
-            move(s,block,sectionHost(other));
+        let other;
+        const moveExtras=()=>{
+          const extras=new Set([...popup.querySelectorAll('input,textarea,select,button,.menu_button,[role=button]')]
+            .filter(n=>!n.matches(knownChrome)&&!n.closest('.notes-link'))
+            .map(n=>n.closest('label')||n));
+          if(!extras.size)return;
+          other??=section(b,'其他设置');
+          for(const block of extras){
+            if(popup.contains(block))move(s,block,sectionHost(other));
           }
-        }
+        };
+        moveExtras();
+        const observer=new win.MutationObserver(moveExtras);
+        observer.observe(popup,{childList:true,subtree:true});
+        cleanup(s,()=>observer.disconnect());
       }
 
       const more=menu(s,[['复制',null,false,()=>get('dupe_button')?.click(),'copy'],['导出',null,false,()=>get('export_button')?.click(),'exp']]);
