@@ -870,15 +870,6 @@ html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {margin-bottom:0}
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane[hidden] {display:none!important}
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane .cw-v4-section {min-width:0; margin-top:22px!important}
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane .cw-v4-section>h2 {margin-top:0!important}
-html[data-cw-settings-unified] .cw2-char-hero {gap:8px!important; margin-bottom:8px!important}
-html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-who {
-  display:flex!important; align-items:center; gap:12px; flex:1 1 auto!important;
-}
-html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-name {font-size:20px!important; font-weight:600!important}
-html[data-cw-settings-unified] .cw2-char-hero #result_info {white-space:nowrap}
-html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-chat {
-  background:var(--cwus-ink)!important; color:var(--cwus-canvas)!important;
-}
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-field {
   min-width:0; padding:14px 16px 16px; display:flex; flex-direction:column; gap:8px;
 }
@@ -924,6 +915,15 @@ html[data-cw-settings-unified] .cw2-persona .cw2-ptools>#persona_grid_toggle {
   flex:none; width:36px!important; height:36px!important; margin:0!important;
 }
 @media(min-width:701px){
+html[data-cw-settings-unified] .cw2-char-hero {gap:8px!important; margin-bottom:8px!important}
+html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-who {
+  display:flex!important; align-items:center; gap:12px; flex:1 1 auto!important;
+}
+html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-name {font-size:20px!important; font-weight:600!important}
+html[data-cw-settings-unified] .cw2-char-hero #result_info {white-space:nowrap}
+html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-chat {
+  background:var(--cwus-ink)!important; color:var(--cwus-canvas)!important;
+}
   html[data-cw-settings-unified] .cw2-char-detail>:is(.cw-v4-desk-only,.cw-v4-desk-more,.cw-v4-leftovers) {display:none!important}
   html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div,
   html[data-cw-settings-unified] .cw2-char-hero #avatar_div_div img {width:36px!important; min-width:36px!important; max-width:36px!important; height:36px!important; border-radius:50%!important}
@@ -983,8 +983,11 @@ html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div>.slider_hint {g
   html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-pane .cw2-col>.cw-v4-section+.cw-v4-section {margin-top:22px!important}
   html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-pane .cw2-col>.cw-v4-section>h2 {margin-top:0!important}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane>.cw2-cols {padding-top:12px; box-sizing:border-box}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-basic>.cw2-cols {padding-top:7px}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-basic .cw2-col>.cw-v4-section+.cw-v4-section {margin-top:16px!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-basic .cw2-char-tags {padding-block:8px!important}
   html[data-cw-settings-unified]:not([data-cw-sz-single]) .cw2-char-basic>.cw2-cols {min-height:692px}
-  html[data-cw-settings-unified]:not([data-cw-sz-single]) .cw2-char-adv>.cw2-cols {min-height:714px}
+  html[data-cw-settings-unified]:not([data-cw-sz-single]) .cw2-char-adv>.cw2-cols {min-height:722px}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-greeting .cw2-char-field>#firstmessage_textarea {height:150px!important; min-height:150px!important}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-short-field>.cw-v4-row-controls,
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-role>.cw-v4-row-controls {width:min(264px,70%)!important}
