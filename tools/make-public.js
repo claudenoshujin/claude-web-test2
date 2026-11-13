@@ -221,6 +221,14 @@ for (const file of STYLE_FILES) {
   console.log(`CSS ${file}: removed ${result.removed} experimental rules`);
 }
 
+const destFonts = path.join(dest, 'fonts');
+fs.mkdirSync(destFonts, { recursive: true });
+for (const file of fs.readdirSync(path.join(root, 'fonts'))) {
+  if (!/\.(?:woff2|txt)$/i.test(file)) continue;
+  fs.copyFileSync(path.join(root, 'fonts', file), path.join(destFonts, file));
+}
+fs.copyFileSync(path.join(root, 'styles', 'local-fonts.css'), path.join(dest, 'styles', 'local-fonts.css'));
+
 const sourceIcons = path.join(root, 'icons');
 if (fs.existsSync(sourceIcons)) fs.cpSync(sourceIcons, path.join(dest, 'icons'), { recursive: true, force: true });
 

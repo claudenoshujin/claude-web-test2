@@ -438,7 +438,7 @@ const CLAUDE_KEYBOARD_BUILD = {
      缓存磁盘资源的原生壳）拉到的还是旧样式表，看起来像"更新了但没修复"。
      以后只要改了 styles/*.css，这里必须跟着换一个新值。 */
   id: '2.0.343-official-layout-' + (CLAUDE_COMPAT_MODE ? 'compat' : 'full')
-    + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext',
+    + '-' + CLAUDE_THEME_VARIANT + '-' + CLAUDE_LAYOUT + '-ext-local-fonts',
   mode: 'full',
 };
 
@@ -468,15 +468,50 @@ const CLAUDE_STYLE_HREF = CLAUDE_STYLE_URL.href;
 
 const officialStyle = document.createElement('link');
 officialStyle.rel = 'stylesheet';
-officialStyle.href = new URL('styles/official-layout.css?v=2.0.343', import.meta.url).href;
+officialStyle.href = new URL('styles/official-layout.css?v=2.0.343-local-fonts', import.meta.url).href;
+const localFontStyle = document.createElement('link');
+localFontStyle.rel = 'stylesheet';
+localFontStyle.href = new URL('styles/local-fonts.css?v=2.0.343', import.meta.url).href;
+let optionalFontStyle;
+let optionalFontTimeout;
+
+function loadOptionalChineseFonts() {
+  if (!CLAUDE_ENABLED || optionalFontStyle) return;
+
+  const css = new URL('https://fonts.googleapis.com/css2');
+  if (CLAUDE_LAYOUT === 'pc') css.searchParams.append('family', 'Noto Sans SC:wght@400;500;700');
+  css.searchParams.append('family', 'Noto Serif SC:wght@300;400');
+  css.searchParams.set('display', 'swap');
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.media = 'print';
+  link.href = css.href;
+  link.addEventListener('load', () => {
+    window.clearTimeout(optionalFontTimeout);
+    link.media = 'all';
+  }, { once: true });
+  link.addEventListener('error', removeOptionalChineseFonts, { once: true });
+  optionalFontStyle = link;
+  optionalFontTimeout = window.setTimeout(removeOptionalChineseFonts, 8000);
+  document.head.append(link);
+}
+
+function removeOptionalChineseFonts() {
+  window.clearTimeout(optionalFontTimeout);
+  optionalFontStyle?.remove();
+  optionalFontStyle = undefined;
+}
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
 const refinementStyle=document.createElement('link');refinementStyle.rel='stylesheet';refinementStyle.href=new URL('styles/interface-refinements.css?v=2.0.343',import.meta.url).href;if(CLAUDE_ENABLED)document.head.append(refinementStyle);
-if (CLAUDE_ENABLED) document.head.append(officialStyle);
+if (CLAUDE_ENABLED) document.head.append(localFontStyle, officialStyle);
 const startOfficialLayout = () => {
   if (!CLAUDE_ENABLED) return;
   document.head.append(officialStyle);
   window.__claudeOfficialLayout?.destroy();
   window.__claudeOfficialLayout = installOfficialLayout(window);
+  // Fetch optional CJK faces after the initial page load, outside the layout stylesheets.
+  loadOptionalChineseFonts();
 };
 if (document.readyState === 'complete') window.setTimeout(startOfficialLayout, 0);
 else window.addEventListener('load', startOfficialLayout, { once: true });
@@ -14596,6 +14631,8 @@ if (CLAUDE_ENABLED) {
       window.__claudeOfficialLayout?.destroy();
       delete window.__claudeOfficialLayout;
       officialStyle.remove();
+      localFontStyle.remove();
+      removeOptionalChineseFonts();
       refinementStyle.remove();
       const sheet = document.getElementById('claude-integrated-theme-live-style');
       if (sheet) sheet.disabled = true;

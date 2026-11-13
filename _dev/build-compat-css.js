@@ -369,7 +369,12 @@ function collectImports(sourceCss) {
   csstree.walk(csstree.parse(sourceCss), {
     visit: 'Atrule',
     enter(node) {
-      if (String(node.name).toLowerCase() === 'import') imports.push(`@${csstree.generate(node)}`.replace(/^@@/, '@'));
+      if (node.name.toLowerCase() !== 'import') return;
+      const href = node.prelude?.children.first;
+      if (!href || !['Url', 'String'].includes(href.type) || /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href.value)) {
+        throw new Error('Compatibility CSS imports must refer to local stylesheets');
+      }
+      imports.push(csstree.generate(node));
     },
   });
   return imports;
