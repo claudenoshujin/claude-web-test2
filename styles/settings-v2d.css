@@ -906,7 +906,7 @@ html[data-cw-settings-unified] .cw2-char-list .cw-v4-character-actions>details>s
 }
 html[data-cw-settings-unified] .cw2-char-list .cw-v4-character-chev,
 html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort,
-html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-import {display:none!important}
+html[data-cw-settings-unified] .cw2-char-bar .cw-v4-more-list>.cw2-char-mobile-import.cw-v4-more-item {display:none!important}
 html[data-cw-settings-unified] .cw2-char-list .character_select.is_fav .ch_name::after {
   content:'★'; color:#be8a24; font-size:10px; margin-inline-start:5px;
 }
@@ -980,7 +980,7 @@ html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-chat {
   html[data-cw-settings-unified] .cw2-char-bar>:is(h2,.cw2-note,.cw2-sp,#character_import_button,#rm_button_create),
   html[data-cw-settings-unified] .cw2-char-sort {display:none!important}
   html[data-cw-settings-unified] .cw2-char-bar>.cwr-search-box {width:auto!important; flex:1!important}
-  html[data-cw-settings-unified] .cw2-char-list .cw2-char-mobile-import {display:flex!important}
+  html[data-cw-settings-unified] .cw2-char-bar .cw-v4-more-list>.cw2-char-mobile-import.cw-v4-more-item {display:flex!important}
   html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort {display:inline-flex!important}
   html[data-cw-settings-unified] body:has(#rm_characters_block:not([hidden],[style*="display: none"]) .cw2-char-list) .cw-v4-shell[data-panel="right-nav-panel"] .cw2-char-mobile-create {
     display:grid; place-items:center; position:absolute; top:50%; right:44px; transform:translateY(-50%);

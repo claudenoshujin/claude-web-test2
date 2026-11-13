@@ -888,9 +888,17 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       ['新建群聊',get('rm_button_group_chats'),false,null,'plus'],
       ['从网址导入',get('external_import_button'),false,null,'ext'],
       ['批量编辑',get('bulkEditButton'),false,null,'pencil'],
-      ['从文件导入',null,false,()=>importButton?.click(),'imp'],
     ]);
-    actions.querySelector('.cw-v4-more-item:last-child')?.classList.add('cw2-char-mobile-import');
+    const menuList=actions.querySelector('.cw-v4-more-list');
+    const mobileImport=button(L('从文件导入'),e=>{
+      e.stopPropagation();actions.open=false;importButton?.click();
+    },'cw-v4-more-item cw2-char-mobile-import');
+    mobileImport.prepend(popIcon('imp'));
+    const syncImport=()=>{
+      if(phoneWide()&&importButton){if(!mobileImport.isConnected)menuList.append(mobileImport);}
+      else mobileImport.remove();
+    };
+    win.addEventListener('resize',syncImport);cleanup(s,()=>win.removeEventListener('resize',syncImport));syncImport();
     head.append(actions);
     header.append(head);
     const filters=make('div','cw2-char-filters');
