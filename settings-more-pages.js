@@ -40,6 +40,25 @@ export function createMorePages(h) {
       const label=count===undefined?t('标签','Tag'):t(`标签 · ${count} 个角色`,`Tag · ${count} characters`);
       if(meta.textContent!==label)meta.textContent=label;
     }
+    const list=page.querySelector('#rm_print_characters_block');
+    if(!list)return;
+    const back=list.querySelector(':scope>.bogus_folder_select_back');
+    const name=back?.querySelector('.ch_name');
+    if(name&&!name.nextElementSibling?.matches('.cwr-folder-back-label')){
+      name.after(created(state(back),make('span','cwr-folder-back-label',t('返回上一级','Go up one level'))));
+    }
+    // ST rebuilds this list and its hidden-count row together. Read the count
+    // from the current render so a subsequent folder never inherits it.
+    const hidden=back&&list.querySelector(':scope>.hidden_block p');
+    const section=list.closest('.cw-v4-section')||list;
+    let note=section.nextElementSibling;
+    if(!note?.matches('.cwr-folder-hidden-note')){
+      if(!hidden)return;
+      note=created(s,make('p','cwr-folder-hidden-note'));
+      section.after(note);
+    }
+    note.hidden=!hidden;
+    if(hidden&&note.textContent!==hidden.textContent)note.textContent=hidden.textContent;
   }
   function backgrounds(panel){
     const page=panel.querySelector(':scope>.cw-v4-drawer-page');if(!page)return;const s=state(page);
