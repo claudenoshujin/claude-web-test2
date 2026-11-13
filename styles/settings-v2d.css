@@ -750,6 +750,9 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel:not(.cwp-phone) .cwp-list-column {display:flex;flex-direction:column;height:calc(var(--cwus-window-h) - 182px)}
 #left-nav-panel:not(.cwp-phone) .cwp-list-column>#completion_prompt_manager {min-width:0!important;min-height:0!important;flex:1 1 0!important;display:flex!important;flex-direction:column!important}
 #left-nav-panel:not(.cwp-phone) #completion_prompt_manager>.range-block {display:flex!important;flex:1 1 0!important;flex-direction:column!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain}
+#left-nav-panel #completion_prompt_manager.cw-pm-list>.range-block:not(:has(.cw-v4-prompt-row,.bai-bai-preset-vue-list-host)) {
+  background:transparent!important;border-color:transparent!important;box-shadow:none!important;
+}
 #left-nav-panel:not(.cwp-phone) #completion_prompt_manager_list:not(.bai-bai-preset-vue-list-host *) {flex:0 0 auto!important;min-height:0!important;overflow:visible!important}
 #left-nav-panel:not(.cwp-phone) .cwp-dock {display:block;position:relative;min-width:0;height:calc(var(--cwus-window-h) - 182px);overflow:auto;overscroll-behavior:contain}
 #left-nav-panel:not(.cwp-phone) .cwp-dock .cwp-edit {padding:0!important;margin:0!important;width:100%!important;max-width:none!important}
@@ -786,8 +789,13 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel.cwp-phone .cwp-bar h2,#left-nav-panel.cwp-phone .cwp-bind {display:none!important}
 #left-nav-panel.cwp-phone .cwp-bar .cwr-select-host {flex:1 1 0!important}
 #left-nav-panel.cwp-phone .cwp-bind-menu {display:flex!important}
-#left-nav-panel.cwp-phone .cw-pm-tabs {position:sticky!important;top:0!important;z-index:5!important;background:var(--cwp-page)!important}
-#left-nav-panel.cwp-phone .cw-pm-tools {position:sticky!important;top:41px!important;z-index:4!important;background:var(--cwp-page)!important}
+#left-nav-panel.cwp-phone .cwp-sticky {
+  position:sticky;top:0;z-index:5;margin-inline:-16px;padding:0 16px 8px;
+  background:var(--cwp-page);
+}
+#left-nav-panel.cwp-phone .cwp-sticky>.cw-pm-tabs {margin:0!important;border:0!important}
+#left-nav-panel.cwp-phone .cwp-sticky>.cw-pm-tools {margin:0!important}
+#left-nav-panel.cwp-phone:not([data-cw-preset-tab=prompts]) .cwp-sticky>.cw-pm-tools {display:none!important}
 /* Native jQuery UI marks the entire item as a handle when handle is unset. */
 #left-nav-panel.cwp-phone .cw-v4-prompt-row.ui-sortable-handle {touch-action:pan-y!important}
 #left-nav-panel.cwp-phone #completion_prompt_manager #completion_prompt_manager_list>li.ui-sortable-helper {position:absolute!important}
@@ -799,12 +807,93 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel.cwp-phone .cw-pm-bottom[popover]::before {content:'';position:absolute;inset:-18px 0 auto;height:18px;background:linear-gradient(transparent,var(--cwp-page));pointer-events:none}
 #left-nav-panel.cwp-phone[data-cw-preset-tab=prompts]:not(.cwp-edit-open) {overflow-y:auto!important}
 #left-nav-panel.cwp-phone[data-cw-preset-tab=prompts] :is(.cw-v4-drawer-page,#advanced-ai-config-block,#openai_settings,.cw-v4-prompts) {overflow:visible!important}
-#left-nav-panel.cwp-phone[data-cw-preset-tab] {padding-top:14px!important}
+#left-nav-panel.cwp-phone[data-cw-preset-tab] {padding-top:0!important}
 #left-nav-panel .cwp-bar>details {flex:0 0 36px!important;position:relative!important;inset:auto!important}
 #left-nav-panel .cwp-bind>input[type=checkbox] {appearance:none!important;width:34px!important;height:20px!important;flex:0 0 34px!important;border:0!important;border-radius:12px!important;position:relative!important;background:var(--cwus-toggle-off)!important;cursor:pointer}
 #left-nav-panel .cwp-bind>input:checked {background:var(--cwus-blue)!important}
 #left-nav-panel .cwp-bind>input::after {content:'';position:absolute;inset:3px auto auto 3px;width:14px;height:14px;border-radius:50%;background:white}
 #left-nav-panel .cwp-bind>input:checked::after {inset-inline-start:17px}
+
+/* 342 feedback: keep the native fields and action targets in the unified layout. */
+html[data-cw-settings-unified] #WorldInfo :is(.cww-ehead,.cww-entry) {
+  grid-template-columns:minmax(0,1fr) 128px 56px 44px 54px!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-row-more {
+  position:relative!important;flex:none!important;margin:0!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-row-more>summary {
+  display:grid!important;place-items:center!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;
+  padding:0!important;color:var(--cww-muted2)!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-row-more>.cw-v4-more-list {inset-inline-start:auto;inset-inline-end:0}
+html[data-cw-settings-unified] #WorldInfo :is(.cww-selecting,.cww-native-entries) .cww-row-more {display:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-v-home .cww-opts .cww-row {min-height:60px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-kt :is(textarea:not(.select2-search__field),.select2-selection) {
+  box-sizing:border-box!important;height:36px!important;min-height:36px!important;max-height:36px!important;
+  border:1px solid var(--cwus-line)!important;border-radius:9px!important;background:var(--cwus-canvas)!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-kt>textarea {
+  padding:8px!important;line-height:18px!important;margin:0!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-kt>.select2-container {width:100%!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-kt .select2-selection {
+  display:flex!important;align-items:center!important;gap:4px!important;padding:0 8px!important;overflow:auto!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-kt .select2-selection__rendered {
+  display:flex!important;align-items:center!important;gap:4px!important;flex:0 0 auto!important;
+  max-width:none!important;padding:0!important;margin:0!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-kt .select2-selection__choice {flex:none!important;margin:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-kt .select2-search--inline {
+  display:flex!important;align-items:center!important;flex:1 0 36px!important;min-width:36px!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-kt .select2-search__field {
+  background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important;
+  margin:0!important;padding:0!important;height:20px!important;min-height:0!important;line-height:20px!important;
+}
+html[data-cw-settings-unified] #WorldInfo .cww-kt .select2-search__field:placeholder-shown {width:100%!important}
+html[data-cw-settings-unified] #WorldInfo .cww-kt :is(.select2-selection:focus-within,textarea:focus-visible) {outline:1px solid var(--cwus-blue)!important;outline-offset:-1px!important}
+
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .bogus_folder_select:has(.cwr-folder-summary) {
+  box-sizing:border-box!important;height:62px!important;min-height:62px!important;max-height:62px!important;
+  align-items:center!important;padding-block:10px!important;
+}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .bogus_folder_select:has(.cwr-folder-summary)> .character_select_container {
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;
+  min-width:0!important;width:auto!important;flex:1 1 0!important;gap:0!important;
+}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .bogus_folder_select:has(.cwr-folder-summary) :is(.bogus_folder_avatars_block,.bogus_folder_counter,.bogus_folder_hidden_counter) {display:none!important}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .bogus_folder_select:has(.cwr-folder-summary) .character_name_block {margin:0!important}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .bogus_folder_select:has(.cwr-folder-summary) .bogus_folder_icon {
+  display:block;width:20px;height:20px;margin:auto;background:currentColor;
+  mask:var(--cw-v4-icon-folder) center/contain no-repeat;
+}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .folder_open:has(.cwr-folder-summary) .bogus_folder_icon {
+  mask-image:var(--cw-v4-icon-folderopen);
+}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .bogus_folder_select:has(.cwr-folder-summary) .bogus_folder_icon::before {display:none}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .bogus_folder_select:has(.cwr-folder-summary)::after {
+  content:"";display:block!important;width:16px;height:16px;flex:0 0 16px;
+  background:var(--cwus-muted);mask:var(--cw-v4-icon-chev) center/16px 16px no-repeat;
+}
+
+html[data-cw-settings-unified] :is(.cw-v4-search,.cwr-search-box,.cww-find)>.cw-v4-icon {display:inline-flex!important;align-items:center!important;justify-content:center!important}
+html[data-cw-settings-unified] :is(.cw-v4-search,.cwr-search-box,.cww-find)>.cw-v4-icon svg {display:block!important}
+html[data-cw-settings-unified] :is(.cw-v4-search,.cwr-search-box,.cww-find)>input {padding-block:0!important;margin-block:0!important;align-self:center!important}
+html[data-cw-settings-unified] :is(#left-nav-panel .cw-pm-search,.cw-v4-panel .cwex-search,.cw2-persona .cw2-ptools>#persona_search_bar) {
+  padding-block:0!important;padding-inline-start:34px!important;
+  background-image:var(--cw-v4-icon-search)!important;background-position:11px center!important;
+  background-repeat:no-repeat!important;background-size:15px 15px!important;
+}
+
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action {
+  box-sizing:border-box!important;border:0!important;
+}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action::before {
+  box-sizing:border-box!important;width:14px!important;height:14px!important;top:3px!important;left:3px!important;
+  margin:0!important;transform:none!important;
+}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.fa-toggle-on::before {left:17px!important}
 
 /* v2e World Info pickers share the native compact popup and keep Select2 in its top layer. */
 html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_world_info_selector,.chat_world_info_selector) .popup-body {

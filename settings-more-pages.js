@@ -28,6 +28,18 @@ export function createMorePages(h) {
       if(tags&&name&&!name.contains(tags))move(state(card),tags,name);
       if(card.matches('.group_select')){const n=Number(card.querySelector('.group_select_counter')?.textContent.match(/\d+/)?.[0]);const multi=n>1;if(card.classList.contains('cwr-group-multi')!==multi)card.classList.toggle('cwr-group-multi',multi);const cs=state(card);if(!cs.round4Group){cs.round4Group=true;cleanup(cs,()=>card.classList.remove('cwr-group-multi'));}let meta=card.querySelector('.cwr-group-summary');if(!meta){meta=created(cs,make('p','cwr-group-summary'));card.querySelector('.group_select_container')?.append(meta);}const label=Number.isFinite(n)?t(`群组 · ${n} 个角色`,`Group · ${n} characters`):t('群组','Group');if(meta.textContent!==label)meta.textContent=label;}
     }
+    for(const folder of page.querySelectorAll('.bogus_folder_select:not(.bogus_folder_select_back)')){
+      const container=folder.querySelector('.character_select_container');
+      if(!container)continue;
+      const count=folder.querySelector('.bogus_folder_counter')?.textContent.match(/\d+/)?.[0];
+      let meta=container.querySelector('.cwr-folder-summary');
+      if(!meta){
+        meta=created(state(folder),make('p','cwr-group-summary cwr-folder-summary'));
+        container.append(meta);
+      }
+      const label=count===undefined?t('标签','Tag'):t(`标签 · ${count} 个角色`,`Tag · ${count} characters`);
+      if(meta.textContent!==label)meta.textContent=label;
+    }
   }
   function backgrounds(panel){
     const page=panel.querySelector(':scope>.cw-v4-drawer-page');if(!page)return;const s=state(page);

@@ -60,6 +60,7 @@ export function createWorldPage(h) {
   /* ---------- 视图切换 ---------- */
   function go(view){
     if(!ui)return;
+    if(view!=='entry')clearKeyMode();
     if(ui.view==='entry'&&view!=='entry')closeEntry();
     ui.view=view;ui.panel.dataset.cwwView=view;
     for(const [k,n]of Object.entries(ui.views))setHidden(n,k!==view);
@@ -213,7 +214,11 @@ export function createWorldPage(h) {
     q.addEventListener('input',()=>paintBooks());
     // 手机：列表下面再放一组「新建 / 导入」。
     const opts=make('div','cw-v4-card cww-opts cww-phone-only');
-    for(const [label,id,ico] of [[t('新建世界书','New World Info'),'world_create_button',ICON.plus()],[t('导入','Import'),'world_import_button',ICON.imp()]]){const r=make('div','cw-v4-row cww-row');r.append(iconBox(ico),make('div','cw-v4-row-title',label));r.tabIndex=0;r.setAttribute('role','button');r.addEventListener('click',()=>get(id)?.click());opts.append(r);}
+    for(const [label,id,ico] of [[t('新建世界书','New World Info'),'world_create_button',ICON.plus()],[t('导入','Import'),'world_import_button',ICON.imp()]]){
+      const r=make('div','cw-v4-row cww-row'),info=make('div','cw-v4-row-info');
+      info.append(make('div','cw-v4-row-title',label));r.append(iconBox(ico),info);
+      r.tabIndex=0;r.setAttribute('role','button');r.addEventListener('click',()=>get(id)?.click());opts.append(r);
+    }
     view.append(opts);
     // 选择模式：底部浮条，和预设的多选浮条同一个组件。
     const bar=make('div','cwr-selection-bar cww-selection-bar'),cnt=make('span','');bar.hidden=true;
@@ -346,12 +351,36 @@ export function createWorldPage(h) {
   let keyMemo=null;
   function keyCache(book){if(keyMemo?.book===book)return keyMemo.map;const data=wi.worldInfoCache.get(book),map={};for(const [uid,e]of Object.entries(data?.entries||{}))map[uid]=e.key;keyMemo={book,map};return map;}
   const posText=d=>{const p=POS[d.pos];return (p?t(...p):'')+(d.pos==='4'&&d.depth!==''&&d.depth!=null?' '+d.depth:'');};
+  function entryActions(entry,beforeDelete){
+    const hdr=entry.querySelector('.inline-drawer-header');
+    const action=(label,selector,glyph,danger=false)=>{
+      const native=hdr?.querySelector(selector);
+      return native&&[label,null,danger,()=>{if(danger)beforeDelete?.();native.click();},glyph];
+    };
+    return menu(null,[
+      action('复制这条','.duplicate_entry_button','copy'),
+      action('移到其他世界书…','.move_entry_button','move'),
+      '-',
+      action('删除这条','.delete_entry_button','trash',true)
+    ]);
+  }
   function entryRow(entry){
     let row=ui.entryRows.get(entry);if(row)return row;
     const r=make('div','cww-entry'),txt=make('div','cww-etxt'),nmLine=make('div','cww-enm'),nm=make('span','cw-v4-row-title'),off=make('span','cww-offtag',t('已停用','Disabled')),meta=make('div','cww-meta'),dot=make('span','cww-dot'),k=make('span','cww-k'),meta2=make('div','cww-meta2');
     nmLine.append(nm,off);meta.append(dot,k);txt.append(nmLine,meta,meta2);
     const pos=make('div','cww-cpos'),ord=make('div','cww-cord'),on=make('div','cww-con'),sw=make('button','cww-tg cww-sm');sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));on.append(sw);
-    const end=make('div','cww-cend');end.append(ICON.chev());
+    const end=make('div','cww-cend'),more=make('details','cw-v4-more cwr-pop cww-row-more');
+    const summary=make('summary','','⋯'),actions=make('div','cw-v4-more-list');
+    summary.setAttribute('aria-label',t('更多','More'));more.append(summary,actions);
+    // Build the actions only when needed; a page can have hundreds of entries.
+    const populate=()=>{
+      if(!more.open)return;
+      more.removeEventListener('toggle',populate);
+      actions.append(...entryActions(entry).querySelector('.cw-v4-more-list').children);
+    };
+    more.addEventListener('toggle',populate);
+    more.addEventListener('click',e=>e.stopPropagation());
+    end.append(more,ICON.chev());
     r.append(txt,pos,ord,on,end);r.tabIndex=0;r.setAttribute('role','button');
     sw.addEventListener('click',e=>{e.stopPropagation();q(entry,'entryKillSwitch')?.click();queue();});
     const open=()=>openEntry(entry);r.addEventListener('click',open);r.addEventListener('keydown',e=>{if(e.target===r&&e.key==='Enter'){e.preventDefault();open();}});
@@ -396,8 +425,23 @@ export function createWorldPage(h) {
 
   /* ---------- 条目页（v2） ---------- */
   function buildEntryView(view){ui.entryHost=view;}
+  function clearKeyMode(){
+    if(!ui?.keyMode)return;
+    win.clearTimeout(ui.keyMode.timeout);
+    ui.keyMode=null;
+  }
+  function switchKeyMode(entry,native){
+    const pending={book:currentBook(),entry,uid:entry.getAttribute('uid'),deadline:Date.now()+2000};
+    ui.keyMode=pending;
+    // Native ST reads the UID from the switch's ancestor, then redraws the entry.
+    closeEntry();
+    native.click();
+    pending.timeout=win.setTimeout(queue,2000);
+    queue();
+  }
   function openEntry(entry){
     if(!ui||!entry?.isConnected)return;
+    clearKeyMode();
     closeEntry();
     const drawer=entry.querySelector('.inline-drawer');
     // ST builds the editor lazily on its own toggle event.
@@ -419,13 +463,12 @@ export function createWorldPage(h) {
     const card=host=>{const c=make('div','cw-v4-card cww-ecard');host.append(c);return c;};
     const secH=(title,small,extra)=>{const h=make('h2','cww-sub-h'),tt=make('span','',title);h.append(tt);if(small)h.append(make('small','',small));if(extra){h.append(make('span','cww-grow'),extra);}return h;};
     const swRow=(host,title,desc,checkbox,afterRow)=>{const r=make('div','cw-v4-row cww-set-row'),info=make('div','cw-v4-row-info'),c=make('div','cw-v4-row-controls');info.append(make('div','cw-v4-row-title',title));const p=make('p','',desc||'');if(desc)info.append(p);r.append(info,c);host.append(r);if(checkbox){M(showToggle(es,checkbox),c);}if(afterRow)host.append(afterRow);return {r,p,c};};
-    const book=currentBook(),hdr=entry.querySelector('.inline-drawer-header');
+    const book=currentBook();
     const back=btn(book,()=>go('book'),'cwr-back cww-back',ICON.back());
     // 标题：名字可直接改；复制 / 移动 / 删除收进 ⋯。
     const titleRow=make('div','cww-etitle'),comment=Q('comment');
     if(comment){cls(comment,'cww-memo');M(comment,titleRow);if(!comment.getAttribute('placeholder')){comment.placeholder=t('给这条起个名字','Name this entry');es.undo.push(()=>comment.removeAttribute('placeholder'));}}
-    const del=hdr?.querySelector('.delete_entry_button');
-    const emenu=menu(es,[['复制这条',hdr?.querySelector('.duplicate_entry_button'),false,null,'copy'],['移到其他世界书…',hdr?.querySelector('.move_entry_button'),false,null,'move'],'-',['删除这条',del,true,()=>{go('book');del?.click();},'trash']]);emenu.classList.add('cww-entry-more');
+    const emenu=entryActions(entry,()=>go('book'));emenu.classList.add('cww-entry-more');
     // 手机：顶栏 ⋯ 打开时，列表贴在顶栏 ⋯ 下方、右对齐（共用逻辑按 summary 定位，这里 summary 是藏起来的）。
     emenu.addEventListener('toggle',()=>{const a=emenu.cwAnchor;if(!emenu.open||!a?.isConnected||!phoneWide())return;win.requestAnimationFrame(()=>{const l=emenu.querySelector(':scope>.cw-v4-more-list');if(!l)return;l.querySelector(':scope>.cw-v4-more-cancel')?.remove();const r=a.getBoundingClientRect(),w=l.getBoundingClientRect().width;l.style.setProperty('--cww-mx',Math.max(8,Math.min(r.right-w,win.innerWidth-w-8))+'px');l.style.setProperty('--cww-my',Math.round(r.bottom+4)+'px');});});titleRow.append(emenu);
     // 状态卡：启用一行、触发方式一行。
@@ -442,18 +485,46 @@ export function createWorldPage(h) {
       const v=stateSel?.value;for(const [k,b]of Object.entries(segBtns))b.setAttribute('aria-pressed',String(k===v));text(stMeta,t(...(ST_DESC[v]||ST_DESC.normal)));onStateChange?.(v);
       text(keyHint,v==='constant'?t('常驻条目每次都发送，关键词可以不填。','Constant entries are always sent; keywords are optional.'):v==='vectorized'?t('向量条目按语义相似度触发，关键词可选。','Vectorized entries trigger by similarity; keywords are optional.'):t('聊天里出现任意一个关键词时发送这条。','Sent when any keyword appears in the chat.'));}
     // 触发并进状态卡（稿 v2 11-08 再改）：关键词、可选过滤器是「左标签 84px + 输入」一行（手机标签一行、输入一行），
-    // ✨ 是原生的切换按钮（换成稿子的图标）；触发概率只剩一个数字框：100% = 原生 useProbability 关，填小于 100 就打开。
-    const keyNodes=n=>{const sel=entry.querySelector(`select[name="${n}"]`);return [sel,sel&&s2box(sel),entry.querySelector(`textarea[name="${n}"]`)].filter(Boolean);};
-    const spark=n=>{const b=entry.querySelector(`.${n==='key'?'keyprimary':'keysecondary'} .switch_input_type_icon`);if(b)cls(b,'cww-mini');return b;};
-    const setPh=(n,v)=>{if(!n)return;const ph=n.getAttribute('placeholder'),i18n=n.getAttribute('data-i18n');n.placeholder=v;
-      // ST re-translates moved nodes asynchronously; set ours once more after that pass.
-      win.setTimeout(()=>{if(ui?.editing===es&&n.placeholder!==v&&n.dataset.cwwPh!=='live')n.placeholder=v;},120);if(i18n!==null)n.setAttribute('data-i18n',i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')).join(';'));es.undo.push(()=>{ph===null?n.removeAttribute('placeholder'):n.setAttribute('placeholder',ph);i18n===null?n.removeAttribute('data-i18n'):n.setAttribute('data-i18n',i18n);});};
-    const kvRow=(label,name,extra)=>{const r=make('div','cw-v4-row cww-set-row cww-kv'),k=make('span','cww-k84',label),box=make('div','cww-ctl cww-kt');r.append(k);if(extra)M(extra,r);r.append(box);for(const n of keyNodes(name))M(n,box);const sp=spark(name);if(sp)M(sp,r);status.append(r);return r;};
-    // 先取文本框：kvRow 会把它们搬出 entry，之后再在 entry 里找就找不到了（round2 #9 占位没换的原因）。
-    const keyTa=entry.querySelector('textarea[name="key"]'),fltTa=entry.querySelector('textarea[name="keysecondary"]');
-    kvRow(t('关键词','Keywords'),'key');
-    kvRow(t('可选过滤器','Optional filter'),'keysecondary',Q('entryLogicType'));
-    setPh(fltTa,t('留空就不用','Leave empty to skip'));
+    const kvRow=(label,name,extra)=>{
+      const r=make('div','cw-v4-row cww-set-row cww-kv'),box=make('div','cww-ctl cww-kt');
+      const sel=form.querySelector(`select[name="${name}"]`),selectBox=sel&&s2box(sel);
+      const ta=form.querySelector(`textarea[name="${name}"]`);
+      r.append(make('span','cww-k84',label));if(extra)M(extra,r);r.append(box);
+      for(const n of [sel,selectBox,ta])if(n)M(n,box);
+      const native=form.querySelector(`.${name==='key'?'keyprimary':'keysecondary'} .switch_input_type_icon`);
+      if(native){
+        const switcher=btn('',()=>switchKeyMode(entry,native),'cww-mini');
+        switcher.title=t('切换输入方式','Switch input mode');
+        switcher.setAttribute('aria-label',switcher.title);r.append(switcher);
+      }
+      status.append(r);
+      const selection=sel&&win.jQuery?.(sel).data('select2')?.selection;
+      const field=selectBox?.querySelector('.select2-search__field')||ta;
+      if(!field)return ()=>{};
+      const ph=field.getAttribute('placeholder'),i18n=field.getAttribute('data-i18n'),option=selection?.placeholder;
+      const originalOption=option?.text;
+      if(i18n!==null)field.setAttribute('data-i18n',i18n.split(';').filter(k=>k&&!k.startsWith('[placeholder]')).join(';'));
+      let placeholder=ph;
+      const paintPlaceholder=()=>{
+        if(placeholder!==null&&(field===ta||!sel.selectedOptions.length)&&field.placeholder!==placeholder)field.placeholder=placeholder;
+      };
+      const observer=new win.MutationObserver(paintPlaceholder);
+      observer.observe(field,{attributes:true,attributeFilter:['placeholder']});
+      es.undo.push(()=>{
+        observer.disconnect();
+        ph===null?field.removeAttribute('placeholder'):field.setAttribute('placeholder',ph);
+        if(i18n!==null)field.setAttribute('data-i18n',i18n);
+        if(option)option.text=originalOption;
+      });
+      return value=>{
+        placeholder=value;
+        if(option)option.text=value;
+        paintPlaceholder();
+      };
+    };
+    const keyPlaceholder=kvRow(t('关键词','Keywords'),'key');
+    const filterPlaceholder=kvRow(t('可选过滤器','Optional filter'),'keysecondary',Q('entryLogicType'));
+    filterPlaceholder(t('留空就不用','Leave empty to skip'));
     const prob=num('probability'),useProb=Q('useProbability');
     const probRow=make('div','cw-v4-row cww-set-row'),probInfo=make('div','cw-v4-row-info'),suf=make('span','cww-suf');probInfo.append(make('div','cw-v4-row-title',t('触发概率','Trigger chance')),make('p','',t('100% = 满足条件就一定发送','100% = always sent when matched')));probRow.append(probInfo,suf);
     if(prob){M(prob,suf);if(useProb&&!useProb.checked&&prob.value!=='100'){const old=prob.value;prob.value='100';es.undo.push(()=>{if(!useProb.checked)prob.value=old;});}}suf.append(make('i','','%'));
@@ -461,7 +532,7 @@ export function createWorldPage(h) {
     const syncProb=()=>{if(!prob||!useProb)return;const want=Number(prob.value)<100;if(useProb.checked!==want){useProb.checked=want;useProb.dispatchEvent(new win.Event('input',{bubbles:true}));useProb.dispatchEvent(new win.Event('change',{bubbles:true}));}};
     on(prob,'input',syncProb);on(prob,'change',syncProb);
     const KEY_PH={constant:['常驻条目可以不填','Optional for constant entries'],vectorized:['向量条目可以不填','Optional for vectorized entries'],normal:['输入后回车添加','Type and press Enter']};
-    setPh(keyTa,t(...(KEY_PH[stateSel?.value]||KEY_PH.normal)));onStateChange=v=>{if(keyTa)keyTa.placeholder=t(...(KEY_PH[v]||KEY_PH.normal));};
+    onStateChange=v=>keyPlaceholder(t(...(KEY_PH[v]||KEY_PH.normal)));
     // 内容
     const content=Q('content'),cm=content?.nextElementSibling?.matches('.tt-codemirror-editor')?content.nextElementSibling:null,counter=form.querySelector('.world_entry_form_token_counter');
     const expand=btn(t('放大','Expand'),()=>openBig(),'cwr-btn cww-btn-sm cww-expand',ICON.expand());
@@ -681,6 +752,15 @@ export function createWorldPage(h) {
   function queue(){if(!frame&&ui)frame=win.requestAnimationFrame(()=>{frame=0;paint();});}
   function paint(){
     if(!ui)return;
+    if(ui.keyMode){
+      const {book,entry,uid,deadline}=ui.keyMode;
+      if(currentBook()===book){
+        const next=[...(get('world_popup_entries_list')?.children||[])].find(n=>n!==entry&&n.classList.contains('world_entry')&&n.getAttribute('uid')===uid);
+        if(next){openEntry(next);if(ui.editing)return;}
+        if(Date.now()<deadline)return;
+      }
+      go('book');return;
+    }
     if(ui.editing&&!ui.editing.entry.isConnected){ui.view='book';closeEntry();for(const [k,n]of Object.entries(ui.views))setHidden(n,k!=='book');ui.panel.dataset.cwwView='book';}
     if(ui.view==='home'){paintWhere();paintBooks();}
     else if(ui.view==='book')paintBook();
@@ -722,7 +802,7 @@ export function createWorldPage(h) {
       restore();
       if (popup.dlg.open) popup.dlg.close();
     }
-    if(!ui)return;const u=ui;dropFilter();closeBig();closeEntry();u.mobileHead?.remove();if(frame){win.cancelAnimationFrame(frame);frame=0;}ui=null;
+    if(!ui)return;const u=ui;clearKeyMode();dropFilter();closeBig();closeEntry();u.mobileHead?.remove();if(frame){win.cancelAnimationFrame(frame);frame=0;}ui=null;
   }
   return {decoratePicker,build,sync,destroy,go:v=>go(v),state:()=>ui&&{view:ui.view,book:currentBook(),selecting:ui.selecting,selected:[...ui.selected]}};
 }

@@ -64,6 +64,15 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     if(ui.context!==key()){onLeave();reset();return;}
     if(!ui.panel.classList.contains('openDrawer')||ui.panel.classList.contains('cw-v4-inactive')){hideFloating(ui);delete ui.panel.dataset.cwPresetTab;return;}
     const phone=phoneWide();
+    const {sticky,tabBar,tools,column,preset}=ui;
+    if(phone&&preset){
+      if(sticky.parentNode!==preset.parentNode)preset.before(sticky);
+      if(tabBar.parentNode!==sticky)sticky.append(tabBar,tools);
+    }else{
+      if(preset&&tabBar.previousElementSibling!==preset)preset.after(tabBar);
+      if(tools.parentNode!==column)column.prepend(tools);
+      sticky.remove();
+    }
     const bottomHost=phone?ui.column:ui.dock;
     if(ui.bottom.parentNode!==bottomHost)bottomHost.append(ui.bottom);
     if(!ui.manager.contains(ui.empty))ui.manager.append(ui.empty);
@@ -119,7 +128,9 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     flag(ui.dock,'cwp-dock-multi',ui.multi);
     flag(ui.manager,'cw-pm-has-selection',ui.multi&&!!ui.selected.size);
     for(const n of [ui.search,ui.filterLine,ui.more])hidden(n,ui.multi);
-    hidden(ui.selectionLine,!ui.multi);hidden(ui.addRow,ui.multi||!!ui.manager.querySelector('.bai-bai-preset-vue-list-host'));hidden(ui.batch,!ui.multi||(phone&&!ui.selected.size));hidden(ui.empty,visible.length!==0);
+    const nativeList=ui.manager.querySelector('#completion_prompt_manager_list');
+    const nativeReady=!!nativeList?.querySelector(ROW)||!!ui.manager.querySelector('#prompt-manager-reset-character')&&all.length===0;
+    hidden(ui.selectionLine,!ui.multi);hidden(ui.addRow,ui.multi||!!ui.manager.querySelector('.bai-bai-preset-vue-list-host'));hidden(ui.batch,!ui.multi||(phone&&!ui.selected.size));hidden(ui.empty,!nativeReady||visible.length!==0);
     const hasFeedback=!!(ui.message.textContent||ui.undo||ui.busy);
     hidden(ui.feedback,!hasFeedback);
     flag(ui.dock,'cwp-dock-feedback',hasFeedback);
@@ -221,7 +232,8 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     popItem('reload',t('重置当前角色的列表','Reset this character\'s list'),()=>doc.getElementById('prompt-manager-reset-character')?.click(),'cw-v4-danger');
     const done=btn(t('完成','Done'),()=>multiButton.click());
     const countPicked=make('span','cw-pm-selection');
-    const column=make('div','cwp-list-column'),dock=make('div','cwp-dock');
+    const column=make('div','cwp-list-column'),dock=make('div','cwp-dock'),sticky=make('div','cwp-sticky');
+    const preset=panel.querySelector('#respective-presets-block');
     // PromptManager replaces its own children on every render. Keep CW tools
     // and open menus in the column, outside the subtree ST owns.
     manager.before(column,dock);
@@ -238,8 +250,9 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     feedback.append(message,undoButton);
     bottom.append(batch,feedback);
     const empty=make('p','cw-pm-empty',t('没有匹配的提示词','No matching prompts'));
+    empty.hidden=true;
     const addRow=make('div','cw-pm-addrow');addRow.tabIndex=0;addRow.setAttribute('role','button');const addIco=make('span','cw-pm-number cw-pm-add-ico');addIco.append(svgIcon('plus'));addRow.append(addIco,make('span','cw-pm-add-label',t('新建提示词','New prompt')));const addRun=()=>{const n=manager.querySelector('.fa-plus-square,.fa-square-plus');(n?.closest('.menu_button')||n)?.click();};addRow.addEventListener('click',addRun);addRow.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();addRun();}});
-    ui={addRow,panel,manager,tabBar,tools,filterLine:filters,more,column,dock,done,search,multiButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,autoSelect:true,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
+    ui={addRow,panel,manager,tabBar,tools,filterLine:filters,more,column,dock,sticky,preset,done,search,multiButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,autoSelect:true,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
     const u=ui;
     // Keep fragment-staged nodes restorable without retaining replaced trees.
     // Finalization removes dead wrappers without repeatedly dereferencing live ones.
@@ -252,7 +265,6 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     const scroll=()=>{if(u.tab==='prompts')return phoneWide()?panel:manager.querySelector(':scope>.range-block')||panel;for(let n=manager.parentElement;n;n=n.parentElement)if(/auto|scroll/.test(win.getComputedStyle(n).overflowY))return n;return panel;};
     const tabs=[];
     for(const [value,label] of [['prompts',t('提示词','Prompts')],['params',t('参数','Parameters')]]){const b=btn(label,()=>{onLeave();u.positions[u.tab]=scroll().scrollTop;u.tab=value;u.autoSelect=value==='prompts';panel.dataset.cwPresetTab=value;for(const el of tabs)attr(el,'aria-selected',el.dataset.tab===value);scroll().scrollTop=u.positions[value];paint();});b.setAttribute('role','tab');b.dataset.tab=value;attr(b,'aria-selected',value==='prompts');tabs.push(b);tabBar.append(b);}
-    const preset=panel.querySelector('#respective-presets-block');
     if(preset)preset.after(tabBar);
     else panel.querySelector(':scope>.cw-v4-drawer-page')?.prepend(tabBar);
     manager.append(empty);panel.dataset.cwPresetTab='prompts';manager.classList.add('cw-pm-list');
@@ -303,7 +315,7 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
   function destroy(){if(!ui)return;onLeave();const u=ui;hideFloating(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
     restoreGroups(u);for(const e of u.sortables.values())restoreSort(e);
     u.column.replaceWith(u.manager);
-    for(const n of [u.tabBar,u.bottom,u.empty,u.addRow,u.dock])n.remove();u.manager.removeAttribute('aria-busy');
+    for(const n of [u.tabBar,u.bottom,u.empty,u.addRow,u.dock,u.sticky])n.remove();u.manager.removeAttribute('aria-busy');
     delete u.panel.dataset.cwPresetTab;u.panel.classList.remove('cwp-phone');u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering','cw-pm-long');
     // Restore live nodes even while native TT holds them outside the manager.
     for(const r of hiddenNodes(u)){if(u.hidden.has(r))r.hidden=u.hidden.get(r);if(!r.matches('.cw-pm-row'))continue;r.classList.remove('cw-pm-selected','cw-pm-current','cw-pm-row','cw-pm-native-row');r.querySelectorAll('.cw-pm-select,.cw-pm-description').forEach(n=>n.remove());const name=r.querySelector('.completion_prompt_manager_prompt_name');name?.removeAttribute('role');name?.removeAttribute('tabindex');}
