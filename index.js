@@ -13673,8 +13673,12 @@ if (CLAUDE_ENABLED) {
        流式输出时每帧都在动。 */
     let raf = 0;
     const mo = new MutationObserver(() => {
-      if (raf) return;
-      raf = window.requestAnimationFrame(() => { raf = 0; try { syncShellDrawer(); } catch { /* 别炸主流程 */ } });
+      if (!stageOn() || raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        if (!stageOn()) return;
+        try { syncShellDrawer(); } catch { /* 别炸主流程 */ }
+      });
     });
     mo.observe(rail, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
@@ -13736,12 +13740,18 @@ if (CLAUDE_ENABLED) {
      分开调用早晚会出现"右栏更新了但幕次条没动"这种半新半旧的状态。
      用 rAF 合并，因为下面的 MutationObserver 一轮渲染会连着触发很多次。 */
   let refreshRaf = 0;
+  let theatreWasActive = false;
   function refreshTheatre() {
-    if (refreshRaf) return;
+    if (refreshRaf || (!stageOn() && !theatreWasActive)) return;
     refreshRaf = window.requestAnimationFrame(() => {
       refreshRaf = 0;
+      const active = stageOn();
+      if (!active && !theatreWasActive) return;
+      theatreWasActive = active;
+      syncTheatreChatObserver(active);
       ensureAside();
-      stampMessages();
+      if (active) stampMessages();
+      else clearTheatreMessageStamps();
       buildCards();
       /* buildCover 必须在 buildCoverArt 之前 —— 配图那一组是插在 .cw-cover
          后面的，标题区还没建出来就没有参照物，会掉到 #chat 最前面去。 */
@@ -13774,6 +13784,29 @@ if (CLAUDE_ENABLED) {
      只渲染出冒号"就是这一类）。所以再加一个 MutationObserver 盯 #chat：
      只要 DOM 动过就补写一次，不依赖事件名是否齐全。 */
   let chatObserver = null;
+  let observedTheatreChat = null;
+
+  function syncTheatreChatObserver(active) {
+    const chat = active ? document.getElementById('chat') : null;
+    if (observedTheatreChat === chat) return;
+    chatObserver?.disconnect();
+    observedTheatreChat = chat;
+    if (!chat || !window.MutationObserver) return;
+    chatObserver ??= new window.MutationObserver(refreshTheatre);
+    chatObserver.observe(chat, { childList: true, subtree: true });
+  }
+
+  function clearTheatreMessageStamps() {
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+    for (const message of chat.querySelectorAll('.mes')) {
+      delete message.dataset.time;
+      delete message.dataset.swipe;
+      const text = message.querySelector('.mes_text');
+      if (text) delete text.dataset.speaker;
+    }
+  }
+
   /* 只准绑一次。eventSource.on 和 setInterval 都不是幂等的 ——
      这个函数原来只有设置面板「结构」下拉的 change 会调，来回切两次就多绑
      一组监听、多开一个 2 秒定时器；现在启动流程也会调它，没有这道守卫
@@ -13792,11 +13825,6 @@ if (CLAUDE_ENABLED) {
       window.setInterval(refreshTheatre, 2000);
     }
 
-    const chat = document.getElementById('chat');
-    if (chat && window.MutationObserver && !chatObserver) {
-      chatObserver = new window.MutationObserver(refreshTheatre);
-      chatObserver.observe(chat, { childList: true, subtree: true });
-    }
     refreshTheatre();
   }
 
