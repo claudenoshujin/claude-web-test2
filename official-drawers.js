@@ -63,7 +63,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   // Item: [label, nativeEl, danger, run, icon]. '-' draws a thin rule between groups.
   // An icon (a POP_ICONS key) or a rule switches the menu to the v2 .pop look:
   // 16px icon + 14px text, 36px rows, danger icon and text both red.
-  const POP_ICONS={plus:'<path d="M12 5v14M5 12h14"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',key:'<circle cx="8" cy="15" r="3.5"/><path d="m10.5 12.5 8-8M15 8l2.5 2.5M17.5 5.5 20 8"/>',ext:'<path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/>',pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',trash:'<path d="M5 7h14M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>',sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',move:'<path d="M5 12h12M13 7l5 5-5 5"/>',spark:'<path d="M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z"/>',sort:'<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>',refresh:'<path d="M19 12a7 7 0 1 1-2.05-4.95M19 5v4h-4"/>'};
+  const POP_ICONS={user:'<circle cx="12" cy="8" r="3"/><path d="M5 20v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/>',tag:'<path d="M3 4h7l10 10-6 6L3 9z"/><circle cx="7" cy="7" r="1"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',plus:'<path d="M12 5v14M5 12h14"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',key:'<circle cx="8" cy="15" r="3.5"/><path d="m10.5 12.5 8-8M15 8l2.5 2.5M17.5 5.5 20 8"/>',ext:'<path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5"/>',pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',trash:'<path d="M5 7h14M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/>',sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',move:'<path d="M5 12h12M13 7l5 5-5 5"/>',spark:'<path d="M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z"/>',sort:'<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>',refresh:'<path d="M19 12a7 7 0 1 1-2.05-4.95M19 5v4h-4"/>'};
   function popIcon(k){const s2=doc.createElementNS('http://www.w3.org/2000/svg','svg');s2.setAttribute('viewBox','0 0 24 24');s2.setAttribute('fill','none');s2.setAttribute('stroke','currentColor');s2.setAttribute('stroke-width','1.8');s2.setAttribute('stroke-linecap','round');s2.setAttribute('stroke-linejoin','round');s2.setAttribute('aria-hidden','true');s2.innerHTML=POP_ICONS[k]||'';return s2;}
   function menu(s,items){
     const m=make('details','cw-v4-more cw-v4-created'),h=make('summary','','⋯'),list=make('div','cw-v4-more-list'),park=make('div','cw-v4-more-park');
@@ -585,6 +585,11 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       back.append(icon('chevl'),make('span','',L('全部角色')));
       hero.after(host);
       hero.prepend(back);
+      const phoneHeader=make('div','cw2-char-phone-head'),phoneName=make('h1','');
+      const phoneBack=button('',()=>get('rm_button_characters')?.click(),'cwr-head-action');
+      phoneBack.append(icon('chevl'),make('span','',L('全部角色')));
+      phoneHeader.append(phoneBack,phoneName);
+      get('cw-v4-settings')?.querySelector('.cw-v4-head')?.append(phoneHeader);
       const tabs=make('div','cwr-tabs cw2-char-tabs'),basic=make('div','cw2-char-pane cw2-char-basic'),advanced=make('div','cw2-char-pane cw2-char-adv');
       const tab=(key,label)=>button(L(label),()=>switchTab(key),'cwr-tab');
       const basicTab=tab('basic','基本'),advancedTab=tab('advanced','高级定义');
@@ -605,16 +610,24 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         grid.append(left,right);parent.append(grid);
         return [left,right];
       };
-      const field=(parent,id,label,{hint='',mono=false,expand=false}={})=>{
+      const fieldPaints=[];
+      const field=(parent,id,label,{hint='',mono=false,expand=false,preview=false}={})=>{
         const native=get(id);
         if(!native)return null;
         const box=make('div','cw2-char-field'),line=make('div','cw2-char-field-head');
         const lab=make('label','',L(label));lab.htmlFor=id;line.append(lab);
+        let count=null;
         if(native.tagName==='TEXTAREA'){
-          const count=make('span','cw2-char-token');
+          count=make('span','cw2-char-token');
           line.append(count);
+          let value=native.value;
           const watcher=watchTokens(win,native,n=>setText(count,tokenText(t,n)));
-          cleanup(s,()=>watcher.stop());
+          const refresh=()=>{
+            if(value!==native.value){value=native.value;watcher.refresh();}
+          };
+          fieldPaints.push(refresh);
+          native.addEventListener('input',refresh);
+          cleanup(s,()=>{watcher.stop();native.removeEventListener('input',refresh);});
         }
         if(expand){
           const big=button('',()=>openEditor(native,L(label)),'cw2-char-link');
@@ -624,6 +637,22 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         if(hint)box.append(make('p','cw2-hint',L(hint)));
         if(mono)box.classList.add('cw2-char-mono');
         sectionHost(parent).append(box);
+        if(preview){
+          const previewText=make('span','cw2-char-preview-text');
+          const labelBox=make('span','cw2-char-preview-label',L(label));
+          const previewCount=make('span','cw2-char-token');
+          labelBox.append(previewCount,previewText);
+          const open=button('',()=>openEditor(native,L(label)),'cw2-char-preview');
+          open.append(labelBox,icon('chev'));
+          box.before(open);
+          const update=()=>setText(previewText,native.value.split(/\r?\n/,1)[0]||L('（空）'));
+          native.addEventListener('input',update);
+          fieldPaints.push(update);
+          cleanup(s,()=>native.removeEventListener('input',update));
+          const observe=new win.MutationObserver(()=>setText(previewCount,count.textContent));
+          observe.observe(count,{childList:true});setText(previewCount,count.textContent);
+          cleanup(s,()=>observe.disconnect());
+        }
         return box;
       };
       const nativeAction=(label,fn)=>button(L(label),fn,'cw-v4-button');
@@ -635,26 +664,42 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         const paint=()=>setText(name,value());
         paint();return {r,paint};
       };
+      const phoneHero=make('div','cw2-char-phone-hero');
+      const portrait=make('img','');portrait.alt='';
+      const phoneStats=button('',()=>get('result_info')?.querySelector('.rm_stats_button')?.click(),'cw2-char-phone-stats');
+      const avatarCard=make('div','cw-v4-card cw2-char-portrait');
+      avatarCard.append(portrait,button(L('更换头像'),()=>get('add_avatar_button')?.click(),'cw2-char-avatar-change'),phoneStats);
+      const phoneActions=make('div','cw2-char-phone-actions');
+      const startChat=button(L('开始聊天'),()=>closeSettings?.(),'cw-v4-button cw2-char-chat');
+      startChat.prepend(icon('chat'));
+      const star=button('',()=>get('favorite_button')?.click(),'cw-v4-button cw2-char-favorite');
+      star.setAttribute('aria-label',L('收藏'));
+      star.append(popIcon('star'));
+      phoneActions.append(startChat,star);phoneHero.append(avatarCard,phoneActions);
+      basic.append(phoneHero);
       const [left,right]=cols(basic);
       const description=section(left,'');
       description.classList.add('cw2-char-grow');
-      field(description,'description_textarea','描述',{hint:'外貌、性格、背景……',expand:true});
+      field(description,'description_textarea','描述',{hint:'外貌、性格、背景……',expand:true,preview:true});
       const greeting=section(left,'');
       greeting.classList.add('cw2-char-greeting');
-      field(greeting,'firstmessage_textarea','开场白',{expand:true});
+      field(greeting,'firstmessage_textarea','开场白',{expand:true,preview:true});
       const alt=linked(greeting,'备选开场白','',()=>t(`${charData()?.alternate_greetings?.length||0} 条 · 管理`,`${charData()?.alternate_greetings?.length||0} · Manage`),()=>form.querySelector('.open_alternate_greetings')?.click());
 
       const info=section(right,'基本信息');
+      info.classList.add('cw2-char-info');
       const avatar=make('img','cw2-char-mini-avatar');avatar.alt='';
-      row(s,info,'头像','角色卡的 PNG 图片',[avatar,nativeAction('更换头像',()=>get('add_avatar_button')?.click())]);
+      row(s,info,'头像','角色卡的 PNG 图片',[avatar,nativeAction('更换头像',()=>get('add_avatar_button')?.click())],'cw2-char-desktop-avatar');
       const name=make('span','cw2-char-name');
       row(s,info,'名字','',[name,nativeAction('改名',()=>pickOption('renameCharButton'))]);
       row(s,info,'标签','',[get('tags_div')],'cw2-char-tags');
       const world=section(right,'世界书');
+      world.classList.add('cw2-char-world');
       const charWorld=linked(world,'角色世界书','只在和这个角色聊天时用',()=>get('character_world')?.value||L('未绑定'),()=>pickOption('set_character_world'));
       const chatWorld=linked(world,'聊天世界书','只对当前这段聊天生效',()=>chatLore()[0],()=>linkChatLore(form.querySelector('.chat_lorebook_button')));
       const embedded=row(s,world,'导入角色卡里的世界书','',[nativeAction('导入',()=>pickOption('import_character_info'))]);
       const display=section(right,'绑定与显示');
+      display.classList.add('cw2-char-display');
       const personaLinks=linked(display,'已绑定的用户角色','',()=>{
         const c=win.SillyTavern?.getContext?.(),avatar=c?.characters?.[c.characterId]?.avatar;
         const count=Object.values(c?.powerUserSettings?.persona_descriptions||{}).filter(p=>p.connections?.some(conn=>conn.type==='character'&&conn.id===avatar)).length;
@@ -677,14 +722,16 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       const frequency=get('talkativeness_slider');
       if(frequency){
         const range=frequency.closest('#talkativeness_div')||frequency;
-        move(s,range,sectionHost(section(a,'群聊')));
+        const group=section(a,'群聊');group.classList.add('cw2-char-group');
+        move(s,range,sectionHost(group));
       }
-      const examples=section(a,'');examples.classList.add('cw2-char-grow');
-      field(examples,'mes_example_textarea','示例对话',{mono:true,expand:true,hint:'决定角色的文风'});
+      const examples=section(a,'');examples.classList.add('cw2-char-grow','cw2-char-examples');
+      field(examples,'mes_example_textarea','示例对话',{mono:true,expand:true,hint:t('用 <START> 分隔每一段示例。上下文不够时最先被裁掉。','Separate examples with <START>. These are dropped first when context is limited.')});
       const note=section(b,'角色备注');
+      note.classList.add('cw2-char-note');
       field(note,'depth_prompt_prompt','内容');
       const depth=get('depth_prompt_depth');
-      if(depth)row(s,note,'插入深度','',[depth],'cw2-char-depth');
+      if(depth)row(s,note,'插入深度',t('从最新一条消息往回数','Count back from the latest message'),[depth],'cw2-char-depth');
       const role=get('depth_prompt_role');
       let roleSegment=null;
       if(role){
@@ -693,11 +740,12 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         if(roleSegment)cleanup(s,roleSegment.destroy);
       }
       const meta=section(b,'卡片信息');meta.classList.add('cw2-char-grow');
-      for(const [id,label] of [['creator_textarea','创作者'],['character_version_textarea','角色版本'],['tags_textarea','内嵌标签']]){
+      for(const [id,label] of [['creator_textarea','创作者'],['character_version_textarea','角色版本']]){
         const native=get(id);
         if(native)row(s,meta,label,'',[native],'cw2-char-short-field');
       }
-      const creator=field(meta,'creator_notes_textarea','创作者注释');
+      field(meta,'tags_textarea','内嵌标签',{hint:t('写进角色卡文件里的标签。','Tags written into the character card file.')})?.classList.add('cw2-char-embedded-tags');
+      const creator=field(meta,'creator_notes_textarea','创作者注释',{hint:t('只给人看，不会发送给模型。','For readers only. Never sent to the model.')});
       creator?.classList.add('cw2-char-creator-notes');
 
       const popup=get('character_popup');
@@ -723,6 +771,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       const more=menu(s,[['复制',null,false,()=>get('dupe_button')?.click(),'copy'],['导出',null,false,()=>get('export_button')?.click(),'exp']]);
       const entries=more.querySelector('.cw-v4-more-list');
       const base=Array.from(entries.children);
+      const optionIcons={replace_update:'refresh',convert_to_persona:'user',character_source:'ext',import_tags:'tag',show_char_gallery:'eye',set_as_assistant:'spark'};
       const management=get('char-management-dropdown');
       const separated=new Set(['convert_to_persona','character_source','import_tags','set_as_assistant']);
       const omitted=new Set(['set_character_world','import_character_info','set_chat_character_settings','renameCharButton']);
@@ -733,34 +782,59 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         options.sort((a,b)=>Number(b.id==='replace_update')-Number(a.id==='replace_update'));
         for(const option of options){
           if(!divider&&separated.has(option.id)){entries.append(make('hr','cwr-pop-hr'));divider=true;}
-          const item=button(option.textContent.trim(),e=>{
+          const label=option.id==='convert_to_persona'?t('转换为用户角色','Convert to persona'):option.textContent.trim();
+          const item=button(label,e=>{
             e.stopPropagation();more.open=false;
             option.selected=true;
             management.dispatchEvent(new win.Event('change',{bubbles:true}));
           },'cw-v4-more-item');
+          item.prepend(optionIcons[option.id]&&POP_ICONS[optionIcons[option.id]]?popIcon(optionIcons[option.id]):icon(optionIcons[option.id]||'gear'));
           item.disabled=option.disabled;entries.append(item);
         }
         entries.append(make('hr','cwr-pop-hr'));
-        entries.append(button(L('删除这个角色'),e=>{
+        const remove=button(L('删除这个角色'),e=>{
           e.stopPropagation();more.open=false;get('delete_button')?.click();
-        },'cw-v4-more-item cw-v4-danger'));
+        },'cw-v4-more-item cw-v4-danger');
+        remove.prepend(popIcon('trash'));entries.append(remove);
       }
       more.addEventListener('toggle',()=>{if(more.open)fillMore();});
       fillMore();
       heroActions.append(more);hero.append(heroActions);
+      const layout=()=>{
+        const target=phoneWide()?phoneHeader:heroActions;
+        if(more.parentNode!==target)target.append(more);
+      };
+      win.addEventListener('resize',layout);cleanup(s,()=>win.removeEventListener('resize',layout));layout();
+      const stats=get('result_info_text');
+      const tokenLabel=make('span','cw2-char-total');
+      stats?.append(tokenLabel);
+      const total=get('result_info_total_tokens'),permanent=get('result_info_permanent_tokens');
+      const paintTokens=()=>{
+        const amount=total?.textContent.trim()||'',persistent=permanent?.textContent.trim()||'';
+        const label=persistent?t(amount+' Token · 其中 '+persistent+' 永久',amount+' tokens · '+persistent+' permanent'):amount;
+        setText(tokenLabel,label);setText(phoneStats,label);
+      };
+      const nativeTokens=new win.MutationObserver(paintTokens);
+      for(const n of [total,permanent])if(n)nativeTokens.observe(n,{childList:true,characterData:true,subtree:true});
+      cleanup(s,()=>{nativeTokens.disconnect();tokenLabel.remove();});
+      paintTokens();
 
       const paint=()=>{
         const heading=doc.querySelector('#rm_button_selected_ch h2');
-        setText(name,heading?.textContent?.trim()||'');
+        setText(name,heading?.textContent?.trim()||'');setText(phoneName,name.textContent);
+        for(const fn of fieldPaints)fn();
+        const fav=get('favorite_button')?.classList.contains('fav_on');
+        star.setAttribute('aria-pressed',String(Boolean(fav)));
+        layout();
         const src=hero.querySelector('#avatar_div_div img')?.getAttribute('src')||'';
-        if(avatar.getAttribute('src')!==src)avatar.setAttribute('src',src);
+        if(avatar.getAttribute('src')!==src){avatar.setAttribute('src',src);portrait.setAttribute('src',src);}
         const book=get('import_character_info');
         const embeddedBook=charData()?.character_book;
         embedded.hidden=!book||book.disabled||book.hidden||book.style.display==='none'||!embeddedBook;
         for(const widget of [alt,charWorld,chatWorld,personaLinks])widget.paint();
         roleSegment?.refresh();
       };
-      detail={s,host,heroActions,paint,resetTitle:()=>{back.remove();hero.classList.remove('cw2-char-hero');}};
+      detail={s,host,heroActions,paint,resetTitle:()=>{back.remove();phoneHeader.remove();hero.classList.remove('cw2-char-hero');}};
       paint();
     }
 
@@ -770,6 +844,12 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         else detail.paint();
       }else restoreDetail();
     };
+    const ctx=win.SillyTavern?.getContext?.();
+    const opened=ctx?.eventTypes?.CHARACTER_EDITOR_OPENED;
+    if(opened&&ctx.eventSource){
+      ctx.eventSource.on(opened,sync);
+      cleanup(parentState,()=>ctx.eventSource.removeListener(opened,sync));
+    }
     const observer=new win.MutationObserver(sync);
     observer.observe(createLabel,{attributes:true,attributeFilter:['style']});
     cleanup(parentState,()=>{observer.disconnect();restoreDetail();});
@@ -784,11 +864,26 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const header=make('div','cw2-char-sticky');
     const head=make('div','cw2-bar cw2-mbar cw2-char-bar');
     const importButton=get('character_import_button'),createButton=get('rm_button_create');
-    head.append(make('h2','',L('角色卡')),searchBox(s,get('character_search_bar'),'搜索角色名、标签、创作者备注'));
-    head.append(make('span','cw2-note',t('点角色卡查看详情','Open a character to view its details')));
+    const searchInput=get('character_search_bar');
+    const search=searchBox(s,searchInput);
+    search.classList.add('cwr-search-box');
+    if(searchInput){
+      const original=searchInput.placeholder;
+      const placeholder=t('搜索角色名、标签、创作者备注','Search names, tags, and creator notes');
+      const paintSearch=()=>{if(searchInput.placeholder!==placeholder)searchInput.placeholder=placeholder;};
+      const observe=new win.MutationObserver(paintSearch);
+      observe.observe(searchInput,{attributes:true,attributeFilter:['placeholder']});
+      cleanup(s,()=>{observe.disconnect();searchInput.placeholder=original;});
+      paintSearch();
+    }
+    head.append(make('h2','',L('角色卡')),search);
+    head.append(make('span','cw2-note',t('点一个角色看详情；行尾 ⋯ 可以直接聊天、复制、导出、删除。','Open a character to view its details. Use ⋯ to start a chat, copy, export, or delete.')));
     head.append(make('span','cw2-sp'));
-    if(importButton)move(s,act(s,importButton,'导入'),head);
-    if(createButton)move(s,act(s,createButton,'新建角色',false,true),head);
+    for(const [native,label,glyph,primary] of [[importButton,'导入','imp',false],[createButton,'新建角色','plus',true]]){
+      if(!native)continue;
+      move(s,act(s,native,label,false,primary),head);
+      native.prepend(created(s,popIcon(glyph)));
+    }
     const actions=menu(s,[
       ['新建群聊',get('rm_button_group_chats'),false,null,'plus'],
       ['从网址导入',get('external_import_button'),false,null,'ext'],
@@ -829,11 +924,15 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     phoneSort.append(icon('sliders'));phoneSort.setAttribute('aria-label',L('排序'));
     title.append(phoneSort);
     move(s,get('charListGridToggle'),sort);
-    move(s,get('rm_print_characters_pagination'),all);
+    const pager=get('rm_print_characters_pagination');
+    if(pager)move(s,pager,title);
     move(s,get('rm_print_characters_block'),all);
+    if(pager)cleanup(s,()=>pager.classList.remove('cw2-char-single-page'));
     paints.push(()=>{
-      const pager=get('rm_print_characters_pagination');
-      const total=pager&&win.jQuery?.(pager).data('pagination')?.model?.totalNumber;
+      const model=pager&&win.jQuery?.(pager).data('pagination')?.model;
+      const total=model?.totalNumber;
+      const pageSize=model?.pageSize||Number(pager?.querySelector('select')?.value);
+      if(pager) setFlag(pager,'cw2-char-single-page',Number.isFinite(total)&&pageSize>0&&total<=pageSize);
       const current=get('rm_print_characters_block')?.querySelectorAll(':scope>:is(.character_select,.group_select,.bogus_folder_select)').length||0;
       setText(count,String(Number.isFinite(total)?total:current));
     });
@@ -898,7 +997,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const run=action=>()=>select(true,action).catch(console.error);
     // 2.0.215（Lulu）：点角色 = 进入编辑（和设置里其他「›」行一样进下一页）；直接去聊天放进 ⋯ 的第一项。原来点整行是开始聊天、「编辑」另有一个按钮。
     const chev=make('span','cw-v4-character-chev');chev.setAttribute('aria-hidden','true');
-    actions.append(menu(s,[['开始聊天',null,false,()=>select(false).catch(console.error),'move'],['编辑',null,false,()=>select(true).catch(console.error),'pencil'],['收藏',null,false,run('favorite_button')],['复制',null,false,run('dupe_button')],['导出',null,false,run('export_button')],['删除',null,true,run('delete_button')]]),chev);
+    actions.append(menu(s,[['开始聊天',null,false,()=>select(false).catch(console.error),'move'],['编辑',null,false,()=>select(true).catch(console.error),'pencil'],['收藏',null,false,run('favorite_button'),'star'],['复制',null,false,run('dupe_button'),'copy'],['导出',null,false,run('export_button'),'exp'],'-',['删除这个角色',null,true,run('delete_button'),'trash']]),chev);
     item.append(actions);
     const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(true).catch(console.error);};
     item.addEventListener('click',click);s.cleanup=()=>item.removeEventListener('click',click);
@@ -1011,6 +1110,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     checkUpdates:checkVersion,
     editExtensions:()=>extensionPanel.edit(),
     leavePreset:()=>presetEdit.leave(),
+    decorateWorldPicker:worldPage.decoratePicker,
     mount(panel){
       // Native PromptManager discards rows on every render. Do not retain all
       // discarded DOM and listeners after a large batch.

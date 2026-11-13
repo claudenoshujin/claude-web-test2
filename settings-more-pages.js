@@ -4,8 +4,28 @@ export function createMorePages(h) {
   function characters(panel){
     const page=panel.querySelector('#rm_characters_block>.cw-v4-drawer-page');if(!page)return;
     const s=state(page);
-    for(const tag of page.querySelectorAll('.cw-v4-tags .tag.actionable')){if(tag.querySelector('.cwr-filter-label'))continue;const labels={filterByFavorites:'收藏',filterByGroups:'群组',filterByFolder:'文件夹',manageTags:'管理标签',showTagList:'标签',clearAllFilters:'清除筛选'};const label=Object.keys(labels).find(k=>tag.classList.contains(k));if(label){const span=created(s,make('span','cwr-filter-label',L(labels[label])));tag.append(span);}}
+    const filters={filterByFavorites:'收藏',filterByGroups:'群组',filterByFolder:'文件夹',manageTags:'管理标签',showTagList:'标签',clearAllFilters:'清除筛选'};
+    const glyphs={filterByGroups:'users',filterByFolder:'folder',manageTags:'gear'};
+    for(const tag of page.querySelectorAll('.cw-v4-tags .tag')){
+      const key=Object.keys(filters).find(name=>tag.classList.contains(name));
+      if(!key)continue;
+      if(!tag.querySelector('.cwr-filter-label'))tag.append(created(s,make('span','cwr-filter-label',L(filters[key]))));
+      if(glyphs[key]&&!tag.querySelector('.cw2-char-filter-icon')){
+        const symbol=created(s,icon(glyphs[key]));
+        symbol.classList.add('cw2-char-filter-icon');
+        tag.prepend(symbol);
+      }
+    }
+    for(const filters of page.querySelectorAll('.cw2-char-filters .rm_tag_filter')){
+      const manage=filters.querySelector('.manageTags');
+      if(manage&&manage!==filters.lastElementChild){
+        const st=state(manage);
+        move(st,manage,filters);
+      }
+    }
     for(const card of page.querySelectorAll('.character_select,.group_select')){const star=card.querySelector('.ch_fav_icon,.group_fav_icon'),name=card.querySelector('.character_name_block');if(star&&name&&star.parentElement!==name)move(state(card),star,name);
+      const tags=card.matches('.character_select')&&card.querySelector('.tags_inline');
+      if(tags&&name&&!name.contains(tags))move(state(card),tags,name);
       if(card.matches('.group_select')){const n=Number(card.querySelector('.group_select_counter')?.textContent.match(/\d+/)?.[0]);const multi=n>1;if(card.classList.contains('cwr-group-multi')!==multi)card.classList.toggle('cwr-group-multi',multi);const cs=state(card);if(!cs.round4Group){cs.round4Group=true;cleanup(cs,()=>card.classList.remove('cwr-group-multi'));}let meta=card.querySelector('.cwr-group-summary');if(!meta){meta=created(cs,make('p','cwr-group-summary'));card.querySelector('.group_select_container')?.append(meta);}const label=Number.isFinite(n)?t(`群组 · ${n} 个角色`,`Group · ${n} characters`):t('群组','Group');if(meta.textContent!==label)meta.textContent=label;}
     }
   }

@@ -771,7 +771,9 @@ export function installOfficialLayout(win = window) {
         list.append(action);
       }
     }
-    panel.querySelectorAll('.cw-v4-more').forEach(menu=>{
+    const menus=[...panel.querySelectorAll('.cw-v4-more')];
+    if(panel.id==='right-nav-panel')menus.push(...shell.querySelectorAll('.cw2-char-phone-head .cw-v4-more'));
+    menus.forEach(menu=>{
       if(enhancedMenus.has(menu))return;enhancedMenus.add(menu);
       const list=menu.querySelector(':scope>.cw-v4-more-list'),summary=menu.querySelector('summary');
       if(!list||!list.showPopover)return;
@@ -1959,6 +1961,7 @@ export function installOfficialLayout(win = window) {
     // 2.0.247 普通尺寸的酒馆弹窗（改名 / 另存为 / 删除确认……）照 Claude Desktop 排（CSS ㉗）；删除类的「确定」画成红色。只在变化时写属性。
     // 2.0.256 手机也装饰（排法见 CSS ㉝，照扩展页的弹出页：灰标题在卡片外、操作是蓝色行）。
     if (enabled()) for (const d of doc.querySelectorAll('dialog.popup[open]')) {
+      drawerLayouts.decorateWorldPicker(d);
       if (d.querySelector('#tag_view_list')) decorateTagView(d); else if (d.querySelector('.alternate_grettings')) decorateGreetings(d);
     }
     for (const d of doc.querySelectorAll(SMALL_POPUP + '[open]')) {

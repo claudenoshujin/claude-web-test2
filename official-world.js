@@ -91,6 +91,53 @@ export function createWorldPage(h) {
     return {r,nm,mt,val};
   }
   const pills=(host,names,empty)=>{const key=(names.join('\n')||'-')+'|'+empty;if(host.dataset.key===key)return;host.dataset.key=key;host.replaceChildren(...(names.length?names.map(n=>make('span','cww-bk',n)):[make('span','cww-bk cww-bk-none',empty)]));};
+  function decoratePicker(dialog) {
+    const char = dialog.querySelector('.character_world_info_selector');
+    const chat = dialog.querySelector('.chat_world_info_selector');
+    if ((!char && !chat) || dialog.classList.contains('cw2-world-binding')) return;
+    const source = (char || chat).closest('.character_world,.chat_world');
+    if (!source) return;
+    const extra = source.querySelector('.character_extra_world_info_selector');
+    const select2 = extra && win.jQuery?.(extra).data('select2');
+    const placeholder=t('没有附加的世界书，点这里选择','Select additional lorebooks');
+    if(select2?.selection?.placeholder){
+      select2.selection.placeholder.text=placeholder;
+      const search=select2.selection.$search?.get(0);
+      if(search&&!extra.selectedOptions.length)search.setAttribute('placeholder',placeholder);
+    }
+    const name = source.querySelector('.character_name')?.textContent.trim();
+    const title = char ? (name ? t(name+'的世界书', name+'’s World Info') : t('角色世界书','Character World Info')) : t('聊天世界书','Chat World Info');
+    const desc = char
+      ? t('绑在这个角色上，只在和该角色聊天时用。导出角色卡时会附带主要世界书。','Applies in chats with this character. The primary lorebook is included when exporting the card.')
+      : t('绑在当前这段聊天上。生成回复时，会和全局、角色的世界书一起用。','Applies to this chat alongside global and character lorebooks when generating replies.');
+    const fields = make('div','cw2-world-fields');
+    function add(select, label) {
+      if (!select) return;
+      const field = make('div','cw2-world-field');
+      if (label) field.append(make('span','cw2-world-label',label));
+      select.setAttribute('aria-label',label||title);
+      const box = make('span','cw2-world-select');
+      const container = select.nextElementSibling?.matches('.select2-container') ? select.nextElementSibling : null;
+      box.append(select);
+      if (container) box.append(container);
+      const empty = [...select.options].find(option=>option.value==='');
+      if (empty && !select.multiple) empty.textContent=t('--- 不绑定 ---','--- None ---');
+      field.append(box);
+      fields.append(field);
+    }
+    add(char || chat,char ? t('主要世界书','Primary lorebook') : '');
+    add(extra,t('附加世界书','Additional lorebooks'));
+    source.replaceChildren(make('h3','',title),make('p','',desc),fields);
+    source.classList.add('cw2-world-popup');
+    dialog.classList.add('cw2-world-binding');
+    if (extra && win.jQuery?.fn.select2 && !win.jQuery(extra).data('select2')) {
+      win.jQuery(extra).select2({width:'100%',placeholder,
+        allowClear:true,closeOnSelect:false,dropdownParent:win.jQuery(dialog)});
+      dialog.addEventListener('close',()=>{
+        if(win.jQuery(extra).data('select2'))win.jQuery(extra).select2('destroy');
+      },{once:true});
+    }
+  }
   let globalPopup = null;
   async function openGlobalWorlds(picker) {
     if (!picker?.isConnected || globalPopup) return;
@@ -100,7 +147,7 @@ export function createWorldPage(h) {
 
     const content = make('div', 'cw2-world-popup');
     content.append(make('h3', '', t('全局世界书', 'Global World Info')));
-    content.append(make('p', '', t('选中的世界书会在每段聊天里使用。', 'Selected World Info is used in every chat.')));
+    content.append(make('p', '', t('选中的世界书每段聊天都会用，可以选多本。', 'Select one or more lorebooks to use in every chat.')));
     const popup = new Popup(content, POPUP_TYPE.TEXT, '', {
       okButton: t('完成', 'Done'), allowVerticalScrolling: true,
     });
@@ -109,6 +156,13 @@ export function createWorldPage(h) {
     const select = get('world_info');
     const dropdown = select && win.jQuery?.(select).data('select2')?.dropdown;
     const parent = dropdown?.$dropdownParent;
+    const search = picker.querySelector('.select2-search__field');
+    const oldPlaceholder = search?.getAttribute('placeholder');
+    const placeholder=t('搜索或选择世界书','Search or select lorebooks');
+    const placeholderAdapter=select&&win.jQuery?.(select).data('select2')?.selection?.placeholder;
+    const oldPlaceholderText=placeholderAdapter?.text;
+    if(placeholderAdapter)placeholderAdapter.text=placeholder;
+    if(search&&!select.selectedOptions.length)search.setAttribute('placeholder',placeholder);
     if (dropdown && parent) dropdown.$dropdownParent = win.jQuery(popup.dlg);
 
     const restore = () => {
@@ -118,10 +172,16 @@ export function createWorldPage(h) {
         win.jQuery(select).select2('close');
         dropdown.$dropdownParent = parent;
       }
+      if(placeholderAdapter)placeholderAdapter.text=oldPlaceholderText;
+      if(search&&search.getAttribute('placeholder')===placeholder){
+        if(oldPlaceholder==null)search.removeAttribute('placeholder');else search.setAttribute('placeholder',oldPlaceholder);
+      }
       anchor.replaceWith(picker);
     };
     globalPopup = {popup, restore};
-    content.append(picker);
+    const box=make('div','cw2-world-select');
+    box.append(picker);
+    content.append(box);
     try {
       await popup.show();
     } finally {
@@ -664,5 +724,5 @@ export function createWorldPage(h) {
     }
     if(!ui)return;const u=ui;dropFilter();closeBig();closeEntry();u.mobileHead?.remove();if(frame){win.cancelAnimationFrame(frame);frame=0;}ui=null;
   }
-  return {build,sync,destroy,go:v=>go(v),state:()=>ui&&{view:ui.view,book:currentBook(),selecting:ui.selecting,selected:[...ui.selected]}};
+  return {decoratePicker,build,sync,destroy,go:v=>go(v),state:()=>ui&&{view:ui.view,book:currentBook(),selecting:ui.selecting,selected:[...ui.selected]}};
 }

@@ -831,6 +831,47 @@ html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_worl
   color:var(--cwus-ink)!important;
 }
 
+
+html[data-cw-settings-unified] dialog.popup .cw2-world-popup {
+  display:flex!important; flex-direction:column!important; gap:10px!important; width:100%!important;
+  align-items:stretch!important; text-align:left!important; margin:0!important;
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-popup>h3 {
+  margin:0!important; text-align:left!important; font-size:17px!important; font-weight:600!important;
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-popup>p {
+  margin:0!important; color:var(--cwus-muted)!important; font-size:13px!important; line-height:1.5!important; text-align:left!important;
+}
+html[data-cw-settings-unified] .cw2-world-popup #WIMultiSelector>.range-block-title {display:none!important}
+html[data-cw-settings-unified] .cw2-world-popup #WIMultiSelector .range-block-range {margin:0!important}
+html[data-cw-settings-unified] .cw2-world-fields {display:grid; gap:10px}
+html[data-cw-settings-unified] .cw2-world-field {display:grid; gap:6px; min-width:0}
+html[data-cw-settings-unified] .cw2-world-label {font-size:13px; color:var(--cwus-muted); text-align:left}
+html[data-cw-settings-unified] .cw2-world-select {display:block; position:relative; min-width:0}
+html[data-cw-settings-unified] .cw2-world-select::after {
+  content:''; width:6px; height:6px; border:solid var(--cwus-muted); border-width:0 1.5px 1.5px 0;
+  transform:rotate(45deg); position:absolute; top:14px; inset-inline-end:15px; pointer-events:none;
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select :is(select:not(.select2-hidden-accessible),.select2-selection) {
+  box-sizing:border-box!important; width:100%!important; min-height:36px!important; margin:0!important;
+  padding:6px 32px 6px 10px!important; font-size:13px!important; line-height:1.5!important;
+  border:1px solid var(--cwus-line)!important; border-radius:9px!important; background:var(--cwus-canvas)!important;
+  color:var(--cwus-ink)!important; text-align:left!important; box-shadow:none!important; appearance:none!important;
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-container {display:block!important; width:100%!important}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-selection--multiple {
+  display:flex!important; flex-wrap:wrap; align-items:center; gap:3px; max-height:none!important; overflow:visible!important; cursor:text;
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-selection__rendered {
+  display:flex!important; align-items:center; flex-wrap:wrap; gap:4px; padding:0!important; margin:0!important;
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-selection__rendered:empty {display:none!important}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-search--inline {flex:1; min-width:7em; margin:0!important; display:flex!important; align-items:center!important}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-search--inline .select2-search__field {
+  display:block!important; margin:0!important; padding:0!important; min-height:20px!important; height:20px!important; font:400 13px/20px var(--cw-v4-font)!important;
+  width:100%!important; color:var(--cwus-ink)!important;
+}
+
 /* v2e character list and existing-character editor. */
 .cw-v4-shell .cw2-char-mobile-create {display:none}
 html[data-cw-settings-unified] .cw2-char-sticky {
@@ -949,11 +990,6 @@ html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-chat {
   html[data-cw-settings-unified] .cw2-char-filters {overflow:auto; scrollbar-width:none}
   html[data-cw-settings-unified] .cw2-char-filters .cw-v4-tags {width:max-content!important; flex:none}
   html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {position:sticky; top:0; z-index:4; background:var(--cwus-canvas)}
-  html[data-cw-settings-unified] .cw2-char-detail .cw2-char-basic,
-  html[data-cw-settings-unified] .cw2-char-detail .cw2-char-back,
-  html[data-cw-settings-unified] .cw2-char-detail .cw2-char-detail-actions,
-  html[data-cw-settings-unified] .cw2-char-detail .cw-v4-pf-textsec:has([data-for="advanced"],[data-for="creator_notes"]),
-  html[data-cw-settings-unified] .cw2-char-detail.cw2-char-advanced>.cw-v4-phone-only {display:none!important}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pair {display:block}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pair>.cw2-char-field+.cw2-char-field {border-inline-start:0; border-top:1px solid var(--cwus-soft)}
 }
@@ -1021,5 +1057,117 @@ html[data-cw-settings-unified] :is(body.charListGrid .cw2-char-list #rm_print_ch
 }
 html[data-cw-settings-unified] :is(body.charListGrid .cw2-char-list #rm_print_characters_block,.cw2-persona #user_avatar_block.gridView) :is(.ch_name,.persona_name) {
   display:block!important; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* Body-mounted native dialogs inherit the theme palette from the document. */
+html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup) {
+  --cwus-ink:var(--cw-text-body,#181817); --cwus-muted:var(--cw-text-muted,#72706a);
+  --cwus-line:var(--cw-rule-hairline,#dddcd6); --cwus-canvas:var(--cw-surface-page,#f8f8f6);
+  --cw-v4-font:var(--cl-sans,system-ui);
+}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select::after {z-index:1}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-selection--multiple {padding-block:5px!important}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-search__field {background:transparent!important; border:0!important; box-shadow:none!important}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-search__field::placeholder {color:var(--cwus-muted)!important; font-size:13px!important}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select .select2-selection__choice {margin:0!important}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select:has(select[multiple]:not(.select2-hidden-accessible))::after {display:none}
+html[data-cw-settings-unified] dialog.popup .cw2-world-select #WIMultiSelector .range-block-range {width:100%!important}
+
+/* v2e review: shared character controls and responsive detail layout. */
+html[data-cw-settings-unified] .cw2-char-detail>:not(.cw2-char-edit,.cw2-char-hero) {display:none!important}
+html[data-cw-settings-unified] :is(.cw2-char-phone-head,.cw2-char-phone-hero,.cw2-char-preview) {display:none!important}
+html[data-cw-settings-unified] .cw2-char-hero #result_info_text>:not(.cw2-char-total) {display:none!important}
+html[data-cw-settings-unified] .cw2-char-hero .cw-v4-hero-who>.cw-v4-hero-name {width:auto!important; max-width:min(50%,360px)!important}
+html[data-cw-settings-unified] .cw2-char-hero #result_info_text>.cw2-char-total {font-size:12.5px!important}
+html[data-cw-settings-unified] .cw2-char-bar :is(#character_import_button,#rm_button_create)>svg {display:block!important; width:15px!important; height:15px!important; margin-inline-end:5px; flex:none}
+html[data-cw-settings-unified] .cw2-char-filters .rm_tag_filter {align-items:center}
+html[data-cw-settings-unified] .cw2-char-filters .filterByFolder {margin-inline-end:8px!important}
+html[data-cw-settings-unified] .cw2-char-filters .filterByFolder::after {
+  content:''; display:block; width:1px; height:18px; background:var(--cwus-line); position:absolute; inset-inline-end:-8px;
+}
+html[data-cw-settings-unified] .cw2-char-filters .filterByFolder {position:relative}
+html[data-cw-settings-unified] .cw2-char-filters .tag>.cw2-char-filter-icon {display:inline-flex!important; flex:0 0 14px; width:14px!important; height:14px!important; visibility:visible!important}
+html[data-cw-settings-unified] .cw2-char-filters .tag>.cw2-char-filter-icon>svg {display:block!important; width:14px!important; height:14px!important}
+html[data-cw-settings-unified] .cw2-char-filters .manageTags {order:2}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_pagination {margin:0 0 0 auto!important; min-width:0}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_pagination :is(.paginationjs-prev,.paginationjs-next,.paginationjs-first,.paginationjs-last) a {
+  color:var(--cwus-muted)!important; border-color:var(--cwus-line)!important; background:var(--cwus-surface)!important;
+}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_pagination.cw2-char-single-page :is(.paginationjs-pages,.paginationjs-nav) {display:none!important}
+html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_pagination .paginationjs-size-changer select {width:auto!important; min-width:78px; height:30px!important}
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list .character_select .character_name_block {
+  display:flex!important; align-items:center; gap:6px; min-width:0; overflow:hidden;
+}
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list .character_select .character_name_block>.ch_name {
+  flex:0 1 auto!important; width:auto!important; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list .character_select .character_name_block>.tags_inline {
+  display:flex!important; flex-wrap:nowrap!important; flex:0 1 auto!important; width:auto!important; min-width:0; overflow:hidden; white-space:nowrap; margin:0!important;
+}
+html[data-cw-settings-unified] .cw2-char-list .character_name_block>.tags_inline>.tag {flex:none}
+html[data-cw-settings-unified] .cw2-char-list .character_name_block>.tags_inline:empty {display:none!important}
+html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div>h5 {
+  color:var(--cwus-muted)!important; font:400 12.5px/1.4 var(--cw-v4-font)!important;
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-embedded-tags {border-top:1px solid var(--cwus-soft); gap:5px}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-embedded-tags>.cw2-hint,
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-creator-notes>.cw2-hint {margin:0!important; line-height:1.35}
+@media(min-width:701px){
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-adv .cw2-char-embedded-tags {padding-block:7px; gap:3px}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-adv .cw2-char-creator-notes>#creator_notes_textarea {min-height:58px!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-adv .cw2-char-creator-notes {gap:4px; padding-block:7px}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-adv .cw2-char-field:not(.cw2-char-embedded-tags,.cw2-char-creator-notes)>.cw2-hint {margin:0!important}
+}
+html[data-cw-settings-unified] .cw2-char-edit .cw2-char-embedded-tags #tags_textarea {flex:none!important; height:36px!important; min-height:36px!important; resize:none}
+html[data-cw-settings-unified] #PersonaManagement .cw2-persona .cw2-bar>.cw2-note {color:var(--cwus-muted)!important; font-size:12.5px!important}
+@media(max-width:700px){
+  html[data-cw-settings-unified] body:has(#right-nav-panel.openDrawer #rm_ch_create_block:not([style*="display: none"]) .cw2-char-detail) .cw-v4-shell[data-panel="right-nav-panel"] .cw-v4-head>:not(.cw2-char-phone-head) {display:none!important}
+  html[data-cw-settings-unified] body:has(#right-nav-panel.openDrawer #rm_ch_create_block:not([style*="display: none"]) .cw2-char-detail) .cw-v4-shell[data-panel="right-nav-panel"] .cw2-char-phone-head {
+    height:100%; display:grid!important; grid-template-columns:1fr minmax(0,2fr) 1fr; gap:4px; align-items:center; width:100%; padding:0 12px;
+  }
+  html[data-cw-settings-unified] .cw2-char-phone-head h1 {font:600 17px/1.3 var(--cw-v4-font)!important; margin:0; text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+  html[data-cw-settings-unified] .cw2-char-phone-head>button {display:flex; gap:2px; width:auto!important; padding:0!important; white-space:nowrap; justify-self:start; font-size:13px}
+  html[data-cw-settings-unified] .cw2-char-phone-head .cw-v4-more {position:relative!important; inset:auto!important; justify-self:end}
+  html[data-cw-settings-unified] #right-nav-panel:has(#rm_ch_create_block:not([style*="display: none"]) .cw2-char-detail) #rm_button_characters,
+  html[data-cw-settings-unified] .cw2-char-detail>.cw2-char-hero {display:none!important}
+  html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {margin:0!important; background:var(--cwus-desktop)}
+  html[data-cw-settings-unified] #right-nav-panel:has(.cw2-char-detail) .cw2-char-edit {padding-top:0!important}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-pane .cw-v4-section {margin-top:12px!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane>.cw2-cols {display:flex!important; flex-direction:column!important; gap:0!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-col {display:contents!important}
+  html[data-cw-settings-unified] .cw2-char-basic .cw2-char-info {order:-3}
+  html[data-cw-settings-unified] .cw2-char-basic .cw2-char-world {order:2}
+  html[data-cw-settings-unified] .cw2-char-basic .cw2-char-display {order:3}
+  html[data-cw-settings-unified] .cw2-char-adv .cw2-char-group {order:1}
+  html[data-cw-settings-unified] .cw2-char-adv .cw2-char-note {order:0}
+  html[data-cw-settings-unified] .cw2-char-adv .cw2-char-note+.cw2-char-grow {order:2}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw-v4-card>.cw2-char-desktop-avatar,
+  html[data-cw-settings-unified] .cw2-char-basic .cw2-char-field:not(.cw2-char-editing) {display:none!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-phone-hero {display:grid!important; gap:10px; margin-top:14px}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-portrait {
+    display:grid; justify-items:center; gap:8px; padding:16px!important;
+  }
+  html[data-cw-settings-unified] .cw2-char-portrait img {width:72px; height:72px; border-radius:50%; object-fit:cover}
+  html[data-cw-settings-unified] .cw2-char-portrait button {border:0!important; background:none!important; padding:0!important; min-height:0!important; color:var(--cwus-blue)!important}
+  html[data-cw-settings-unified] .cw2-char-portrait .cw2-char-phone-stats {font-size:12px!important; color:var(--cwus-muted)!important}
+  html[data-cw-settings-unified] .cw2-char-phone-actions {display:grid; grid-template-columns:minmax(0,1fr) 44px; gap:8px}
+  html[data-cw-settings-unified] .cw2-char-phone-actions button {height:42px!important; justify-content:center}
+  html[data-cw-settings-unified] .cw2-char-phone-actions .cw2-char-chat {background:var(--cwus-ink)!important; color:var(--cwus-canvas)!important}
+  html[data-cw-settings-unified] .cw2-char-favorite svg {width:17px; height:17px}
+  html[data-cw-settings-unified] .cw2-char-favorite[aria-pressed="true"] svg {fill:#be8a24; color:#be8a24}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-preview {
+    display:flex!important; align-items:center; justify-content:space-between; width:100%; min-height:58px;
+    gap:12px; padding:10px 14px; background:transparent; border:0; text-align:left; color:var(--cwus-ink);
+  }
+  html[data-cw-settings-unified] .cw2-char-preview>.cw-v4-icon {width:14px; height:14px; flex:none}
+  html[data-cw-settings-unified] .cw2-char-preview-label {min-width:0; font-size:14.5px}
+  html[data-cw-settings-unified] .cw2-char-preview-label>.cw2-char-token {margin-inline-start:8px}
+  html[data-cw-settings-unified] .cw2-char-preview-text {
+    display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--cwus-muted); font-size:12.5px;
+  }
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-adv :is(label,textarea) {font-size:14px!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-adv textarea::placeholder {color:var(--cwus-muted)!important; font-size:14px!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-examples #mes_example_textarea {height:120px!important}
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort {margin-inline-start:0}
 }
 }
