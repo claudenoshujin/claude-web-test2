@@ -1102,9 +1102,21 @@ html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list .character
   flex:0 1 auto!important; width:auto!important; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list .character_select .character_name_block>.tags_inline {
-  display:flex!important; flex-wrap:nowrap!important; flex:0 1 auto!important; width:auto!important; min-width:0; overflow:hidden; white-space:nowrap; margin:0!important;
+  display:flex!important; flex-wrap:nowrap!important; flex:0 1 auto!important; width:auto!important; min-width:0; max-height:none!important; overflow:hidden; white-space:nowrap; opacity:1!important; margin:0!important;
 }
-html[data-cw-settings-unified] .cw2-char-list .character_name_block>.tags_inline>.tag {flex:none}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .character_name_block>.tags_inline>.tag {
+  display:inline-flex!important; align-items:center; flex:none; box-sizing:border-box;
+  height:20px!important; margin:0!important; padding:0 7px!important; border-radius:999px;
+  border:1px solid var(--cwus-line)!important; background:var(--cwus-surface)!important;
+  color:var(--cwus-muted)!important; font:400 11.5px/1 var(--cw-v4-font)!important;
+}
+html[data-cw-settings-unified] #right-nav-panel .cw2-char-list .character_name_block>.tags_inline>.tag>.tag_name {
+  color:inherit!important; font:inherit!important;
+}
+html[data-cw-settings-unified] body:not(.charListGrid) .cw2-char-list .character_select .character_name_block {
+  height:21px!important; flex-shrink:0!important;
+}
+html[data-cw-settings-unified] .cw2-char-summary-heading {display:none!important}
 html[data-cw-settings-unified] .cw2-char-list .character_name_block>.tags_inline:empty {display:none!important}
 html[data-cw-settings-unified] .cw2-char-edit #talkativeness_div>h5 {
   color:var(--cwus-muted)!important; font:400 12.5px/1.4 var(--cw-v4-font)!important;
@@ -1113,7 +1125,7 @@ html[data-cw-settings-unified] .cw2-char-edit .cw2-char-embedded-tags {border-to
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-embedded-tags>.cw2-hint,
 html[data-cw-settings-unified] .cw2-char-edit .cw2-char-creator-notes>.cw2-hint {margin:0!important; line-height:1.35}
 @media(min-width:701px){
-  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-adv .cw2-char-embedded-tags {padding-block:7px; gap:3px}
+  html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-adv .cw2-char-embedded-tags {flex:none; padding-block:7px; gap:3px}
   html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-adv .cw2-char-creator-notes>#creator_notes_textarea {min-height:58px!important}
   html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-adv .cw2-char-creator-notes {gap:4px; padding-block:7px}
   html[data-cw-settings-unified] #right-nav-panel .cw2-char-adv .cw2-char-field:not(.cw2-char-embedded-tags,.cw2-char-creator-notes)>.cw2-hint {margin:0!important}
@@ -1125,12 +1137,12 @@ html[data-cw-settings-unified] #PersonaManagement .cw2-persona .cw2-bar>.cw2-not
   html[data-cw-settings-unified] body:has(#right-nav-panel.openDrawer #rm_ch_create_block:not([style*="display: none"]) .cw2-char-detail) .cw-v4-shell[data-panel="right-nav-panel"] .cw2-char-phone-head {
     height:100%; display:grid!important; grid-template-columns:1fr minmax(0,2fr) 1fr; gap:4px; align-items:center; width:100%; padding:0 12px;
   }
-  html[data-cw-settings-unified] .cw2-char-phone-head h1 {font:600 17px/1.3 var(--cw-v4-font)!important; margin:0; text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+  html[data-cw-settings-unified] .cw2-char-phone-head>h1 {align-self:center!important; position:static!important; transform:none!important; padding:0!important; font:600 17px/1.3 var(--cw-v4-font)!important; margin:0!important; text-align:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
   html[data-cw-settings-unified] .cw2-char-phone-head>button {display:flex; gap:2px; width:auto!important; padding:0!important; white-space:nowrap; justify-self:start; font-size:13px}
   html[data-cw-settings-unified] .cw2-char-phone-head .cw-v4-more {position:relative!important; inset:auto!important; justify-self:end}
   html[data-cw-settings-unified] #right-nav-panel:has(#rm_ch_create_block:not([style*="display: none"]) .cw2-char-detail) #rm_button_characters,
   html[data-cw-settings-unified] .cw2-char-detail>.cw2-char-hero {display:none!important}
-  html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {margin:0!important; background:var(--cwus-desktop)}
+  html[data-cw-settings-unified] .cw2-char-edit>.cw2-char-tabs {margin:0!important; background:var(--cwus-canvas)!important; border:0!important; border-bottom:1px solid var(--cwus-soft)!important; box-shadow:none!important}
   html[data-cw-settings-unified] #right-nav-panel:has(.cw2-char-detail) .cw2-char-edit {padding-top:0!important}
   html[data-cw-settings-unified] #right-nav-panel .cw2-char-edit .cw2-char-pane .cw-v4-section {margin-top:12px!important}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-pane>.cw2-cols {display:flex!important; flex-direction:column!important; gap:0!important}
@@ -1159,7 +1171,17 @@ html[data-cw-settings-unified] #PersonaManagement .cw2-persona .cw2-bar>.cw2-not
     display:flex!important; align-items:center; justify-content:space-between; width:100%; min-height:58px;
     gap:12px; padding:10px 14px; background:transparent; border:0; text-align:left; color:var(--cwus-ink);
   }
-  html[data-cw-settings-unified] .cw2-char-preview>.cw-v4-icon {width:14px; height:14px; flex:none}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-summary>.cw2-char-summary-heading {
+    display:block!important; margin:0 2px 8px!important; color:var(--cwus-muted)!important;
+  }
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-summary>.cw-v4-card {display:contents!important}
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-summary .cw2-char-preview,
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-summary .cw2-char-alternate {
+    border:1px solid var(--cwus-soft)!important; border-radius:14px!important; background:var(--cwus-surface)!important;
+  }
+  html[data-cw-settings-unified] .cw2-char-edit .cw2-char-summary .cw2-char-alternate {margin-top:8px!important}
+  html[data-cw-settings-unified] .cw2-char-preview>.cw-v4-icon {width:14px; height:14px; flex:none; color:var(--cwus-muted)!important}
+  html[data-cw-settings-unified] .cw2-char-preview>.cw-v4-icon svg {stroke-width:1.5}
   html[data-cw-settings-unified] .cw2-char-preview-label {min-width:0; font-size:14.5px}
   html[data-cw-settings-unified] .cw2-char-preview-label>.cw2-char-token {margin-inline-start:8px}
   html[data-cw-settings-unified] .cw2-char-preview-text {
@@ -1168,6 +1190,11 @@ html[data-cw-settings-unified] #PersonaManagement .cw2-persona .cw2-bar>.cw2-not
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-adv :is(label,textarea) {font-size:14px!important}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-adv textarea::placeholder {color:var(--cwus-muted)!important; font-size:14px!important}
   html[data-cw-settings-unified] .cw2-char-edit .cw2-char-examples #mes_example_textarea {height:120px!important}
-  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort {margin-inline-start:0}
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort {
+    order:2; flex:none; gap:4px; margin-inline-start:6px; min-height:30px!important;
+    font:400 12.5px/1 var(--cw-v4-font)!important; white-space:nowrap;
+  }
+  html[data-cw-settings-unified] .cw2-char-list .cw2-char-phone-sort>.cw-v4-icon {width:12px!important; height:12px!important}
+  html[data-cw-settings-unified] .cw2-char-list #rm_print_characters_pagination .cwr-select-host {width:auto!important; min-width:0!important}
 }
 }

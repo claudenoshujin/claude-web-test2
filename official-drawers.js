@@ -679,13 +679,17 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       basic.append(phoneHero);
       const [left,right]=cols(basic);
       const description=section(left,'');
-      description.classList.add('cw2-char-grow');
+      description.classList.add('cw2-char-grow','cw2-char-summary');
       field(description,'description_textarea','描述',{hint:'外貌、性格、背景……',expand:true,preview:true});
       const greeting=section(left,'');
-      greeting.classList.add('cw2-char-greeting');
+      greeting.classList.add('cw2-char-greeting','cw2-char-summary');
       field(greeting,'firstmessage_textarea','开场白',{expand:true,preview:true});
+      for(const [section,label] of [[description,'描述'],[greeting,'开场白']]){
+        section.prepend(make('h2','cw2-char-summary-heading',L(label)));
+      }
       const alt=linked(greeting,'备选开场白','',()=>t(`${charData()?.alternate_greetings?.length||0} 条 · 管理`,`${charData()?.alternate_greetings?.length||0} · Manage`),()=>form.querySelector('.open_alternate_greetings')?.click());
 
+      alt.r.classList.add('cw2-char-alternate');
       const info=section(right,'基本信息');
       info.classList.add('cw2-char-info');
       const avatar=make('img','cw2-char-mini-avatar');avatar.alt='';
@@ -928,9 +932,21 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     const count=make('span','cw2-char-count');
     const title=all.querySelector('h2');
     title.append(count);
-    const phoneSort=button('',()=>openSelMenu?.(get('character_sort_order')),'cw2-char-phone-sort');
-    phoneSort.append(icon('sliders'));phoneSort.setAttribute('aria-label',L('排序'));
-    title.append(phoneSort);
+    const nativeSort=get('character_sort_order');
+    if(nativeSort){
+      const sortLabel=make('span','');
+      const phoneSort=button('',()=>openSelMenu?.(nativeSort),'cw-v4-button cw2-char-phone-sort');
+      const paintSort=()=>{
+        const label=nativeSort.selectedOptions[0]?.textContent.trim()||L('排序');
+        setText(sortLabel,label);
+        const name=t('排序：'+label,'Sort: '+label);
+        if(phoneSort.getAttribute('aria-label')!==name)phoneSort.setAttribute('aria-label',name);
+      };
+      phoneSort.append(sortLabel,icon('chevd'));
+      title.append(phoneSort);
+      paints.push(paintSort);
+      paintSort();
+    }
     move(s,get('charListGridToggle'),sort);
     const pager=get('rm_print_characters_pagination');
     if(pager)move(s,pager,title);
