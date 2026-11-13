@@ -827,6 +827,12 @@ html[data-cw-v4] .cw-v4-row-more {
   cursor:pointer;
 }
 html[data-cw-v4] .cw-v4-row-more:is(:hover,[aria-expanded="true"]) {background:var(--cwus-hover,var(--v4-hover))!important}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel button.cw-v4-row-more:focus:not(:focus-visible) {
+  outline:none!important;box-shadow:none!important;
+}
+html[data-cw-v4] body #top-settings-holder .cw-v4-panel button.cw-v4-row-more:focus-visible {
+  outline:2px solid var(--cwus-blue,#2a78d6)!important;outline-offset:2px;box-shadow:none!important;
+}
 html[data-cw-v4] #WorldInfo .cww-row-more {border:1px solid var(--cwus-line)!important;background:var(--cwus-surface)!important}
 html[data-cw-v4] #WorldInfo .cww-row-more:is(:hover,[aria-expanded="true"]) {background:var(--cwus-hover)!important}
 html[data-cw-settings-unified] #WorldInfo :is(.cww-selecting,.cww-native-entries) .cww-row-more {display:none!important}

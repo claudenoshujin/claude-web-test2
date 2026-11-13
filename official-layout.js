@@ -191,7 +191,9 @@ export function installOfficialLayout(win = window) {
       win.jQuery?.(select).off('change.cwPrefSegment',schedule);
       select.removeAttribute('data-cw-segmented');group.remove();
     }
-    schedule();
+    // Build the controls on mount. Later frames only remeasure or reflect
+    // actual changes to the native options.
+    sync();
     return {refresh:schedule,destroy};
   }
   function pm(node,host){if(!node||node===host)return;for(const counter of node.matches?.('input[data-for]')?[node]:node.querySelectorAll?.('input[data-for]')||[]){const undo=retainRangeCounter(counter);if(undo)prefRangeUndos.push(undo);}if(node.parentNode){const mark=doc.createComment('cw-v4-pref-return');node.before(mark);prefMoves.push([node,mark]);}host.append(node);}

@@ -668,6 +668,13 @@ export function createWorldPage(h) {
   }
   function closeEntry(){
     const es=ui?.editing;if(!es)return;closeBig();ui.editing=null;
+    // Select2 attaches its open results to the document, outside the entry.
+    // Close them before moving their controls back to the native editor.
+    for(const [node] of es.moves){
+      if(!node.matches('select.select2-hidden-accessible'))continue;
+      const select=win.jQuery?.(node);
+      if(select?.data('select2')?.isOpen?.())select.select2('close');
+    }
     for(const f of es.undo.splice(0).reverse())try{f();}catch{}
     // menu()/showToggle() from the drawer helpers record into es as a drawer state.
     for(const f of (es.cleanups||[]).splice(0))try{f();}catch{}
