@@ -3,7 +3,7 @@
  * 所有读写都走原生控件或原生导出函数：CW 只搬位置、换外观；条目字段靠原生控件自己的
  * input/change 保存，CW 不存数据。搬走的原生节点都留 return 标记，关闭/销毁时放回。 */
 export function createWorldPage(h) {
-  const {win,t,L,make,button,icon,get,move,cleanup,state,menu,act,openEditor,showToggle,phoneWide}=h,doc=win.document;
+  const {win,t,L,make,button,icon,get,move,cleanup,state,menu,act,openEditor,showToggle,bindRowMenu,rowMore,phoneWide}=h,doc=win.document;
   const WI_URL=()=>new URL('/scripts/world-info.js',win.location.href).href;
   let wi=null,wiLoading=null;
   const loadWI=()=>wiLoading||=import(WI_URL()).then(m=>{wi=m;return m;}).catch(()=>null);
@@ -330,6 +330,10 @@ export function createWorldPage(h) {
     const hiddenTools=make('div','cw-v4-park');for(const id of ['OpenAllWIEntries','CloseAllWIEntries'])if(get(id))move(s,get(id),hiddenTools);
     const opts=make('div','cw-v4-card cww-opts cww-phone-only'),r=make('div','cw-v4-row cww-row');{const info=make('div','cw-v4-row-info');info.append(make('div','cw-v4-row-title',t('新建条目','New entry')));r.append(iconBox(ICON.plus()),info);}r.tabIndex=0;r.setAttribute('role','button');r.addEventListener('click',()=>get('world_popup_new')?.click());opts.append(r);
     view.append(back,head,sub,tools,chips,legend,ehead,card,nativeHost,hiddenTools,opts);
+    cleanup(s,bindRowMenu(list,'.cww-row-more',trigger=>{
+      const entry=ui.nativeRows.get(trigger.closest('.cww-entry'));
+      return entry?.isConnected?entryActions(entry):null;
+    },ui.panel));
     Object.assign(ui,{bookTitle:title,bookSub:sub,entryList:list,entryEmpty:empty,entryCard:card,pagerBar,pagerText,prevBtn:prev,nextBtn:next,ehead,legend,nativeHost,chips});
     // Rows are rebuilt from the native list once per frame; CW's own nodes live outside it.
     for(const n of [entries,pager].filter(Boolean)){const mo=new win.MutationObserver(()=>queue());mo.observe(n,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});cleanup(s,()=>mo.disconnect());}
@@ -369,22 +373,11 @@ export function createWorldPage(h) {
     const r=make('div','cww-entry'),txt=make('div','cww-etxt'),nmLine=make('div','cww-enm'),nm=make('span','cw-v4-row-title'),off=make('span','cww-offtag',t('已停用','Disabled')),meta=make('div','cww-meta'),dot=make('span','cww-dot'),k=make('span','cww-k'),meta2=make('div','cww-meta2');
     nmLine.append(nm,off);meta.append(dot,k);txt.append(nmLine,meta,meta2);
     const pos=make('div','cww-cpos'),ord=make('div','cww-cord'),on=make('div','cww-con'),sw=make('button','cww-tg cww-sm');sw.type='button';sw.setAttribute('role','switch');sw.setAttribute('aria-label',t('启用','Enabled'));on.append(sw);
-    const end=make('div','cww-cend'),more=make('details','cw-v4-more cwr-pop cww-row-more');
-    const summary=make('summary','','⋯'),actions=make('div','cw-v4-more-list');
-    summary.setAttribute('aria-label',t('更多','More'));more.append(summary,actions);
-    // Build the actions only when needed; a page can have hundreds of entries.
-    const populate=()=>{
-      if(!more.open)return;
-      more.removeEventListener('toggle',populate);
-      actions.append(...entryActions(entry).querySelector('.cw-v4-more-list').children);
-    };
-    more.addEventListener('toggle',populate);
-    more.addEventListener('click',e=>e.stopPropagation());
-    end.append(more,ICON.chev());
+    const end=make('div','cww-cend');end.append(rowMore('cww-row-more'),ICON.chev());
     r.append(txt,pos,ord,on,end);r.tabIndex=0;r.setAttribute('role','button');
     sw.addEventListener('click',e=>{e.stopPropagation();q(entry,'entryKillSwitch')?.click();queue();});
-    const open=()=>openEntry(entry);r.addEventListener('click',open);r.addEventListener('keydown',e=>{if(e.target===r&&e.key==='Enter'){e.preventDefault();open();}});
-    row={r,sw,nm,off,dot,k,pos,ord,meta2};ui.entryRows.set(entry,row);return row;
+    const open=()=>openEntry(entry);r.addEventListener('click',e=>{if(!e.target.closest('.cww-row-more'))open();});r.addEventListener('keydown',e=>{if(e.target===r&&e.key==='Enter'){e.preventDefault();open();}});
+    row={r,sw,nm,off,dot,k,pos,ord,meta2};ui.entryRows.set(entry,row);ui.nativeRows.set(r,entry);return row;
   }
   function paintEntryRow(entry,row,d){
     text(row.nm,d.name||t('（无标题）','(Untitled)'));setHidden(row.off,d.on);
@@ -538,7 +531,23 @@ export function createWorldPage(h) {
     const expand=btn(t('放大','Expand'),()=>openBig(),'cwr-btn cww-btn-sm cww-expand',ICON.expand());
     const conSec=make('section','cw-v4-section cww-esec cww-content-sec'),con=card(conSec);conSec.prepend(secH(t('内容','Content'),'',expand));
     const cf=field(con,'',null,[content,cm].filter(Boolean),'cww-content-field');cf.querySelector('.cww-lab').remove();
-    const tok=make('div','cww-tok');cf.append(tok);if(counter){M(counter,tok);tok.dataset.pre=t('约 ','~');tok.dataset.suf=t(' Token',' tokens');}
+    const tok=make('div','cww-tok');cf.append(tok);
+    if(counter){
+      M(counter,tok);
+      const host=()=>counter.parentElement;
+      const paintCounter=()=>{
+        const value=counter.textContent.trim(),pending=!value||value==='counting...';
+        const box=host();if(!box?.classList.contains('cww-tok'))return;
+        const pre=pending?t('约 … Token','~… tokens'):t('约 ','~'),suf=pending?'':t(' Token',' tokens');
+        if(box.dataset.pre!==pre)box.dataset.pre=pre;
+        if(box.dataset.suf!==suf)box.dataset.suf=suf;
+        if(counter.hidden!==pending)counter.hidden=pending;
+      };
+      const observer=new win.MutationObserver(paintCounter);
+      observer.observe(counter,{childList:true,characterData:true,subtree:true});
+      const hidden=counter.hidden;es.undo.push(()=>{observer.disconnect();counter.hidden=hidden;});
+      es.paintCounter=paintCounter;paintCounter();
+    }
     // 插入到哪里：位置 / 顺序 / 深度 / 以谁的身份（2×2）。位置和身份背后是同一个原生下拉（@深度 × data-role）。
     const posSel=Q('position'),depth=num('depth'),order=num('order');
     const insSec=make('section','cw-v4-section cww-esec'),ins=card(insSec);insSec.prepend(secH(t('插入到哪里','Insertion')));
@@ -677,10 +686,10 @@ export function createWorldPage(h) {
     const es=ui?.editing;if(!es?.content||ui.big)return;
     const host=doc.getElementById('cw-v4-settings')||ui.panel,big=make('div','cww-big'),bh=make('div','cww-bh'),title=make('div','cww-bh-t',t(`${es.title()} · 内容`,`${es.title()} · Content`)),tok=make('span','cww-tok');
     for(const type of ['click','mousedown','touchstart','pointerdown'])big.addEventListener(type,e=>e.stopPropagation());
-    bh.append(btn(t('收起','Collapse'),()=>closeBig(),'cwr-btn cww-shrink',ICON.shrink()),title,tok);big.append(bh);if(es.counter){tok.dataset.pre=t('约 ','~');tok.dataset.suf=t(' Token',' tokens');}
+    bh.append(btn(t('收起','Collapse'),()=>closeBig(),'cwr-btn cww-shrink',ICON.shrink()),title,tok);big.append(bh);
     const marks=[];const take=n=>{if(!n)return;const m=doc.createComment('cww-big-return');n.before(m);marks.push([n,m]);};
     take(es.content);take(es.cm);take(es.counter);
-    big.append(es.content);if(es.cm)big.append(es.cm);if(es.counter)tok.append(es.counter);else text(tok,t(`约 ${Math.round(es.content.value.length/1.6)} Token`,`~${Math.round(es.content.value.length/1.6)} tokens`));
+    big.append(es.content);if(es.cm)big.append(es.cm);if(es.counter){tok.append(es.counter);es.paintCounter();}else text(tok,t(`约 ${Math.round(es.content.value.length/1.6)} Token`,`~${Math.round(es.content.value.length/1.6)} tokens`));
     host.append(big);ui.big={big,marks};ui.panel.classList.add('cww-big-open');host.classList.add('cww-big-host');
     const esc=e=>{if(e.key==='Escape'&&!doc.querySelector('.select2-container--open')){e.preventDefault();e.stopImmediatePropagation();closeBig();}};win.addEventListener('keydown',esc,true);ui.big.esc=esc;
     es.content.focus({preventScroll:true});if(es.cm)measureCM(es.content);
@@ -688,6 +697,7 @@ export function createWorldPage(h) {
   function closeBig(){
     const b=ui?.big;if(!b)return;ui.big=null;win.removeEventListener('keydown',b.esc,true);
     for(const [n,m]of b.marks.reverse())if(m.parentNode)m.replaceWith(n);
+    ui.editing?.paintCounter?.();
     b.big.remove();ui.panel.classList.remove('cww-big-open');doc.getElementById('cw-v4-settings')?.classList.remove('cww-big-host');
     if(ui.editing?.cm)measureCM(ui.editing.content);
   }
@@ -769,7 +779,7 @@ export function createWorldPage(h) {
   }
   function build(panel,s,page){
     destroy();
-    ui={panel,page,s,view:'home',views:{},bookRows:new Map(),entryRows:new WeakMap(),selected:new Set(),selecting:false,filter:'all',autoKey:null,wasOpen:false};
+    ui={panel,page,s,view:'home',views:{},bookRows:new Map(),entryRows:new WeakMap(),nativeRows:new WeakMap(),selected:new Set(),selecting:false,filter:'all',autoKey:null,wasOpen:false};
     panel.classList.add('cww-world');cleanup(s,()=>{panel.classList.remove('cww-world','cww-native-entries','cww-big-open');delete panel.dataset.cwwView;});
     for(const k of ['home','book','entry','act']){const v=make('div','cww-view cww-v-'+k);v.dataset.cwwView=k;page.append(v);ui.views[k]=v;}
     buildHome(s,ui.views.home);buildBook(s,ui.views.book);buildEntryView(ui.views.entry);buildAct(s,ui.views.act);

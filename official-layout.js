@@ -40,6 +40,7 @@ export function installOfficialLayout(win = window) {
   const panelDecorations = new Map();
   const formattedForms = new WeakSet();
   const enhancedMenus = new WeakSet();
+  let closeDelegatedMenu=null;
   const formSet = new Set();
   const promptListenerCleanup = new win.FinalizationRegistry(dispose => { const i=disposers.indexOf(dispose);if(i>=0)disposers.splice(i,1); });
   const promptDisposer=(target,listener,event,options)=>{
@@ -62,7 +63,7 @@ export function installOfficialLayout(win = window) {
   const observe = (node, fn, options) => { const mo = new win.MutationObserver(fn); mo.observe(node, options); observers.push(mo); return mo; };
   // One delegated pair replaces document listeners that captured every old menu.
   on(doc,'click',e=>{for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)&&!menu.contains(e.target)&&!menu.cwAnchor?.contains?.(e.target))menu.open=false;});
-  on(doc,'keydown',e=>{if(e.key!=='Escape')return;let closed=false;for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)){menu.open=false;closed=true;}if(closed){e.preventDefault();e.stopPropagation();}},true);
+  on(doc,'keydown',e=>{if(e.key!=='Escape')return;let closed=false;if(closeDelegatedMenu){closeDelegatedMenu(true);closed=true;}for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)){menu.open=false;closed=true;}if(closed){e.preventDefault();e.stopPropagation();}},true);
   const nativeToggle = panel => panel.closest('.drawer')?.querySelector(':scope > .drawer-toggle');
   /* Preferences: the design's PAGES table (app.js). R.* take the real
    * controls out of ST's panel and put them into "title left, control right"
@@ -228,7 +229,7 @@ export function installOfficialLayout(win = window) {
     color(id){const el=take(id);if(!el)return null;return prow(textOf(el.nextElementSibling),'',[el]);},
     area(id,label,desc,cls='cw-v4-area'){const el=take(id);if(!el)return null;addClass(el,...cls.split(' '));el.dataset.cwV4Text='1';let lab=el.previousElementSibling;while(lab&&!/^(SMALL|SPAN|LABEL)$/.test(lab.tagName))lab=lab.previousElementSibling;if(!lab)lab=el.parentElement?.previousElementSibling;return prow(label||textOf(lab),desc,[el],'cw-v4-stack');},
   };
-  const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment});
+  const drawerLayouts=createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment,bindRowMenu});
   function restorePrefs() {
     for(const undo of prefRangeUndos.splice(0).reverse())undo();
     for(const undo of prefSegmentUndos.splice(0).reverse())undo();
@@ -718,6 +719,55 @@ export function installOfficialLayout(win = window) {
     });
   }
   disposers.push(() => { for (const [sel, seg] of segSel) { seg.remove(); sel.classList.remove('cw-v4-has-seg'); } segSel.clear(); });
+  function positionMenu(list,anchor,pop){
+    const a=anchor.getBoundingClientRect(),box=list.getBoundingClientRect();
+    const x=Math.max(8,Math.min(a.right-box.width,win.innerWidth-box.width-8));
+    const y=a.bottom+6+box.height>win.innerHeight-8?Math.max(8,a.top-6-box.height):a.bottom+6;
+    const z=list.currentCSSZoom||1;
+    list.style.left=x/z+'px';list.style.top=y/z+'px';
+    if(pop){list.style.setProperty('--cw-mx',x/z+'px');list.style.setProperty('--cw-my',y/z+'px');}
+  }
+  function bindRowMenu(container,selector,build,panel=container.closest('.cw-v4-panel')){
+    let active=null;
+    const close=(restoreFocus=false)=>{
+      if(!active)return;
+      const {trigger,menu,list}=active;active=null;
+      observer.disconnect();
+      if(closeDelegatedMenu===close)closeDelegatedMenu=null;
+      trigger.setAttribute('aria-expanded','false');
+      if(list.matches(':popover-open'))list.hidePopover();
+      menu.remove();
+      if(restoreFocus&&trigger.isConnected)trigger.focus({preventScroll:true});
+    };
+    const click=e=>{
+      const trigger=e.target.closest?.(selector);
+      if(!trigger||!container.contains(trigger))return;
+      e.stopPropagation();
+      if(active?.trigger===trigger){close();return;}
+      closeDelegatedMenu?.();
+      const menu=build(trigger),list=menu?.querySelector(':scope>.cw-v4-more-list');
+      if(!list?.showPopover)return;
+      menu.classList.add('cw-v4-delegated-menu');menu.open=true;
+      list.setAttribute('popover','auto');
+      container.after(menu);
+      active={trigger,menu,list};
+      closeDelegatedMenu=close;
+      trigger.setAttribute('aria-expanded','true');
+      menu.addEventListener('toggle',()=>{if(!menu.open&&active?.menu===menu)close();});
+      list.addEventListener('toggle',e=>{if(e.newState==='closed'&&active?.menu===menu)close();});
+      list.showPopover({source:trigger});
+      positionMenu(list,trigger,true);
+      observer.observe(container,{childList:true,subtree:true});
+      if(panel)observer.observe(panel,{attributes:true,attributeFilter:['class']});
+      const view=container.closest('.cww-view');
+      if(view)observer.observe(view,{attributes:true,attributeFilter:['hidden']});
+    };
+    const observer=new win.MutationObserver(()=>{
+      if(active&&(!container.contains(active.trigger)||panel?.matches('.closedDrawer,.cw-v4-inactive')||container.closest('[hidden]')))close();
+    });
+    container.addEventListener('click',click);
+    return ()=>{close();observer.disconnect();container.removeEventListener('click',click);};
+  }
   function enhance(panel) {
     drawerLayouts.mount(panel);
     if(panel.id==='rm_extensions_block')return;
@@ -771,7 +821,7 @@ export function installOfficialLayout(win = window) {
         list.append(action);
       }
     }
-    const menus=[...panel.querySelectorAll('.cw-v4-more')];
+    const menus=[...panel.querySelectorAll('.cw-v4-more:not(.cw-v4-delegated-menu)')];
     if(panel.id==='right-nav-panel')menus.push(...shell.querySelectorAll('.cw2-char-phone-head .cw-v4-more'));
     menus.forEach(menu=>{
       if(enhancedMenus.has(menu))return;enhancedMenus.add(menu);
@@ -791,13 +841,7 @@ export function installOfficialLayout(win = window) {
         list.querySelector(':scope>.cw2-sheet-t')?.remove();
         if(mobile()&&sheet&&typeof menu.cw2Title==='function'){const name=String(menu.cw2Title()||'').trim();if(name)list.prepend(make('div','cw2-sheet-t',name));}
         list.showPopover();
-        const a=menu.cwAnchor?.isConnected?menu.cwAnchor:summary,anchor=a.getBoundingClientRect(),box=list.getBoundingClientRect();
-        const x=Math.max(8,Math.min(anchor.right-box.width,win.innerWidth-box.width-8));
-        const y=anchor.bottom+6+box.height>win.innerHeight-8?Math.max(8,anchor.top-6-box.height):anchor.bottom+6;
-        // 电脑端设置窗口等比缩放时，菜单在 zoom 里面：left / top 也会被乘上比例，所以写「屏幕坐标 ÷ 比例」。
-        const z=list.currentCSSZoom||1;
-        list.style.left=x/z+'px';list.style.top=y/z+'px';
-        if(pop){list.style.setProperty('--cw-mx',x/z+'px');list.style.setProperty('--cw-my',y/z+'px');}
+        positionMenu(list,menu.cwAnchor?.isConnected?menu.cwAnchor:summary,pop);
       });
       on(list,'click',e=>{if(e.target===list||e.target.closest('.menu_button,button'))menu.open=false;});
       const dispose=popoverDisposer(new win.WeakRef(list));disposers.push(dispose);promptListenerCleanup.register(list,dispose,dispose);

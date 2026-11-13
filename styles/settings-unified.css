@@ -750,6 +750,7 @@ html[data-cw-settings-unified] #WorldInfo .cww-tok{font-size:12.5px!important;co
 html[data-cw-settings-unified] :is(#WorldInfo,.cww-big) .cww-tok[data-pre]::before{content:attr(data-pre)!important}
 html[data-cw-settings-unified] :is(#WorldInfo,.cww-big) .cww-tok[data-suf]::after{content:attr(data-suf)!important}
 html[data-cw-settings-unified] :is(#WorldInfo,.cww-big) .cww-tok .world_entry_form_token_counter{display:inline!important;font-size:12.5px!important;color:var(--cwus-muted)!important;opacity:1!important;margin:0!important;padding:0!important}
+html[data-cw-settings-unified] :is(#WorldInfo,.cww-big) .cww-tok .world_entry_form_token_counter[hidden]{display:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-num{text-align:left!important}
 html[data-cw-settings-unified] #WorldInfo .cww-inline{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important;min-width:0!important}
 html[data-cw-settings-unified] #WorldInfo .cww-inline .cww-num{width:72px!important;min-width:0!important;flex:none!important}

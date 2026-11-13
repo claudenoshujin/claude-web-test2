@@ -46,6 +46,8 @@ export function createMorePages(h) {
     const name=back?.querySelector('.ch_name');
     if(name&&!name.nextElementSibling?.matches('.cwr-folder-back-label')){
       name.after(created(state(back),make('span','cwr-folder-back-label',t('返回上一级','Go up one level'))));
+      const avatar=back.querySelector(':scope>.avatar');
+      if(avatar)avatar.append(created(state(back),icon('chevl')));
     }
     // ST rebuilds this list and its hidden-count row together. Read the count
     // from the current render so a subsequent folder never inherits it.

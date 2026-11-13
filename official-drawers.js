@@ -21,7 +21,7 @@ export function actionLabel(node,t){
   for(const [key,cn,en] of [['delete','删除','Delete'],['restore','恢复默认','Restore defaults'],['rename','改名','Rename'],['import','导入','Import'],['export','导出','Export'],['new','另存为新的','Save as new'],['create','新建','Create'],['edit','编辑','Edit'],['update','保存','Save']])if(node.id?.includes(key)||[...node.attributes].some(a=>a.name===`data-preset-manager-${key}`))return t(cn,en);
   return (node.getAttribute('aria-label')||node.title||node.textContent||'').trim().split(/[\n.。]/)[0].slice(0,32);
 }
-export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment}) {
+export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment,bindRowMenu}) {
   const doc=win.document, states=new Map();
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
@@ -75,6 +75,11 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       if(el)move(s,el,park);}
     if(pop)m.classList.add('cwr-pop');
     return m;
+  }
+  function rowMore(cls){
+    const b=make('button','cw-v4-row-more '+cls,'⋯');b.type='button';
+    b.setAttribute('aria-label',L('更多'));b.setAttribute('aria-expanded','false');
+    return b;
   }
   // asBtn(): a native control drawn as a text button.
   function act(s,n,label,plus,primary){if(!n)return n;n.classList.add('cw-v4-as-btn');if(primary)n.classList.add('cw-v4-primary');const text=make('span','cw-v4-action-label'+(plus?' cw-v4-plus':''),L(label));n.append(text);s.created.push(text);(s.buttons||=[]).push(n);return n;}
@@ -161,7 +166,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   /* ---------------- 世界书 ----------------
    * 2.0.341：整页重排见 official-world.js（首页 / 书页 / 条目页 / 激活设置 / 内容放大）。 */
   const presetEdit=createPresetEdit({win,t,make,button,icon,phoneWide:()=>phoneWide()});
-  const worldPage=createWorldPage({win,t,L,make,button,icon,get,move,cleanup,state,menu,act,openEditor,showToggle,phoneWide:()=>phoneWide()});
+  const worldPage=createWorldPage({win,t,L,make,button,icon,get,move,cleanup,state,menu,act,openEditor,showToggle,bindRowMenu,rowMore,phoneWide:()=>phoneWide()});
   function world(panel){const started=begin(panel);if(!started)return;const {s,page}=started;
     worldPage.build(panel,s,page);
     finish(s);
@@ -1008,24 +1013,38 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       characterDetailV2e(fs,body,form,hero);
     }
   }
-  function characterRows(panel){panel.querySelectorAll('#rm_print_characters_block .character_select').forEach(item=>{
-    if(item.querySelector('.cw-v4-character-actions'))return;
-    const s=state(item),actions=make('div','cw-v4-character-actions');s.created.push(actions);
-    const select=async(edit,action)=>{
+  function characterRows(panel){
+    const list=panel.querySelector('#rm_print_characters_block');if(!list)return;
+    const s=state(list);
+    const select=async(item,edit,action)=>{
       const id=Number(item.dataset.chid),st=await import(new URL('/script.js',win.location.href).href);
       if(!edit)closeSettings?.(true);
       await st.selectCharacterById(id,{switchMenu:edit});
       if(String(win.SillyTavern?.getContext?.().characterId)!==String(id))return;
       if(action)get(action)?.click();
     };
-    const run=action=>()=>select(true,action).catch(console.error);
+    if(!s.characterRows){
+      s.characterRows=true;
+      cleanup(s,bindRowMenu(list,'.cw-v4-character-more',trigger=>{
+        const item=trigger.closest('.character_select'),run=action=>()=>select(item,true,action).catch(console.error);
+        return menu(null,[['开始聊天',null,false,()=>select(item,false).catch(console.error),'move'],['编辑',null,false,run(),'pencil'],['收藏',null,false,run('favorite_button'),'star'],['复制',null,false,run('dupe_button'),'copy'],['导出',null,false,run('export_button'),'exp'],'-',['删除这个角色',null,true,run('delete_button'),'trash']]);
+      }));
+      const click=e=>{
+        const item=e.target.closest('.character_select');
+        if(!item||!list.contains(item)||e.target.closest('.cw-v4-character-actions')||item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;
+        e.stopPropagation();select(item,true).catch(console.error);
+      };
+      list.addEventListener('click',click);
+      cleanup(s,()=>{list.removeEventListener('click',click);list.querySelectorAll('.cw-v4-character-actions').forEach(n=>n.remove());});
+    }
     // 2.0.215（Lulu）：点角色 = 进入编辑（和设置里其他「›」行一样进下一页）；直接去聊天放进 ⋯ 的第一项。原来点整行是开始聊天、「编辑」另有一个按钮。
-    const chev=make('span','cw-v4-character-chev');chev.setAttribute('aria-hidden','true');
-    actions.append(menu(s,[['开始聊天',null,false,()=>select(false).catch(console.error),'move'],['编辑',null,false,()=>select(true).catch(console.error),'pencil'],['收藏',null,false,run('favorite_button'),'star'],['复制',null,false,run('dupe_button'),'copy'],['导出',null,false,run('export_button'),'exp'],'-',['删除这个角色',null,true,run('delete_button'),'trash']]),chev);
-    item.append(actions);
-    const click=e=>{if(e.target.closest('.cw-v4-character-actions')){e.stopPropagation();return;}if(item.closest('.group_overlay_mode_select')||e.shiftKey||e.ctrlKey||e.metaKey)return;e.stopPropagation();select(true).catch(console.error);};
-    item.addEventListener('click',click);s.cleanup=()=>item.removeEventListener('click',click);
-  });}
+    for(const item of list.querySelectorAll('.character_select')){
+      if(item.querySelector('.cw-v4-character-actions'))continue;
+      const actions=make('div','cw-v4-character-actions'),chev=make('span','cw-v4-character-chev');
+      chev.setAttribute('aria-hidden','true');
+      actions.append(rowMore('cw-v4-character-more'),chev);item.append(actions);
+    }
+  }
 
   /* ---------------- API 连接 ---------------- */
   function api(panel){
