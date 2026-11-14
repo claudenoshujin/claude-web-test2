@@ -17,14 +17,27 @@ export function createSettingsScale({win, mobile, t}) {
     const w = Math.min(W, (vw - 48) / s), h = Math.min(H, (vh - 64) / s);
     return {s, w, h, left: (vw - w * s) / 2, top: (vh - h * s) / 2};
   }
-  const active = () => supported && !destroyed && !mobile() && root.hasAttribute('data-cw-settings-unified');
+  const unified = () => root.hasAttribute('data-cw-settings-unified');
+  const open = () => root.getAttribute('data-cw-v4-settings') === 'open';
+  const canScale = () => supported && !destroyed && !mobile() && unified();
+  const active = () => open() && canScale();
   // 外壳和面板都加了 zoom，它们的 left / top 也按 zoom 后的坐标算：要落在屏幕 L 处，就写 L ÷ 比例。
   function apply() {
+    if (frame) win.cancelAnimationFrame(frame);
     frame = 0;
+    const enabled = canScale();
+    if (!enabled && applied) {
+      for (const key of VARS) root.style.removeProperty(key);
+      root.removeAttribute('data-cw-sz');
+      applied = '';
+    }
+    // Keep the last geometry while closed. The open-state observer refreshes it before paint.
+    if (!open()) { if (!edges.hidden) edges.hidden = true; return; }
     // The fit-to-screen scale can be the same for two different preferences.
     const designWidth = Math.min(W, (win.innerWidth - 48) / (supported ? user : 1));
-    root.toggleAttribute('data-cw-sz-single', root.hasAttribute('data-cw-settings-unified') && (mobile() || designWidth < 1206));
-    if (!active()) { if (applied) { for (const k of VARS) root.style.removeProperty(k); root.removeAttribute('data-cw-sz'); applied = ''; } edges.hidden = true; return; }
+    const single = unified() && (mobile() || designWidth < 1206);
+    if (root.hasAttribute('data-cw-sz-single') !== single) root.toggleAttribute('data-cw-sz-single', single);
+    if (!enabled) { if (!edges.hidden) edges.hidden = true; return; }
     const g = geometry(user), key = [g.s, g.w, g.h, g.left, g.top].map(n => n.toFixed(2)).join();
     if (key !== applied) {
       applied = key;
@@ -34,9 +47,9 @@ export function createSettingsScale({win, mobile, t}) {
       if (!root.hasAttribute('data-cw-sz')) root.setAttribute('data-cw-sz', '');
       place(edges, g);
     }
-    edges.hidden = false;
+    if (edges.hidden) edges.hidden = false;
   }
-  const schedule = () => { if (!frame) frame = win.requestAnimationFrame(apply); };
+  const schedule = () => { if (open() && !frame) frame = win.requestAnimationFrame(apply); };
   function place(n, g) { const s = n.style; s.left = g.left + 'px'; s.top = g.top + 'px'; s.width = g.w * g.s + 'px'; s.height = g.h * g.s + 'px'; }
   // 边缘：独立的 fixed 层（不在窗口里，不跟着缩），只有左右两条和下面两个角接收指针。
   const edges = doc.createElement('div'); edges.className = 'cw-sz-edges'; edges.hidden = true;
@@ -145,7 +158,8 @@ export function createSettingsScale({win, mobile, t}) {
   };
   for (const type of ['mousedown', 'touchstart', 'pointerdown']) doc.addEventListener(type, sortableDown, {capture: true, passive: true});
   win.addEventListener('resize', schedule);
-  const mo = new win.MutationObserver(schedule); mo.observe(root, {attributes: true, attributeFilter: ['data-claude-layout', 'data-cw-settings-unified']});
+  const mo = new win.MutationObserver(apply);
+  mo.observe(root, {attributes: true, attributeFilter: ['data-claude-layout', 'data-cw-settings-unified', 'data-cw-v4-settings']});
   apply();
   return {
     get scale() { return active() ? geometry(user).s : 1; },
