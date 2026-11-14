@@ -1,12 +1,12 @@
-import { watchTokens, tokenText } from './token-count.js?v=2.0.343';
-import { createSettingsScale } from './settings-scale.js?v=2.0.343';
-import { createFontWeightControl } from './font-weight.js?v=2.0.343';
-import { preferencesFor } from './preferences.js?v=2.0.343';
-import { officialIcons } from './official-icons.js?v=2.0.343';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.343';
-import { retainRangeCounter } from './official-extension-settings.js?v=2.0.343';
-import { tr } from './official-i18n.js?v=2.0.343';
-import { normalizeSettingsSections } from './settings-sections.js?v=2.0.343';
+import { watchTokens, tokenText } from './token-count.js?v=2.0.344';
+import { createSettingsScale } from './settings-scale.js?v=2.0.344';
+import { createFontWeightControl } from './font-weight.js?v=2.0.344';
+import { preferencesFor } from './preferences.js?v=2.0.344';
+import { officialIcons } from './official-icons.js?v=2.0.344';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.344';
+import { retainRangeCounter } from './official-extension-settings.js?v=2.0.344';
+import { tr } from './official-i18n.js?v=2.0.344';
+import { normalizeSettingsSections } from './settings-sections.js?v=2.0.344';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
