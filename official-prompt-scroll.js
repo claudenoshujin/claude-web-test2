@@ -11,7 +11,8 @@ export function createPromptScroll({win,enabled}) {
     const c=win.SillyTavern?.getContext?.();
     return JSON.stringify([doc.getElementById('settings_preset_openai')?.value,c?.characterId,c?.groupId,c?.chatId]);
   };
-  const popupOpen=()=>doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer');
+  // A desktop dock leaves the native drawer logically open, while the list stays interactive.
+  const popupOpen=()=>!panel?.querySelector('.cwp-dock-editing')&&doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer');
   const promptPage=()=>panel?.dataset.cwPresetTab==='prompts';
   // The owner is fixed while a tab is shown; reading computed overflow on every
   // scroll frame forced a full style recalc (96 prompts: ~70% of scroll time).
@@ -29,6 +30,7 @@ export function createPromptScroll({win,enabled}) {
       const column=current?.closest('.range-block');
       if(column)return column;
     }
+    if(promptPage()&&panel?.classList.contains('cwp-phone'))return panel;
     if(promptPage()&&current&&/auto|scroll/.test(win.getComputedStyle(current).overflowY))return current;
     for(let n=manager?.parentElement;n;n=n.parentElement){
       if(/auto|scroll/.test(win.getComputedStyle(n).overflowY)&&n.scrollHeight>n.clientHeight+1)return n;
@@ -113,6 +115,13 @@ export function createPromptScroll({win,enabled}) {
       }
     }
     if(pending){
+      // ST can replace the whole scroll owner. Seed its position as soon as the
+      // new rows arrive, before the next paint. The frame pass corrects the
+      // anchor after CW finishes adapting the native rows.
+      if(pending.ownerInManager&&current?.querySelector(rowSelector)&&!pending.scroller.contains(current)){
+        const next=findOwner();
+        if(next)next.scrollTop=pending.top;
+      }
       // CW moves native controls and adds labels inside rows. Those changes
       // are not another native list render and must not prolong settling.
       if(records.some(r=>r.type==='childList'&&(r.target===current||r.target===manager)))pending.changedAt=win.performance.now();
