@@ -1,3 +1,4 @@
+import { dropAfter, clearDropLine, showDropLine } from './settings-drop-target.js?v=2.0.344';
 import { preferencesFor } from './preferences.js?v=2.0.344';
 
 // The catalog is presentation only. Plugin roots and their native handlers stay
@@ -77,7 +78,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     const right=make('div','cwex-mobile-right');if(view==='sort')right.append(action(t('完成','Done'),back));else if(view==='list'&&host){const plus=action('',()=>host.openThirdPartyExtensionMenu(),'cwex-mobile-install');plus.append(icon('plus'));plus.setAttribute('aria-label',t('安装扩展','Install extension'));right.append(plus);}mobileHead.append(right);
     if(!mobileHead.isConnected)doc.querySelector('.cw-v4-shell .cw-v4-head')?.append(mobileHead);
   }
-  function back(){returnRoot?.();returnRoot=null;nativeReturn?.();nativeReturn=null;nativeOpen=false;active=null;sorting=false;show('list');paint();}
+  function back(){clearDrag();returnRoot?.();returnRoot=null;nativeReturn?.();nativeReturn=null;nativeOpen=false;active=null;sorting=false;show('list');paint();}
   function present(root,title,desc,opts={}){
     if(!root?.isConnected)return;const box=detail.querySelector('.cwex-native-settings');
     let container=root.closest('#extensions_settings,#extensions_settings2')||root;while(container.parentElement&&container.parentElement!==panel&&!container.parentElement.closest('.cw-ext-panel'))container=container.parentElement;
@@ -103,14 +104,28 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   }
   function ordered(){const r=records(),rank=new Map(r.map((v,i)=>[v.id,i]));return [...entries.values()].filter(e=>!e.deleted).sort((a,b)=>(rank.get(a.id)??1e6)-(rank.get(b.id)??1e6));}
   function reorder(id,before,after=false){const e=entries.get(id),other=entries.get(before);if(!e||!other||third(e)!==third(other)||id===before)return;const r=records(),i=r.findIndex(x=>x.id===id),[item]=r.splice(i,1);r.splice(r.findIndex(x=>x.id===before)+(after?1:0),0,item);save(r);renderSort();}
-  function renderSort(){editor.replaceChildren();const top=make('div','cwex-page-heading');top.append(make('h2','',t('排序和隐藏','Order and visibility')),action(t('完成','Done'),back,'cwex-primary'));editor.append(top,make('p','cwex-description',t('拖左边的把手调整顺序；点眼睛把扩展从列表里藏起来。藏起来的扩展照常运行。','Drag a handle to reorder within a group. Hidden extensions keep running.')));
+  function renderSort(){clearDrag();editor.replaceChildren();const top=make('div','cwex-page-heading');top.append(make('h2','',t('排序和隐藏','Order and visibility')),action(t('完成','Done'),back,'cwex-primary'));editor.append(top,make('p','cwex-description',t('拖左边的把手调整顺序；点眼睛把扩展从列表里藏起来。藏起来的扩展照常运行。','Drag a handle to reorder within a group. Hidden extensions keep running.')));
     for(const isThird of [true,false]){editor.append(make('h3','cwex-section-title',isThird?t('我安装的','Installed by me'):t('酒馆自带','Built in')));const card=make('div','cwex-card cwex-sort-group');card.dataset.group=isThird?'third':'builtin';editor.append(card);
       for(const e of ordered().filter(e=>third(e)===isThird)){const row=make('div','cwex-row cwex-sort-row');row.dataset.sortId=e.id;const grip=make('button','cwex-grip','⠿');grip.type='button';grip.setAttribute('aria-label',t('拖动排序 ','Reorder ')+e.label);grip.draggable=true;row.append(grip,badge(e),make('span','cwex-text cwex-name',e.label));const eye=action('',()=>{visibility(e,!hidden(e));renderSort();},'cwex-eye');eye.append(icon(hidden(e)?'eyeoff':'eye'));eye.setAttribute('aria-label',(hidden(e)?t('显示 ','Show '):t('隐藏 ','Hide '))+e.label);eye.disabled=e.id===own;eye.dataset.eyeFor=e.id;row.append(eye);card.append(row);row.classList.toggle('cwex-hidden-item',hidden(e));
-        grip.addEventListener('dragstart',event=>{dragged=e.id;event.dataTransfer.setData('text/plain',e.id);event.dataTransfer.effectAllowed='move';});row.addEventListener('dragover',event=>{if(dragged&&third(entries.get(dragged))===isThird)event.preventDefault();});row.addEventListener('drop',event=>{event.preventDefault();reorder(event.dataTransfer.getData('text/plain'),e.id,event.clientY>row.getBoundingClientRect().y+row.getBoundingClientRect().height/2);dragged=null;});
+        grip.addEventListener('dragstart',event=>{startDrag(e.id,row);event.dataTransfer.setData('text/plain',e.id);event.dataTransfer.effectAllowed='move';});
+        row.addEventListener('drop',event=>{
+          if(event.dataTransfer.getData('text/plain')!==dragged||!canDropOn(row))return;
+          event.preventDefault();
+          reorder(dragged,e.id,dropAfter(row,event.clientY));
+        });
         grip.addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();const a=ordered().filter(x=>third(x)===isThird),i=a.indexOf(e),target=a[i+(event.key==='ArrowUp'?-1:1)];if(!target)return;if(event.key==='ArrowUp')reorder(e.id,target.id);else reorder(target.id,e.id);editor.querySelector('[data-sort-id="'+win.CSS.escape(e.id)+'"] .cwex-grip')?.focus();});
         // Pointer drag supports phones without HTML drag-and-drop. The handle
         // captures the pointer; native plugin controls are never involved.
-        grip.addEventListener('pointerdown',event=>{if(event.pointerType==='mouse'||event.button!==0)return;grip.setPointerCapture(event.pointerId);dragged=e.id;});grip.addEventListener('pointerup',event=>{if(dragged!==e.id||event.pointerType==='mouse')return;const target=doc.elementFromPoint(event.clientX,event.clientY)?.closest('[data-sort-id]');if(target)reorder(e.id,target.dataset.sortId,event.clientY>target.getBoundingClientRect().y+target.getBoundingClientRect().height/2);dragged=null;});
+        grip.addEventListener('pointerdown',event=>{
+          if(event.pointerType==='mouse'||event.button!==0||!event.isPrimary)return;
+          grip.setPointerCapture(event.pointerId);startDrag(e.id,row,event.pointerId);
+        });
+        grip.addEventListener('pointerup',event=>{
+          if(dragged!==e.id||event.pointerId!==dragPointer)return;
+          const target=pointerRow(event);
+          if(canDropOn(target))reorder(e.id,target.dataset.sortId,dropAfter(target,event.clientY));
+          clearDrag();
+        });
       }}
     editor.append(action(t('恢复默认顺序','Restore default order'),()=>{prefs.removeItem(key);renderSort();paint();},'cwex-reset'));
   }
@@ -167,13 +182,37 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     titles.forEach((h,i)=>{const c=cards[i];if(c)h.append(make('span','cwex-count',String(c.querySelectorAll(':scope>.cwex-sort-row').length)));(i?r:l).append(h);if(c)(i?r:l).append(c);});editor.append(cols);
     if(focused?.isConnected&&doc.activeElement!==focused)focused.focus({preventScroll:true});
   }
-  // 拖动中的行半透明，落点行顶上一条 2px 蓝线（只加样式钩子，排序逻辑还是 renderSort 里那几行）。
-  function v2dDrag(){const clear=()=>editor.querySelectorAll('.cw2-drag,.cw2-over').forEach(n=>n.classList.remove('cw2-drag','cw2-over'));
-    const over=row=>{if(!row||row.classList.contains('cw2-over'))return;const a=entries.get(dragged),b=entries.get(row.dataset.sortId);if(!a||!b||third(a)!==third(b))return;editor.querySelectorAll('.cw2-over').forEach(n=>n.classList.remove('cw2-over'));row.classList.add('cw2-over');};
-    const h={dragstart:e=>e.target.closest?.('.cwex-sort-row')?.classList.add('cw2-drag'),dragover:e=>over(e.target.closest?.('.cwex-sort-row')),dragend:clear,drop:clear,
-      pointerdown:e=>{if(e.pointerType!=='mouse'&&e.target.closest?.('.cwex-grip'))e.target.closest('.cwex-sort-row')?.classList.add('cw2-drag');},
-      pointermove:e=>{if(e.pointerType==='mouse'||!editor.querySelector('.cw2-drag'))return;over(doc.elementFromPoint(e.clientX,e.clientY)?.closest('.cwex-sort-row'));},pointerup:clear,pointercancel:clear};
-    for(const [k,f] of Object.entries(h)){editor.addEventListener(k,f,true);listeners.push(()=>editor.removeEventListener(k,f,true));}
+  let dragRow=null, dropRow=null, dragPointer=null;
+  function startDrag(id,row,pointer=null){
+    clearDrag();dragged=id;dragRow=row;dragPointer=pointer;row.classList.add('cw2-drag');
+  }
+  function clearDrag(){
+    dragRow?.classList.remove('cw2-drag');clearDropLine(dropRow);
+    dragged=null;dragRow=null;dropRow=null;dragPointer=null;
+  }
+  function canDropOn(row){
+    if(!row||!editor.contains(row)||row===dragRow)return false;
+    const source=entries.get(dragged),target=entries.get(row.dataset.sortId);
+    return !!source&&!!target&&third(source)===third(target);
+  }
+  const pointerRow=event=>doc.elementFromPoint(event.clientX,event.clientY)?.closest('.cwex-sort-row');
+  function v2dDrag(){
+    function over(row,event){
+      if(!canDropOn(row))row=null;
+      if(dropRow!==row)clearDropLine(dropRow);
+      dropRow=row;
+      if(row)showDropLine(row,dropAfter(row,event.clientY));
+      return !!row;
+    }
+    on(editor,'dragover',event=>{
+      if(over(event.target.closest?.('.cwex-sort-row'),event))event.preventDefault();
+    });
+    on(editor,'dragleave',event=>{if(!editor.contains(event.relatedTarget))over(null,event);});
+    on(editor,'dragend',clearDrag);
+    on(editor,'pointermove',event=>{if(event.pointerId===dragPointer)over(pointerRow(event),event);});
+    for(const type of ['pointercancel','lostpointercapture'])on(editor,type,event=>{
+      if(event.pointerId===dragPointer)clearDrag();
+    });
   }
   // 详情：标题行（返回 / 徽标 / 名字 / 元信息）→ 两栏 1.5 : 1（自己的设置 | 这个扩展、版本、移除）。
   function v2dDetail(e){const q1=sel=>detail.querySelector(':scope>'+sel),bk=q1('.cwex-back'),reload=q1('.cwex-reload'),head=q1('.cwex-detail-head'),actions=q1('.cwex-actions'),native=q1('.cwex-native-settings');if(!head||!native)return;detail.classList.add('cw2-xdetail');

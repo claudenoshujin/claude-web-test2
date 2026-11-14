@@ -1,3 +1,4 @@
+import { dropAfter, clearDropLine, showDropLine } from './settings-drop-target.js?v=2.0.344';
 import { watchTokens, tokenText } from './token-count.js?v=2.0.344';
 import { createSettingsScale } from './settings-scale.js?v=2.0.344';
 import { createFontWeightControl } from './font-weight.js?v=2.0.344';
@@ -1129,11 +1130,10 @@ export function installOfficialLayout(win = window) {
     if(layoutBox?.isConnected)return;const box=make('div','cw-layout-editor');layoutBox=box;layoutBoxKind=kind;
     const places=kind==='rail'?[['main',t('侧栏','Sidebar')],['more','More'],['hidden',t('隐藏','Hidden')]]:[['show',t('显示','Visible')],['hidden',t('隐藏','Hidden')]];
     let records=currentLayoutRecords(kind);const live=new Map(layoutItems(kind).map(i=>[i.id,i]));
-    const move=(id,place,before)=>{const record=records.find(r=>r.id===id);if(!record||place==='hidden'&&protectedLayout(kind,id))return;records=records.filter(r=>r!==record);record.place=place;let index=before?records.findIndex(r=>r.id===before):-1;if(index<0){const last=records.map(r=>r.place).lastIndexOf(place);index=last<0?records.length:last+1;}records.splice(index,0,record);saveLayout(kind,records);paint(id);};
+    const move=(id,place,target,after=false)=>{const record=records.find(r=>r.id===id);if(!record||place==='hidden'&&protectedLayout(kind,id))return;records=records.filter(r=>r!==record);record.place=place;let index=target?records.findIndex(r=>r.id===target):-1;if(index>=0){if(after)index++;}else{const last=records.map(r=>r.place).lastIndexOf(place);index=last<0?records.length:last+1;}records.splice(index,0,record);saveLayout(kind,records);paint(id);};
     const shift=(id,delta)=>{const record=records.find(r=>r.id===id),group=records.filter(r=>r.place===record.place&&live.has(r.id)),index=group.findIndex(r=>r.id===id),target=group[index+delta];if(!target)return;const a=records.indexOf(record),b=records.indexOf(target);[records[a],records[b]]=[records[b],records[a]];saveLayout(kind,records);paint(id);};
-    function paint(focusId){const scroll=box.parentElement?.scrollTop||0;box.replaceChildren();
+    function paint(focusId){clearDrag();const scroll=box.parentElement?.scrollTop||0;box.replaceChildren();
       for(const [place,title]of places){const group=make('section','cw-layout-group'),heading=make('h3','',title);group.dataset.place=place;group.append(heading);box.append(group);
-        group.addEventListener('dragover',e=>{if(!mobile())e.preventDefault()});group.addEventListener('drop',e=>{if(mobile())return;e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(live.has(id))move(id,place);});
         const inGroup=records.filter(r=>r.place===place&&live.has(r.id));for(const [index,record]of inGroup.entries()){
           const item=live.get(record.id),row=make('div','cw-layout-row'),label=make('span','cw-layout-label',item.label);row.dataset.layoutId=record.id;row.draggable=!mobile();
           const sourceGlyph=item.node.querySelector?.('.drawer-icon'),mask=sourceGlyph?win.getComputedStyle(sourceGlyph).maskImage:null;const glyph=mask&&mask!=='none'?make('span','cw-layout-mask-icon'):icon('puzzle');if(mask&&mask!=='none'){glyph.style.mask=mask+' center / contain no-repeat';glyph.style.backgroundColor='currentColor';}glyph.classList.add('cw-layout-icon');glyph.setAttribute('aria-hidden','true');row.append(glyph,label);
@@ -1141,15 +1141,44 @@ export function installOfficialLayout(win = window) {
           const up=button('↑',()=>shift(record.id,-1),'cw-v4-button cw-layout-up'),down=button('↓',()=>shift(record.id,1),'cw-v4-button cw-layout-down');up.disabled=index===0;down.disabled=index===inGroup.length-1;up.setAttribute('aria-label',t('上移 ','Move up ')+item.label);down.setAttribute('aria-label',t('下移 ','Move down ')+item.label);
           const select=make('select','cw-layout-place');select.setAttribute('aria-label',t('放到：','Place: ')+item.label);for(const [value,text]of places){const option=make('option','',text);option.value=value;option.disabled=value==='hidden'&&protectedLayout(kind,record.id);select.append(option);}select.value=place;select.addEventListener('change',()=>move(record.id,select.value));
           row.append(up,down,select,make('span','cw-layout-grip','⠿'));group.append(row);
-          row.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',record.id));row.addEventListener('dragover',e=>{if(!mobile())e.preventDefault()});row.addEventListener('drop',e=>{if(mobile())return;e.preventDefault();e.stopPropagation();const id=e.dataTransfer.getData('text/plain');if(id!==record.id&&live.has(id))move(id,place,record.id);});
         }
       }
       if(box.parentElement)box.parentElement.scrollTop=scroll;if(focusId)box.querySelector('[data-layout-id="'+win.CSS.escape(focusId)+'"] select')?.focus({preventScroll:true});
     }
+    let dragRow=null,dropRow=null;
+    function clearDrag(){dragRow?.classList.remove('cw2-drag');clearDropLine(dropRow);dragRow=null;dropRow=null;}
+    function destination(event){
+      if(!dragRow||mobile())return null;
+      const group=event.target.closest?.('.cw-layout-group'),row=event.target.closest?.('.cw-layout-row');
+      if(group?.parentElement!==box||row===dragRow)return null;
+      const id=dragRow.dataset.layoutId,place=group.dataset.place;
+      if(place==='hidden'&&protectedLayout(kind,id))return null;
+      return {id,place,row,group,after:!row||dropAfter(row,event.clientY)};
+    }
+    box.addEventListener('dragstart',event=>{
+      const row=event.target.closest?.('.cw-layout-row');if(!row?.draggable)return;
+      clearDrag();dragRow=row;event.dataTransfer.setData('text/plain',row.dataset.layoutId);
+      event.dataTransfer.effectAllowed='move';row.classList.add('cw2-drag');
+    });
+    box.addEventListener('dragover',event=>{
+      const dest=destination(event);
+      const marker=dest&&(dest.row||[...dest.group.querySelectorAll('.cw-layout-row')].findLast(row=>row!==dragRow)||dest.group.querySelector('h3'));
+      if(dropRow!==marker)clearDropLine(dropRow);
+      dropRow=marker;
+      if(dragRow)dragRow.classList.add('cw2-drag');
+      if(dest){event.preventDefault();showDropLine(marker,dest.after);}
+    });
+    box.addEventListener('dragleave',event=>{if(!box.contains(event.relatedTarget)){dragRow?.classList.remove('cw2-drag');clearDropLine(dropRow);dropRow=null;}});
+    box.addEventListener('dragend',clearDrag);
+    box.addEventListener('drop',event=>{
+      const dest=destination(event);clearDrag();
+      if(!dest||event.dataTransfer.getData('text/plain')!==dest.id)return;
+      event.preventDefault();move(dest.id,dest.place,dest.row?.dataset.layoutId,dest.after);
+    });
     const reset=button(t('恢复默认','Restore defaults'),()=>{layoutPrefs.removeItem(layoutKey(kind));layoutSignatures.delete(kind);applyLayouts();records=currentLayoutRecords(kind);paint();},'cw-v4-button');paint();
     const parentLayoutEditor=[...dialogs].filter(d=>d.open).at(-1);
     (parentLayoutEditor?.querySelector('.cw-v4-editor-body')||doc.getElementById('top-settings-holder'))?.append(box);
-    openEditor(box,kind==='rail'?t('编辑侧栏','Edit sidebar'):t('编辑顺序','Edit order'),'',{foot:reset,onClose:()=>{layoutBox=null;layoutBoxKind=null;box.remove();}});box.closest('dialog')?.classList.add('cw-layout-dialog');
+    openEditor(box,kind==='rail'?t('编辑侧栏','Edit sidebar'):t('编辑顺序','Edit order'),'',{foot:reset,onClose:()=>{clearDrag();layoutBox=null;layoutBoxKind=null;box.remove();}});box.closest('dialog')?.classList.add('cw-layout-dialog');
   }
   disposers.push(()=>{for(const s of layoutStyles.values())s.remove();layoutStyles.clear();layoutBox?.closest('dialog')?._cwShut?.();});
 
