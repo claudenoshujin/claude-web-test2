@@ -79,12 +79,9 @@ const dom = new JSDOM(fs.readFileSync(FIXTURE, 'utf8'), {
 });
 const doc = dom.window.document;
 
-/* 轴的现场覆盖 —— 同一个元素在不同皮/结构下命中的规则完全不同，
-   裁决前必须先把轴设成你要问的那一组。
-     CW_SKIN=playbill CW_STRUCTURE=linear CW_AVATARS=off node cascade.js ... */
-if (process.env.CW_SKIN) doc.documentElement.dataset.claudeSkin = process.env.CW_SKIN;
-if (process.env.CW_STRUCTURE) doc.documentElement.dataset.claudeStructure = process.env.CW_STRUCTURE;
-if (process.env.CW_AVATARS) doc.documentElement.dataset.claudeAvatars = process.env.CW_AVATARS;
+
+doc.documentElement.dataset.claudeSkin = 'classic';
+doc.documentElement.dataset.claudeStructure = 'rail';
 
 const target = process.argv[2];
 if (!target) {

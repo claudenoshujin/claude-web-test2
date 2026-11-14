@@ -3016,7 +3016,6 @@ button.clawd-signoff-button { transition:transform 240ms cubic-bezier(.34,1.6,.6
   html body #send_textarea { font-size:15px !important; }
 }
 
-
 button.clawd-signoff-button {
   display:block !important;
   position:relative !important;
@@ -3030,7 +3029,6 @@ button.clawd-signoff-button {
   flex:0 0 auto !important;
 }
 html body #chat > .mes .mes_text { overflow:visible !important; position:relative !important; }
-
 
 /* 入场/常驻期间锁住原生节点的横向 transition，酒馆的位移不会露出来。
    （退场不再依赖原生节点 —— 见下面的 ghost。） */
@@ -3122,7 +3120,6 @@ body.clawd-interactive-ready #chat .typing_indicator.clawd-typing-native-suppres
   .clawd-typing-hit { left:0 !important; }
 }
 
-
 /* 6. 消息按钮 hover 才出现。触屏和窄屏保持常驻，否则没法点 */
 @media (hover:hover) and (pointer:fine) and (min-width:701px) {
   html body #chat > .mes:not([is_user="true"]) :is(.mes_buttons,.extraMesButtons) {
@@ -3152,7 +3149,6 @@ html body #chat .mes .mes_text pre:has(> .clawd-code-bar) { padding-top:0 !impor
   transition:color 140ms ease;
 }
 .clawd-code-copy:hover { color:var(--cw-text-body); }
-
 
 /* 欢迎页模块 —— 由 tools/gen-modules.js 生成，不要直接改这个文件。
 
@@ -4783,16 +4779,6 @@ html body.claude-generation-active #rightSendForm #send_but::after {
   --cw-plate-title : 27px;
   --cw-folio-size  : 26px;
 
-  /* ---------- 形状层（2.0.47 新增）----------
-     圆角原来全站 88~99 处字面值、零处走变量，取值散在 20 多种。
-     只要有一个皮想要直角，就得逐条改或者满屏 !important。
-
-     做法是「档位 × 一个倍率」：每档保留原值乘以 --cw-radius-scale，
-     scale=1 时和改动前逐像素相同，所以引入这层本身零视觉变化。
-     皮要直角只需设一个键 --cw-radius-scale:0。
-
-     --cw-radius-circle 故意不跟倍率：它只用在头像上，
-     Are.na 自己的成员头像也是圆的，一起抹平会变成一堆小方块。 */
   --cw-radius-scale  : 1;
   --cw-radius-1      : calc(1px   * var(--cw-radius-scale));
   --cw-radius-2      : calc(2px   * var(--cw-radius-scale));
@@ -5089,7 +5075,6 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
   box-shadow:0 0 0 1px var(--cw-rule-strong) !important;
 }
 
-
 /* Claude Web 2.0.9 — bug report regression fixes. */
 #rm_print_characters_block.group_overlay_mode_select .character_select.character_selected {
   background:var(--cw-mark-field) !important;
@@ -5112,7 +5097,6 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
   backdrop-filter:none !important;
   -webkit-backdrop-filter:none !important;
 }
-
 
 /* 子面板从顶栏下方开始；holder 本身不使用 transform，避免成为 fixed 子面板的包含块。 */
 @media (max-width:700px) {
@@ -5478,7 +5462,6 @@ html body #top-settings-holder > .drawer:is(#ai-config-button,#sys-settings-butt
    取值跟 pc 份保持一致。 */
 :root { --cl-rail-icon:color-mix(in srgb, var(--cw-icon) 88%, var(--cw-surface-page)); }
 
-
 /* 图标选中态。
    必须按布局分开写：PC 把图标画在 ::before 上，手机画在 .drawer-icon 本体上
    （见上面 2.0.31 那段注释的原因）。第一版两个都设了 background-color，
@@ -5576,29 +5559,6 @@ html[data-claude-decorations="off"] #send_form::after {
   body.claude-generation-active #send_form::after { animation:none !important; }
 }
 
-
-/* ===================== 字体层（2.0.47）=====================
- *
- * 为什么要单开一个轴：排版是视觉印象的大头，但**配色预设一处都改不动** ——
- * font-family 70 处、font-size 102 处只 15 处走变量、font-weight 52 处只 1 处、
- * line-height 43 处**零处**。换个配色只换颜色，字还是原来的字，
- * 所以换上 Are.na 之后会觉得「变化不大」。
- *
- * 全站真正可控的只有五个变量（其余 11 处 font-family 是 Font Awesome 图标字，
- * 动了图标会变成方框，一律不碰）：
- *   --cl-sans        45 处
- *   --cl-serif        6 处
- *   --cl-font-ui      3 处（本来就 = --cl-sans）
- *   --cl-font-reading 2 处（本来就 = --cl-serif）
- *   --cl-serif-hero   1 处
- * 只要改这五个就能换掉整套排版。
- *
- * 默认档 follow 不写任何规则 —— 没有属性时用样式表原值，
- * 所以这一层对现有用户零影响，不选就等于不存在。
- */
-
-/* 跟风格：Are.na 家族全站 grotesk，官网家族保持衬线正文。
-   靠预设写进来的 --cw-skin-font 判别，预设没给就是官网那套。 */
 html[data-claude-font="follow"] {
   --cl-serif      : var(--cw-skin-serif, "Newsreader", Georgia, "Times New Roman", Times, var(--cl-cjk));
   --cl-sans       : var(--cw-skin-sans,  "Hanken Grotesk", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, var(--cl-cjk));
@@ -5635,7 +5595,6 @@ html[data-claude-font="native"] {
   --cl-cjk        : var(--mainFontFamily, sans-serif);
 }
 
-
 /* 跟随设备/系统字体（2.0.49）：用 CSS 通用族，由操作系统决定具体字体。
    跟「关掉」的区别 —— 关掉是交还给酒馆的 --mainFontFamily（用户在酒馆里设的），
    这个是绕过酒馆直接问系统要。两者在用户没配过酒馆字体时才碰巧一样。 */
@@ -5666,11 +5625,6 @@ html[data-claude-clawd="off"] [class*="clawd-look"]{
 html[data-claude-avatars="off"] .recentChat > .avatar{ display:none !important; }
 
 /* Linear 下抽屉不该盖住会话列表 —— 它是常驻列，不是可被覆盖的临时面板 */
-@media (min-width:1100px){
-  html[data-claude-structure="linear"] #top-settings-holder .drawer-content{
-    left:510px !important; width:auto !important; right:248px !important;
-  }
-}
 
 /* 2.0.99 手机端：消息里塞进来的第三方内容比列宽还宽时，给它自己一条横向滚动条。
 
@@ -5720,19 +5674,4 @@ html[data-claude-avatars="off"] .recentChat > .avatar{ display:none !important; 
   }
 }
 
-/* ===== 近期对话的元信息行：手机端也要默认藏起来 =====
- *
- * `.chatMeta`（「角色 · 第 X 幕 · N 句」）这个节点由 index.js 的 buildRecentRow
- * **无条件建**，显隐交给皮肤 —— 只有 THE PLAYBILL 打开它。那条默认的
- * `.chatMeta{display:none}` 原本只写在 <variant>-pc.css 里，
- * index.js 4960 的注释说它是「styles 里全局一条」，其实不是。
- *
- * 于是手机端 .chatMeta 一直可见，跟 .chatPreview 叠在同一行上，
- * 近期对话列表看起来像乱码。完整模式和兼容模式都中招，只是手机端到
- * 2.0.101 才真正跑起来，之前没人撞见。
- *
- * 这里补上默认隐藏。**没有**同时补 playbill 的显示规则 ——
- * 那条用的是桌面 .recentChat 的 grid-column / grid-row 坐标，
- * 手机端 recents 的排布是另一套（见上面 .welcomeRecent .recentChatList 那段），
- * 照搬会错位。手机端的剧场皮要单独设计，不在这次范围里。 */
 .chatMeta{ display:none; }

@@ -78,44 +78,6 @@ function publicIndex(source) {
     'public repository fallback',
   );
   source = replaceOnce(source, "      return 'claude-web-test2';", "      return 'claude-web';", 'public folder fallback');
-  source = replaceOnce(
-    source,
-    "document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail','linear'], 'rail');",
-    "document.documentElement.dataset.claudeStructure = claudeReadSetting('structure', ['rail'], 'rail');",
-    'structure whitelist',
-  );
-  source = replaceOnce(
-    source,
-    "document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic','arena','playbill'], 'classic');",
-    "document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic'], 'classic');",
-    'skin whitelist',
-  );
-  source = removeBetween(
-    source,
-    "/* playbill 是整套主题",
-    "/* 兼容模式不能让上次保存的",
-    'startup playbill lock',
-  );
-
-  source = removeBetween(
-    source,
-    "  /* Are.na 家族（2.0.47）。",
-    "  const FAMILIES = [",
-    'experimental palette declarations',
-  );
-  source = replaceOnce(
-    source,
-    "    { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },\n    { id: 'arena', name: 'Are.na', light: ARENA_LIGHT, dark: ARENA_DARK },\n    { id: 'playbill', name: 'THE PLAYBILL（剧场 · 整套）', light: PLAYBILL_LIGHT, dark: PLAYBILL_DARK },",
-    "    { id: 'paper', name: '暖纸', light: WARM_PAPER, dark: INK },",
-    'experimental palette families',
-  );
-  source = replaceOnce(
-    source,
-    "  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK, ARENA_LIGHT, ARENA_DARK,\n                    PLAYBILL_LIGHT, PLAYBILL_DARK];",
-    "  const BUILT_IN = [ANTHROPIC_LIGHT, ANTHROPIC_DARK, WARM_PAPER, INK];",
-    'experimental built-in presets',
-  );
-
   source = removeBetween(
     source,
     "  /* `?kbdprobe=1`",
@@ -128,49 +90,6 @@ function publicIndex(source) {
     '',
     'keyboard probe startup call',
   );
-
-  source = removeBetween(
-    source,
-    "  /* 结构轴。只有桌面有",
-    "  const LAYOUTS = [",
-    'linear/playbill runtime',
-  );
-
-  source = removeBetween(
-    source,
-    "                <div class=\"claude-web-field\">\n                  <label for=\"claude-web-structure\">",
-    "                <label class=\"checkbox_label claude-web-check claude-web-field\">",
-    'structure field markup',
-  );
-  source = removeBetween(
-    source,
-    "                <div id=\"claude-web-playbill-options\"",
-    "                <div id=\"claude-web-hint\"",
-    'playbill field markup',
-  );
-
-  source = replaceOnce(
-    source,
-    "      /* 排版规则传不进预设（预设只能写变量），所以风格同时切一个属性，\n         让 styles 里的 Are.na 排版模块生效。见 CSS 的「皮肤层」那段。 */\n      /* 三个值，不是两个：playbill 是整套主题，arena 只是排版皮。 */\n      const skin = select.value === 'playbill' ? 'playbill'\n                 : select.value === 'arena' ? 'arena'\n                 : 'classic';",
-    "      const skin = 'classic';",
-    'skin select branch',
-  );
-  source = replaceOnce(source, "      syncPlaybillLock();\n      stampMessages();\n      buildCards();\n      buildCoverArt();\n      ensureAside();\n", '', 'experimental skin refresh calls');
-
-  source = removeBetween(
-    source,
-    "    /* 剧场配图。存两种形态",
-    "    const fontSelect = panel.querySelector('#claude-web-font');",
-    'playbill image and structure handlers',
-  );
-  source = replaceOnce(source, "    const playbillOptions = panel.querySelector('#claude-web-playbill-options');\n", '', 'playbill presentation node');
-  source = replaceOnce(
-    source,
-    "      const layoutName = selectedLabel(layoutSelect) || layoutSelect.value;\n      const structureName = selectedLabel(structureSelect) || structureSelect.value;\n      layoutSummary.textContent = `${layoutName} / ${structureName}${avatarsBox.checked ? '' : ' / 头像关'}`;",
-    "      const layoutName = selectedLabel(layoutSelect) || layoutSelect.value;\n      layoutSummary.textContent = `${layoutName}${avatarsBox.checked ? '' : ' / 头像关'}`;",
-    'layout summary',
-  );
-  source = replaceOnce(source, "      playbillOptions.hidden = document.documentElement.dataset.claudeSkin !== 'playbill';\n", '', 'playbill presentation toggle');
 
   source = source.replace(
     /id: '2\.0\.\d+-[^']*-' \+ \(CLAUDE_COMPAT_MODE \? 'compat' : 'full'\)/,

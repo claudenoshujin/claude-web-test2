@@ -86,10 +86,10 @@ assert.equal(d.querySelector('.cw-v4-shell').dataset.panel,'rm_extensions_block'
 assert.equal(d.documentElement.hasAttribute('data-cw-v4-pending'),false);
 assert.equal(d.querySelectorAll('.cw-v4-retained').length,0);
 d.body.removeAttribute('data-clawd-menu');delete d.documentElement.dataset.claudeLayout;
-d.documentElement.dataset.claudeStructure='linear';app.refresh();
-assert.equal(d.querySelector('.cw-v4-pref-pages'),null,'switching structure restores original preferences');
+d.documentElement.dataset.claudeEnabled='off';app.refresh();
+assert.equal(d.querySelector('.cw-v4-pref-pages'),null,'disabling the extension restores original preferences');
 assert.equal(d.querySelector('.cw-v4-more'),null,'native actions must not stay in collapsed menus outside v4');
-for(const control of controls)assert.ok(control.isConnected,`lost on structure switch: ${control.id}`);
+for(const control of controls)assert.ok(control.isConnected,`lost on disable: ${control.id}`);
 await new Promise(r=>setTimeout(r,50));
 let disabledMutations=0;
 const disabledObserver=new w.MutationObserver(rs=>disabledMutations+=rs.length);
@@ -97,8 +97,8 @@ disabledObserver.observe(d.getElementById('top-settings-holder'),{subtree:true,a
 await new Promise(r=>setTimeout(r,80));
 disabledObserver.disconnect();
 assert.equal(disabledMutations,0,'disabled layout must stop touching native panel classes');
-d.documentElement.dataset.claudeStructure='rail';show('user-settings-block');app.refresh();
-assert.equal(d.querySelectorAll('.cw-v4-pref-page').length,7,'preferences can be rebuilt after structure switch');
+d.documentElement.dataset.claudeEnabled='on';show('user-settings-block');app.refresh();
+assert.equal(d.querySelectorAll('.cw-v4-pref-page').length,7,'preferences can be rebuilt after re-enabling');
 // Model ST's real close-then-delay behavior: navigation must close the old
 // drawer first so the native opener never enters its animation-delay branch.
 let delayedOpens=0;
@@ -214,7 +214,7 @@ worldEntry.querySelector('dialog[open]').close();
   assert.equal(opts.style.display,'none','measuring a closed menu must leave it closed');
   extBtn.remove();extMenu.remove();
 }
-d.documentElement.dataset.claudeStructure='linear';app.refresh();
+d.documentElement.dataset.claudeEnabled='off';app.refresh();
 for(const control of controls)assert.ok(control.isConnected,`reflow restore lost ${control.id}`);
 assert.equal(d.querySelector('.cw-v4-drawer-page'),null,'all semantic pages return to native layout');
 app.destroy();w.close();
