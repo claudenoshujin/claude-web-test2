@@ -1,5 +1,5 @@
 // Native PromptManager adapter. No prompt bodies or private manager state are written.
-export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
+export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,canEdit}) {
   const doc=win.document;
   let ui=null;
   const SVG={multi:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="m14 7 1.5 1.5L19 5"/>',ins:'<path d="M4 7h10M4 12h10M4 17h6M18 14v6M15 17h6"/>',imp:'<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>',exp:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19h14"/>',reload:'<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6M4 4v4.6h4.6"/>',plus:'<path d="M12 5v14M5 12h14"/>',chev:'<path d="m9 6 6 6-6 6"/>'};
@@ -149,18 +149,19 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     floating(ui);
     // Gate every existing sorter; keep plugin groups, callbacks and movement rules.
     sortables(ui.multi||ui.busy||filtering);
-    if(!phone&&ui.tab==='prompts'&&!ui.multi&&ui.autoSelect){
+    if(!phone&&ui.tab==='prompts'&&!ui.multi&&ui.autoSelect&&!ui.autoFrame&&canEdit()&&
+       ui.panel.matches('.openDrawer:not(.cw-v4-inactive)')){
       const u=ui;
-      const first=visible.find(e=>node(e)?.querySelector('.prompt-manager-edit-action'));
+      const first=visible.find(e=>node(e)?.querySelector('.prompt-manager-edit-action')&&!node(e).closest('.bai-bai-preset-vue-list-host'));
       if(first){
-        u.autoSelect=false;
-        const firstId=id(first),context=u.context;
-        win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>{
-          if(ui!==u||u.tab!=='prompts'||u.multi||u.context!==context||phoneWide()||!u.panel.classList.contains('openDrawer')||u.panel.classList.contains('cw-v4-inactive')||doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer'))return;
+        const firstId=id(first),epoch=u.epoch,context=u.context;
+        u.autoFrame=win.requestAnimationFrame(()=>{
+          u.autoFrame=0;
+          if(ui!==u||!u.autoSelect||u.tab!=='prompts'||u.multi||u.epoch!==epoch||key()!==context||phoneWide()||!u.panel.matches('.openDrawer:not(.cw-v4-inactive)')||doc.getElementById('completion_prompt_manager_popup')?.classList.contains('openDrawer'))return;
           const list=u.manager.querySelector('#completion_prompt_manager_list');
           const action=list?.querySelector(`[data-pm-identifier="${win.CSS.escape(firstId)}"] .prompt-manager-edit-action`);
-          if(action&&!onEdit(action))action.click();
-        }));
+          if(action&&onEdit(action))u.autoSelect=false;
+        });
       }
     }
   }
@@ -254,6 +255,9 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     const addRow=make('div','cw-pm-addrow');addRow.tabIndex=0;addRow.setAttribute('role','button');const addIco=make('span','cw-pm-number cw-pm-add-ico');addIco.append(svgIcon('plus'));addRow.append(addIco,make('span','cw-pm-add-label',t('新建提示词','New prompt')));const addRun=()=>{const n=manager.querySelector('.fa-plus-square,.fa-square-plus');(n?.closest('.menu_button')||n)?.click();};addRow.addEventListener('click',addRun);addRow.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();addRun();}});
     ui={addRow,panel,manager,tabBar,tools,filterLine:filters,more,column,dock,sticky,preset,done,search,multiButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,autoSelect:true,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
     const u=ui;
+    u.autoFrame=0;
+    const cancelAuto=()=>{u.autoSelect=false;win.cancelAnimationFrame(u.autoFrame);u.autoFrame=0;};
+    u.dispose.push(cancelAuto);
     // Keep fragment-staged nodes restorable without retaining replaced trees.
     // Finalization removes dead wrappers without repeatedly dereferencing live ones.
     u.hiddenFinalizer=new win.FinalizationRegistry(ref=>u.hiddenRefs.delete(ref));
@@ -292,6 +296,7 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     listen(manager,'click',e=>{
       const r=e.target.closest('[data-pm-identifier]');if(!canonical(r))return;
       if(e.target===u.nativeAction)return;
+      cancelAuto();
       if(e.target.closest('.prompt-manager-toggle-action')&&u.undo)for(const task of u.undo)if(task.id===id(r))task.conflict=true;
       if(u.busy){e.preventDefault();e.stopImmediatePropagation();return;}
       if(u.multi){if(!e.target.matches('.cw-pm-select'))e.preventDefault();e.stopImmediatePropagation();select(r,e.shiftKey);return;}
@@ -318,13 +323,13 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     },{capture:true,passive:true});
     for(const type of ['start','sortstart'])listen(manager,type,()=>{u.dragging=true;});for(const type of ['end','sortstop'])listen(manager,type,()=>{u.dragging=false;paint();});
     listen(manager,'keydown',e=>{const r=e.target.closest('[data-pm-identifier]');if(r&&e.target.matches('.prompt-manager-toggle-action,.completion_prompt_manager_prompt_name')&&['Enter',' '].includes(e.key)){e.preventDefault();e.target.click();}});
-    listen(panel,'click',e=>{if(e.target.closest('.cw-pm-tabs'))clearPreviews();},true);
-    listen(panel,'change',e=>{if(e.target.id==='settings_preset_openai'){clearPreviews();onLeave();u.autoSelect=false;win.requestAnimationFrame(()=>{if(ui===u)reset();});}},true);
-    const ctx=win.SillyTavern?.getContext?.();for(const name of ['CHAT_CHANGED','CHAT_LOADED','OAI_PRESET_CHANGED_BEFORE','OAI_PRESET_CHANGED_AFTER']){const type=ctx?.eventTypes?.[name];if(type&&ctx.eventSource?.on){const fn=()=>{clearPreviews();onLeave();if(name!=='OAI_PRESET_CHANGED_BEFORE')reset();};ctx.eventSource.on(type,fn);u.dispose.push(()=>ctx.eventSource.removeListener(type,fn));}}
+    listen(panel,'click',e=>{if(e.target.closest('.cw-pm-tabs')){cancelAuto();clearPreviews();}},true);
+    listen(panel,'change',e=>{if(e.target.id==='settings_preset_openai'){cancelAuto();clearPreviews();onLeave();win.requestAnimationFrame(()=>{if(ui===u)reset();});}},true);
+    const ctx=win.SillyTavern?.getContext?.();for(const name of ['CHAT_CHANGED','CHAT_LOADED','OAI_PRESET_CHANGED_BEFORE','OAI_PRESET_CHANGED_AFTER']){const type=ctx?.eventTypes?.[name];if(type&&ctx.eventSource?.on){const fn=()=>{cancelAuto();clearPreviews();onLeave();if(name!=='OAI_PRESET_CHANGED_BEFORE')reset();};ctx.eventSource.on(type,fn);u.dispose.push(()=>ctx.eventSource.removeListener(type,fn));}}
     // Native row events are installed by PromptManager before our existing adapter.
     let pruneTimer,paintFrame=0;
     const queuePaint=()=>{if(paintFrame||ui!==u)return;paintFrame=win.requestAnimationFrame(()=>{paintFrame=0;if(ui===u)paint();});};
-    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active){u.autoSelect=true;queuePaint();}else{clearPreviews();onLeave();hideFloating(u);delete panel.dataset.cwPresetTab;}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
+    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active){u.autoSelect=true;queuePaint();}else{cancelAuto();clearPreviews();onLeave();hideFloating(u);delete panel.dataset.cwPresetTab;}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
     const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.addRow.contains(e)||u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select')||!!e.closest('.cw-pm-description'));};
     const ownMutation=r=>{if(r.type==='attributes'){const old=new Set((r.oldValue||'').split(/\s+/).filter(Boolean)),now=new Set(r.target.classList);const changed=[...[...old].filter(k=>!now.has(k)),...[...now].filter(k=>!old.has(k))];return changed.every(k=>k.startsWith('cw-pm-'));}return owned(r.target)||[...r.addedNodes,...r.removedNodes].every(owned);};
     const observer=new win.MutationObserver(records=>{for(const action of previews.keys())if(!manager.contains(action))clearPreview(action);if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
@@ -339,5 +344,5 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     for(const r of hiddenNodes(u)){if(u.hidden.has(r))r.hidden=u.hidden.get(r);if(!r.matches('.cw-pm-row'))continue;r.classList.remove('cw-pm-selected','cw-pm-current','cw-pm-row','cw-pm-native-row');r.querySelectorAll('.cw-pm-select,.cw-pm-description').forEach(n=>n.remove());const name=r.querySelector('.completion_prompt_manager_prompt_name');name?.removeAttribute('role');name?.removeAttribute('tabindex');}
     for(const ref of u.hiddenRefs)u.hiddenFinalizer.unregister(ref);u.hiddenRefs.clear();
   }
-  return {mount,destroy};
+  return {mount,destroy,refresh:paint};
 }

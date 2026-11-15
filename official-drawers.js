@@ -25,7 +25,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   const doc=win.document, states=new Map();
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
-  const presetList=createPresetList({win,make,button,t,phoneWide:()=>phoneWide(),onLeave:()=>presetEdit.leave(),onEdit:action=>presetEdit.selectDesktop(action)});
+  const presetList=createPresetList({win,make,button,t,phoneWide:()=>phoneWide(),onLeave:()=>presetEdit.leave(),onEdit:action=>presetEdit.selectDesktop(action),canEdit:()=>presetEdit.ready()});
   let morePages=null,v2dPages=null;
   let promptScroll=null;
   const get=id=>doc.getElementById(id);
@@ -165,7 +165,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   const refinements=createInterfaceRefinements({win,t,L,make,button,icon,get,begin,finish,section,row,move,cleanup,created,act,menu,tg,sel,num,txt,presetRow,showToggle,openEditor});
   /* ---------------- 世界书 ----------------
    * 2.0.341：整页重排见 official-world.js（首页 / 书页 / 条目页 / 激活设置 / 内容放大）。 */
-  const presetEdit=createPresetEdit({win,t,make,button,icon,phoneWide:()=>phoneWide()});
+  const presetEdit=createPresetEdit({win,t,make,button,icon,phoneWide:()=>phoneWide(),onReady:()=>presetList.refresh()});
   const worldPage=createWorldPage({win,t,L,make,button,icon,get,move,cleanup,state,menu,act,openEditor,showToggle,bindRowMenu,rowMore,phoneWide:()=>phoneWide()});
   function world(panel){const started=begin(panel);if(!started)return;const {s,page}=started;
     worldPage.build(panel,s,page);

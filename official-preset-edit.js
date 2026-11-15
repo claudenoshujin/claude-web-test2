@@ -1,7 +1,7 @@
 /* 2.0.341 预设页 v2「编辑一条提示词」（稿 界面优化与新功能-20261103/design-preset-page-v2.html）。
  * 就是原生提示词编辑弹窗 #completion_prompt_manager_popup 换了外观：弹窗打开编辑时，把它的原生字段搬进预设面板里的一页，
  * 弹窗本身藏起来；「完成」点原生保存，返回点原生关闭；弹窗关掉（或切到「查看实际内容」）时字段放回原处。CW 不存任何数据。 */
-export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
+export function createPresetEdit({win,t,make,button,icon,phoneWide,onReady}) {
   const doc=win.document,$=id=>doc.getElementById(id);
   const P='completion_prompt_manager_popup';
   const svg=(paths,w=1.8)=>{const s=doc.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width',String(w));s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.setAttribute('aria-hidden','true');s.innerHTML=paths;return s;};
@@ -10,6 +10,7 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
   const text=(n,v)=>{if(n&&n.textContent!==v)n.textContent=v;};
   const setHidden=(n,v)=>{if(n&&n.hidden!==v)n.hidden=v;};
   let panel=null,observer=null,lastId=null,ed=null,onClick=null,pmModule=null;
+  const ready=()=>!!pmModule?.promptManager;
   function flush() {
     const e=ed;
     if(!e?.desktop||!e.dirty)return;
@@ -62,7 +63,12 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
   function install(p){
     if(panel===p)return;destroy();panel=p;
     const pop=$(P);if(!pop)return;
-    import(new URL('/scripts/openai.js',win.location.href).href).then(m=>{pmModule=m;flush();},()=>{});
+    import(new URL('/scripts/openai.js',win.location.href).href).then(m=>{
+      pmModule=m;
+      if(panel!==p)return;
+      flush();
+      onReady();
+    },()=>{});
     // The row the user opened (native reads the identifier from the clicked row too).
     onClick=e=>{
       const a=e.target.closest?.('.prompt-manager-edit-action');
@@ -70,6 +76,13 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
       if(a||add){
         leave(true);
         lastId=a?.closest('[data-pm-identifier]')?.dataset.pmIdentifier||null;
+        // Keep the native click and form initialization, but suppress its
+        // drawer from the start of the click, before the observer docks it.
+        if(panel?.matches('.openDrawer:not(.cw-v4-inactive)')&&panel.contains(a||add)&&
+           !(a||add).closest('.bai-bai-preset-vue-list-host')){
+          doc.documentElement.classList.add('cwp-editing');
+          win.queueMicrotask(sync);
+        }
       }else if(e.target.closest?.('.cw-pm-tabs button,.cw-v4-close,.cwr-preset-all')){
         leave();
       }else if(e.target.closest?.('.cwp-inspect,.prompt-manager-inspect-action')){
@@ -206,5 +219,5 @@ export function createPresetEdit({win,t,make,button,icon,phoneWide}) {
     const box=e.scrollBox,y=e.scroll;let n=0;const put=()=>{if(!box?.isConnected)return;box.scrollTop=y;if(++n<6)win.requestAnimationFrame(put);};put();win.setTimeout(put,250);
   }
   function destroy(){leave();close();observer?.disconnect();observer=null;if(onClick)doc.removeEventListener('click',onClick,true);onClick=null;panel=null;}
-  return {install,destroy,leave,selectDesktop};
+  return {install,destroy,leave,selectDesktop,ready};
 }
