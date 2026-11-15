@@ -190,7 +190,7 @@ function build(options) {
       check(!loaderPattern.test(file) || file === manifest.js || historical.has(file), 'Test loader in the graph: ' + file);
       const data = read(file, origin);
       files.set(file, data);
-      if (!/\.(?:js|css|json)$/.test(file)) return;
+      if (!/\.(?:js|css|json|md)$/.test(file)) return;
       const text = data.toString('utf8');
       check(historical.has(file) || !banned.test(text), 'Forbidden runtime content in ' + file + ': ' + text.match(banned)?.[0]);
       const add = (reference, kind) => {
@@ -219,6 +219,7 @@ function build(options) {
   const files = graph((file, origin) => {
     if (file === 'manifest.json') return Buffer.from(JSON.stringify(manifest, null, 2) + '\n');
     if (file === manifest.js) return Buffer.from(loader);
+    if (file === 'README.md' && oldFiles.has(file)) return blob(file);
     if (historical.has(file) || (file === 'emergency.js' && historical.has(origin))
         || (['native-theme.js', 'theme-restore.js'].includes(file) && origin === 'emergency.js')) return blob(file);
     const local = path.join(project, file);
