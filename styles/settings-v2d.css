@@ -767,7 +767,7 @@ html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab] {--cwp-page:v
 #left-nav-panel:not(.cwp-phone) .cwp-dock .cw-pm-batch {display:grid!important;grid-template-columns:repeat(3,auto);justify-content:center;border:0!important;box-shadow:none!important}
 #left-nav-panel:not(.cwp-phone) .cwp-dock .cw-pm-batch[hidden] {display:none!important}
 #left-nav-panel:not(.cwp-phone) .cwp-dock .cw-pm-batch>.cw-pm-selection {grid-column:1/-1;text-align:center}
-#left-nav-panel:not(.cwp-phone) #completion_prompt_manager_list>li.cw-v4-prompt-row {display:grid!important;grid-template-columns:20px minmax(0,1fr) 0 34px!important;gap:8px!important;box-sizing:border-box!important;height:40px!important;min-height:40px!important;max-height:40px!important;padding:0 10px!important;min-width:0!important;max-width:100%!important}
+#left-nav-panel:not(.cwp-phone) #completion_prompt_manager_list>li.cw-v4-prompt-row {display:grid!important;grid-template-columns:20px minmax(0,1fr) 0 42px!important;gap:8px!important;box-sizing:border-box!important;height:40px!important;min-height:40px!important;max-height:40px!important;padding:0 10px!important;min-width:0!important;max-width:100%!important}
 /* Keep the native row boxes measurable for sorting; skip layout of offscreen contents. */
 #left-nav-panel:not(.cwp-phone) .cw-pm-long #completion_prompt_manager_list>li.cw-v4-prompt-row:not(.ui-sortable-helper,.ui-sortable-placeholder) {
   content-visibility:auto!important;contain-intrinsic-height:39px;
@@ -938,23 +938,6 @@ html[data-cw-settings-unified] :is(#left-nav-panel .cw-pm-search,.cw-v4-panel .c
   padding-block:0!important;padding-inline-start:34px!important;
   background-image:var(--cw-v4-icon-search)!important;background-position:11px center!important;
   background-repeat:no-repeat!important;background-size:15px 15px!important;
-}
-
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action {
-  box-sizing:border-box!important;border:0!important;border-radius:10px!important;
-}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action::before {
-  box-sizing:border-box!important;width:14px!important;height:14px!important;top:50%!important;left:3px!important;
-  margin:0!important;transform:translateY(-50%)!important;
-}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.fa-toggle-on::before {left:17px!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action::before{transition:left .15s}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-on{background:var(--cwus-blue)!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-off{background:var(--cwus-toggle-off)!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-on::before{left:17px!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-off::before{left:3px!important}
-@media(prefers-reduced-motion:reduce){
-  html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action::before{transition:none!important}
 }
 
 /* v2e World Info pickers share the native compact popup and keep Select2 in its top layer. */
