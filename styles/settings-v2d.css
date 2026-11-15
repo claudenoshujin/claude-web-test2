@@ -948,6 +948,16 @@ html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager
   margin:0!important;transform:translateY(-50%)!important;
 }
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.fa-toggle-on::before {left:17px!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action{transition:background-color .15s ease -.016s}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action::before{transition:left .15s ease -.016s}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-on{background:var(--cwus-blue)!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-off{background:var(--cwus-toggle-off)!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-on::before{left:17px!important}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action.cw-pm-toggle-preview-off::before{left:3px!important}
+@media(prefers-reduced-motion:reduce){
+  html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action,
+  html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.prompt-manager-toggle-action::before{transition:none!important}
+}
 
 /* v2e World Info pickers share the native compact popup and keep Select2 in its top layer. */
 html[data-cw-settings-unified] dialog.popup:has(.cw2-world-popup,.character_world_info_selector,.chat_world_info_selector) .popup-body {

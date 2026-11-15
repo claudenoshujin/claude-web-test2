@@ -268,6 +268,21 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     if(preset)preset.after(tabBar);
     else panel.querySelector(':scope>.cw-v4-drawer-page')?.prepend(tabBar);
     manager.append(empty);panel.dataset.cwPresetTab='prompts';manager.classList.add('cw-pm-list');
+    const previews=new Map();
+    function clearPreview(action){
+      if(!previews.has(action))return;
+      win.clearTimeout(previews.get(action));
+      previews.delete(action);
+      action.classList.remove('cw-pm-toggle-preview-on','cw-pm-toggle-preview-off');
+    }
+    function clearPreviews(){for(const action of previews.keys())clearPreview(action);}
+    function previewToggle(action){
+      const on=previews.has(action)?action.classList.contains('cw-pm-toggle-preview-on'):action.classList.contains('fa-toggle-on');
+      clearPreview(action);
+      action.classList.add(on?'cw-pm-toggle-preview-off':'cw-pm-toggle-preview-on');
+      previews.set(action,win.setTimeout(()=>clearPreview(action),1500));
+    }
+    u.dispose.push(clearPreviews);
     const listen=(node,type,fn,options)=>{node.addEventListener(type,fn,options);u.dispose.push(()=>node.removeEventListener(type,fn,options));};
     listen(win,'resize',()=>paint());
     // Bai captures clicks on document before our manager listener. Lock user row
@@ -280,6 +295,8 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
       if(e.target.closest('.prompt-manager-toggle-action')&&u.undo)for(const task of u.undo)if(task.id===id(r))task.conflict=true;
       if(u.busy){e.preventDefault();e.stopImmediatePropagation();return;}
       if(u.multi){if(!e.target.matches('.cw-pm-select'))e.preventDefault();e.stopImmediatePropagation();select(r,e.shiftKey);return;}
+      const action=e.target.closest('.prompt-manager-toggle-action');
+      if(action&&u.tab==='prompts'&&!r.closest('.bai-bai-preset-vue-list-host'))previewToggle(action);
       // The native inspect action is also invoked by the row's More menu.
       // Let that explicit programmatic action reach its original listener.
       if(!e.isTrusted&&e.target.matches('.prompt-manager-inspect-action'))return;
@@ -301,15 +318,16 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit}) {
     },{capture:true,passive:true});
     for(const type of ['start','sortstart'])listen(manager,type,()=>{u.dragging=true;});for(const type of ['end','sortstop'])listen(manager,type,()=>{u.dragging=false;paint();});
     listen(manager,'keydown',e=>{const r=e.target.closest('[data-pm-identifier]');if(r&&e.target.matches('.prompt-manager-toggle-action,.completion_prompt_manager_prompt_name')&&['Enter',' '].includes(e.key)){e.preventDefault();e.target.click();}});
-    listen(panel,'change',e=>{if(e.target.id==='settings_preset_openai'){onLeave();u.autoSelect=false;win.requestAnimationFrame(()=>{if(ui===u)reset();});}},true);
-    const ctx=win.SillyTavern?.getContext?.();for(const name of ['CHAT_CHANGED','CHAT_LOADED','OAI_PRESET_CHANGED_BEFORE','OAI_PRESET_CHANGED_AFTER']){const type=ctx?.eventTypes?.[name];if(type&&ctx.eventSource?.on){const fn=()=>{onLeave();if(name!=='OAI_PRESET_CHANGED_BEFORE')reset();};ctx.eventSource.on(type,fn);u.dispose.push(()=>ctx.eventSource.removeListener(type,fn));}}
+    listen(panel,'click',e=>{if(e.target.closest('.cw-pm-tabs'))clearPreviews();},true);
+    listen(panel,'change',e=>{if(e.target.id==='settings_preset_openai'){clearPreviews();onLeave();u.autoSelect=false;win.requestAnimationFrame(()=>{if(ui===u)reset();});}},true);
+    const ctx=win.SillyTavern?.getContext?.();for(const name of ['CHAT_CHANGED','CHAT_LOADED','OAI_PRESET_CHANGED_BEFORE','OAI_PRESET_CHANGED_AFTER']){const type=ctx?.eventTypes?.[name];if(type&&ctx.eventSource?.on){const fn=()=>{clearPreviews();onLeave();if(name!=='OAI_PRESET_CHANGED_BEFORE')reset();};ctx.eventSource.on(type,fn);u.dispose.push(()=>ctx.eventSource.removeListener(type,fn));}}
     // Native row events are installed by PromptManager before our existing adapter.
     let pruneTimer,paintFrame=0;
     const queuePaint=()=>{if(paintFrame||ui!==u)return;paintFrame=win.requestAnimationFrame(()=>{paintFrame=0;if(ui===u)paint();});};
-    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active){u.autoSelect=true;queuePaint();}else{onLeave();hideFloating(u);delete panel.dataset.cwPresetTab;}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
+    let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active){u.autoSelect=true;queuePaint();}else{clearPreviews();onLeave();hideFloating(u);delete panel.dataset.cwPresetTab;}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
     const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.addRow.contains(e)||u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select')||!!e.closest('.cw-pm-description'));};
     const ownMutation=r=>{if(r.type==='attributes'){const old=new Set((r.oldValue||'').split(/\s+/).filter(Boolean)),now=new Set(r.target.classList);const changed=[...[...old].filter(k=>!now.has(k)),...[...now].filter(k=>!old.has(k))];return changed.every(k=>k.startsWith('cw-pm-'));}return owned(r.target)||[...r.addedNodes,...r.removedNodes].every(owned);};
-    const observer=new win.MutationObserver(records=>{if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
+    const observer=new win.MutationObserver(records=>{for(const action of previews.keys())if(!manager.contains(action))clearPreview(action);if(records.every(ownMutation))return;queuePaint();win.clearTimeout(pruneTimer);pruneTimer=win.setTimeout(()=>{if(ui!==u||u.busy)return;const current=new Set(entries().map(id));for(const k of u.selected)if(!current.has(k))u.selected.delete(k);queuePaint();},200);});observer.observe(manager,{childList:true,subtree:true,attributes:true,attributeFilter:['class'],attributeOldValue:true});u.dispose.push(()=>{observer.disconnect();win.clearTimeout(pruneTimer);if(paintFrame)win.cancelAnimationFrame(paintFrame);});
     paint();
   }
   function destroy(){if(!ui)return;onLeave();const u=ui;hideFloating(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
