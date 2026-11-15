@@ -772,10 +772,8 @@ export function installOfficialLayout(win = window) {
     return ()=>{close();observer.disconnect();container.removeEventListener('click',click);};
   }
   function enhance(panel) {
-    drawerLayouts.mount(panel);
-    if(panel.id==='rm_extensions_block')return;
-    if (panel.id === 'user-settings-block') buildPrefs(panel);
     if (panel.id === 'rm_api_block') {
+      // The drawer adapter sizes these input rows during its first mount.
       panel.querySelectorAll('#openai_api > form,#openai_api > [id$="_form"],#azure_openai_settings').forEach(form => {
         if (formattedForms.has(form)) return;
         formattedForms.add(form);
@@ -799,6 +797,9 @@ export function installOfficialLayout(win = window) {
         });
       });
     }
+    drawerLayouts.mount(panel);
+    if(panel.id==='rm_extensions_block')return;
+    if (panel.id === 'user-settings-block') buildPrefs(panel);
     // Keep source-specific and plugin ancestors: ST toggles their visibility.
     panel.querySelectorAll('label.checkbox_label:not([data-v-app] *):not(:has(.sr-only))').forEach(n => { if (!n.classList.contains('cw-v4-setting-row')) n.classList.add('cw-v4-setting-row'); });
     panel.querySelectorAll('.range-block').forEach(n => { if (!n.classList.contains('cw-v4-range-row')) n.classList.add('cw-v4-range-row'); });
