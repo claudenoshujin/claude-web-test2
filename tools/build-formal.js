@@ -10,7 +10,7 @@ const name = 'Claude Web 2.0';
 const homePage = 'https://github.com/claudenoshujin/claude-web';
 const loaderPattern = /^loader-2\.0\.\d+\.js$/;
 const legal = /^(?:README\.md|LICENSE(?:\.[a-z]+)?|fonts\/(?:OFL|[a-z-]+-OFL)\.txt)$/i;
-const banned = /playbill|\barena\b|are\.na|kbdprobe|data-claude-structure=["']linear["']|claude-web-test2|\(Test\)|claudekbddiag|keyboard-diagnostics|claude-clawd-debug-menu|cw-halloween-effects-menu|cw-hw-preview/i;
+const banned = /playbill|\barena\b|are\.na|kbdprobe|data-claude-structure=["']linear["']|claude-web-test2|\(Test\)|claudekbddiag|keyboard-diagnostics|claude-clawd-debug-menu|cw-halloween-effects-menu|cw-hw-preview|a2Trace/i;
 const bannedComment = /ensureAside|stampMessages|第四列|四栏|三轨|剧场主题/;
 
 function check(condition, message) {
@@ -37,6 +37,8 @@ function formalRuntime(file, text, sourceVersion, version, parse) {
     text = text.replaceAll('claude-web-test2', 'claude-web');
     text = cut(text, '/* Via 输入框几何诊断器', 'const CLAUDE_DECORATIONS_ENABLED');
     text = cut(text, '  /* ===== 临时：Clawd 动作调试菜单', '  /* 打断：B 轨');
+    text = cut(text, '  /* ===== A2 诊断埋点', '  function a2Locked()');
+    text = text.replace(/^\s*a2Trace(?:Mark\(|Frame\(|Start,|Stop,|:)[^\n]*\n/gm, '');
     text = cut(text, '  /* \x60?kbdprobe=1', '  function scheduleMobileViewportMetrics()');
     text = cut(text, '    keyboardDiagnostics = !CLAUDE_KBD_DIAG_ENABLED', '    startMobileKeyboardPoll();');
     text = cut(text, '    /* 诊断器一律排在核心启动之后', '\n  }\n\n  function destroy()');
