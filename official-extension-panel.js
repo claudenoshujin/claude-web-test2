@@ -1,4 +1,4 @@
-import { dropAfter, clearDropLine, showDropLine } from './settings-drop-target.js?v=2.0.345';
+import { dropAfter, clearDropLine, showDropLine, guardSortDrag } from './settings-drop-target.js?v=2.0.345';
 import { preferencesFor } from './preferences.js?v=2.0.345';
 
 // The catalog is presentation only. Plugin roots and their native handlers stay
@@ -78,7 +78,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     const right=make('div','cwex-mobile-right');if(view==='sort')right.append(action(t('完成','Done'),back));else if(view==='list'&&host){const plus=action('',()=>host.openThirdPartyExtensionMenu(),'cwex-mobile-install');plus.append(icon('plus'));plus.setAttribute('aria-label',t('安装扩展','Install extension'));right.append(plus);}mobileHead.append(right);
     if(!mobileHead.isConnected)doc.querySelector('.cw-v4-shell .cw-v4-head')?.append(mobileHead);
   }
-  function back(){clearDrag();returnRoot?.();returnRoot=null;nativeReturn?.();nativeReturn=null;nativeOpen=false;active=null;sorting=false;show('list');paint();}
+  function back(){sortDrag?.end();clearDrag();returnRoot?.();returnRoot=null;nativeReturn?.();nativeReturn=null;nativeOpen=false;active=null;sorting=false;show('list');paint();}
   function present(root,title,desc,opts={}){
     if(!root?.isConnected)return;const box=detail.querySelector('.cwex-native-settings');
     let container=root.closest('#extensions_settings,#extensions_settings2')||root;while(container.parentElement&&container.parentElement!==panel&&!container.parentElement.closest('.cw-ext-panel'))container=container.parentElement;
@@ -107,9 +107,9 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   function renderSort(){clearDrag();editor.replaceChildren();const top=make('div','cwex-page-heading');top.append(make('h2','',t('排序和隐藏','Order and visibility')),action(t('完成','Done'),back,'cwex-primary'));editor.append(top,make('p','cwex-description',t('拖左边的把手调整顺序；点眼睛把扩展从列表里藏起来。藏起来的扩展照常运行。','Drag a handle to reorder within a group. Hidden extensions keep running.')));
     for(const isThird of [true,false]){editor.append(make('h3','cwex-section-title',isThird?t('我安装的','Installed by me'):t('酒馆自带','Built in')));const card=make('div','cwex-card cwex-sort-group');card.dataset.group=isThird?'third':'builtin';editor.append(card);
       for(const e of ordered().filter(e=>third(e)===isThird)){const row=make('div','cwex-row cwex-sort-row');row.dataset.sortId=e.id;const grip=make('button','cwex-grip','⠿');grip.type='button';grip.setAttribute('aria-label',t('拖动排序 ','Reorder ')+e.label);grip.draggable=true;row.append(grip,badge(e),make('span','cwex-text cwex-name',e.label));const eye=action('',()=>{visibility(e,!hidden(e));renderSort();},'cwex-eye');eye.append(icon(hidden(e)?'eyeoff':'eye'));eye.setAttribute('aria-label',(hidden(e)?t('显示 ','Show '):t('隐藏 ','Hide '))+e.label);eye.disabled=e.id===own;eye.dataset.eyeFor=e.id;row.append(eye);card.append(row);row.classList.toggle('cwex-hidden-item',hidden(e));
-        grip.addEventListener('dragstart',event=>{startDrag(e.id,row);event.dataTransfer.setData('text/plain',e.id);event.dataTransfer.effectAllowed='move';});
+        grip.addEventListener('dragstart',event=>{startDrag(e.id,row);sortDrag.start(event,e.id);});
         row.addEventListener('drop',event=>{
-          if(event.dataTransfer.getData('text/plain')!==dragged||!canDropOn(row))return;
+          if(sortDrag.read(event)!==dragged||!canDropOn(row))return;
           event.preventDefault();
           reorder(dragged,e.id,dropAfter(row,event.clientY));
         });
@@ -182,7 +182,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     titles.forEach((h,i)=>{const c=cards[i];if(c)h.append(make('span','cwex-count',String(c.querySelectorAll(':scope>.cwex-sort-row').length)));(i?r:l).append(h);if(c)(i?r:l).append(c);});editor.append(cols);
     if(focused?.isConnected&&doc.activeElement!==focused)focused.focus({preventScroll:true});
   }
-  let dragRow=null, dropRow=null, dragPointer=null;
+  let dragRow=null, dropRow=null, dragPointer=null, sortDrag=null;
   function startDrag(id,row,pointer=null){
     clearDrag();dragged=id;dragRow=row;dragPointer=pointer;row.classList.add('cw2-drag');
   }
@@ -238,7 +238,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     const notify=doc.getElementById('extensions_notify_updates');if(notify){const r=make('label','cwex-row'),txt=make('span','cwex-text');txt.append(make('span','cwex-name',t('扩展有更新时通知','Notify about extension updates')),make('span','cwex-meta',t('打开酒馆时检查一次','Check when opening SillyTavern')));r.append(txt);moveNative(notify,r);options.append(r);}
     if(doc.getElementById('extensions_url'))options.append(action(t('旧版 Extras API','Legacy Extras API')+' ›',openExtras,'cwex-extras-option'));
     options.append(action(t('其他原生设置','Other native settings')+' ›',openNativeSettings));list.append(options);
-    page.append(list);detail=make('div','cwex-detail-view');editor=make('div','cwex-sort-view');page.append(detail,editor);show('list',false);
+    page.append(list);detail=make('div','cwex-detail-view');editor=make('div','cwex-sort-view');sortDrag=guardSortDrag(editor);page.append(detail,editor);show('list',false);
     v2dList();const sortMo=new win.MutationObserver(v2dSort);sortMo.observe(editor,{childList:true});listeners.push(()=>sortMo.disconnect());v2dDrag();
   }
   function reconcile(){if(!host)return;const values=[...entries.values()];for(const e of values)e.roots=e.roots.filter(r=>r.isConnected);for(const c of panel.querySelectorAll('#extensions_settings>div,#extensions_settings2>div')){
@@ -267,5 +267,5 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   // trees remain in place; version checks still begin only on actual entry.
   function prepare(p){if(p&&!initializing)initializing=init(p).catch(err);return initializing;}
   prepare(doc.getElementById('rm_extensions_block'));
-  return {mount(p){const ready=prepare(p);if(!visited){visited=true;void ready?.then(()=>{if(!disposed){paintHead(page.dataset.view);void checkAll();}});}},edit,refresh:reconcile,destroy(){disposed=true;win.cancelAnimationFrame(frame);returnRoot?.();listeners.splice(0).forEach(f=>f());for(const [n,m]of moves.reverse())if(m.parentNode)m.replaceWith(n);for(const [n,m]of originals.reverse())if(m.parentNode)m.replaceWith(n);page?.remove();sources?.remove();mobileHead?.remove();style.remove();panel?.classList.remove('cw-ext-reordered');}};
+  return {mount(p){const ready=prepare(p);if(!visited){visited=true;void ready?.then(()=>{if(!disposed){paintHead(page.dataset.view);void checkAll();}});}},edit,refresh:reconcile,destroy(){disposed=true;sortDrag?.end();win.cancelAnimationFrame(frame);returnRoot?.();listeners.splice(0).forEach(f=>f());for(const [n,m]of moves.reverse())if(m.parentNode)m.replaceWith(n);for(const [n,m]of originals.reverse())if(m.parentNode)m.replaceWith(n);page?.remove();sources?.remove();mobileHead?.remove();style.remove();panel?.classList.remove('cw-ext-reordered');}};
 }

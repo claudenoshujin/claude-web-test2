@@ -1,4 +1,4 @@
-import { dropAfter, clearDropLine, showDropLine } from './settings-drop-target.js?v=2.0.345';
+import { dropAfter, clearDropLine, showDropLine, guardSortDrag } from './settings-drop-target.js?v=2.0.345';
 import { watchTokens, tokenText } from './token-count.js?v=2.0.345';
 import { createSettingsScale } from './settings-scale.js?v=2.0.345';
 import { createFontWeightControl } from './font-weight.js?v=2.0.345';
@@ -1147,6 +1147,7 @@ export function installOfficialLayout(win = window) {
       if(box.parentElement)box.parentElement.scrollTop=scroll;if(focusId)box.querySelector('[data-layout-id="'+win.CSS.escape(focusId)+'"] select')?.focus({preventScroll:true});
     }
     let dragRow=null,dropRow=null;
+    const sortDrag=guardSortDrag(box);
     function clearDrag(){dragRow?.classList.remove('cw2-drag');clearDropLine(dropRow);dragRow=null;dropRow=null;}
     function destination(event){
       if(!dragRow||mobile())return null;
@@ -1158,8 +1159,8 @@ export function installOfficialLayout(win = window) {
     }
     box.addEventListener('dragstart',event=>{
       const row=event.target.closest?.('.cw-layout-row');if(!row?.draggable)return;
-      clearDrag();dragRow=row;event.dataTransfer.setData('text/plain',row.dataset.layoutId);
-      event.dataTransfer.effectAllowed='move';row.classList.add('cw2-drag');
+      clearDrag();dragRow=row;sortDrag.start(event,row.dataset.layoutId);
+      row.classList.add('cw2-drag');
     });
     box.addEventListener('dragover',event=>{
       const dest=destination(event);
@@ -1173,13 +1174,13 @@ export function installOfficialLayout(win = window) {
     box.addEventListener('dragend',clearDrag);
     box.addEventListener('drop',event=>{
       const dest=destination(event);clearDrag();
-      if(!dest||event.dataTransfer.getData('text/plain')!==dest.id)return;
+      if(!dest||sortDrag.read(event)!==dest.id)return;
       event.preventDefault();move(dest.id,dest.place,dest.row?.dataset.layoutId,dest.after);
     });
     const reset=button(t('恢复默认','Restore defaults'),()=>{layoutPrefs.removeItem(layoutKey(kind));layoutSignatures.delete(kind);applyLayouts();records=currentLayoutRecords(kind);paint();},'cw-v4-button');paint();
     const parentLayoutEditor=[...dialogs].filter(d=>d.open).at(-1);
     (parentLayoutEditor?.querySelector('.cw-v4-editor-body')||doc.getElementById('top-settings-holder'))?.append(box);
-    openEditor(box,kind==='rail'?t('编辑侧栏','Edit sidebar'):t('编辑顺序','Edit order'),'',{foot:reset,onClose:()=>{clearDrag();layoutBox=null;layoutBoxKind=null;box.remove();}});box.closest('dialog')?.classList.add('cw-layout-dialog');
+    openEditor(box,kind==='rail'?t('编辑侧栏','Edit sidebar'):t('编辑顺序','Edit order'),'',{foot:reset,onClose:()=>{sortDrag.end();clearDrag();layoutBox=null;layoutBoxKind=null;box.remove();}});box.closest('dialog')?.classList.add('cw-layout-dialog');
   }
   disposers.push(()=>{for(const s of layoutStyles.values())s.remove();layoutStyles.clear();layoutBox?.closest('dialog')?._cwShut?.();});
 
