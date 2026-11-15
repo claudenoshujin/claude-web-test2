@@ -8,6 +8,7 @@ import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.34
 import { retainRangeCounter } from './official-extension-settings.js?v=2.0.345';
 import { tr } from './official-i18n.js?v=2.0.345';
 import { normalizeSettingsSections } from './settings-sections.js?v=2.0.345';
+import { installDisplayState } from './display-state.js?v=2.0.345';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
@@ -62,6 +63,8 @@ export function installOfficialLayout(win = window) {
     }else disposers.push(() => node.removeEventListener(event, fn, options));
   };
   const observe = (node, fn, options) => { const mo = new win.MutationObserver(fn); mo.observe(node, options); observers.push(mo); return mo; };
+  // data-cw-off mirrors a few native nodes' inline display (see display-state.js); installed before any CW style can match.
+  const displayState = installDisplayState(win); disposers.push(() => displayState.destroy());
   // One delegated pair replaces document listeners that captured every old menu.
   on(doc,'click',e=>{for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)&&!menu.contains(e.target)&&!menu.cwAnchor?.contains?.(e.target))menu.open=false;});
   on(doc,'keydown',e=>{if(e.key!=='Escape')return;let closed=false;if(closeDelegatedMenu){closeDelegatedMenu(true);closed=true;}for(const menu of doc.querySelectorAll('.cw-v4-more[open]'))if(enhancedMenus.has(menu)){menu.open=false;closed=true;}if(closed){e.preventDefault();e.stopPropagation();}},true);
@@ -1191,6 +1194,7 @@ export function installOfficialLayout(win = window) {
   }
   function sync() {
     raf = 0; if (destroyed) return;
+    displayState.rescan();
     syncQrBar();
     applyLayouts();
     syncComposerLines();

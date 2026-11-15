@@ -353,8 +353,8 @@ html[data-cw-v4] body #top-settings-holder .cw-v4-prompt-row>span:has(>.prompt_m
 html[data-cw-v4] body #top-settings-holder #rm_print_characters_block:not(.gridView) .character_select{flex-wrap:nowrap!important;gap:14px!important;align-items:center!important}
 html[data-cw-v4] body #top-settings-holder #rm_print_characters_block:not(.gridView) .character_select_container{flex:1!important;width:auto!important;min-width:0!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-danger{color:#c44b42!important}
-html[data-cw-v4] body #right-nav-panel:has(#rm_characters_block:not([style*="display: none"])) #CharListButtonAndHotSwaps{display:none!important}
-html[data-cw-v4] body #right-nav-panel:has(#rm_characters_block:not([style*="display: none"])) #rm_PinAndTabs{display:none!important}
+html[data-cw-v4] body #right-nav-panel:has(#rm_characters_block:not([data-cw-off])) #CharListButtonAndHotSwaps{display:none!important}
+html[data-cw-v4] body #right-nav-panel:has(#rm_characters_block:not([data-cw-off])) #rm_PinAndTabs{display:none!important}
 html[data-cw-v4] .cw-v4-character-name:has(#name_div.displayNone){display:none!important}
 html[data-cw-v4] body #form_create.cw-v4-reflow #tags_div{width:100%!important;min-width:0}
 html[data-cw-v4] body #form_create.cw-v4-reflow .tag_input{background:var(--cw-v4-bg)!important;border:1px solid var(--cw-v4-line)!important;color:var(--cw-v4-text)!important}
@@ -616,8 +616,8 @@ html[data-cw-v4] body #form_sheld #send_form #send_textarea::placeholder{text-al
      插件的按钮也跟着不见。这里只放出第三方的按钮（插件自己藏起来的除外），原生的 stscript / 继续 / 代入 / QR 火箭照旧；有这种按钮时右边按内容变宽。
      欢迎页跟左边一样只留 CW 自己的按钮。 */
   html[data-cw-v4] body:not(.clawd-welcome) #send_form #rightSendForm>:not(#send_but,#mes_stop,.mes_stop,.stscript_btn,#mes_impersonate,#mes_continue,#quick-reply-rocket-button,.displayNone,[hidden],[style*="display: none"],[style*="display:none"]){display:flex!important}
-  html[data-cw-v4] body:not(.clawd-welcome) #send_form #nonQRFormItems:has(>#rightSendForm>:not(#send_but,#mes_stop,.mes_stop,.stscript_btn,#mes_impersonate,#mes_continue,#quick-reply-rocket-button,.displayNone,[hidden],[style*="display: none"],[style*="display:none"])){grid-template-columns:auto minmax(0,1fr) auto!important}
-  html[data-cw-v4] body:not(.clawd-welcome) #send_form #rightSendForm:has(>:not(#send_but,#mes_stop,.mes_stop,.stscript_btn,#mes_impersonate,#mes_continue,#quick-reply-rocket-button,.displayNone,[hidden],[style*="display: none"],[style*="display:none"])){flex:0 0 auto!important;width:auto!important;max-width:none!important;gap:6px!important}
+  html[data-cw-v4] body:not(.clawd-welcome) #send_form #nonQRFormItems:has(>#rightSendForm>:not(#send_but,#mes_stop,.mes_stop,.stscript_btn,#mes_impersonate,#mes_continue,#quick-reply-rocket-button,.displayNone,[hidden],[data-cw-off])){grid-template-columns:auto minmax(0,1fr) auto!important}
+  html[data-cw-v4] body:not(.clawd-welcome) #send_form #rightSendForm:has(>:not(#send_but,#mes_stop,.mes_stop,.stscript_btn,#mes_impersonate,#mes_continue,#quick-reply-rocket-button,.displayNone,[hidden],[data-cw-off])){flex:0 0 auto!important;width:auto!important;max-width:none!important;gap:6px!important}
   html[data-cw-v4] body #send_form #nonQRFormItems #leftSendForm{width:auto!important;max-width:none!important}
   html[data-cw-v4] .cw-v4-api-row{grid-template-columns:1fr;gap:10px}
   html[data-cw-v4] .clawd-welcome-hero{font-weight:420!important;font-size:32px!important}
@@ -646,7 +646,7 @@ html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_button_characters.cw-v4-b
 html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_button_characters.cw-v4-back:hover{color:var(--cw-v4-text)!important}
 html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_PinAndTabs{margin:0 0 12px!important;padding:0 0 12px!important;border-bottom:1px solid var(--cw-v4-line)!important}
 html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_button_selected_ch h2{font:500 18px/1.4 var(--cw-v4-font)!important;color:var(--cw-v4-text)!important}
-html[data-cw-v4] body #right-nav-panel.cw-v4-panel .scrollableInner:has(> #rm_ch_create_block:not([style*="display: none"])),
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel .scrollableInner:has(> #rm_ch_create_block:not([data-cw-off])),
 html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_ch_create_block,
 html[data-cw-v4] body #right-nav-panel.cw-v4-panel #form_create.cw-v4-reflow{overflow:visible!important;height:auto!important;max-height:none!important}
 /* Mobile rail: icons are inline now, so the old 42px hole for the mask icon doubles the gap */
@@ -2199,8 +2199,8 @@ html[data-cw-v4] body{--cwg-line:#e6e6e6;--cwg-hair:#ededec;--cwg-hover:rgba(20,
 html[data-cw-v4][data-claude-integrated-theme="night"] body{--cwg-line:#44433e;--cwg-hair:#3a3935;--cwg-hover:rgba(255,255,255,.06);--cwg-muted:#a3a19b;--cwg-faint:#75736d;--cwg-text:#e8e6df;--cwg-bg:#262624;--cwg-btn:#30302e;--cwg-danger:#e0605a;--cwg-menu:var(--cw-menu-ink,#cfcdc6)}
 
 /* —— 编辑页 / 群聊页：顶上那行灰色名字和 Token 挪进页头，原位置藏掉 —— */
-html[data-cw-v4] body #top-settings-holder#top-settings-holder #right-nav-panel:has(>.scrollableInner>:is(#rm_ch_create_block,#rm_group_chats_block):not([style*="display: none"])) #rm_button_selected_ch{display:none!important}
-html[data-cw-v4] body #top-settings-holder#top-settings-holder #right-nav-panel:has(>.scrollableInner>:is(#rm_ch_create_block,#rm_group_chats_block):not([style*="display: none"])) #rm_PinAndTabs{border-bottom:0!important;padding-bottom:0!important;margin-bottom:0!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #right-nav-panel:has(>.scrollableInner>:is(#rm_ch_create_block,#rm_group_chats_block):not([data-cw-off])) #rm_button_selected_ch{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #right-nav-panel:has(>.scrollableInner>:is(#rm_ch_create_block,#rm_group_chats_block):not([data-cw-off])) #rm_PinAndTabs{border-bottom:0!important;padding-bottom:0!important;margin-bottom:0!important}
 
 /* —— 页头 —— */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-hero{display:flex;align-items:center;gap:16px;min-width:0;margin:6px 0 30px}
@@ -2362,7 +2362,7 @@ html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup.cw-ag .alte
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_chats_block .cw-v4-section:not(:has(>.cw-v4-row:not([hidden]))):has(>.cw-v4-row){display:none!important}
 /* ㉜ 补 2：群聊页和角色编辑页一样只让外层滚（原来里外两层滚动，底部被截）；「群聊暂无成员」是酒馆用 :empty::before 写的字，改成框里一行灰字；
    其他开场白有了卡片就不再显示空提示；成员搜索框字号和别处一致。 */
-html[data-cw-v4] body #right-nav-panel.cw-v4-panel .scrollableInner:has(> #rm_group_chats_block:not([style*="display: none"])),
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel .scrollableInner:has(> #rm_group_chats_block:not([data-cw-off])),
 html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_group_chats_block.cw-v4-reflow{overflow:visible!important;height:auto!important;max-height:none!important}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_chats_block #rm_group_members:empty::before{display:block!important;margin:0!important;padding:15px 14px!important;font:400 14.5px/1.4 var(--cw-v4-font)!important;color:var(--cwg-muted)!important;text-align:left!important;-webkit-text-stroke:0!important}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_chats_block .cw-v4-gbox-head .cw-v4-search input{font:400 14.5px/1.4 var(--cw-v4-font)!important;-webkit-text-stroke:0!important}
@@ -2514,7 +2514,7 @@ html[data-cw-v4] body .cw-v4-selmenu.cw-v4-selmenu .cw-v4-selmenu-group{padding:
 html[data-cw-v4] body .cw-v4-selmenu.cw-v4-selmenu>.cw-v4-selmenu-cancel{all:unset;display:flex;flex:none;align-items:center;justify-content:center;min-height:54px;border-top:8px solid var(--m-sheetgap);color:var(--m-blue);font:600 17px/1 var(--cw-v4-font);cursor:pointer}
 /* —— 角色编辑页：电脑那行角色管理藏掉；新建角色时只留「创建」 —— */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create .cw-v4-desk-manage :is(#char-management-dropdown,details.cw-v4-more){display:none!important}
-html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create .cw-v4-desk-manage:not(:has(#create_button_label:not([style*="display: none"]))){display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create .cw-v4-desk-manage:not(:has(#create_button_label:not([data-cw-off]))){display:none!important}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create:has(#name_div.displayBlock) .cw-v4-phone-manage{display:none!important}
 /* 「更多操作」那一项：和上面几行一样是蓝色操作行 */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create .cw-v4-phone-more{display:block!important;width:100%!important;margin:0!important;padding:0!important}
@@ -2569,7 +2569,7 @@ html[data-cw-v4][data-claude-integrated-theme="night"]{--m-flab:#b9b7b0;--m-pfha
 /* 电脑那几个小节：手机上收起来 */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-desk-only.cw-v4-desk-only.cw-v4-desk-only:not(.cw-v4-editing){position:absolute!important;width:1px!important;height:1px!important;margin:0!important;padding:0!important;overflow:hidden!important;clip-path:inset(50%)!important}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create .cw-v4-desk-more>:is(h2,.cw-v4-row:not(.cw-v4-desk-manage)){display:none!important}
-html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create .cw-v4-desk-more:not(:has(#create_button_label:not([style*="display: none"]))){display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create .cw-v4-desk-more:not(:has(#create_button_label:not([data-cw-off]))){display:none!important}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_chats_block .cw-v4-desk-delete{display:none!important}
 /* 页头：头像居中 96 圆，下面「更换头像」 */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder :is(#form_create,#rm_group_chats_block) .cw-v4-hero.cw-v4-hero{flex-direction:column!important;flex-wrap:nowrap!important;align-items:center!important;gap:0!important;margin:20px 0 4px!important}
@@ -2616,7 +2616,7 @@ html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-
 html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel .cw-v4-pf-foot:empty{display:none}
 /* 新建角色 / 新建群聊时藏掉只对已有的有用的 */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #form_create:has(#name_div.displayBlock) .cw-v4-pf-existing{display:none!important}
-html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_chats_block:has(#rm_group_submit:not([style*="display: none"])) .cw-v4-pf-existing{display:none!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_chats_block:has(#rm_group_submit:not([data-cw-off])) .cw-v4-pf-existing{display:none!important}
 /* 群聊：成员行右边只留 ⋯；标签筛选的 4 个圆圈不要；选择项的说明、行尾 › 不要（Lulu：符号太多还是酒馆味） */
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_members .group_member .group_member_icon{display:none!important}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_members .group_member>.cw-v4-gm-more{flex:none;margin-left:auto}
@@ -3361,12 +3361,12 @@ html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec)
 
 /* v2d 补充：三个选择（如导出前移除敏感字段、安装扩展给所有人 / 只给我 / 取消）：放弃类按钮无边、靠左；手机掉到第二行通栏。只在有三个看得见的按钮时。 */
 @media all{
-html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone))>.popup-button-cancel:not([style*="display: none"]){order:-1!important;margin-right:auto!important;border-color:transparent!important;background:transparent!important}
-html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone))>.popup-button-cancel:not([style*="display: none"]):hover{background:#f5f5f4!important}
-html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone))>.popup-button-cancel:not([style*="display: none"]){border-color:transparent!important;background:transparent!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone))>.popup-button-cancel:not([data-cw-off]){order:-1!important;margin-right:auto!important;border-color:transparent!important;background:transparent!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone))>.popup-button-cancel:not([data-cw-off]):hover{background:#f5f5f4!important}
+html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone))>.popup-button-cancel:not([data-cw-off]){border-color:transparent!important;background:transparent!important}
 }
 @media(max-width:700px){
-html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone)~.menu_button:not([style*="display: none"]):not(.displayNone))>.popup-button-cancel:not([style*="display: none"]){order:3!important;flex:1 0 100%!important;margin-right:0!important}
+html[data-cw-v4] body :is(dialog,#cw-spec).popup.popup:not(.wide_dialogue_popup):not(.wider_dialogue_popup):not(.large_dialogue_popup):not(.transparent_dialogue_popup):not(.cw-v4-editor) .popup-controls:has(>.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone)~.menu_button:not([data-cw-off]):not(.displayNone))>.popup-button-cancel:not([data-cw-off]){order:3!important;flex:1 0 100%!important;margin-right:0!important}
 }
 
 /* ---------- 2.0.273 自己消息的编辑 / 删除（稿 design-composer-edge-user-actions-v1 ② B，Lulu 选） ----------
@@ -4010,7 +4010,7 @@ html[data-cw-v4] body:not(.clawd-welcome) .cw-v4-more-top{display:block;position
 /* Scoped source b0e2761 */
 /* The list relied on the group block having no inline style yet; once ST writes display:none on every right_menu
  * (after opening a character), the list fell back to ST's height:100% + overflow-y:hidden and could not scroll. */
-html[data-cw-v4] body #right-nav-panel.cw-v4-panel .scrollableInner:has(> #rm_characters_block.cw-v4-reflow:not([style*="display: none"])){overflow:visible!important;height:auto!important;max-height:none!important}
+html[data-cw-v4] body #right-nav-panel.cw-v4-panel .scrollableInner:has(> #rm_characters_block.cw-v4-reflow:not([data-cw-off])){overflow:visible!important;height:auto!important;max-height:none!important}
 html[data-cw-v4] body #right-nav-panel.cw-v4-panel #rm_characters_block.cw-v4-reflow{height:auto!important;max-height:none!important}
 
 

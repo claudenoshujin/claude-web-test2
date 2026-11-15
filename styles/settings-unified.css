@@ -320,7 +320,7 @@ html[data-cw-settings-unified] #rm_api_block .online_status_indicator {width:10p
 html[data-cw-settings-unified] #rm_api_block .online_status_indicator.success {background:rgb(34, 165, 90) !important;box-shadow:rgba(34, 165, 90, 0.133) 0px 0px 0px 3px !important}
 html[data-cw-settings-unified] #rm_api_block .online_status_indicator::before {display:none !important}
 html[data-cw-settings-unified] #rm_api_block .cw-v4-api-inline-row > h4 {font-size:14.5px !important;font-weight:var(--cwus-weight) !important;color:var(--cwus-ink) !important;margin:0px 0px 6px !important}
-html[data-cw-settings-unified] #rm_api_block #openai_api:has(> #prompt_post_processing_form:not([style*="display: none"])) > .cw-v4-form-section:not(#prompt_post_processing_form) {border-radius:0px !important;border-bottom:0px !important}
+html[data-cw-settings-unified] #rm_api_block #openai_api:has(> #prompt_post_processing_form:not([data-cw-off])) > .cw-v4-form-section:not(#prompt_post_processing_form) {border-radius:0px !important;border-bottom:0px !important}
 html[data-cw-settings-unified] #right-nav-panel .cwr-list-actions #rm_button_create {background:var(--cwus-ink) !important;color:var(--cwus-canvas) !important;border-color:var(--cwus-ink) !important}
 html[data-cw-settings-unified][data-claude-font="follow"] .cw-v4-panel, html[data-cw-settings-unified][data-claude-font="follow"] .cw-v4-shell, html[data-cw-settings-unified][data-claude-font="follow"] .cwr-confirm {--cw-v4-font:"Anthropic Sans","Styrene B","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
 html[data-cw-settings-unified] .cw-v4-panel {--cwus-row-soft:#f4f4f1}
