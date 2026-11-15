@@ -3602,9 +3602,12 @@ html[data-cw-v4][data-claude-integrated-theme="night"] body #gallery.cw-gal .cw-
 html[data-cw-v4] body #load-spinner{--spinner-size:48px!important;width:48px!important;height:48px!important;font-size:0!important;animation:none!important;transform:none!important;background:url("../icons/claude-thinking.webp") center/contain no-repeat!important;color:transparent!important}
 html[data-cw-v4] body #load-spinner::before,html[data-cw-v4] body #load-spinner::after{content:none!important;display:none!important}
 /* 载入层本身不要卡片：只有动图（酒馆这一层是透明弹窗，被别的弹窗样式套上了白底） */
-html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup:has(#loader){background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important}
-html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup:has(#loader) :is(.popup-body,.popup-content){background:transparent!important;border:0!important;box-shadow:none!important}
-html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup:has(#loader)>.cw-st-head{display:none!important}
+/* ActionLoader removes #loader before Popup completes. Keep the transparent
+   treatment on the native dialog for its whole lifetime. Its width follows
+   ST's default popup width, independent of the CW chat column. */
+html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup.transparent_dialogue_popup.popup--animation-none.wide_dialogue_popup.large_dialogue_popup{min-width:50vw!important;background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup.transparent_dialogue_popup.popup--animation-none.wide_dialogue_popup.large_dialogue_popup :is(.popup-body,.popup-content){background:transparent!important;border:0!important;box-shadow:none!important}
+html[data-cw-v4] body :is(dialog,#cw-spec):is(dialog,#cw-spec).popup.transparent_dialogue_popup.popup--animation-none.wide_dialogue_popup.large_dialogue_popup>.cw-st-head{display:none!important}
 
 /* ---------- 2.0.277 侧栏（Lulu 选稿 design-desk-sidebar-v1「新版」，照 Snipaste_2026-10-05_01-44-14 Claude Desktop）---------- */
 @media(min-width:701px){
