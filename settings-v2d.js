@@ -57,13 +57,32 @@ export function createV2dPages(h) {
     // 文本补全的服务类型（#textgen_type 和它的标题）并到接口类型旁边；容器本身不带 data-tg-type，原生只靠外层 #textgenerationwebui_api 显隐。
     const tgType=get('textgen_type')?.parentElement;
     if(tgType&&tgType.parentElement?.closest('#textgenerationwebui_api')){mark(ps,tgType,'cw-v4-api-inline-row','cw2-tgtype');say(tgType.querySelector(':scope>h4'),t('服务类型','Server type'),'h4');move(ps,tgType,card(apiSec),main.closest('.cw-v4-row')?.nextSibling||null);}
-    const paintApi=()=>{const v=main.value;workers.hidden=v!=='koboldhorde';if(tgType)tgType.hidden=v!=='textgenerationwebui';card(apiSec)?.classList.toggle('cw2-tg',v==='textgenerationwebui');};
+    const llamaAddress=get('llamacpp_api_url_text')?.closest('.cw-v4-api-inline-row');
+    const llamaKey=get('api_key_llamacpp')?.closest('.cw-v4-api-row');
+    if(llamaAddress&&llamaKey&&llamaAddress.parentElement===llamaKey.parentElement)move(ps,llamaAddress,llamaKey.parentElement,llamaKey);
+    const textHint=created(ps,make('p','cw2-tg-note',t(
+      '换成 Ollama、OpenRouter、TabbyAPI 等类型时，它们各自要填的项（模型、密钥、勾选项）按同样的排法出现在左边卡片里。',
+      'Services like Ollama, OpenRouter, and TabbyAPI show their own model, key, and toggle fields in the same card.')));
+    const paintApi=()=>{const v=main.value;workers.hidden=v!=='koboldhorde';textHint.hidden=v!=='textgenerationwebui';if(tgType)tgType.hidden=v!=='textgenerationwebui';card(apiSec)?.classList.toggle('cw2-tg',v==='textgenerationwebui');};
     const $main=win.jQuery?.(main);if($main){$main.on('change.cw2v2f',paintApi);cleanup(ps,()=>{$main.off('change.cw2v2f');if(tgType)tgType.hidden=false;card(apiSec)?.classList.remove('cw2-tg');});}else{main.addEventListener('change',paintApi);cleanup(ps,()=>main.removeEventListener('change',paintApi));}
     paintApi();
-    // Horde 那串说明链接：收成一行灰字加一排链接（只加类名，样式在 settings-v2d.css）。
     const hl=get('kobold_horde_block')?.querySelector(':scope>ul');
-    if(hl){mark(ps,hl,'cw2-hlinks');for(const li of hl.children){mark(ps,li,'cw2-hl-li');for(const n of li.children)mark(ps,n,n.tagName==='A'?'cw2-hl-a':'cw2-hl-t');}}
+    if(hl){
+      mark(ps,hl,'cw2-hlinks');
+      for(const li of hl.children){
+        mark(ps,li,'cw2-hl-li');
+        for(const n of li.children)n.tagName==='A'?mark(ps,n,'cw2-hl-a'):hide(ps,n);
+      }
+      const note=created(ps,make('li','cw2-hl-t',t(
+        'AI Horde 由志愿者共享显卡运行，免费，但要排队。别往里发敏感信息。',
+        'AI Horde runs on GPUs shared by volunteers. It is free, but there may be a queue. Avoid sending sensitive information.')));
+      hl.prepend(note);
+    }
+    const hordeKeyRow=get('horde_api_key')?.closest('.cw-v4-api-row');
+    const hordeKeyHint=hordeKeyRow?.querySelector('.cw-v4-api-label>small');
+    if(hordeKeyHint){move(ps,hordeKeyHint,hordeKeyRow);mark(ps,hordeKeyHint,'cw2-horde-key-note');}
     const opts=sec(ps,right,'连接选项','cw2-opts');
+    opts.after(textHint);
     const auto=get('auto-connect-checkbox')?.closest('.cw-v4-row');if(auto)move(ps,auto,opts);
     for(const id of ['openai_bypass_status_check','openai_show_external_models']){const r=get(id)?.closest('.cw-v4-mapped-setting');if(r){move(ps,r,opts);mark(ps,r,'cw2-cc');}}
     const ppp=get('prompt_post_processing_form');if(ppp){move(ps,ppp,opts);mark(ps,ppp,'cw2-cc');mark(ps,get('custom_prompt_post_processing'),'cw2-short');}
