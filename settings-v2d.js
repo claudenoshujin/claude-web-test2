@@ -57,7 +57,21 @@ export function createV2dPages(h) {
     // 文本补全的服务类型（#textgen_type 和它的标题）并到接口类型旁边；容器本身不带 data-tg-type，原生只靠外层 #textgenerationwebui_api 显隐。
     const tgType=get('textgen_type')?.parentElement;
     if(tgType&&tgType.parentElement?.closest('#textgenerationwebui_api')){mark(ps,tgType,'cw-v4-api-inline-row','cw2-tgtype');say(tgType.querySelector(':scope>h4'),t('服务类型','Server type'),'h4');move(ps,tgType,card(apiSec),main.closest('.cw-v4-row')?.nextSibling||null);}
-    const paintApi=()=>{const v=main.value;workers.hidden=v!=='koboldhorde';if(tgType)tgType.hidden=v!=='textgenerationwebui';card(apiSec)?.classList.toggle('cw2-tg',v==='textgenerationwebui');};
+    // 状态卡跟当前接口走（11-16）：状态文字和圆点是酒馆全局写的（displayOnlineStatus 改所有 .online_status_text），本来就跟随；
+    // 「连接」原生只接聊天补全，其他接口另放一个按钮，点击转发到该接口自己的原生连接按钮。AI Horde 原生没有连接按钮，
+    // 切到 Horde 时酒馆自动查状态（getStatusHorde），所以 Horde 下不显示「连接」。「发送测试消息」「OpenRouter 授权」只属于聊天补全。
+    // 「取消连接」是原生 .api_loading 的委托点击，对所有接口都有效，保留。
+    const NATIVE={kobold:'api_button',novel:'api_button_novel',textgenerationwebui:'api_button_textgenerationwebui'};
+    const conn=controls&&connect?created(ps,make('button','menu_button cw-v4-as-btn cw-v4-primary cw2-conn')):null;
+    if(conn){conn.type='button';conn.append(make('span','cw-v4-action-label',L('连接')));conn.addEventListener('click',()=>{const id=NATIVE[main.value];if(id)get(id)?.click();});connect.after(conn);}
+    const oaiOnly=[connect,test,...[...statusRow.querySelectorAll('.cw-v4-more-item')].filter(n=>/OpenRouter/.test(n.textContent))].filter(Boolean);
+    // 四种接口左卡底部的原生「连接 / 取消」和状态行：节点留在原位，只是不显示（文本补全那排还有 OpenRouter「授权」，只藏连接和取消）。
+    const nativeOff=[get('api_button')?.parentElement,get('api_button_novel')?.parentElement,get('api_button_textgenerationwebui'),get('api_button_textgenerationwebui')?.parentElement?.querySelector(':scope>.api_loading'),
+      ...['kobold_api','novel_api','textgenerationwebui_api','kobold_horde'].map(id=>get(id)?.querySelector('.online_status'))].filter(n=>n&&!statusRow.contains(n));
+    for(const n of nativeOff)mark(ps,n,'cw2-native-off');
+    const paintApi=()=>{const v=main.value;workers.hidden=v!=='koboldhorde';if(tgType)tgType.hidden=v!=='textgenerationwebui';card(apiSec)?.classList.toggle('cw2-tg',v==='textgenerationwebui');
+      for(const n of oaiOnly)n.classList.toggle('cw2-apioff',v!=='openai');conn?.classList.toggle('cw2-apioff',!NATIVE[v]);};
+    cleanup(ps,()=>{for(const n of oaiOnly)n.classList.remove('cw2-apioff');});
     const $main=win.jQuery?.(main);if($main){$main.on('change.cw2v2f',paintApi);cleanup(ps,()=>{$main.off('change.cw2v2f');if(tgType)tgType.hidden=false;card(apiSec)?.classList.remove('cw2-tg');});}else{main.addEventListener('change',paintApi);cleanup(ps,()=>main.removeEventListener('change',paintApi));}
     paintApi();
     // Horde 那串说明链接：收成一行灰字加一排链接（只加类名，样式在 settings-v2d.css）。
