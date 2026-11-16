@@ -1294,6 +1294,7 @@ html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pk {backg
 html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pk::before {content:none!important;display:none!important}
 html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pk[aria-pressed=true] {background:var(--cwus-ink)!important;border-color:var(--cwus-ink)!important;color:var(--cwus-canvas)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-v-entry>.cww-back {padding-bottom:0!important;margin-bottom:6px!important}
+@media (min-width:701px){html[data-cw-settings-unified][data-claude-layout="pc"] #WorldInfo .cww-v-entry {margin-block-start:-11px!important}}
 html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rs {padding:9px 14px 11px!important}
 }
 @media(max-width:700px){@layer cw-settings-spec{
