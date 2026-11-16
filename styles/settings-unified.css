@@ -43,9 +43,6 @@ html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row-controls input[type="chec
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row-controls input[type="checkbox"]:checked::before {left:20px !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row-controls input[type="checkbox"]::after {display:none !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-has-seg {display:block !important}
-html[data-cw-settings-unified] .cw-v4-panel .cw-v4-seg-created {display:none !important}
-html[data-cw-settings-unified] .cw-v4-panel .cwr-field {padding:12px 14px !important}
-html[data-cw-settings-unified] .cw-v4-panel .cwr-field-label {font-size:14px !important;font-weight:calc(400 + var(--cw-ui-weight-offset,0)) !important}
 html[data-cw-settings-unified] .cw-v4-panel :is(.cwr-input, .cw-v4-row-controls :where(input:not([type="checkbox"]):not([type="range"]):not([type="radio"]))) {background:var(--cwus-canvas) !important;border:1px solid var(--cwus-line) !important;color:var(--cwus-ink) !important;box-shadow:none !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row:has(> .cw-v4-row-controls > textarea) {display:block !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row-controls > textarea {border:1px solid var(--cwus-line) !important;background:var(--cwus-canvas) !important;color:var(--cwus-ink) !important}
@@ -71,7 +68,6 @@ html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row-controls input[type="chec
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-more > summary::before {content:"" !important;display:inline-block !important;background:currentcolor !important;mask:var(--cw-v4-icon-dots) center/contain no-repeat !important;vertical-align:middle !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-more > summary:has(.cw-v4-icon)::before {display:none !important}
 html[data-cw-settings-unified] .cw-v4-shell .cw-v4-group {flex:0 0 auto !important}
-html[data-cw-settings-unified] .cw-v4-shell .cw-v4-nav {justify-content:flex-start !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-ext-panel {max-width:760px !important;margin-left:0px !important;margin-right:0px !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-ext-panel :is(.cwex-title, .cwex-detail-head h2) {font-size:20px !important;font-weight:calc(600 + var(--cw-ui-weight-offset,0)) !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-ext-panel .cwex-section-title {font-size:13px !important;font-weight:calc(500 + var(--cw-ui-weight-offset,0)) !important;color:var(--cwus-muted) !important;margin:18px 2px 8px !important}
@@ -176,7 +172,6 @@ html[data-cw-settings-unified] .cw-v4-panel .cwr-page-heading, html[data-cw-sett
 html[data-cw-settings-unified] .cw-v4-panel .cwr-grid2 {grid-template-columns:1fr !important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-preset-entry {flex-wrap:wrap !important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-preset-entry .cw-v4-row-controls {flex-basis:100% !important}
-html[data-cw-settings-unified] .cw-v4-panel .cwr-connection-row {grid-template-columns:minmax(0px, 1fr) 150px !important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-connection-row > .cw-v4-row-controls {grid-area:2 / 1 / auto / -1 !important;justify-content:flex-end !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row[data-cw-field="1"] {display:block !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-row:has(> .cw-v4-row-controls > #movingUIPresets) {display:block !important}
@@ -188,7 +183,6 @@ html[data-cw-settings-unified] .cw-v4-panel .cwr-reason-add > .cw-v4-row-info {g
 html[data-cw-settings-unified] .cw-v4-panel .cwr-reason-add > .cw-v4-row-controls {display:contents !important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-reason-limit {grid-area:2 / 1 !important}
 html[data-cw-settings-unified] .cw-v4-panel .cwr-reason-add #reasoning_add_to_prompts {grid-area:1 / 2 / 3 !important}
-html[data-cw-settings-unified] #right-nav-panel .cw-v4-phone-fab {position:relative !important;inset:auto !important;display:flex !important;justify-content:flex-end !important;margin:16px 0px 0px !important;order:100 !important}
 html[data-cw-settings-unified] .cw-v4-panel #claude-web-settings .claude-web-field:has(> #claude-web-mode) {grid-template-columns:1fr !important}
 }
 }
@@ -207,7 +201,7 @@ html[data-cw-settings-unified] #left-nav-panel .cw-pm-tab-count {color:var(--cwu
 html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab="prompts"] {display:block !important;overflow-y:auto !important}
 html[data-cw-settings-unified] #left-nav-panel[data-cw-preset-tab="prompts"] :is(#advanced-ai-config-block, #openai_settings, #openai_settings > .cw-v4-drawer-page, .cw-v4-prompts, .cw-v4-prompts > .cw-v4-card, #completion_prompt_manager, #completion_prompt_manager > .range-block) {display:block !important;overflow:visible !important;flex:0 0 auto !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompts > .cw-v4-card {border:0px !important;background:transparent !important}
-html[data-cw-settings-unified] #left-nav-panel .cw-v4-quick, html[data-cw-settings-unified] #left-nav-panel .completion_prompt_manager_header, html[data-cw-settings-unified] #left-nav-panel .cw-pm-state, html[data-cw-settings-unified] #left-nav-panel .cw-v4-pm-meta {display:none !important}
+html[data-cw-settings-unified] #left-nav-panel .cw-v4-quick, html[data-cw-settings-unified] #left-nav-panel .completion_prompt_manager_header, html[data-cw-settings-unified] #left-nav-panel .cw-v4-pm-meta {display:none !important}
 html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager > .range-block {border:1px solid var(--cwus-soft) !important;border-radius:14px !important;background:var(--cwus-surface) !important;overflow:hidden !important;margin:0px !important;padding:0px !important}
 html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list:not(.bai-bai-preset-vue-list-host *) {display:block !important;width:100% !important;max-height:none !important;height:auto !important;overflow:visible !important;padding:0px !important;margin:0px !important;list-style:none !important;scrollbar-gutter:auto !important}
 html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list > li.cw-v4-prompt-row {display:grid !important;grid-template-columns:24px minmax(0px, 1fr) 42px 34px !important;border-top:0px !important;border-right:0px !important;border-left:0px !important;border-image:none !important;border-bottom:1px solid var(--cwus-soft) !important;align-items:center !important;background:transparent !important}
@@ -225,11 +219,7 @@ html[data-cw-settings-unified] #left-nav-panel .cw-pm-tools {display:flex !impor
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-search {flex:1 1 0% !important;border:1px solid var(--cwus-line) !important;background:var(--cwus-surface) !important;color:var(--cwus-ink) !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-filters {display:flex !important;align-items:center !important;flex-wrap:wrap !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-filters > button[aria-pressed="true"] {background:var(--cwus-ink) !important;color:var(--cwus-canvas) !important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-count {margin-left:auto !important;color:var(--cwus-muted) !important;font-size:12px !important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-hint {display:none !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-pm-tools > :not(.cw-pm-reorder-hint), html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-pm-filters {display:none !important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-pm-reorder-hint {display:flex !important;gap:12px !important;align-items:center !important;width:100% !important;padding:12px 14px !important;background:var(--cwus-canvas) !important;border-radius:12px !important;font-size:12.5px !important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-hint > span {flex:1 1 0% !important}
 html[data-cw-settings-unified] #left-nav-panel .completion_prompt_manager_footer {margin:0px !important;padding:11px 14px !important;min-height:52px !important;border:0px !important;display:flex !important;align-items:center !important;gap:8px !important}
 html[data-cw-settings-unified] #left-nav-panel .completion_prompt_manager_footer .cw-v4-as-btn:first-child {color:var(--cwus-blue) !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-bottom {position:sticky !important;bottom:0px !important;z-index:4 !important;background:var(--cwus-surface) !important;border-radius:14px !important}
@@ -251,11 +241,10 @@ html[data-cw-settings-unified] #right-nav-panel .cw-v4-drawer-page > .cw-v4-desk
 html[data-cw-settings-unified] #right-nav-panel .cw-v4-chatlist > .cw-v4-card {background:transparent !important;border:0px !important;overflow:visible !important}
 html[data-cw-settings-unified] #right-nav-panel .cw-v4-bar {padding:0px !important;margin:0px 0px 12px !important}
 html[data-cw-settings-unified] #right-nav-panel .cw-v4-bar > select {display:block !important;width:120px !important;flex:0 0 auto !important}
-html[data-cw-settings-unified] #right-nav-panel .cw-v4-phone-filter, html[data-cw-settings-unified] #right-nav-panel .cw-v4-phone-fab {display:none !important}
+html[data-cw-settings-unified] #right-nav-panel .cw-v4-phone-filter {display:none !important}
 html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags {display:flex !important;flex-wrap:wrap !important;gap:6px !important;margin:0px 0px 16px !important;padding:0px !important}
 html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tags {display:flex !important;flex-wrap:wrap !important;gap:6px !important}
 html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tag {display:inline-flex !important;align-items:center !important;gap:5px !important;height:28px !important;min-width:0px !important;max-width:none !important;width:auto !important;padding:0px 11px !important;border:1px solid var(--cwus-line) !important;background:transparent !important;border-radius:999px !important;color:var(--cwus-muted) !important;font-size:12.5px !important}
-html[data-cw-settings-unified] #right-nav-panel .cw-v4-tags .tag[data-toggle-state="SELECTED"] {background:var(--cwus-ink) !important;color:var(--cwus-canvas) !important}
 html[data-cw-settings-unified] #right-nav-panel .cwr-filter-label {display:inline !important;font:400 12.5px/1 var(--cw-v4-font) !important;white-space:nowrap !important}
 html[data-cw-settings-unified] #right-nav-panel #rm_print_characters_pagination {display:flex !important;align-items:center !important;justify-content:center !important;margin:14px 0px 0px !important}
 html[data-cw-settings-unified] #right-nav-panel #rm_print_characters_block .avatar {border-radius:50% !important}
@@ -289,7 +278,6 @@ html[data-cw-settings-unified] #rm_api_block .cwr-api-help {display:block !impor
 html[data-cw-settings-unified] #rm_api_block .cwr-api-help > summary {list-style:none !important;cursor:pointer !important;text-align:right !important}
 html[data-cw-settings-unified] #rm_api_block .cwr-api-help > summary::-webkit-details-marker {display:none !important}
 html[data-cw-settings-unified] #rm_api_block .cwr-api-field .cw-v4-api-note:empty {display:none !important}
-html[data-cw-settings-unified] #rm_api_block #openai_api > .cw-v4-section > .cw-v4-card {border-bottom:0px !important}
 html[data-cw-settings-unified] #rm_api_block #openai_api > .cw-v4-form-section {margin-top:0px !important;border-radius:0px 0px 14px 14px !important;border-top:0px !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompts > h2 {display:none !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompts {margin:0px !important}
@@ -366,7 +354,6 @@ html[data-cw-settings-unified] #Backgrounds .bg_tab_button {width:auto !importan
 html[data-cw-settings-unified] #Backgrounds .bg_tabs_list > .heading-controls {display:none !important}
 html[data-cw-settings-unified] #Backgrounds .bg_tab_button a {width:auto !important;display:block !important}
 html[data-cw-settings-unified] .cw-v4-shell .cw-v4-nav {overflow-y:auto !important;scroll-padding-block:16px !important}
-html[data-cw-settings-unified] .cw-v4-shell .cw-v4-nav > * {flex-shrink:0 !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-placeholder {opacity:1 !important}
 html[data-cw-settings-unified] #rm_api_block .cw-v4-api-label small {opacity:1 !important}
 html[data-cw-settings-unified][data-claude-integrated-theme="night"] :is(.cw-v4-panel .cw-v4-tag-exp, .cwr-confirm .cwr-warnings) {color:rgb(229, 160, 128) !important}
@@ -380,7 +367,6 @@ html[data-cw-settings-unified] #left-nav-panel .completion_prompt_manager_footer
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-tools > button {display:none !important}
 html[data-cw-settings-unified] #left-nav-panel #settings_preset_openai {width:auto !important;min-width:0px !important;flex:1 1 0% !important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-range {display:block !important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-count {font-size:11px !important}
 html[data-cw-settings-unified] #right-nav-panel .cwr-list-head {display:none !important}
 html[data-cw-settings-unified] #right-nav-panel .cwr-character-bottom {display:block !important;position:relative !important;padding:0px !important;border:1px solid var(--cwus-soft) !important;border-radius:14px !important;background:var(--cwus-surface) !important}
 html[data-cw-settings-unified] #right-nav-panel .cwr-character-bottom > button {display:flex !important;align-items:center !important;justify-content:flex-start !important;width:100% !important;height:52px !important;padding:0px 14px !important;border:0px !important;border-radius:0px !important;background:transparent !important;font-size:14px !important}
@@ -574,7 +560,6 @@ html[data-cw-settings-unified] .cwr-confirm {
  padding:22px 22px 18px!important;border:0!important;border-radius:16px!important;font-family:var(--cw-v4-font)!important;
 }
 html[data-cw-settings-unified] .cwr-confirm h2 {font-size:17px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;line-height:normal!important;margin:0 0 8px!important}
-html[data-cw-settings-unified] .cwr-confirm-actions {margin-top:18px!important;gap:8px!important}
 
 html[data-cw-settings-unified] .cw-v4-panel .cw-pm-placeholder {display:inline-block!important;width:auto!important;min-width:max-content!important;max-width:none!important;height:auto!important;min-height:0!important;max-height:none!important;white-space:nowrap!important;font-size:11px!important;line-height:16px!important;padding:1px 7px!important;margin:0!important;border-radius:999px!important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-new {font:500 10.5px/16px var(--cw-v4-font)!important;padding:0 6px!important;margin:0!important;border-radius:5px!important}
@@ -595,8 +580,7 @@ html[data-cw-settings-unified] #right-nav-panel .character_select .cw-v4-more {-
  html[data-cw-settings-unified] #settings_preset_openai {width:auto!important;min-width:120px!important;height:36px!important;min-height:36px!important;font-size:14px!important}
  html[data-cw-settings-unified] .cw-v4-panel .cwr-preset-entry>.cw-v4-row-controls {--cwus-controls-width:100%;--cwus-controls-max:100%}
  html[data-cw-settings-unified]:not([data-claude-integrated-theme=night]) .cw-v4-panel :is(.cw-v4-card:not(.cw-v4-prompts>*):not(.cw-v4-entries>*):not(:has(>#openai_api)),.cwr-card,.cwex-card) {border-color:transparent!important}
- html[data-cw-settings-unified] .cwr-confirm {padding:20px 18px 16px!important}
- html[data-cw-settings-unified] .cwr-confirm-actions>.cwr-btn {--cwus-button-h:40px}
+  html[data-cw-settings-unified] .cwr-confirm-actions>.cwr-btn {--cwus-button-h:40px}
  html[data-cw-settings-unified] .cw-v4-head {height:52px!important;padding:0 10px!important}
  html[data-cw-settings-unified] .cw-v4-title {font-size:17px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important}
 }
@@ -729,7 +713,6 @@ html[data-cw-settings-unified] #WorldInfo .cww-opts{margin-top:14px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-opts .cww-row{min-height:52px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-phone-only{display:none!important}
 html[data-cw-settings-unified] #WorldInfo #world_info_pagination{margin:12px 0 0!important}
-html[data-cw-settings-unified] #WorldInfo #world_info_pagination.cw-v4-single-page{display:none!important}
 html[data-cw-settings-unified] #WorldInfo textarea.cww-memo{flex:1 1 0!important;width:100%!important;min-width:0!important;border:0!important;border-bottom:1px solid transparent!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;font-size:19px!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;color:var(--cwus-ink)!important;padding:2px 0!important;margin:0!important;outline:0!important;resize:none!important;height:32px!important;min-height:32px!important;max-height:32px!important;line-height:27px!important;overflow:hidden!important;white-space:nowrap!important}
 html[data-cw-settings-unified] #WorldInfo .cww-seg{display:inline-flex!important;padding:3px!important;border-radius:10px!important;background:var(--cww-soft)!important;gap:2px!important;border:1px solid var(--cwus-soft)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-seg>button{border:0!important;background:transparent!important;padding:5px 11px!important;height:auto!important;min-height:0!important;border-radius:7px!important;font-size:13px!important;cursor:pointer!important;display:flex!important;align-items:center!important;gap:6px!important;color:var(--cww-muted2)!important;box-shadow:none!important;margin:0!important;width:auto!important}
@@ -737,7 +720,6 @@ html[data-cw-settings-unified] #WorldInfo .cww-seg>button[aria-pressed=true]{bac
 html[data-cw-settings-unified] #WorldInfo .cww-field{padding:12px 14px!important;display:block!important;min-width:0!important}
 html[data-cw-settings-unified] #WorldInfo .cww-field+.cww-field{border-top:1px solid var(--cwus-soft)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-lab{font-size:14px!important;margin:0 0 2px!important;color:var(--cwus-ink)!important}
-html[data-cw-settings-unified] #WorldInfo .cww-lab-row{display:flex!important;align-items:center!important;gap:10px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-lab-row select{width:auto!important;min-width:120px!important;height:32px!important;margin:0!important}
 html[data-cw-settings-unified] #WorldInfo .cww-grow{flex:1 1 0!important}
 html[data-cw-settings-unified] #WorldInfo .cww-hint{font-size:12.5px!important;color:var(--cwus-muted)!important;margin:0 0 8px!important}
@@ -757,11 +739,8 @@ html[data-cw-settings-unified] :is(#WorldInfo,.cww-big) .cww-tok .world_entry_fo
 html[data-cw-settings-unified] #WorldInfo .cww-num{text-align:left!important}
 html[data-cw-settings-unified] #WorldInfo .cww-inline{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important;min-width:0!important}
 html[data-cw-settings-unified] #WorldInfo .cww-inline .cww-num{width:72px!important;min-width:0!important;flex:none!important}
-html[data-cw-settings-unified] #WorldInfo .cww-unit{color:var(--cwus-muted)!important;font-size:13px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-mini{display:inline-flex!important;align-items:center!important;gap:4px!important;font-size:13px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-charfilter .select2-container{min-width:180px!important}
-html[data-cw-settings-unified] #WorldInfo .cww-adv{margin-top:0!important}
-html[data-cw-settings-unified] #WorldInfo .cww-set-row{min-height:52px!important;cursor:default!important}
 html[data-cw-settings-unified] #WorldInfo .cww-set-row .cw-v4-row-controls{flex-wrap:wrap!important;justify-content:flex-end!important}
 html[data-cw-settings-unified] #WorldInfo .cww-footbar{position:sticky!important;bottom:-40px!important;display:flex!important;justify-content:space-between!important;align-items:center!important;padding:12px 0 0!important;margin-top:18px!important;background:linear-gradient(to bottom,transparent,var(--cww-page,var(--cwus-surface)) 30%)!important;z-index:2!important}
 html[data-cw-settings-unified] #WorldInfo .cww-danger{color:var(--cww-warn)!important}
@@ -773,14 +752,11 @@ html[data-cw-settings-unified] #WorldInfo.cww-big-open{visibility:hidden!importa
 html[data-cw-settings-unified] #WorldInfo .cww-back{border-radius:0!important;font-weight:var(--cwus-normal-weight)!important;line-height:19px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-book-more>summary{width:45px!important;min-width:45px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-lab{line-height:normal!important}
-html[data-cw-settings-unified] #WorldInfo .cww-num{padding:0 10px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-row .cw-v4-row-info>p{text-overflow:ellipsis!important}
 html[data-cw-settings-unified] #WorldInfo .cww-v-home.cww-selecting{padding-bottom:80px!important}
-html[data-cw-settings-unified] .cww-big .cww-shrink{font-size:13.5px!important;padding:0 14px!important}
 html[data-cw-settings-unified] .cww-big .cww-bh{display:flex!important;align-items:center!important;gap:10px!important;padding:16px 22px 12px!important;border-bottom:1px solid var(--cwus-soft)!important;flex:none!important}
 html[data-cw-settings-unified] .cww-big .cww-bh-t{flex:1 1 0!important;min-width:0!important;font-weight:calc(600 + var(--cw-ui-weight-offset,0))!important;font-size:16px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:var(--cwus-ink)!important}
 html[data-cw-settings-unified] .cww-big .cww-shrink{height:32px!important;min-height:32px!important;display:inline-flex!important;align-items:center!important;gap:6px!important}
-html[data-cw-settings-unified] .cww-big .cww-shrink svg{width:15px!important;height:15px!important}
 html[data-cw-settings-unified] .cww-big .cww-tok{font-size:12.5px!important;color:var(--cwus-muted)!important;flex:none!important}
 html[data-cw-settings-unified] .cww-big>textarea{flex:1 1 0!important;width:100%!important;height:auto!important;max-height:none!important;min-height:0!important;border:0!important;border-radius:0!important;outline:0!important;resize:none!important;background:transparent!important;box-shadow:none!important;font-size:15px!important;line-height:1.8!important;color:var(--cwus-ink)!important;padding:16px 22px!important;margin:0!important}
 html[data-cw-settings-unified] .cww-big>.tt-codemirror-editor{flex:1 1 0!important;min-height:0!important}
@@ -969,7 +945,6 @@ html[data-cw-settings-unified] #WorldInfo .cww-kv{min-height:52px!important;padd
 html[data-cw-settings-unified] #WorldInfo .cww-k84{width:84px!important;flex:none!important;font-size:14.5px!important;color:var(--cwus-ink)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-kt{flex:1 1 0!important;min-width:0!important;flex-wrap:nowrap!important}
 html[data-cw-settings-unified] #WorldInfo .cww-kt>textarea{min-height:34px!important;height:34px!important;padding:6px 8px!important;border-radius:9px!important;background:var(--cwus-canvas)!important;resize:none!important}
-html[data-cw-settings-unified] #WorldInfo .cww-kt .select2-selection{min-height:34px!important;padding:3px 6px!important;border:1px solid var(--cwus-line)!important;border-radius:9px!important;background:var(--cwus-canvas)!important}
 html[data-cw-settings-unified] #WorldInfo .cww-kv>select{flex:none!important;width:auto!important;min-width:0!important;height:32px!important;min-height:32px!important;font-size:13px!important;padding-left:10px!important;border-radius:8px!important;margin:0!important}
 html[data-cw-settings-unified] #WorldInfo .cww-mini{font-size:0!important;line-height:0!important;color:var(--cww-muted2)!important;height:28px!important;min-height:28px!important;max-height:28px!important}
 html[data-cw-settings-unified] #WorldInfo .cww-mini::before{content:""!important;display:block!important;width:15px!important;height:15px!important;background:currentColor!important;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linejoin='round'%3E%3Cpath d='M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z'/%3E%3Cpath d='M18 16l.7 1.8 1.8.7-1.8.7L18 21l-.7-1.8-1.8-.7 1.8-.7z'/%3E%3C/svg%3E") center/15px 15px no-repeat!important;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linejoin='round'%3E%3Cpath d='M12 4l1.8 4.7L18.5 10.5l-4.7 1.8L12 17l-1.8-4.7L5.5 10.5l4.7-1.8z'/%3E%3Cpath d='M18 16l.7 1.8 1.8.7-1.8.7L18 21l-.7-1.8-1.8-.7 1.8-.7z'/%3E%3C/svg%3E") center/15px 15px no-repeat!important}
@@ -1036,7 +1011,6 @@ html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cw-v4-more-item.cw-v4-
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr{border:0!important;border-top:1px solid var(--cwus-soft)!important;margin:4px 2px!important;height:0!important}
 html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr:first-child,html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwr-pop-hr+.cwr-pop-hr{display:none!important}
 /* 手机专属菜单项（电脑外面已有多选、调整顺序） */
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-phone-item{display:none!important}
 /* 提示词行：序号 · 名字和第二行 · 小开关 · › */
 html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list>li.cw-v4-prompt-row{grid-template-columns:22px minmax(0,1fr) 42px 16px!important;column-gap:12px!important;align-items:center!important;min-height:58px!important;padding:10px 14px!important;cursor:pointer!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-prompt-row>.cw-pm-number{font-size:12px!important;font-variant-numeric:tabular-nums!important;color:var(--cwus-muted)!important}
@@ -1053,13 +1027,11 @@ html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list>l
 /* 列表末尾「＋ 新建提示词」：蓝字，序号位放 ＋；原生底部那排按钮收起 */
 html[data-cw-settings-unified] #left-nav-panel .cw-v4-pm-footer{display:none!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow{display:grid!important;grid-template-columns:22px minmax(0,1fr)!important;column-gap:12px!important;align-items:center!important;min-height:52px!important;padding:10px 14px!important;cursor:pointer!important;color:var(--cwus-blue)!important;background:var(--cwus-surface)!important;border:1px solid var(--cwus-soft)!important;border-top:1px solid var(--cwus-soft)!important;border-radius:0 0 14px 14px!important;margin-top:-1px!important;font-size:14.5px!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow[hidden]{display:none!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow:hover{background:var(--cwp-row-hover)!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow .cw-pm-add-ico{display:grid!important;place-items:center!important;color:var(--cwus-blue)!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow .cw-pm-add-ico svg{width:16px!important;height:16px!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-list:has(+ .cw-pm-addrow:not([hidden])) #completion_prompt_manager_list,html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list:has(+ .cw-pm-addrow:not([hidden])){border-bottom-left-radius:0!important;border-bottom-right-radius:0!important}
 /* 编辑一条：整页（原生弹窗藏起来，字段搬进来） */
-html.cwp-editing #completion_prompt_manager_popup{display:none!important}
 html[data-cw-settings-unified] #left-nav-panel.cwp-edit-open>:not(.cwp-edit){display:none!important}
 html[data-cw-settings-unified] #left-nav-panel .cwp-edit{display:block!important}
 html[data-cw-settings-unified] #left-nav-panel .cwp-edit .cww-back{display:inline-flex!important;align-items:center!important;gap:4px!important;border:0!important;background:transparent!important;color:var(--cwp-muted2)!important;padding:4px 6px 4px 0!important;margin:-6px 0 10px!important;height:auto!important;min-height:0!important;font-size:13.5px!important;box-shadow:none!important;border-radius:0!important}
@@ -1121,8 +1093,6 @@ html[data-cw-settings-unified] #left-nav-panel .cwp-foot .cww-primary{background
 html[data-cw-settings-unified] #left-nav-panel.cww-big-open{visibility:hidden!important}
 }
 @media(max-width:700px){@layer cw-settings-spec{
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-phone-item{display:flex!important}
-html[data-cw-settings-unified] #left-nav-panel hr.cw-pm-phone-item{display:block!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-tools>.cw-v4-button{display:none!important}
 html[data-cw-settings-unified] #left-nav-panel .cwr-preset-current{flex-wrap:wrap!important;row-gap:10px!important}
 html[data-cw-settings-unified] #left-nav-panel .cwr-preset-current>.cwr-entry-icon{display:none!important}
@@ -1209,21 +1179,13 @@ html[data-cw-settings-unified] #left-nav-panel .cw-pm-addrow .cw-pm-add-label{fo
 }
 /* 预设页 v2：调整顺序照稿子——提示条粗标题 + 灰字一行、黑色「完成」；把手换成稿子的六点图标（18px、灰）。 */
 @layer cw-settings-spec{
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-pm-reorder-hint{background:var(--cwp-soft,var(--cwus-soft))!important;font-size:13.5px!important;margin:0 0 16px!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-t{flex:1 1 0!important;min-width:0!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-t>b{display:block!important;font-size:13.5px!important;font-weight:600!important;color:var(--cwus-ink)!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-t>small{display:block!important;font-size:12.5px!important;color:var(--cwus-muted)!important;margin-top:2px!important}
-html[data-cw-settings-unified] #left-nav-panel .cw-pm-reorder-done{height:34px!important;min-height:34px!important;padding:0 14px!important;border-radius:9px!important;flex:none!important;background:var(--cwus-ink)!important;color:var(--cwus-canvas)!important;border-color:var(--cwus-ink)!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-v4-prompt-row>.drag-handle{width:18px!important;min-width:18px!important;height:18px!important;opacity:1!important;font-size:0!important;color:var(--cwus-muted)!important;background:currentColor!important;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='7' r='2.1'/%3E%3Ccircle cx='15' cy='7' r='2.1'/%3E%3Ccircle cx='9' cy='12' r='2.1'/%3E%3Ccircle cx='15' cy='12' r='2.1'/%3E%3Ccircle cx='9' cy='17' r='2.1'/%3E%3Ccircle cx='15' cy='17' r='2.1'/%3E%3C/svg%3E") center/18px 18px no-repeat!important;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='7' r='2.1'/%3E%3Ccircle cx='15' cy='7' r='2.1'/%3E%3Ccircle cx='9' cy='12' r='2.1'/%3E%3Ccircle cx='15' cy='12' r='2.1'/%3E%3Ccircle cx='9' cy='17' r='2.1'/%3E%3Ccircle cx='15' cy='17' r='2.1'/%3E%3C/svg%3E") center/18px 18px no-repeat!important;align-self:center!important}
 html[data-cw-settings-unified] #left-nav-panel .cw-pm-sort .cw-v4-prompt-row>.drag-handle::before{content:none!important;display:none!important}
 }
 /* 预设页 v2 复看 #2：多选浮条的「取消」是 ghost 按钮（无边框、透明底，悬停 soft）；手机稿没有取消。 */
 @layer cw-settings-spec{
-html[data-cw-settings-unified] .cw-pm-batch .cw-pm-batch-cancel{border-color:transparent!important;background:transparent!important;box-shadow:none!important}
-html[data-cw-settings-unified] .cw-pm-batch .cw-pm-batch-cancel:hover{background:var(--cwp-soft,var(--cwus-soft))!important}
 }
 @media(max-width:700px){@layer cw-settings-spec{
-html[data-cw-settings-unified] .cw-pm-batch .cw-pm-batch-cancel{display:none!important}
 }}
 /* 预设页 v2 复看 #4：编辑页 ⋯ 里灰掉的删除下面的说明。 */
 @layer cw-settings-spec{
