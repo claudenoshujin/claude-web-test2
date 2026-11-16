@@ -760,6 +760,9 @@ html[data-cw-settings-unified] .cww-big .cww-shrink{height:32px!important;min-he
 html[data-cw-settings-unified] .cww-big .cww-tok{font-size:12.5px!important;color:var(--cwus-muted)!important;flex:none!important}
 html[data-cw-settings-unified] .cww-big>textarea{flex:1 1 0!important;width:100%!important;height:auto!important;max-height:none!important;min-height:0!important;border:0!important;border-radius:0!important;outline:0!important;resize:none!important;background:transparent!important;box-shadow:none!important;font-size:15px!important;line-height:1.8!important;color:var(--cwus-ink)!important;padding:16px 22px!important;margin:0!important}
 html[data-cw-settings-unified] .cww-big>.tt-codemirror-editor{flex:1 1 0!important;min-height:0!important}
+/* Older TT can hide the native textarea before its CodeMirror wrapper is available. */
+html[data-cw-settings-unified] body.clawd-tauritavern-host #WorldInfo .cww-content-field>.cww-ctl:not(:has(>.tt-codemirror-editor))>textarea[name=content],
+html[data-cw-settings-unified] body.clawd-tauritavern-host .cww-big:not(:has(>.tt-codemirror-editor))>textarea[name=content]{display:block!important}
 }
 @media(max-width:700px){@layer cw-settings-spec{
 html[data-cw-settings-unified] #WorldInfo .cww-phone-only{display:block!important}
