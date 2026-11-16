@@ -65,7 +65,21 @@ export function createV2dPages(h) {
     const textHint=created(ps,make('p','cw2-tg-note',t(
       '换成 Ollama、OpenRouter、TabbyAPI 等类型时，它们各自要填的项（模型、密钥、勾选项）按同样的排法出现在左边卡片里。',
       'Services like Ollama, OpenRouter, and TabbyAPI show their own model, key, and toggle fields in the same card.')));
-    const paintApi=()=>{const v=main.value;workers.hidden=v!=='koboldhorde';textHint.hidden=v!=='textgenerationwebui';if(tgType)tgType.hidden=v!=='textgenerationwebui';card(apiSec)?.classList.toggle('cw2-tg',v==='textgenerationwebui');};
+    // 状态卡跟当前接口走（11-16）：状态文字和圆点是酒馆全局写的（displayOnlineStatus 改所有 .online_status_text），本来就跟随；
+    // 「连接」原生只接聊天补全，其他接口另放一个按钮，点击转发到该接口自己的原生连接按钮。AI Horde 原生没有连接按钮，
+    // 切到 Horde 时酒馆自动查状态（getStatusHorde），所以 Horde 下不显示「连接」。「发送测试消息」「OpenRouter 授权」只属于聊天补全。
+    // 「取消连接」是原生 .api_loading 的委托点击，对所有接口都有效，保留。
+    const NATIVE={kobold:'api_button',novel:'api_button_novel',textgenerationwebui:'api_button_textgenerationwebui'};
+    const conn=controls&&connect?created(ps,make('button','menu_button cw-v4-as-btn cw-v4-primary cw2-conn')):null;
+    if(conn){conn.type='button';conn.append(make('span','cw-v4-action-label',L('连接')));conn.addEventListener('click',()=>{const id=NATIVE[main.value];if(id)get(id)?.click();});connect.after(conn);}
+    const oaiOnly=[connect,test,...[...statusRow.querySelectorAll('.cw-v4-more-item')].filter(n=>/OpenRouter/.test(n.textContent))].filter(Boolean);
+    // 四种接口左卡底部的原生「连接 / 取消」和状态行：节点留在原位，只是不显示（文本补全那排还有 OpenRouter「授权」，只藏连接和取消）。
+    const nativeOff=[get('api_button')?.parentElement,get('api_button_novel')?.parentElement,get('api_button_textgenerationwebui'),get('api_button_textgenerationwebui')?.parentElement?.querySelector(':scope>.api_loading'),
+      ...['kobold_api','novel_api','textgenerationwebui_api','kobold_horde'].map(id=>get(id)?.querySelector('.online_status'))].filter(n=>n&&!statusRow.contains(n));
+    for(const n of nativeOff)mark(ps,n,'cw2-native-off');
+    const paintApi=()=>{const v=main.value;workers.hidden=v!=='koboldhorde';textHint.hidden=v!=='textgenerationwebui';if(tgType)tgType.hidden=v!=='textgenerationwebui';card(apiSec)?.classList.toggle('cw2-tg',v==='textgenerationwebui');
+      for(const n of oaiOnly)n.classList.toggle('cw2-apioff',v!=='openai');conn?.classList.toggle('cw2-apioff',!NATIVE[v]);};
+    cleanup(ps,()=>{for(const n of oaiOnly)n.classList.remove('cw2-apioff');});
     const $main=win.jQuery?.(main);if($main){$main.on('change.cw2v2f',paintApi);cleanup(ps,()=>{$main.off('change.cw2v2f');if(tgType)tgType.hidden=false;card(apiSec)?.classList.remove('cw2-tg');});}else{main.addEventListener('change',paintApi);cleanup(ps,()=>main.removeEventListener('change',paintApi));}
     paintApi();
     const hl=get('kobold_horde_block')?.querySelector(':scope>ul');
