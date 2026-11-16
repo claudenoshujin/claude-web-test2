@@ -416,7 +416,7 @@ hr {
   opacity:.58;
   transition:color 130ms ease, background 130ms ease, opacity 130ms ease, transform 130ms ease;
 }
-.mes[is_user="false"] .extraMesButtons > :is(.mes_copy,.mes_narrate,.mes_create_bookmark,.mes_create_branch) {
+.mes[is_user="false"] .extraMesButtons > .mes_copy, .mes[is_user="false"] .extraMesButtons > .mes_narrate, .mes[is_user="false"] .extraMesButtons > .mes_create_bookmark, .mes[is_user="false"] .extraMesButtons > .mes_create_branch {
   display:flex !important;
 }
 .mes[is_user="false"] .mes_copy {
@@ -441,7 +441,7 @@ hr {
 .mes[is_user="false"] .mes_create_branch::before {
   content:"" !important;
 }
-.mes[is_user="false"] :is(.mes_copy,.mes_narrate):hover {
+.mes[is_user="false"] .mes_copy:hover, .mes[is_user="false"] .mes_narrate:hover {
   color:var(--cw-text-body) !important;
   background:var(--cw-surface-hover) !important;
   opacity:1;
@@ -471,7 +471,7 @@ hr {
   width:0 !important;
   height:0 !important;
 }
-.mes[is_user="false"] .extraMesButtons > :is(.mes_create_bookmark,.mes_create_branch) {
+.mes[is_user="false"] .extraMesButtons > .mes_create_bookmark, .mes[is_user="false"] .extraMesButtons > .mes_create_branch {
   display:none !important;
   animation:none !important;
 }
@@ -499,17 +499,17 @@ hr {
 .mes[is_user="false"] .tokenCounterDisplay::before {
   content:"";
 }
-.mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay):hover {
+.mes[is_user="false"] .mes_timer:hover, .mes[is_user="false"] .tokenCounterDisplay:hover {
   background:var(--cw-surface-hover) !important;
 }
-.mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay):hover::before {
+.mes[is_user="false"] .mes_timer:hover::before, .mes[is_user="false"] .tokenCounterDisplay:hover::before {
   color:var(--cw-text-body);
   opacity:.9;
 }
-.mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay):active {
+.mes[is_user="false"] .mes_timer:active, .mes[is_user="false"] .tokenCounterDisplay:active {
   transform:scale(.88);
 }
-.mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay):active::before {
+.mes[is_user="false"] .mes_timer:active::before, .mes[is_user="false"] .tokenCounterDisplay:active::before {
   color:var(--cw-mark);
   font-weight:900;
   opacity:1;
@@ -545,7 +545,7 @@ hr {
   padding:0 !important;
   height:26px !important;
 }
-.mes[is_user="false"] .extraMesButtons > :is(.mes_copy,.mes_narrate) {
+.mes[is_user="false"] .extraMesButtons > .mes_copy, .mes[is_user="false"] .extraMesButtons > .mes_narrate {
   flex:0 0 26px !important;
   width:26px !important;
   height:26px !important;
@@ -578,7 +578,7 @@ hr {
 .mes[is_user="false"]:hover > .swipe_left {
   opacity:.2 !important;
 }
-.mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay) {
+.mes[is_user="false"] .mes_timer, .mes[is_user="false"] .tokenCounterDisplay {
   position:absolute !important;
   bottom:3px !important;
   z-index:10;
@@ -766,11 +766,11 @@ hr {
 .mes_text > :last-child {
   margin-bottom:0 !important;
 }
-.mes_text :is(h1,h2,h3) {
+.mes_text h1, .mes_text h2, .mes_text h3 {
   margin:1.18em 0 .48em;
   text-wrap:balance;
 }
-.mes_text :is(ul,ol) {
+.mes_text ul, .mes_text ol {
   margin:.55em 0 .88em;
   padding-left:1.45em;
 }
@@ -875,10 +875,10 @@ body.claude-generation-active #chat > .mes.last_mes[is_user="false"] .mes_text::
   line-height:1.28;
   text-shadow:none !important;
 }
-:is(.drawer-content,.popup,.popup-content) :is(h1,h2) {
+:is(.drawer-content,.popup,.popup-content) h1, :is(.drawer-content,.popup,.popup-content) h2 {
   font-size:1.08em !important;
 }
-:is(.drawer-content,.popup,.popup-content) :is(h3,h4,h5) {
+:is(.drawer-content,.popup,.popup-content) h3, :is(.drawer-content,.popup,.popup-content) h4, :is(.drawer-content,.popup,.popup-content) h5 {
   font-size:.94em !important;
 }
 :is(.drawer-content,.inline-drawer-content,.popup,.popup-content) :is(label,.settings_label,.range-block-title,.checkbox_label) {
@@ -986,7 +986,7 @@ body.claude-generation-active #chat > .mes.last_mes[is_user="false"] .mes_text::
 :is( .drawer-content, .inline-drawer-content, .popup, .popup-content, .options-content, #options, #extensionsMenu ) :is(button,.menu_button,.inline-drawer-toggle,.icon-button):active {
   transform:scale(.975);
 }
-:is( .drawer-content, .inline-drawer-content, .popup, .popup-content, .options-content, #options, #extensionsMenu ) :is(button,.menu_button,.inline-drawer-toggle,.icon-button) > :is(.fa-solid,.fa-regular,.fa-brands) {
+:is( .drawer-content, .inline-drawer-content, .popup, .popup-content, .options-content, #options, #extensionsMenu ) :is(button,.menu_button,.inline-drawer-toggle,.icon-button) > .fa-solid, :is( .drawer-content, .inline-drawer-content, .popup, .popup-content, .options-content, #options, #extensionsMenu ) :is(button,.menu_button,.inline-drawer-toggle,.icon-button) > .fa-regular, :is( .drawer-content, .inline-drawer-content, .popup, .popup-content, .options-content, #options, #extensionsMenu ) :is(button,.menu_button,.inline-drawer-toggle,.icon-button) > .fa-brands {
   width:15px !important;
   min-width:15px;
   color:var(--cw-text-muted) !important;
@@ -1013,7 +1013,7 @@ body.claude-generation-active #chat > .mes.last_mes[is_user="false"] .mes_text::
   color:var(--cw-text-body) !important;
   background:var(--cw-surface-input) !important;
 }
-:is(#options,.options-content,#extensionsMenu,.list-group) :is(a,.list-group-item,.option-item) :is(.fa-solid,.fa-regular,.fa-brands) {
+:is(#options,.options-content,#extensionsMenu,.list-group) :is(a,.list-group-item,.option-item) .fa-solid, :is(#options,.options-content,#extensionsMenu,.list-group) :is(a,.list-group-item,.option-item) .fa-regular, :is(#options,.options-content,#extensionsMenu,.list-group) :is(a,.list-group-item,.option-item) .fa-brands {
   width:16px !important;
   min-width:16px;
   color:var(--cw-text-muted) !important;
@@ -1021,7 +1021,7 @@ body.claude-generation-active #chat > .mes.last_mes[is_user="false"] .mes_text::
   line-height:1 !important;
   text-align:center;
 }
-:is( .character_select, .group_select, .select_chat_block, .world_entry, .persona_card, .preset_select ) {
+.character_select, .group_select, .select_chat_block, .world_entry, .persona_card, .preset_select {
   border:1px solid transparent !important;
   border-radius:var(--cw-radius-12) !important;
   background:transparent !important;
@@ -1029,24 +1029,24 @@ body.claude-generation-active #chat > .mes.last_mes[is_user="false"] .mes_text::
   font-family:var(--cl-sans) !important;
   transition:background 140ms ease,border-color 140ms ease,transform 140ms ease;
 }
-:is( .character_select, .group_select, .select_chat_block, .world_entry, .persona_card, .preset_select ):hover {
+.character_select:hover, .group_select:hover, .select_chat_block:hover, .world_entry:hover, .persona_card:hover, .preset_select:hover {
   background:var(--cw-surface-input) !important;
   border-color:color-mix(in srgb,var(--cw-rule-hairline) 78%,transparent) !important;
 }
-:is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) :is(.character_name,.group_name,.chat_name,.world_entry_name,.name) {
+:is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .character_name, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .group_name, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .chat_name, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .world_entry_name, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .name {
   color:var(--cw-text-body) !important;
   font-family:var(--cl-sans) !important;
   font-size:.92em !important;
   font-weight:550 !important;
   letter-spacing:-.008em;
 }
-:is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) :is(.character_description,.chat_mes,.chat_timestamp,.world_entry_content,.description) {
+:is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .character_description, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .chat_mes, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .chat_timestamp, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .world_entry_content, :is(.character_select,.group_select,.select_chat_block,.world_entry,.persona_card,.preset_select) .description {
   color:var(--cw-text-muted) !important;
   font-family:var(--cl-sans) !important;
   font-size:.78em !important;
   line-height:1.4;
 }
-:is(.settings-tabs,.tabs,.tab-bar) :is(.tab,.tab-button,.settings-tab) {
+:is(.settings-tabs,.tabs,.tab-bar) .tab, :is(.settings-tabs,.tabs,.tab-bar) .tab-button, :is(.settings-tabs,.tabs,.tab-bar) .settings-tab {
   color:var(--cw-text-muted) !important;
   background:transparent !important;
   border:0 !important;
@@ -1432,7 +1432,7 @@ body.clawd-interactive-ready #chat > .mes[is_user="false"] > .swipeRightBlock {
   font-weight:600 !important;
   letter-spacing:-.012em;
 }
-.welcomePanel :is(.showRecentChats,.recentChatsSettings,.hideRecentChats) {
+.welcomePanel .showRecentChats, .welcomePanel .recentChatsSettings, .welcomePanel .hideRecentChats {
   display:flex;
   align-items:center;
   justify-content:center;
@@ -1446,7 +1446,7 @@ body.clawd-interactive-ready #chat > .mes[is_user="false"] > .swipeRightBlock {
   font-size:var(--cl-fs-meta) !important;
   opacity:.64;
 }
-.welcomePanel :is(.showRecentChats,.recentChatsSettings,.hideRecentChats):hover {
+.welcomePanel .showRecentChats:hover, .welcomePanel .recentChatsSettings:hover, .welcomePanel .hideRecentChats:hover {
   color:var(--cw-text-body) !important;
   background:var(--cw-surface-input) !important;
   opacity:1;
@@ -1468,7 +1468,7 @@ body.clawd-interactive-ready #chat > .mes[is_user="false"] > .swipeRightBlock {
 .welcomePanel .welcomeShortcutsSeparator {
   display:none !important;
 }
-.welcomePanel .welcomeShortcuts :is(a,button) {
+.welcomePanel .welcomeShortcuts a, .welcomePanel .welcomeShortcuts button {
   min-height:30px !important;
   padding:5px 9px !important;
   color:var(--cw-text-muted) !important;
@@ -1480,7 +1480,7 @@ body.clawd-interactive-ready #chat > .mes[is_user="false"] > .swipeRightBlock {
   font-size:.78em !important;
   font-weight:500 !important;
 }
-.welcomePanel .welcomeShortcuts :is(a,button):hover {
+.welcomePanel .welcomeShortcuts a:hover, .welcomePanel .welcomeShortcuts button:hover {
   color:var(--cw-text-body) !important;
   background:var(--cw-surface-input) !important;
   border-color:var(--cw-rule-hairline) !important;
@@ -1627,7 +1627,7 @@ html body #chat > .mes[is_user="false"] .mes_block {
   margin-right:auto !important;
   box-sizing:border-box !important;
 }
-html body #chat > .mes[is_user="false"] :is(.mes_text, .mes_reasoning) {
+html body #chat > .mes[is_user="false"] .mes_text, html body #chat > .mes[is_user="false"] .mes_reasoning {
   width:100% !important;
   max-width:100% !important;
   min-width:0 !important;
@@ -1693,7 +1693,7 @@ html body :is(.menu_button, .inline-drawer-toggle, .icon-button, .drawer-icon).f
   line-height:1 !important;
   text-rendering:auto !important;
 }
-html body #top-settings-holder :is(.fa, .fas, .fa-solid), html body #top-settings-holder :is(.menu_button, .right_menu_button, .icon-button, .inline-drawer-toggle)[class*="fa-"] {
+html body #top-settings-holder .fa, html body #top-settings-holder .fas, html body #top-settings-holder .fa-solid, html body #top-settings-holder :is(.menu_button, .right_menu_button, .icon-button, .inline-drawer-toggle)[class*="fa-"] {
   font-family:"Font Awesome 6 Free" !important;
   font-style:normal !important;
   font-weight:900 !important;
@@ -1701,7 +1701,7 @@ html body #top-settings-holder :is(.fa, .fas, .fa-solid), html body #top-setting
   line-height:1 !important;
   text-rendering:auto !important;
 }
-html body #top-settings-holder :is(.far, .fa-regular) {
+html body #top-settings-holder .far, html body #top-settings-holder .fa-regular {
   font-family:"Font Awesome 6 Free" !important;
   font-style:normal !important;
   font-weight:400 !important;
@@ -1709,7 +1709,7 @@ html body #top-settings-holder :is(.far, .fa-regular) {
   line-height:1 !important;
   text-rendering:auto !important;
 }
-html body #top-settings-holder :is(.fab, .fa-brands) {
+html body #top-settings-holder .fab, html body #top-settings-holder .fa-brands {
   font-family:"Font Awesome 6 Brands" !important;
   font-style:normal !important;
   font-weight:400 !important;
@@ -1919,7 +1919,7 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
 .mes_reasoning_details[data-state="thinking"] .mes_reasoning::before, .mes_create_bookmark,.mes_create_branch {
   animation:none !important;
 }
-.mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay), .mes[is_user="false"] :is(.mes_timer,.tokenCounterDisplay)::before {
+.mes[is_user="false"] .mes_timer, .mes[is_user="false"] .tokenCounterDisplay, .mes[is_user="false"] .mes_timer::before, .mes[is_user="false"] .tokenCounterDisplay::before {
   transition:none !important;
 }
 .mes_reasoning_details .mes_reasoning_arrow, .mes_reasoning_details::details-content, .mes_reasoning_details[open] .mes_reasoning {
@@ -1930,7 +1930,7 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
 .mes_reasoning_details[open] .mes_reasoning_arrow {
   transform:rotate(90deg) !important;
 }
-:is( .inline-drawer-header, .character_select, .group_select, .select_chat_block, .world_entry, .persona_card, .preset_select ) {
+.inline-drawer-header, .character_select, .group_select, .select_chat_block, .world_entry, .persona_card, .preset_select {
   transition:none !important;
 }
 #top-bar .drawer-icon {
@@ -2025,7 +2025,7 @@ html body #chat > .mes, html body #chat > .mes .mes_block, html body #chat > .me
   box-sizing:border-box !important;
   overflow-wrap:anywhere;
 }
-html body #chat .mes_text :is(iframe, object, embed, img, video, canvas, svg, pre, table) {
+html body #chat .mes_text iframe, html body #chat .mes_text object, html body #chat .mes_text embed, html body #chat .mes_text img, html body #chat .mes_text video, html body #chat .mes_text canvas, html body #chat .mes_text svg, html body #chat .mes_text pre, html body #chat .mes_text table {
   max-width:100% !important;
   box-sizing:border-box !important;
 }
@@ -2257,11 +2257,14 @@ html:not([data-claude-archive="on"]) body #chat > .mes:has(.edit_textarea) .mes_
 :is(.drawer-content,.popup,.popup-content) .inline-drawer,
 :is(.drawer-content,.popup,.popup-content) .inline-drawer-content,
 #persona-management-block,
-#persona-management-block > :is(.persona_management_left_column,.persona_management_right_column),
+#persona-management-block > .persona_management_left_column,
+#persona-management-block > .persona_management_right_column,
 .persona_management_current_persona,
 .persona_management_global_settings,
 #completion_prompt_manager,
-#completion_prompt_manager_popup :is(.completion_prompt_manager_popup_entry,.completion_prompt_manager_popup_entry_form,.completion_prompt_manager_popup_entry_form_control) {
+#completion_prompt_manager_popup .completion_prompt_manager_popup_entry,
+#completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form,
+#completion_prompt_manager_popup .completion_prompt_manager_popup_entry_form_control {
   background:transparent !important;
   background-color:transparent !important;
   background-image:none !important;
@@ -2291,7 +2294,7 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
   pointer-events:none !important;
 }
 
-:is(.drawer-content,.popup,.popup-content) :is(.standoutHeader,.inline-drawer-header) {
+:is(.drawer-content,.popup,.popup-content) .standoutHeader, :is(.drawer-content,.popup,.popup-content) .inline-drawer-header {
   min-height:30px !important;
   margin:10px 0 8px !important;
   padding:6px 2px 7px !important;
@@ -2321,7 +2324,7 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
   border-bottom:1px solid color-mix(in srgb,var(--cw-rule-hairline) 52%,transparent) !important;
 }
 
-:is(.drawer-content,.popup,.popup-content) :is(.range-block,.range-block-title,.settings_block,.settings-section) {
+:is(.drawer-content,.popup,.popup-content) .range-block, :is(.drawer-content,.popup,.popup-content) .range-block-title, :is(.drawer-content,.popup,.popup-content) .settings_block, :is(.drawer-content,.popup,.popup-content) .settings-section {
   background:transparent !important;
   background-image:none !important;
   box-shadow:none !important;
@@ -2335,7 +2338,7 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
   box-shadow:none !important;
 }
 
-#persona-management-button :is(input[type="checkbox"],input[type="radio"]) {
+#persona-management-button input[type="checkbox"], #persona-management-button input[type="radio"] {
   accent-color:var(--cw-mark) !important;
 }
 
@@ -2356,7 +2359,7 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
   text-decoration-color:color-mix(in srgb,var(--cw-mark) 62%,transparent) !important;
 }
 
-:is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i]) :is(.active,.selected,[aria-selected="true"]) {
+:is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i]) .active, :is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i]) .selected, :is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i]) [aria-selected="true"] {
   color:var(--cw-text-body) !important;
   background:var(--cw-mark-field) !important;
   border-color:color-mix(in srgb,var(--cw-mark) 42%,var(--cw-rule-hairline)) !important;
@@ -2453,7 +2456,8 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
    无论它是链接还是普通 span，都必须在名称列里省略，不能把整行撑高后
    与下一条 sortable 项目发生视觉重叠。 */
 #completion_prompt_manager #completion_prompt_manager_list
-  .completion_prompt_manager_prompt_name > :is(a,span):not(.fa-solid):not(.fa-regular) {
+  .completion_prompt_manager_prompt_name > a:not(.fa-solid):not(.fa-regular), #completion_prompt_manager #completion_prompt_manager_list
+  .completion_prompt_manager_prompt_name > span:not(.fa-solid):not(.fa-regular) {
   display:block !important;
   min-width:0 !important;
   max-width:100% !important;
@@ -2512,11 +2516,11 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
 /* 原生把每行的断开、编辑、开关统一压到 opacity:.4。浅色背景上这会像整个
    列表被禁用；恢复为清晰的次级操作亮度，开启态再用强调色区分。 */
 :is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i])
-  .prompt_manager_prompt_controls > :is(
-    .prompt-manager-detach-action,
-    .prompt-manager-edit-action,
-    .prompt-manager-toggle-action
-  ) {
+  .prompt_manager_prompt_controls > .prompt-manager-detach-action,
+    :is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i])
+  .prompt_manager_prompt_controls > .prompt-manager-edit-action,
+    :is(#completion_prompt_manager,#completion_prompt_manager_popup,[id*="spreset" i],[class*="spreset" i])
+  .prompt_manager_prompt_controls > .prompt-manager-toggle-action {
   color:var(--cw-text-secondary,var(--cw-text-muted)) !important;
   opacity:.82 !important;
 }
@@ -2548,7 +2552,7 @@ html[data-claude-pm-open]:not(#claude-spec) body #form_sheld {
     min-width:68px !important;
   }
 
-  :is(.drawer-content,.popup,.popup-content) :is(.standoutHeader,.inline-drawer-header) {
+  :is(.drawer-content,.popup,.popup-content) .standoutHeader, :is(.drawer-content,.popup,.popup-content) .inline-drawer-header {
     margin-top:8px !important;
     font-size:.86em !important;
   }
@@ -2662,7 +2666,7 @@ html body #chat > .mes[type="assistant_message"] .mes_text > :not(.clawd-signoff
    Do not match every assistant message here: character-authored status/variable cards
    commonly use .flex-container for their own layout. Rewriting those containers caused
    narrow mobile cards to collapse into one-character-wide columns. */
-html body #chat > .mes.claude-welcome-clawd-assistant .mes_text > :is(.flex-container,.flex-container-centered) {
+html body #chat > .mes.claude-welcome-clawd-assistant .mes_text > .flex-container, html body #chat > .mes.claude-welcome-clawd-assistant .mes_text > .flex-container-centered {
   position:static !important;
   inset:auto !important;
   width:100% !important;
@@ -2673,7 +2677,10 @@ html body #chat > .mes.claude-welcome-clawd-assistant .mes_text > :is(.flex-cont
 }
 
 /* A welcome assistant must not inherit ordinary reply navigation or sign-off. */
-html body #chat > .mes[type="assistant_message"] > :is(.swipe_left,.swipeRightBlock,.claude-swipe-left-proxy,.claude-swipe-right-proxy),
+html body #chat > .mes[type="assistant_message"] > .swipe_left,
+html body #chat > .mes[type="assistant_message"] > .swipeRightBlock,
+html body #chat > .mes[type="assistant_message"] > .claude-swipe-left-proxy,
+html body #chat > .mes[type="assistant_message"] > .claude-swipe-right-proxy,
 html body #chat > .mes[type="assistant_message"] :is(.clawd-signoff-button,.claude-reroll-button) {
   display:none !important;
 }
@@ -2692,8 +2699,12 @@ html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt
 
 html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) > .mesAvatarWrapper,
 html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) .ch_name,
-html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) :is(.mes_buttons,.extraMesButtons),
-html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) > :is(.swipe_left,.swipeRightBlock,.claude-swipe-left-proxy,.claude-swipe-right-proxy),
+html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) .mes_buttons,
+html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) .extraMesButtons,
+html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) > .swipe_left,
+html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) > .swipeRightBlock,
+html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) > .claude-swipe-left-proxy,
+html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) > .claude-swipe-right-proxy,
 html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) :is(.clawd-signoff-button,.claude-reroll-button) {
   display:none !important;
 }
@@ -2721,7 +2732,7 @@ html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt
   box-sizing:border-box !important;
 }
 
-html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) .mes_text :is(.flex-container,.flex-container-centered) {
+html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) .mes_text .flex-container, html:not([data-claude-archive="on"]) body #chat > .mes:is(.claude-welcome-prompt,[type="welcome_prompt"]) .mes_text .flex-container-centered {
   position:static !important;
   inset:auto !important;
   display:flex !important;
@@ -2786,7 +2797,7 @@ html body #form_sheld {
 }
 
 @media (min-width:701px) {
-  html body #chat :is(.mes_text,.mes_reasoning) {
+  html body #chat .mes_text, html body #chat .mes_reasoning {
     /* 正文字号放大功能：接入酒馆原生"字体缩放"滑杆(#font_scale)写入的
        --fontScale。以前这个变量只被设进 root，没有任何规则消费它，
        导致滑杆对正文完全没有效果。 */
@@ -2800,7 +2811,7 @@ html body #form_sheld {
 }
 
 @media (max-width:700px) {
-  html body #chat :is(.mes_text,.mes_reasoning) {
+  html body #chat .mes_text, html body #chat .mes_reasoning {
     font-size:calc(var(--cl-mobile-font-size) * var(--fontScale, 1)) !important;
   }
 
@@ -3013,12 +3024,14 @@ body.clawd-interactive-ready #chat .typing_indicator.clawd-typing-native-suppres
 
 /* 6. 消息按钮 hover 才出现。触屏和窄屏保持常驻，否则没法点 */
 @media (hover:hover) and (pointer:fine) and (min-width:701px) {
-  html body #chat > .mes:not([is_user="true"]) :is(.mes_buttons,.extraMesButtons) {
+  html body #chat > .mes:not([is_user="true"]) .mes_buttons, html body #chat > .mes:not([is_user="true"]) .extraMesButtons {
     opacity:0;
     transition:opacity 140ms ease;
   }
-  html body #chat > .mes:not([is_user="true"]):hover :is(.mes_buttons,.extraMesButtons),
-  html body #chat > .mes:not([is_user="true"]):focus-within :is(.mes_buttons,.extraMesButtons) {
+  html body #chat > .mes:not([is_user="true"]):hover .mes_buttons,
+  html body #chat > .mes:not([is_user="true"]):hover .extraMesButtons,
+  html body #chat > .mes:not([is_user="true"]):focus-within .mes_buttons,
+  html body #chat > .mes:not([is_user="true"]):focus-within .extraMesButtons {
     opacity:1;
   }
 }
@@ -3381,7 +3394,9 @@ html body #chat .mes .mes_text pre:has(> .clawd-code-bar) { padding-top:0 !impor
     padding:10px 10px 12px !important;
   }
   html body #top-settings-holder > .drawer > .drawer-content
-    :is(.range-block,.checkbox_label,.settings_label) {
+    .range-block, html body #top-settings-holder > .drawer > .drawer-content
+    .checkbox_label, html body #top-settings-holder > .drawer > .drawer-content
+    .settings_label {
     margin-bottom:6px !important;
   }
   /* 用 break-word 不用 anywhere：anywhere 会把元素的最小内容宽度降到一个字符，
@@ -3546,7 +3561,7 @@ html body #chat .mes .mes_text pre:has(> .clawd-code-bar) { padding-top:0 !impor
     white-space:normal !important;
     opacity:.9;
   }
-  .clawd-rail-recents :is(.renameChatButton,.deleteChatButton,[class*="rename"],[class*="delete"],[class*="export"]) {
+  .clawd-rail-recents .renameChatButton, .clawd-rail-recents .deleteChatButton, .clawd-rail-recents [class*="rename"], .clawd-rail-recents [class*="delete"], .clawd-rail-recents [class*="export"] {
     position:absolute !important;
     top:5px !important;
     width:20px !important;
@@ -3561,13 +3576,17 @@ html body #chat .mes .mes_text pre:has(> .clawd-code-bar) { padding-top:0 !impor
     opacity:0;
     transition:opacity 120ms ease, color 120ms ease;
   }
-  .clawd-rail-recents :is([class*="rename"],.renameChatButton) { right:27px !important; }
-  .clawd-rail-recents :is([class*="delete"],.deleteChatButton) { right:5px !important; }
+  .clawd-rail-recents [class*="rename"], .clawd-rail-recents .renameChatButton { right:27px !important; }
+  .clawd-rail-recents [class*="delete"], .clawd-rail-recents .deleteChatButton { right:5px !important; }
   .clawd-rail-recents > :not(.clawd-rail-recents-label) > *:hover
-    :is(.renameChatButton,.deleteChatButton,[class*="rename"],[class*="delete"],[class*="export"]) {
+    .renameChatButton, .clawd-rail-recents > :not(.clawd-rail-recents-label) > *:hover
+    .deleteChatButton, .clawd-rail-recents > :not(.clawd-rail-recents-label) > *:hover
+    [class*="rename"], .clawd-rail-recents > :not(.clawd-rail-recents-label) > *:hover
+    [class*="delete"], .clawd-rail-recents > :not(.clawd-rail-recents-label) > *:hover
+    [class*="export"] {
     opacity:.72;
   }
-  .clawd-rail-recents :is(.renameChatButton,.deleteChatButton,[class*="rename"],[class*="delete"]):hover {
+  .clawd-rail-recents .renameChatButton:hover, .clawd-rail-recents .deleteChatButton:hover, .clawd-rail-recents [class*="rename"]:hover, .clawd-rail-recents [class*="delete"]:hover {
     opacity:1 !important;
     color:var(--cw-text-body) !important;
   }
@@ -4124,7 +4143,7 @@ html body.clawd-welcome #send_form > :not(#nonQRFormItems) { display:none !impor
     outline:2px solid var(--cw-mark) !important;
     outline-offset:2px !important;
   }
-  .clawd-welcome-shortcuts :is(button, a).menu_button > :is(.fa-solid,.fa-regular,.fa-brands){
+  .clawd-welcome-shortcuts :is(button, a).menu_button > .fa-solid, .clawd-welcome-shortcuts :is(button, a).menu_button > .fa-regular, .clawd-welcome-shortcuts :is(button, a).menu_button > .fa-brands{
     font-size:14px !important;
     color:var(--cw-text-muted) !important;
   }
@@ -4644,7 +4663,7 @@ html body #user-settings-block-content input[type="range"]::-moz-range-thumb {
   outline-offset:-2px !important;
   box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--cw-mark) 32%,transparent) !important;
 }
-:is(#options,#extensionsMenu) {
+#options, #extensionsMenu {
   border:1px solid var(--cw-rule-hairline) !important;
   border-radius:var(--cw-radius-16) !important;
   box-shadow:var(--cw-shadow-floating) !important;

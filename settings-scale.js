@@ -10,7 +10,7 @@ export function createSettingsScale({win, mobile, t}) {
   const clamp = v => Math.min(MAX, Math.max(MIN, Math.round(v * 100) / 100));
   const read = () => { try { const v = parseFloat(win.localStorage.getItem(KEY)); return Number.isFinite(v) ? clamp(v) : DEF; } catch { return DEF; } };
   const VARS = ['--cw-sz', '--cw-sz-w', '--cw-sz-h', '--cw-sz-x', '--cw-sz-y'];
-  let user = read(), applied = '', frame = 0, drag = null, destroyed = false;
+  let user = read(), applied = '', placed = '', frame = 0, drag = null, destroyed = false;
   // 屏幕放不下：比例取用户值和 (屏幕宽 − 48) ÷ 1420 里小的，但不低于 85%；到 85% 还放不下就让设计宽度变窄。
   function geometry(u) {
     const vw = win.innerWidth, vh = win.innerHeight, s = Math.max(MIN, Math.min(u, (vw - 48) / W));
@@ -29,7 +29,7 @@ export function createSettingsScale({win, mobile, t}) {
     if (!enabled && applied) {
       for (const key of VARS) root.style.removeProperty(key);
       root.removeAttribute('data-cw-sz');
-      applied = '';
+      applied = ''; placed = '';
     }
     // Keep the last geometry while closed. The open-state observer refreshes it before paint.
     if (!open()) { if (!edges.hidden) edges.hidden = true; return; }
@@ -38,15 +38,17 @@ export function createSettingsScale({win, mobile, t}) {
     const single = unified() && (mobile() || designWidth < 1206);
     if (root.hasAttribute('data-cw-sz-single') !== single) root.toggleAttribute('data-cw-sz-single', single);
     if (!enabled) { if (!edges.hidden) edges.hidden = true; return; }
-    const g = geometry(user), key = [g.s, g.w, g.h, g.left, g.top].map(n => n.toFixed(2)).join();
+    // 根节点只写比例，而且只在比例变了时写：根变量会被所有元素继承，每写一次全页重算。
+    // 设计宽高和 zoom 后坐标由 styles/settings-v2d.css 在外壳和面板自己身上用 100vw/100vh 算。
+    const g = geometry(user), key = String(g.s);
     if (key !== applied) {
       applied = key;
-      root.style.setProperty('--cw-sz', String(g.s));
-      root.style.setProperty('--cw-sz-w', g.w.toFixed(2) + 'px'); root.style.setProperty('--cw-sz-h', g.h.toFixed(2) + 'px');
-      root.style.setProperty('--cw-sz-x', (g.left / g.s).toFixed(2) + 'px'); root.style.setProperty('--cw-sz-y', (g.top / g.s).toFixed(2) + 'px');
+      root.style.setProperty('--cw-sz', key);
       if (!root.hasAttribute('data-cw-sz')) root.setAttribute('data-cw-sz', '');
-      place(edges, g);
     }
+    // 边缘层写的是它自己的内联样式，也只在几何真的变了时写。
+    const box = [g.left, g.top, g.w * g.s, g.h * g.s].map(n => n.toFixed(2)).join();
+    if (box !== placed) { placed = box; place(edges, g); }
     if (edges.hidden) edges.hidden = false;
   }
   const schedule = () => { if (open() && !frame) frame = win.requestAnimationFrame(apply); };
