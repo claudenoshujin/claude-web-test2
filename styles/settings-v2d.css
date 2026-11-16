@@ -5,12 +5,12 @@
 @layer cw-settings-v2d {
 
 /* ── G12 窗口：稿子按 1420×930 画 ── */
-/* 窗口尺寸只在这里定义（原来 settings-unified.css 也定义过一次，已删）。电脑端等比缩放时由 settings-scale.js 在根节点写 --cw-sz-*（设计尺寸和 zoom 后坐标）。 */
+/* 窗口尺寸只在这里定义（原来 settings-unified.css 也定义过一次，已删）。电脑端等比缩放时 settings-scale.js 只在根节点写比例 --cw-sz；设计尺寸和 zoom 后坐标 --cw-sz-w/h/x/y 由下面 zoom 那条规则在外壳和面板自己身上用视口单位算（zoom 元素里 vw/vh/px 都会再乘 zoom，所以除以比例），拉伸窗口时不再写根变量。 */
 html[data-cw-settings-unified] .cw-v4-shell, html[data-cw-settings-unified] .cw-v4-panel{--cwus-window-w:var(--cw-sz-w,min(1420px,calc(100vw - 48px)))!important;--cwus-window-h:var(--cw-sz-h,min(930px,calc(100dvh - 64px)))!important;--cwus-window-x:var(--cw-sz-x,calc((100vw - var(--cwus-window-w))/2))!important;--cwus-window-y:var(--cw-sz-y,calc((100dvh - var(--cwus-window-h))/2))!important}
 /* 等比缩放：外壳和所有设置页一起 zoom（字、间距、控件同比例）；只在电脑端、浏览器支持 zoom 时。
    窗口里打开的 CW 放大编辑弹窗不跟着缩（反向 zoom 回 100%）；原生弹窗、确认框挂在 body 上，本来就不缩。 */
 @supports (zoom:1){@media (min-width:701px){
- html[data-cw-settings-unified][data-cw-sz]:not([data-claude-layout="mobile"]) .cw-v4-shell, html[data-cw-settings-unified][data-cw-sz]:not([data-claude-layout="mobile"]) .cw-v4-panel{zoom:var(--cw-sz)!important}
+ html[data-cw-settings-unified][data-cw-sz]:not([data-claude-layout="mobile"]) .cw-v4-shell, html[data-cw-settings-unified][data-cw-sz]:not([data-claude-layout="mobile"]) .cw-v4-panel{zoom:var(--cw-sz)!important;--cw-sz-w:min(1420px,calc((100vw - 48px) / var(--cw-sz)));--cw-sz-h:min(930px,calc((100vh - 64px) / var(--cw-sz)));--cw-sz-x:calc((100vw / var(--cw-sz) - var(--cw-sz-w)) / 2);--cw-sz-y:calc((100vh / var(--cw-sz) - var(--cw-sz-h)) / 2)}
  html[data-cw-settings-unified][data-cw-sz]:not([data-claude-layout="mobile"]) .cw-v4-panel dialog.cw-v4-editor{zoom:calc(1 / var(--cw-sz))!important}
 }}
 
