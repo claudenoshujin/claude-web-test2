@@ -1234,3 +1234,116 @@ html[data-cw-settings-unified] .cwr-pop>.cw-v4-more-list>.cwp-more-note{padding:
 @layer cw-settings-spec{
 html[data-cw-settings-unified] #left-nav-panel #completion_prompt_manager_list .cw-v4-prompt-row .prompt-manager-injection-depth{display:none!important}
 }
+/* v2f（稿 界面优化与新功能-20261103/design-settings-layout-v2f-fable.html，方向三）：世界书条目页分组卡片、激活设置行式。 */
+@layer cw-settings-spec {
+html[data-cw-settings-unified] #WorldInfo .cww-e3 {display:grid!important;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr) minmax(0,1fr)!important;gap:0 26px!important;align-items:stretch!important}
+html[data-cw-settings-unified][data-cw-sz-single] #WorldInfo .cww-e3 {grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+html[data-cw-settings-unified][data-cw-sz-single] #WorldInfo .cww-e3>.cww-ecol-l {grid-column:1/-1!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol {min-width:0!important;display:flex!important;flex-direction:column!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-g {margin:12px 0 0!important;padding:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol>.cww-g:first-child,html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol>.cww-status:first-child {margin-top:14px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gcard {padding:0!important;margin:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gh {display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;min-height:42px!important;height:auto!important;padding:0 14px!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;font:inherit!important;color:var(--cwus-ink)!important;text-align:left!important;cursor:pointer!important;box-sizing:border-box!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gt {font-size:14px!important;font-weight:600!important;white-space:nowrap!important;flex:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gn {font-size:12px!important;font-weight:400!important;color:var(--cwus-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gx {flex:1 1 0!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gs {font-size:13px!important;color:var(--cwus-muted)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important;max-width:64%!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gs.cww-changed {color:var(--cwus-ink)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gh>svg {width:15px!important;height:15px!important;flex:none!important;color:var(--cwus-muted)!important;transition:transform .15s!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gh[aria-expanded=true]>svg {transform:rotate(180deg)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gh:focus-visible {outline:2px solid var(--cwus-blue)!important;outline-offset:-2px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb {background:var(--cwus-canvas)!important;border-top:1px solid var(--cwus-soft)!important;border-radius:0 0 13px 13px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb>.cww-r+.cww-r,html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb>.cww-subrow+.cww-r {border-top:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r {display:flex!important;align-items:center!important;gap:12px!important;min-height:40px!important;padding:0 14px!important;box-sizing:border-box!important;background:transparent!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r .cw-v4-row-title {font-size:14px!important;white-space:nowrap!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r .cw-v4-row-controls {flex:none!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:nowrap!important;gap:8px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r input.cww-num {width:62px!important;min-width:62px!important;max-width:62px!important;height:30px!important;min-height:30px!important;padding:0 6px!important;text-align:center!important;font-size:13.5px!important;background:var(--cwus-surface)!important;flex:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r select.cww-sel,html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r input.cww-text {width:150px!important;min-width:150px!important;max-width:150px!important;height:30px!important;min-height:30px!important;max-height:30px!important;font-size:13.5px!important;background-color:var(--cwus-surface)!important;border-radius:8px!important;flex:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r.cww-off .cw-v4-row-title {opacity:.45!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r.cww-off select.cww-sel {opacity:.5!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-subrow {padding-left:14px!important;padding-right:14px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rs {flex-direction:column!important;align-items:stretch!important;gap:7px!important;padding:10px 14px 12px!important;min-height:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rl {font-size:14px!important;line-height:1.3!important;color:var(--cwus-ink)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rl>small {font-size:12px!important;color:var(--cwus-muted)!important;margin-left:8px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc {display:flex!important;flex-direction:column!important;gap:8px!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pills {display:flex!important;flex-wrap:wrap!important;gap:5px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pk {height:27px!important;min-height:27px!important;padding:0 10px!important;font-size:12.5px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-fseg {align-self:flex-start!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-kv.cww-soft {opacity:.5!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l>.cww-content-sec {flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l>.cww-content-sec>.cww-ecard {flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l .cww-content-field {flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l .cww-content-field>.cww-ctl {flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l .cww-content-field>.cww-ctl>textarea[name=content] {flex:1 1 auto!important;min-height:200px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-etitle>.cww-done {flex:none!important;margin-left:8px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-footbar:empty {display:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-acols {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:0 36px!important;align-items:start!important}
+html[data-cw-settings-unified][data-cw-sz-single] #WorldInfo .cww-acols {display:block!important}
+html[data-cw-settings-unified] #WorldInfo .cww-acols .cww-arow input.cww-num {width:62px!important;min-width:62px!important;max-width:62px!important;text-align:center!important;padding:0 6px!important;flex:none!important}
+}
+@media(max-width:700px){@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo .cww-e3 {display:block!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r {min-height:44px!important;padding:0 12px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rs {padding:10px 12px 12px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gh {min-height:46px!important;padding:0 12px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-acols {display:block!important}
+}}
+/* v2f 收尾（Opus 11-15）：条目页左栏、内容卡、角色过滤、胶囊、开关对照稿子方向三。 */
+@layer cw-settings-spec {
+html[data-cw-settings-unified] #WorldInfo .cww-etitle {margin:0!important;min-height:36px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-etitle>.cww-et-h {margin:0!important;padding:0!important;font-size:20px!important;font-weight:600!important;line-height:1.3!important;color:var(--cwus-ink)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;min-width:0!important;flex:0 1 auto!important;border:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-etitle>.cww-et-n {margin-left:4px!important;font-size:12.5px!important;color:var(--cwus-muted)!important;white-space:nowrap!important;flex:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-set-row {padding:0 14px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-name-row,html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-st-row {min-height:40px!important;display:flex!important;flex-direction:row!important;align-items:center!important;gap:18px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-name-row>.cw-v4-row-title {flex:none!important;font-size:14px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-name-row>.cw-v4-row-controls {flex:1 1 0!important;min-width:0!important;display:flex!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-name-row textarea.cww-name {flex:1 1 0!important;width:100%!important;min-width:0!important;height:32px!important;min-height:32px!important;max-height:32px!important;padding:5px 10px!important;margin:0!important;line-height:20px!important;font-size:13.5px!important;border:1px solid var(--cwus-line)!important;border-radius:9px!important;background:var(--cwus-canvas)!important;color:var(--cwus-ink)!important;resize:none!important;overflow:hidden!important;white-space:nowrap!important;box-shadow:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-st-row>.cw-v4-row-info {flex:1 1 0!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-st-row>.cww-seg {display:inline-flex!important;width:auto!important;flex:none!important;padding:2px!important;border:0!important;border-radius:9px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-st-row>.cww-seg>button {height:28px!important;padding:0 12px!important;font-size:13px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-kvs {display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:7px!important;min-height:0!important;padding:9px 14px 11px!important;border-top:1px solid var(--cwus-soft)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvs>.cww-kvh {display:flex!important;align-items:center!important;gap:8px!important;min-height:20px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvh>.cww-kvl {font-size:14px!important;color:var(--cwus-ink)!important;line-height:20px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvh>.cww-mini {margin:-4px -6px -4px 0!important;width:28px!important;min-width:28px!important;flex:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvs>.cww-kvb {display:flex!important;align-items:flex-start!important;gap:8px!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvb>select.cww-kvsel {flex:none!important;width:132px!important;min-width:132px!important;max-width:132px!important;height:36px!important;min-height:36px!important;margin:0!important;font-size:13.5px!important;border-radius:9px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvb>.cww-kt {flex:1 1 0!important;min-width:0!important;order:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvb>.cww-kt>textarea {min-height:36px!important;height:36px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvb>.cww-kt .select2-selection {min-height:36px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-content-sec>.cww-sub-h {margin:14px 2px 7px!important;gap:10px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-content-sec>.cww-sub-h>.cww-tok {margin:0!important;font-size:12px!important;font-weight:400!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-content-sec>.cww-sub-h>.cww-expand {height:auto!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--cwus-blue)!important;font-size:12.5px!important;font-weight:400!important;gap:4px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-content-sec>.cww-sub-h>.cww-expand>svg {width:13px!important;height:13px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l>.cww-content-sec>.cww-ecard {padding:10px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l .cww-content-sec .cww-content-field {padding:0!important;margin:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l .cww-content-field>.cww-ctl>textarea[name=content] {min-height:120px!important;height:0!important;font-size:13.5px!important;line-height:1.6!important;padding:9px 12px!important;border-radius:9px!important;resize:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb input.cww-num {visibility:visible!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r.cww-off>.cw-v4-row-controls {opacity:.45!important;pointer-events:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-r.cww-off select.cww-sel {opacity:1!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-r>.cw-v4-row-controls>input.cww-sw,html[data-cw-settings-unified] #WorldInfo .cww-acols .cw-v4-row>.cw-v4-row-controls>input.cww-sw {width:34px!important;min-width:34px!important;max-width:34px!important;height:20px!important;min-height:20px!important;max-height:20px!important;padding:0!important;border-radius:999px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-r>.cw-v4-row-controls>input.cww-sw::before,html[data-cw-settings-unified] #WorldInfo .cww-acols .cw-v4-row>.cw-v4-row-controls>input.cww-sw::before {width:14px!important;height:14px!important;left:3px!important;top:3px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-r>.cw-v4-row-controls>input.cww-sw:checked,html[data-cw-settings-unified] #WorldInfo .cww-acols .cw-v4-row>.cw-v4-row-controls>input.cww-sw:checked {--cwus-switch-offset:14px!important;background:var(--cwus-blue)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-inl {display:flex!important;align-items:flex-start!important;gap:8px!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-inl>.cww-fseg {display:inline-flex!important;width:auto!important;flex:none!important;margin:0!important;height:36px!important;padding:2px!important;border:0!important;border-radius:9px!important;box-sizing:border-box!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-inl>.cww-fseg>button {height:auto!important;padding:0 10px!important;font-size:12.5px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-inl>.cww-cf {flex:1 1 0!important;min-width:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-cf .select2-selection--multiple {background:var(--cwus-surface)!important;min-height:36px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pk {background:var(--cwus-surface)!important;border:1px solid var(--cwus-line)!important;color:var(--cwus-ink)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pk::before {content:none!important;display:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rc .cww-pk[aria-pressed=true] {background:var(--cwus-ink)!important;border-color:var(--cwus-ink)!important;color:var(--cwus-canvas)!important}
+html[data-cw-settings-unified] #WorldInfo .cww-v-entry>.cww-back {padding-bottom:0!important;margin-bottom:6px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-gb .cww-rs {padding:9px 14px 11px!important}
+}
+@media(max-width:700px){@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo .cww-etitle>.cww-et-h,html[data-cw-settings-unified] #WorldInfo .cww-etitle>.cww-et-n {display:none!important}
+html[data-cw-settings-unified] #WorldInfo .cww-etitle {min-height:0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-set-row {padding:0 12px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-name-row,html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-st-row {min-height:44px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-status>.cww-kvs {padding:10px 12px 12px!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-kvb>.cww-kt {order:0!important;flex:1 1 0!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3 .cww-inl>.cww-fseg {display:inline-flex!important;width:auto!important}
+html[data-cw-settings-unified] #WorldInfo .cww-e3>.cww-ecol-l .cww-content-field>.cww-ctl>textarea[name=content] {min-height:86px!important;height:86px!important}
+}}
+@media(min-width:701px){@layer cw-settings-spec{
+html[data-cw-settings-unified] #WorldInfo[data-cww-view=entry] {padding-bottom:28px!important}
+}}
