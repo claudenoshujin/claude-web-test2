@@ -32,17 +32,24 @@ export function installDisplayState(win = window) {
 
   const paint = el => {
     const off = el.style?.display === 'none';
+    if (!off) marked.delete(el);
     if (off === el.hasAttribute(ATTR)) return;
     if (off) { el.setAttribute(ATTR, ''); marked.add(el); } else el.removeAttribute(ATTR);
   };
+  const unmark = el => { if (marked.delete(el)) el.removeAttribute(ATTR); };
   const paintChildren = box => { for (const child of box.children) paint(child); };
 
   const selfObserver = new win.MutationObserver(records => { for (const r of records) paint(r.target); });
   const containerChanged = records => {
     const boxes = new Set();
     for (const r of records) {
-      if (r.type === 'childList') boxes.add(r.target);
-      else if (containers.has(r.target.parentElement)) paint(r.target);
+      if (r.type === 'childList') {
+        if (!containers.has(r.target)) continue;
+        boxes.add(r.target);
+        for (const child of r.removedNodes) {
+          if (!containers.has(child.parentElement)) unmark(child);
+        }
+      } else if (containers.has(r.target.parentElement)) paint(r.target);
     }
     for (const box of boxes) paintChildren(box);
   };
@@ -69,7 +76,7 @@ export function installDisplayState(win = window) {
     const want = new Set(doc.querySelectorAll('#rightSendForm,.popup-controls'));
     for (const [box, mo] of containers) if (!want.has(box)) {
       mo.disconnect(); containers.delete(box);
-      for (const child of box.children) if (marked.has(child)) { child.removeAttribute(ATTR); marked.delete(child); }
+      for (const child of box.children) unmark(child);
     }
     for (const box of want) watchContainer(box);
   }
