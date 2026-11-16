@@ -29,6 +29,8 @@ export function createV2dPages(h) {
     const prof=created(ps,make('section','cw-v4-section cw2-prof')),profRow=make('div','cw2-prof-row');prof.append(make('h2','',L('连接配置')));
     {const c=make('div','cw-v4-card');c.append(profRow,make('p','cw2-prof-note',t('把接口、模型和预设存成一套，切换时一起换','Saves the API, model and preset together; switching swaps them all')));prof.append(c);}
     move(ps,profiles,profRow);move(ps,get('update_connection_profile'),profRow);
+    const profileDetails=get('connection_profile_details_content');
+    if(profileDetails)move(ps,profileDetails,card(prof));
     const pm=menu(ps,[['新建配置',get('create_connection_profile'),false,null,'plus'],['查看详情',get('view_connection_profile'),false,null,'eye'],['编辑',get('edit_connection_profile'),false,null,'pencil'],['重新载入',get('reload_connection_profile'),false,null,'refresh'],'-',['删除这个配置',get('delete_connection_profile'),true,null,'trash']]);
     pm.classList.add('cw2-sheet');pm.cw2Title=()=>profiles.selectedOptions?.[0]?.textContent||'';profRow.append(pm);
     hide(ps,profileSec);
