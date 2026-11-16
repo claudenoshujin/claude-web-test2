@@ -774,7 +774,9 @@ export function installOfficialLayout(win = window) {
   function enhance(panel) {
     if (panel.id === 'rm_api_block') {
       // The drawer adapter sizes these input rows during its first mount.
-      panel.querySelectorAll('#openai_api > form,#openai_api > [id$="_form"],#azure_openai_settings').forEach(form => {
+      // v2f: the other API types get the same title-over-control rows. Text Completion is wrapped per
+      // [data-tg-type] block, so ST's own per-server-type show/hide keeps working on those blocks.
+      panel.querySelectorAll('#openai_api > form,#openai_api > [id$="_form"],#azure_openai_settings,#kobold_horde_block,#kobold_api_block,#novel_api > form,#textgenerationwebui_api > form > [data-tg-type]').forEach(form => {
         if (formattedForms.has(form)) return;
         formattedForms.add(form);
         formSet.add(form);

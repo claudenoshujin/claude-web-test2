@@ -13,7 +13,9 @@ export function createV2dPages(h) {
   // 说明只占一行（G5），鼠标停上去看全文。
   const polish=root=>{for(const p of root.querySelectorAll('.cw-v4-row-info>p,.cw-v4-row-info>.cw-v4-row-desc'))if(!p.title&&p.textContent.trim())p.title=p.textContent.trim();};
 
-  /* 第 2 节 API 连接：标题行（配置下拉 / 保存 / ⋯）→ 连接状态通栏卡 → 两栏 1.5 : 1（接口与来源 | 连接选项 + 更多）。 */
+  /* 第 2 节 API 连接：标题行 → 连接状态通栏卡 → 两栏 1.5 : 1（接口与来源 | 连接配置 + 工作单元 + 连接选项 + 更多）。
+     v2f（稿 design-settings-layout-v2f-fable.html 的 C）：连接配置从标题行挪成右栏第一张卡（手机放在状态卡下面）；
+     AI Horde 的三个工作单元开关挪到右栏「工作单元」；文本补全的「服务类型」和「接口类型」并排。 */
   function api(panel){
     const ps=state(panel);if(ps.v2d)return;
     const page=panel.querySelector(':scope>.cw-v4-drawer-page'),connect=get('api_button_openai'),statusRow=connect?.closest('.cw-v4-row'),profiles=get('connection_profiles'),main=get('main_api');
@@ -22,11 +24,13 @@ export function createV2dPages(h) {
     ps.v2d=true;mark(ps,panel,'cw2','cw2-api');
     const profileSec=profiles.closest('.cw-v4-section'),apiSec=main.closest('.cw-v4-section'),connSec=statusRow.closest('.cw-v4-section'),source=get('openai_api');
     // A1/A2 标题行：标题 / 配置下拉 300 / 保存 / ⋯（新建进 ⋯ 第一项）/ 灰色说明。手机：内容区第一行，下拉占满。
-    const bar=created(ps,make('div','cw2-bar cw2-mbar'));bar.append(make('h2','',L('API 连接')));page.prepend(bar);
-    move(ps,profiles,bar);move(ps,get('update_connection_profile'),bar);
+    const bar=created(ps,make('div','cw2-bar'));bar.append(make('h2','',L('API 连接')));page.prepend(bar);
+    const phone=win.innerWidth<=700||doc.documentElement.dataset.claudeLayout==='mobile';
+    const prof=created(ps,make('section','cw-v4-section cw2-prof')),profRow=make('div','cw2-prof-row');prof.append(make('h2','',L('连接配置')));
+    {const c=make('div','cw-v4-card');c.append(profRow,make('p','cw2-prof-note',t('把接口、模型和预设存成一套，切换时一起换','Saves the API, model and preset together; switching swaps them all')));prof.append(c);}
+    move(ps,profiles,profRow);move(ps,get('update_connection_profile'),profRow);
     const pm=menu(ps,[['新建配置',get('create_connection_profile'),false,null,'plus'],['查看详情',get('view_connection_profile'),false,null,'eye'],['编辑',get('edit_connection_profile'),false,null,'pencil'],['重新载入',get('reload_connection_profile'),false,null,'refresh'],'-',['删除这个配置',get('delete_connection_profile'),true,null,'trash']]);
-    pm.classList.add('cw2-sheet');pm.cw2Title=()=>profiles.selectedOptions?.[0]?.textContent||'';bar.append(pm);
-    bar.append(make('span','cw2-note',t('连接配置：保存一整套接口、模型和预设','Connection profile: saves the API, model and preset together')));
+    pm.classList.add('cw2-sheet');pm.cw2Title=()=>profiles.selectedOptions?.[0]?.textContent||'';profRow.append(pm);
     hide(ps,profileSec);
     // A3 连接状态：通栏卡。右边 测试消息 / 连接（主按钮）/ ⋯；附加参数挪到「更多」。
     const stat=sec(ps,page,'','cw2-stat',bar.nextSibling);move(ps,statusRow,stat);
@@ -41,8 +45,24 @@ export function createV2dPages(h) {
     const statMenu=statusRow.querySelector('.cw-v4-more');if(statMenu)mark(ps,statMenu,'cw2-stat-more');
     // A4–A6 两栏。
     const [left,right]=cols(ps,page,stat.nextSibling,'cw2-w64 cw2-stretch');
+    if(phone)page.insertBefore(prof,stat.nextSibling);else right.append(prof);
     move(ps,apiSec,left);mark(ps,apiSec,'cw2-grow','cw2-src');relabel(ps,apiSec.querySelector(':scope>h2'),L('接口与来源'));
     mark(ps,main.closest('.cw-v4-row'),'cw2-main');
+    // AI Horde 的工作单元开关：原生在 #kobold_horde 里随接口类型显示；挪出来以后按接口类型自己藏。
+    const workers=sec(ps,right,'工作单元','cw2-workers');
+    // 原生文字带 data-i18n，节点一搬动酒馆的翻译会写回原文，所以藏起原文、旁边放自己的字。
+    const say=(n,text,tag='span')=>{if(!n)return;hide(ps,n);n.after(created(ps,make(tag,n.className||'',text)));};
+    for(const [id,zh,en] of [['horde_auto_adjust_context_length','按工作单元调整上下文长度','Adjust context to workers'],['horde_auto_adjust_response_length','按工作单元调整回复长度','Adjust response to workers'],['horde_trusted_workers_only','只用受信任的工作单元','Trusted workers only']]){const l=get(id)?.closest('label');if(l){move(ps,l,card(workers));mark(ps,l,'cw2-wk');mark(ps,get(id),'cw2-switch');say(get(id).nextElementSibling,t(zh,en));}}
+    for(const n of get('textgenerationwebui_api')?.querySelectorAll('input[type=checkbox]')||[])mark(ps,n,'cw2-switch');
+    // 文本补全的服务类型（#textgen_type 和它的标题）并到接口类型旁边；容器本身不带 data-tg-type，原生只靠外层 #textgenerationwebui_api 显隐。
+    const tgType=get('textgen_type')?.parentElement;
+    if(tgType&&tgType.parentElement?.closest('#textgenerationwebui_api')){mark(ps,tgType,'cw-v4-api-inline-row','cw2-tgtype');say(tgType.querySelector(':scope>h4'),t('服务类型','Server type'),'h4');move(ps,tgType,card(apiSec),main.closest('.cw-v4-row')?.nextSibling||null);}
+    const paintApi=()=>{const v=main.value;workers.hidden=v!=='koboldhorde';if(tgType)tgType.hidden=v!=='textgenerationwebui';card(apiSec)?.classList.toggle('cw2-tg',v==='textgenerationwebui');};
+    const $main=win.jQuery?.(main);if($main){$main.on('change.cw2v2f',paintApi);cleanup(ps,()=>{$main.off('change.cw2v2f');if(tgType)tgType.hidden=false;card(apiSec)?.classList.remove('cw2-tg');});}else{main.addEventListener('change',paintApi);cleanup(ps,()=>main.removeEventListener('change',paintApi));}
+    paintApi();
+    // Horde 那串说明链接：收成一行灰字加一排链接（只加类名，样式在 settings-v2d.css）。
+    const hl=get('kobold_horde_block')?.querySelector(':scope>ul');
+    if(hl){mark(ps,hl,'cw2-hlinks');for(const li of hl.children){mark(ps,li,'cw2-hl-li');for(const n of li.children)mark(ps,n,n.tagName==='A'?'cw2-hl-a':'cw2-hl-t');}}
     const opts=sec(ps,right,'连接选项','cw2-opts');
     const auto=get('auto-connect-checkbox')?.closest('.cw-v4-row');if(auto)move(ps,auto,opts);
     for(const id of ['openai_bypass_status_check','openai_show_external_models']){const r=get(id)?.closest('.cw-v4-mapped-setting');if(r){move(ps,r,opts);mark(ps,r,'cw2-cc');}}
