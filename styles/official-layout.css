@@ -3816,3 +3816,8 @@ html[data-cw-v4] body dialog.cwx-popup.cwx-popup{min-height:0!important}
  html[data-cw-v4] body #chat::-webkit-scrollbar-thumb{background:var(--cw-scrollbar,#d1cfc5)!important}
  html[data-cw-v4] body #chat::-webkit-scrollbar-thumb:hover{background:var(--cw-scrollbar-hover,#87867f)!important}
 }
+
+/* Formal 2.0.146: chat actions escape short cards without moving native action controls. */
+html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-more-list[data-cwx-chat-menu]{position:fixed!important;inset:auto!important;right:auto!important;margin:0!important;border:0!important;box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important}
+html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-more-list[popover]:not(:popover-open){display:none!important}
+html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-card:has(.cwx-more-menu[open]>.cwx-more-list[data-cwx-chat-menu]:not([popover])){overflow:visible!important;position:relative!important;z-index:21!important}
