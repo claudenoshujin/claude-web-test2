@@ -534,7 +534,7 @@ export function createWorldPage(h) {
     const kvRows=[...status.querySelectorAll(':scope>.cww-kv')];
     onStateChange=v=>{keyPlaceholder(t(...(KEY_PH[v]||KEY_PH.normal)));for(const r of kvRows)r.classList.toggle('cww-soft',v==='constant');};
     // 内容
-    const content=Q('content'),cm=content?.nextElementSibling?.matches('.tt-codemirror-editor')?content.nextElementSibling:null,counter=form.querySelector('.world_entry_form_token_counter');
+    const content=Q('content'),cm=contentEditor(content),counter=form.querySelector('.world_entry_form_token_counter');
     const expand=btn(t('放大','Expand'),()=>openBig(),'cwr-btn cww-btn-sm cww-expand',ICON.expand());
     const conSec=make('section','cw-v4-section cww-esec cww-content-sec'),con=card(conSec);conSec.prepend(secH(t('内容','Content'),'',expand));
     const cf=field(con,'',null,[content,cm].filter(Boolean),'cww-content-field');cf.querySelector('.cww-lab').remove();
@@ -686,6 +686,8 @@ export function createWorldPage(h) {
   }
   function closeEntry(){
     const es=ui?.editing;if(!es)return;closeBig();ui.editing=null;
+    const editor=contentEditor(es.content);
+    if(editor?.contains(doc.activeElement)||doc.activeElement===es.content)doc.activeElement.blur();
     // Select2 attaches its open results to the document, outside the entry.
     // Close them before moving their controls back to the native editor.
     for(const [node] of es.moves){
@@ -699,10 +701,16 @@ export function createWorldPage(h) {
     for(const n of es.iconToggles||[])n.classList.remove('cw-v4-icon-toggle');
     // Both helpers push to the same array in call order: undo it in reverse.
     for(const [node,mark]of es.moves.splice(0).reverse())if(mark.parentNode)mark.replaceWith(node);
+    // TT can mount the editor after openEntry has already moved the textarea.
+    if(editor&&editor!==es.cm&&es.content.isConnected)es.content.after(editor);
     for(const n of es.created)n.remove();
     ui.entryHost.replaceChildren();
     // Moved select2 companions are re-laid out by ST on next open; repaint the row.
     queue();
+  }
+  function contentEditor(content){
+    const sibling=content?.nextElementSibling;
+    return sibling?.matches('.tt-codemirror-editor')?sibling:null;
   }
   let cmModule=null;
   function measureCM(content){win.requestAnimationFrame(()=>{if(cmModule)cmModule.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();else import(new URL('/scripts/tauri/codemirror-editor.js',win.location.href).href).then(m=>{cmModule=m;m.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();}).catch(()=>{});});}
@@ -713,18 +721,23 @@ export function createWorldPage(h) {
     for(const type of ['click','mousedown','touchstart','pointerdown'])big.addEventListener(type,e=>e.stopPropagation());
     bh.append(btn(t('收起','Collapse'),()=>closeBig(),'cwr-btn cww-shrink',ICON.shrink()),title,tok);big.append(bh);
     const marks=[];const take=n=>{if(!n)return;const m=doc.createComment('cww-big-return');n.before(m);marks.push([n,m]);};
-    take(es.content);take(es.cm);take(es.counter);
-    big.append(es.content);if(es.cm)big.append(es.cm);if(es.counter){tok.append(es.counter);es.paintCounter();}else text(tok,t(`约 ${Math.round(es.content.value.length/1.6)} Token`,`~${Math.round(es.content.value.length/1.6)} tokens`));
+    const editor=contentEditor(es.content);
+    take(es.content);take(editor);take(es.counter);
+    big.append(es.content);if(editor)big.append(editor);if(es.counter){tok.append(es.counter);es.paintCounter();}else text(tok,t(`约 ${Math.round(es.content.value.length/1.6)} Token`,`~${Math.round(es.content.value.length/1.6)} tokens`));
     host.append(big);ui.big={big,marks};ui.panel.classList.add('cww-big-open');host.classList.add('cww-big-host');
     const esc=e=>{if(e.key==='Escape'&&!doc.querySelector('.select2-container--open')){e.preventDefault();e.stopImmediatePropagation();closeBig();}};win.addEventListener('keydown',esc,true);ui.big.esc=esc;
-    es.content.focus({preventScroll:true});if(es.cm)measureCM(es.content);
+    const target=editor?.querySelector('.cm-content[contenteditable="true"]')||es.content;
+    target.focus({preventScroll:true});if(editor)measureCM(es.content);
   }
   function closeBig(){
     const b=ui?.big;if(!b)return;ui.big=null;win.removeEventListener('keydown',b.esc,true);
+    const content=ui.editing?.content,editor=contentEditor(content);
+    const mountedInBig=editor&&!b.marks.some(([node])=>node===editor);
     for(const [n,m]of b.marks.reverse())if(m.parentNode)m.replaceWith(n);
+    if(mountedInBig&&content.isConnected)content.after(editor);
     ui.editing?.paintCounter?.();
     b.big.remove();ui.panel.classList.remove('cww-big-open');doc.getElementById('cw-v4-settings')?.classList.remove('cww-big-host');
-    if(ui.editing?.cm)measureCM(ui.editing.content);
+    if(editor)measureCM(content);
   }
 
   /* ---------- 激活设置：扫描（两列）、递归、匹配 ---------- */
