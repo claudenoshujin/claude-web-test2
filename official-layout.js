@@ -2066,7 +2066,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     shieldMaybeDown();
   }
   const pmEl = () => doc.getElementById('completion_prompt_manager_popup');
-  const sheetIsOpen = el => el.matches('dialog') ? el.open && !el.hasAttribute('closing') && !el.hasAttribute('data-cw-closing') : el.classList.contains('openDrawer');
+  const sheetIsOpen = el => el.matches('dialog') ? (el.open || el.hasAttribute('data-cw-sheet-yielded-native')) && !el.hasAttribute('closing') && !el.hasAttribute('data-cw-closing') : el.classList.contains('openDrawer');
   function animWindow() {
     root.setAttribute('data-cw-sheet-anim', '');
     win.clearTimeout(sheetAnimTimer);
@@ -2074,6 +2074,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   }
   function syncSheet() {
     if (destroyed) return;
+    syncMovedDialogWatch();
     const pm = pmEl();
     // 提示词编辑页：酒馆摘掉 openDrawer 后 200ms 就 display:none，比我们的下滑短；收起期间挂 data-cw-closing，CSS 让它多显示一会儿播完。
     // 341 预设页 v2：编辑改在面板里的 .cwp-edit 页（html.cwp-editing），原生弹窗只是藏着的数据源，不当底部弹出页处理，
@@ -2097,7 +2098,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     }
     let now = [];
     if (mobile() && enabled()) {
-      now = [...doc.querySelectorAll('dialog.cw-v4-editor[open],' + SHEET_POPUP + '[open]')];
+      now = [...doc.querySelectorAll('dialog.cw-v4-editor[open],' + SHEET_POPUP + '[open],dialog[data-cw-sheet-yielded-native]')];
       if (pmOpen) now.push(pm);
       now = now.filter(sheetIsOpen);
     }
@@ -2109,6 +2110,8 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     });
     for (const el of doc.querySelectorAll('[data-cw-sheet-under]')) if (!sheetStack.includes(el)) el.removeAttribute('data-cw-sheet-under');
     syncExternalSheetYield();
+    syncMovedDialogWatch();
+    if (enabled()) recoverDroppedSheets();
     const open = sheetStack.length > 0, deep = sheetStack.length > 1;
     if (open === root.hasAttribute('data-cw-sheet') && deep === root.hasAttribute('data-cw-sheet-deep')) return;
     animWindow();
@@ -2186,8 +2189,23 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
      · 点后面的页面不能有反应：弹出页底下垫一层透明的 .cw-sheet-shield（也是 popover，先于弹出页显示，所以在它下面）；
      · Escape 关弹窗：document 上接，给我们的弹窗走 shut()，给酒馆弹窗发 cancel 事件（酒馆自己决定能不能关）。
      老内核没有 popover、不是弹出页的对话框：照旧 showModal。CW 编辑窗在电脑上也用此路径，让第三方弹窗可接管交互。 */
+  // Formal 2.0.135/140/143/144/147: sheet top-layer recovery (native modal recovery, covered-sheet detection,
+  // bounded retries with native modal fallback, zero-size sheets, native modal yield, native sheet preference).
   const nativeShowModal = win.HTMLDialogElement.prototype.showModal;
+  const nativeClose = win.HTMLDialogElement.prototype.close;
   let shield = null;
+  let restoringSheetLayers = false, ownedShieldToggle = false, shieldRecoveryRaf = 0;
+  const sheetRecoveryWindows = new WeakMap();
+  let movedDialogMo = null, movedDialogWatching = false;
+  const MOVED_SHEETS = 'dialog[data-cw-lifted][open],dialog.cw-v4-editor[open],dialog.cw-st-sheet[open],dialog[data-cw-sheet-yielded-native]';
+  function syncMovedDialogWatch() {
+    if (!movedDialogMo) return;
+    const watch = !destroyed && enabled() && !!doc.querySelector(MOVED_SHEETS);
+    if (watch === movedDialogWatching) return;
+    movedDialogWatching = watch;
+    if (watch) movedDialogMo.observe(doc.body, {childList:true,subtree:true});
+    else movedDialogMo.disconnect();
+  }
   let externalModalOpen = false;
   const sheetAnimationChecks = new Map();
   function guardSheetAnimation(layer) {
@@ -2203,6 +2221,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
         layer.setAttribute('data-cw-animation-fallback', '');
         console.warn('[Claude Web] sheet entrance stayed outside viewport; skipped animation');
       }
+      recoverDroppedSheets();
     }, 1200));
   }
   const yieldedSheets = new Set();
@@ -2242,36 +2261,73 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     externalModalOpen = externalSheetModals.length > 0;
     syncExternalSheetYield();
   }
+  // Keep native modal pages logically open while their top-layer boundary is lowered.
+  // Only CW editors and phone popups decorated as CW sheets participate.
+  function restoreYieldedNative(d) {
+    d.removeAttribute('data-cw-sheet-yielded-native');
+    if (!d.isConnected) return;
+    try { if (!d.matches(':modal')) { d.removeAttribute('open'); nativeShowModal.call(d); } }
+    catch (error) {
+      d.setAttribute('open',''); d.close();
+      console.warn('[Claude Web] yielded native sheet restore failed', error);
+    }
+  }
   function syncExternalSheetYield() {
-    if (!canPopover || destroyed) return;
-    const ordered = openSheetLayers();
+    if (destroyed) return;
+    for (const d of yieldedSheets) if (!d.isConnected) { d.removeAttribute('data-cw-sheet-yielded'); d.removeAttribute('data-cw-sheet-yielded-native'); yieldedSheets.delete(d); }
+    const native = [...doc.querySelectorAll('dialog.cw-v4-editor:modal' + (mobile() ? ',dialog.cw-st-sheet:modal' : ''))];
+    const held = [...yieldedSheets].filter(d => d.hasAttribute('data-cw-sheet-yielded-native'));
+    const layers = new Set([...(canPopover ? openSheetLayers() : []), ...native, ...held]);
+    const ordered = [...new Set([...sheetStack.map(d => d === pmEl() ? pmHost : d).filter(d => layers.has(d)), ...layers])];
     if (externalModalOpen && enabled() && ordered.length) {
       const entering = !yieldedSheets.size;
       if (!root.hasAttribute('data-cw-sheet-yield')) root.setAttribute('data-cw-sheet-yield', '');
       for (const d of ordered) {
         yieldedSheets.add(d); if (!d.hasAttribute('data-cw-sheet-yielded')) d.setAttribute('data-cw-sheet-yielded', '');
-        try { if (d.matches(':popover-open')) d.hidePopover(); } catch {}
+        if (d.matches(':modal') && native.includes(d)) {
+          d.setAttribute('data-cw-sheet-yielded-native','');
+          d.removeAttribute('open');
+          // Chromium 138 may keep :modal/inert after open is removed. Clear its
+          // native boundary while suppressing only this queued pause-close event.
+          if (d.matches(':modal')) {
+            d.addEventListener('close', e => e.stopImmediatePropagation(), {capture:true, once:true});
+            d.setAttribute('open',''); nativeClose.call(d);
+          }
+        } else if (canPopover) { try { if (d.matches(':popover-open')) d.hidePopover(); } catch {} }
       }
       try { if (shield?.matches(':popover-open')) shield.hidePopover(); } catch {}
       if (entering && !yieldCheckRaf) yieldCheckRaf = win.requestAnimationFrame(checkYieldHitTargets);
       return;
     }
-    if (!yieldedSheets.size) return;
-    // Only restore still-open pages; a third-party modal may have closed its owner.
+    if (!yieldedSheets.size) { root.removeAttribute('data-cw-sheet-yield'); return; }
+    const restoreNative = [...yieldedSheets].filter(d => d.hasAttribute('data-cw-sheet-yielded-native'));
     for (const d of yieldedSheets) d.removeAttribute('data-cw-sheet-yielded');
     yieldedSheets.clear(); root.removeAttribute('data-cw-sheet-yield');
-    if (ordered.length && enabled()) restoreSheetLayers(ordered);
+    // Restore popovers first, native modal boundaries last, preserving their layer order.
+    const popovers = canPopover ? openSheetLayers() : [];
+    if (popovers.length && enabled()) restoreSheetLayers(popovers);
+    for (const d of restoreNative) restoreYieldedNative(d);
     shieldMaybeDown();
   }
   // CW editors need to yield to third-party Teleports on desktop too.
-  const liftable = d => canPopover && enabled() && (d.matches('dialog.cw-v4-editor') || (mobile() && d.matches(SHEET_POPUP)));
+  let preferNativeSheets = false;
+  const liftable = d => canPopover && !preferNativeSheets && enabled() && !doc.querySelector('dialog:modal') && (d.matches('dialog.cw-v4-editor') || (mobile() && d.matches(SHEET_POPUP)));
   function shieldUp() {
     if (!canPopover) return;
     if (!shield) {
       shield = make('div', 'cw-sheet-shield'); shield.setAttribute('popover', 'manual'); shield.setAttribute('aria-hidden', 'true');
+      // Recheck after an external caller raises the shield; the sheet belongs above it.
+      on(shield, 'beforetoggle', () => { ownedShieldToggle = restoringSheetLayers; });
+      on(shield, 'toggle', () => {
+        if (ownedShieldToggle) { ownedShieldToggle = false; return; }
+        if (restoringSheetLayers || shieldRecoveryRaf || !shield?.matches(':popover-open')) return;
+        shieldRecoveryRaf = win.requestAnimationFrame(() => { shieldRecoveryRaf = 0; if (!destroyed) recoverDroppedSheets(); });
+      });
       for (const type of ['click', 'pointerdown', 'mousedown', 'touchstart']) shield.addEventListener(type, e => {
-        if (!recoverDroppedSheets()) return;
-        e.preventDefault(); e.stopPropagation();
+        recoverDroppedSheets();
+        if (!externalModalOpen && (pmHost || doc.querySelector('dialog[data-cw-lifted][open]'))) {
+          e.preventDefault(); e.stopPropagation();
+        }
       }, {passive: false});
       doc.body.append(shield);
     }
@@ -2282,20 +2338,87 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     try { shield.hidePopover(); } catch {}
   }
   function recoverDroppedSheets() {
-    if (externalModalOpen) return false;
+    if (restoringSheetLayers || destroyed) return false;
+    // A native modal also leaves the top layer when its ancestor is moved.
+    // Recover it before checking external modals: an existing transparent
+    // modal is precisely what made this sheet use the native path.
+    let recoveredNative = false;
+    for (const d of doc.querySelectorAll('dialog.cw-v4-editor[open]:not([data-cw-lifted]),dialog.cw-st-sheet[open]:not([data-cw-lifted])')) {
+      if (d.hasAttribute('data-cw-sheet-yielded-native') || d.matches(':modal') || d.hasAttribute('closing') || d.hasAttribute('data-cw-closing')) continue;
+      try { d.removeAttribute('open'); nativeShowModal.call(d); recoveredNative = true; }
+      catch (error) {
+        console.warn('[Claude Web] native sheet recovery failed', error);
+        // Removing open above does not emit close. Restore the native lifecycle
+        // before closing so owners can return their content and clear flags.
+        d.setAttribute('open', ''); d.close();
+      }
+    }
+    if (!canPopover || externalModalOpen) return recoveredNative;
     const open = [...doc.querySelectorAll('dialog[data-cw-lifted][open]')];
     const dropped = open.filter(d => !d.matches(':popover-open'));
-    if (!dropped.length) { shieldMaybeDown(); return Boolean(pmHost || open.length); }
+    const ordered = openSheetLayers(), top = ordered.at(-1);
+    // A zero-size sheet cannot provide hit-test points. Close it through its
+    // native lifecycle so content returns and the shield cannot trap the page.
+    // Only CW's own sheets: host / extension dialogs may hide themselves on purpose.
+    if (top?.matches('dialog.cw-v4-editor:popover-open') && !sheetAnimationChecks.has(top)) {
+      const r = top.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) {
+        top.close();
+        shieldMaybeDown(); syncSheet();
+        console.warn('[Claude Web] zero-size sheet closed; content restored');
+        return true;
+      }
+    }
+    const covered = top?.matches(':popover-open') && !sheetAnimationChecks.has(top) && [[.5,.5],[.2,.2],[.8,.8]].some(([fx,fy]) => {
+      const r = top.getBoundingClientRect(), x = r.left + r.width * fx, y = r.top + r.height * fy;
+      if (x < 0 || x >= win.innerWidth || y < 0 || y >= win.innerHeight) return false;
+      const hits = doc.elementsFromPoint(x,y), pageIndex = hits.findIndex(el => el === top || top.contains(el));
+      // A noninteractive/transparent page does not occur in the hit stack at all.
+      return hits[0] === shield && pageIndex > 0;
+    });
+    if (!dropped.length && !covered) { shieldMaybeDown(); return recoveredNative; }
+    // Older Chromium may still put the shield first after a successful API
+    // reorder. Use the browser's native modal boundary instead of retrying.
+    const recentRecovery = top && sheetRecoveryWindows.get(top);
+    if (covered && top.matches('dialog') && recentRecovery?.count > 0 && win.performance.now() - recentRecovery.start < 2000) {
+      try {
+        top.hidePopover(); top.removeAttribute('popover'); top.removeAttribute('data-cw-lifted');
+        top.removeAttribute('open'); nativeShowModal.call(top);
+        preferNativeSheets = true;
+        sheetRecoveryWindows.delete(top); shieldMaybeDown();
+        console.warn('[Claude Web] shield order remained blocked; using native modal');
+        return true;
+      } catch (error) {
+        top.setAttribute('open',''); top.close(); shieldMaybeDown();
+        console.warn('[Claude Web] native modal fallback failed',error); return false;
+      }
+    }
     for (const d of dropped) console.warn('[Claude Web] sheet dropped from top layer', d.parentNode, new Date().toISOString());
     // Rebuild the order, including pages that are still in the top layer.
-    return restoreSheetLayers(openSheetLayers());
+    return restoreSheetLayers(ordered);
   }
   function restoreSheetLayers(ordered) {
+    if (restoringSheetLayers || !ordered.length) return false;
+    const top = ordered.at(-1), now = win.performance.now();
+    let budget = sheetRecoveryWindows.get(top);
+    if (!budget || now - budget.start >= 2000) { budget = {start:now, count:0, warned:false}; sheetRecoveryWindows.set(top,budget); }
+    if (budget.count >= 3) {
+      if (!budget.warned) { budget.warned = true; console.warn('[Claude Web] sheet recovery paused after 3 attempts in 2 seconds'); }
+      return false;
+    }
+    budget.count += 1;
+    restoringSheetLayers = true;
     try {
+      shieldUp();
       for (const d of ordered) if (d.matches(':popover-open')) d.hidePopover();
       if (shield.matches(':popover-open')) shield.hidePopover();
       shield.showPopover();
-      for (const d of ordered) { d.setAttribute('popover', 'manual'); d.showPopover(); guardSheetAnimation(d); }
+      for (const d of ordered) {
+        win.clearTimeout(sheetAnimationChecks.get(d)); sheetAnimationChecks.delete(d);
+        d.setAttribute('data-cw-animation-fallback', '');
+        d.setAttribute('popover', 'manual'); d.showPopover();
+      }
+      if (!shieldRecoveryRaf) shieldRecoveryRaf = win.requestAnimationFrame(() => { shieldRecoveryRaf = 0; if (!destroyed) recoverDroppedSheets(); });
       return true;
     } catch (error) {
       console.warn('[Claude Web] sheet recovery failed', error);
@@ -2304,7 +2427,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       }
       shieldMaybeDown(); syncSheet();
       return false;
-    }
+    } finally { restoringSheetLayers = false; }
   }
   function liftDialog(d) {
     d.removeAttribute('data-cw-animation-fallback');
@@ -2313,10 +2436,11 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     // 2.0.219：直接挂 open，不调 show()——show() 会自动把焦点给第一个按钮，而且不带 preventScroll；弹出页在 DOM 里还挂在设置面板里，
     // 面板就被滚到它那儿（Lulu：点扩展的设置，扩展页自己往下跳）。焦点由各自的代码给（我们的弹窗 focus({preventScroll})，酒馆的弹窗自己 setAutoFocus）。
     if (!d.open) d.setAttribute('open', '');
+    syncMovedDialogWatch();
     if (externalModalOpen) syncExternalSheetYield();
     else if (!d.matches(':popover-open')) {
       try { d.showPopover(); }
-      catch { d.close(); d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted'); shieldMaybeDown(); nativeShowModal.call(d); return; }
+      catch { d.close(); d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted'); shieldMaybeDown(); syncMovedDialogWatch(); nativeShowModal.call(d); return; }
     }
     guardSheetAnimation(d);
     // 酒馆在 close 事件里可能马上又 showModal() 一次（关闭被拦下时）：那时 d 还开着，就不撤 popover，等下一次 close。
@@ -2324,8 +2448,10 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       if (d.open) { d.addEventListener('close', onClose, {once: true}); return; }
       try { if (d.matches(':popover-open')) d.hidePopover(); } catch {}
       d.removeAttribute('popover'); d.removeAttribute('data-cw-lifted');
+      sheetRecoveryWindows.delete(d);
       win.clearTimeout(sheetAnimationChecks.get(d)); sheetAnimationChecks.delete(d); d.removeAttribute('data-cw-animation-fallback');
       shieldMaybeDown();
+      syncMovedDialogWatch();
     };
     d.addEventListener('close', onClose, {once: true});
   }
@@ -2372,7 +2498,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   }
   function watchSheets() {
     installLift();
-    disposers.push(() => { for (const timer of sheetAnimationChecks.values()) win.clearTimeout(timer); sheetAnimationChecks.clear(); doc.querySelectorAll('[data-cw-animation-fallback]').forEach(layer => layer.removeAttribute('data-cw-animation-fallback')); });
+    disposers.push(() => { if (shieldRecoveryRaf) win.cancelAnimationFrame(shieldRecoveryRaf); shieldRecoveryRaf = 0; for (const timer of sheetAnimationChecks.values()) win.clearTimeout(timer); sheetAnimationChecks.clear(); doc.querySelectorAll('[data-cw-animation-fallback]').forEach(layer => layer.removeAttribute('data-cw-animation-fallback')); });
     // The root is not a content scroller. Avoid fighting the keyboard's reveal;
     // reset only after focus leaves text controls or the visual viewport returns.
     let rootResetRaf = 0, keyboardViewportSmall = false, keyboardViewportFullHeight = win.visualViewport?.height || win.innerHeight;
@@ -2409,6 +2535,12 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     // 酒馆的 Popup 是 body 的直接子元素：只看 body 的直接子元素增删，再看这些 <dialog> 自己的 open / closing。
     const watched = new WeakSet();
     const dialogMo = new win.MutationObserver(syncSheet); observers.push(dialogMo);
+    // Moving an open dialog (or its parent) removes its popover from the top layer.
+    movedDialogMo = new win.MutationObserver(records => {
+      if (records.some(r => [...r.removedNodes].some(n => n.nodeType === 1 &&
+        (n.matches?.(MOVED_SHEETS) || n.querySelector?.(MOVED_SHEETS))))) syncSheet();
+    });
+    observers.push(movedDialogMo);
     const hook = () => { for (const d of doc.querySelectorAll('body>dialog.popup')) if (!watched.has(d)) { watched.add(d); dialogMo.observe(d, {attributes:true, attributeFilter:['open','closing','opening']}); } syncSheet(); };
     observe(doc.body, hook, {childList:true});
     const pm = pmEl();
@@ -2444,6 +2576,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   return { refresh: sync, activate, editLayout:openLayoutEditor, setExternalModals, destroy() {
     if (destroyed) return;
     destroyed = true;
+    for (const d of yieldedSheets) if (d.hasAttribute('data-cw-sheet-yielded-native')) restoreYieldedNative(d);
     observers.forEach(m=>m.disconnect());
     if (raf) win.cancelAnimationFrame(raf);
     // Native close events are queued. Restore inner editors before their parents.
