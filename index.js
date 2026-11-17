@@ -10916,6 +10916,8 @@ if (CLAUDE_ENABLED) {
 
     if (record.type === 'childList') {
       const nodes = [...record.addedNodes, ...record.removedNodes];
+      if (!target.closest('#chat') && nodes.length && nodes.every(node => node.nodeType === 3)) return false;
+      if (isThirdPartyInterior(target)) return false;
       if (nodes.length && nodes.every(nodeBelongsToClawd)) return false;
       /* Native generation events schedule one complete refresh at start/end.
          Token-by-token DOM replacement inside the active answer must stay on
@@ -10967,6 +10969,24 @@ if (CLAUDE_ENABLED) {
     return !!drawer && drawer !== node;
   }
 
+  // Formal 2.0.151: changes inside a third-party floating widget under <body> (智绘姬 and similar) neither
+  // open an external modal nor affect CW's decorated surfaces; do not rescan or refresh for them.
+  const HOST_TOP_LEVEL_SELECTOR='#sheld,#top-settings-holder,#top-bar,#movingDivs,#bg1,#bg_custom,#bg_animation,#character_popup,#preloader,#extensionsMenu,#options,#export_format_popup,#dialogue_popup,dialog,.popup,.drawer-content,.clawd-mobile-chrome,.cw-v4-shell,.cw-pm-host,[id^="claude-"],[class*="cw-"],[class*="clawd-"]';
+  function isThirdPartyInterior(target){
+    let top=target;while(top.parentElement&&top.parentElement!==hostDocument.body)top=top.parentElement;
+    return top.parentElement===hostDocument.body&&target!==top&&!top.matches(HOST_TOP_LEVEL_SELECTOR)&&!nodeBelongsToClawd(top);
+  }
+  function mutationTouchesExternalModal(record){
+    if(record.type!=='childList'||insideClosedDrawer(record))return false;
+    for(const node of [...record.addedNodes,...record.removedNodes]){
+      if(!(node instanceof hostWindow.Element))continue;
+      if(node.matches(EXTERNAL_MODAL_SELECTOR)||node.querySelector(EXTERNAL_MODAL_SELECTOR)||extraExternalModalCandidates.has(node))return true;
+      for(const registered of externalModalSources.keys())if(node===registered||node.contains(registered))return true;
+      for(const registered of extraExternalModalCandidates)if(node.contains(registered))return true;
+    }
+    return false;
+  }
+
   function handleObservedMutations(records) {
     syncNativeGeneration();
     if (hostDocument.documentElement.hasAttribute('data-cw-sheet') || hostDocument.querySelector('dialog.cw-v4-editor[open]')) for (const record of records) {
@@ -10980,10 +11000,7 @@ if (CLAUDE_ENABLED) {
        2.0.161：只在有元素增删时检查。候选弹窗自身的 class / style / open 变化由
        externalModalObserver 负责；纯属性变动（Clawd 动作、body 状态类）不会让弹窗出现或消失，
        以前每批都要强制一次样式和布局，点输入框弹键盘时就是这里在抢主线程。 */
-    if (records.some(record => record.type === 'childList' && !insideClosedDrawer(record)
-      && [...record.addedNodes, ...record.removedNodes].some(node => node.nodeType === 1))) {
-      scheduleExternalSurfaceIsolation();
-    }
+    if (records.some(mutationTouchesExternalModal)) scheduleExternalSurfaceIsolation();
     refreshStats.recordsSeen += records.length;
     trackDirtyMessages(records);
     ensureChatAttributeObserver();
