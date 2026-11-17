@@ -1344,6 +1344,7 @@ export function installOfficialLayout(win = window) {
       openSelMenu(t);
     }, {capture: true, passive: false});
     on(win, 'keydown', e => {
+      if(e.key==='Escape'&&drawerLayouts.closeCharacterExport()){e.preventDefault();e.stopImmediatePropagation();return;}
       if (!selMenu) {
         const a = doc.activeElement;
         if (selTarget(a) && (e.key === 'Enter' || e.key === ' ' || (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')))) { e.preventDefault(); e.stopImmediatePropagation(); openSelMenu(a); }

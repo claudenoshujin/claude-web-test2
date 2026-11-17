@@ -29,6 +29,34 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   let morePages=null,v2dPages=null;
   let promptScroll=null;
   const get=id=>doc.getElementById(id);
+  // The native export Popper references a parked (display:none) button. Keep
+  // its format actions, but anchor its existing popup to the visible control.
+  let exportSession=null,exportStyle=null;
+  function stopCharacterExport(close=false){
+    const session=exportSession;if(!session)return;exportSession=null;session.stop();
+    if(close&&win.getComputedStyle(session.popup).display!=='none')session.native.click();
+    session.popup.classList.remove('cw-v4-export-anchored');
+    session.popup.style.removeProperty('--cw-export-left');session.popup.style.removeProperty('--cw-export-top');
+  }
+  function openCharacterExport(anchor,native=get('export_button')){
+    if(!anchor||!native)return;
+    if(exportSession){stopCharacterExport(true);return;}
+    const rect=anchor.getBoundingClientRect(),popup=get('export_format_popup');if(!popup)return;
+    native.click();if(win.getComputedStyle(popup).display==='none')return;
+    if(!exportStyle){exportStyle=make('style','');exportStyle.textContent='.cw-v4-export-anchored{position:fixed!important;inset:auto!important;left:var(--cw-export-left)!important;top:var(--cw-export-top)!important;transform:none!important;margin:0!important;z-index:22030!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 16px)!important;overflow:auto!important}';doc.head.append(exportStyle);}
+    popup.classList.add('cw-v4-export-anchored');
+    const viewport=win.visualViewport,left=viewport?.offsetLeft||0,top=viewport?.offsetTop||0,width=viewport?.width||win.innerWidth,height=viewport?.height||win.innerHeight;
+    const size=popup.getBoundingClientRect(),x=Math.max(left+8,Math.min(left+width-size.width-8,rect.right-size.width));
+    const below=rect.bottom+6,y=below+size.height<=top+height-8?below:Math.max(top+8,rect.top-size.height-6);
+    popup.style.setProperty('--cw-export-left',x+'px');popup.style.setProperty('--cw-export-top',y+'px');
+    const outside=e=>{if(!popup.contains(e.target)&&!anchor.contains(e.target))stopCharacterExport(true);};
+    const dismiss=()=>stopCharacterExport(true),positions=new Map();
+    for(let n=anchor;n;n=n.parentElement)positions.set(n,[n.scrollLeft,n.scrollTop]);
+    const scroll=e=>{const target=e.target===doc?doc.scrollingElement:e.target,initial=positions.get(target);if(initial&&(target.scrollLeft!==initial[0]||target.scrollTop!==initial[1]))dismiss();};
+    const observer=new win.MutationObserver(()=>{if(win.getComputedStyle(popup).display==='none')stopCharacterExport();});observer.observe(popup,{attributes:true,attributeFilter:['style']});
+    doc.addEventListener('pointerdown',outside,true);doc.addEventListener('scroll',scroll,true);win.addEventListener('resize',dismiss);viewport?.addEventListener('resize',dismiss);viewport?.addEventListener('scroll',dismiss);
+    exportSession={popup,native,anchor,stop(){observer.disconnect();doc.removeEventListener('pointerdown',outside,true);doc.removeEventListener('scroll',scroll,true);win.removeEventListener('resize',dismiss);viewport?.removeEventListener('resize',dismiss);viewport?.removeEventListener('scroll',dismiss);}};
+  }
   function state(root){let s=states.get(root);if(!s){s={moves:[],created:[],root};states.set(root,s);}return s;}
   function sectionHost(host){
     if(!host.matches?.('.cw-v4-section'))return host;
@@ -527,7 +555,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         if(o.disabled)b.disabled=true;list.append(b);}};
     more.addEventListener('toggle',()=>{if(more.open)fill();});fill();
     const acts=pfSec(host,'','cw-v4-phone-manage');
-    for(const [label,fn] of [['复制',()=>get('dupe_button')?.click()],['导出',()=>get('export_button')?.click()]]){const b=pfBtn('cw-v4-pf-blue',fn);b.textContent=L(label);acts.append(b);}
+    for(const [label,fn] of [['复制',()=>get('dupe_button')?.click()],['导出',null]]){const b=pfBtn('cw-v4-pf-blue',()=>fn?fn():openCharacterExport(b));b.textContent=L(label);acts.append(b);}
     acts.append(more);
     // 删除单独一张卡片：垃圾桶 + 红字（照 Profile 的 Delete account）。
     pfDelete(host,'删除这个角色',()=>get('delete_button')?.click(),'cw-v4-phone-manage');
@@ -777,7 +805,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
         cleanup(s,()=>observer.disconnect());
       }
 
-      const more=menu(s,[['复制',null,false,()=>get('dupe_button')?.click(),'copy'],['导出',null,false,()=>get('export_button')?.click(),'exp']]);
+      const more=menu(s,[['复制',null,false,()=>get('dupe_button')?.click(),'copy'],['导出',null,false,()=>openCharacterExport(more.querySelector(':scope>summary')),'exp']]);
       const entries=more.querySelector('.cw-v4-more-list');
       const base=Array.from(entries.children);
       const optionIcons={replace_update:'refresh',convert_to_persona:'user',character_source:'ext',import_tags:'tag',show_char_gallery:'eye',set_as_assistant:'spark'};
@@ -1169,6 +1197,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       normalizeSettingsSections(panel,make);
       for(const f of paints)f();
     },
-    restore(){presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();presetEdit.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;const all=[...states.values()].reverse();for(const s of all){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}}for(const [node,mark] of all.flatMap(s=>s.moves).sort((a,b)=>(b[2]||0)-(a[2]||0)))if(mark.parentNode)mark.replaceWith(node);for(const s of all){s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
+    closeCharacterExport(){if(!exportSession)return false;const anchor=exportSession.anchor;stopCharacterExport(true);anchor.focus({preventScroll:true});return true;},
+    restore(){stopCharacterExport(true);exportStyle?.remove();exportStyle=null;presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();presetEdit.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;const all=[...states.values()].reverse();for(const s of all){s.cleanup?.();s.cleanups?.forEach(f=>f());s.gates?.forEach(stop=>stop());delete s.root.dataset.cwV4Sources;if(s.rest){for(const n of [...s.rest.childNodes])s.root.append(n);}}for(const [node,mark] of all.flatMap(s=>s.moves).sort((a,b)=>(b[2]||0)-(a[2]||0)))if(mark.parentNode)mark.replaceWith(node);for(const s of all){s.created.forEach(n=>n.remove());s.buttons?.forEach(n=>n.classList.remove('cw-v4-as-btn','cw-v4-primary'));s.mapped?.forEach(n=>n.classList.remove('cw-v4-mapped-setting','cw-v4-row','cw-v4-range'));s.iconToggles?.forEach(n=>n.classList.remove('cw-v4-icon-toggle'));s.root.classList.remove('cw-v4-reflow');if(s.root.classList.contains('cw-v4-extension-item')){s.root.classList.remove('cw-v4-extension-item');delete s.root.dataset.cwV4Extension;}}states.clear();},
   };
 }
