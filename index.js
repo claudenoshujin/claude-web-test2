@@ -484,7 +484,7 @@ const startOfficialLayout = () => {
   if (!CLAUDE_ENABLED) return;
   document.head.append(officialStyle);
   window.__claudeOfficialLayout?.destroy();
-  window.__claudeOfficialLayout = installOfficialLayout(window);
+  window.__claudeOfficialLayout = installOfficialLayout(window, { defaultChatWidth: CLAUDE_THEME.chat_width });
   // Fetch optional CJK faces after the initial page load, outside the layout stylesheets.
   loadOptionalChineseFonts();
 };

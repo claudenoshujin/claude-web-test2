@@ -1859,7 +1859,7 @@ html[data-cw-v4][data-claude-integrated-theme="night"] body :is(dialog,#cw-spec)
    框下面一行：左边免责声明，右边「角色 + 强度 ⌄」（index.js 的 .clawd-character-switcher，原来只在欢迎页）。欢迎页不动。 */
 @media(min-width:701px){
 html[data-cw-v4] body:not(.clawd-welcome) #form_sheld#form_sheld{padding-top:calc(8px + var(--cw-qr-h,0px))!important}
-html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form{max-width:min(847px,var(--cw-column,847px))!important;min-height:54px!important;padding:8px 10px!important;border-color:#dededd!important;border-radius:14px!important;box-shadow:0 4px 14px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03)!important}
+html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form{max-width:min(100%,var(--cw-column,847px))!important;min-height:54px!important;padding:8px 10px!important;border-color:#dededd!important;border-radius:14px!important;box-shadow:0 4px 14px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03)!important}
 html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar{position:absolute!important;left:0!important;right:0!important;top:auto!important;bottom:calc(100% + 8px)!important;z-index:1!important;display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:flex-end!important;align-content:flex-end!important;gap:6px!important;width:auto!important;height:auto!important;max-height:none!important;margin:0!important;padding:0 84px 0 76px!important;border:0!important;background:none!important;box-shadow:none!important;overflow:visible!important;pointer-events:none!important}
 html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar:empty{display:none!important}
 html[data-cw-v4] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar :is(.qr--buttons,.qr--buttons>div:not(.qr--button)):not(.qrq-hidden-by-plugin):not(:where(.mc3-hidden)):not(:where(.mc3-qr-content-collapsed)){display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:6px!important;margin:0!important;padding:0!important;width:auto!important;background:none!important;border:0!important}
@@ -2496,7 +2496,7 @@ html[data-cw-v4] body #top-settings-holder#top-settings-holder #rm_group_members
 html[data-cw-v4][data-claude-layout="pc"] body{--cl-pc-font-size:17.5px}
 html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="false"] .mes_text, html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="false"] .mes_reasoning{line-height:1.515!important}
 html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="false"] .mes_text p{margin:0 0 12.5px!important}
-html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes, html[data-cw-v4][data-claude-layout="pc"] body #chat>.typing_indicator{max-width:min(826px,100%)!important}
+html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes, html[data-cw-v4][data-claude-layout="pc"] body #chat>.typing_indicator{max-width:min(var(--cw-user-column,826px),100%)!important}
 html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="true"] .mes_text{background:#f0f0ef!important;border-radius:16px!important;padding:12.5px 18px!important;font-size:calc(15px * var(--fontScale,1))!important;line-height:1.4667!important}
 html[data-cw-v4][data-claude-layout="pc"][data-claude-integrated-theme="night"] body #chat>.mes[is_user="true"] .mes_text{background:#393937!important}
 html[data-cw-v4][data-claude-layout="pc"] body #chat>.mes[is_user="true"]+.mes[is_user="false"]{margin-top:18px!important}
@@ -3831,3 +3831,8 @@ html[data-cw-v4][data-cw-qr-auto-shrink] body:not(.clawd-welcome) #form_sheld #s
 /* Formal 2.0.148: plugin message actions stay visible next to the native ones; Menu Cleaner may still hide them. */
 html[data-cw-v4] body #chat .mes .mes_buttons>.mes_button:not(.mc3-hidden):not(.mes_bookmark):not(.mes_copy):not(.mes_narrate):not(.mes_edit):not(.extraMesButtonsHint){display:inline-flex!important;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;padding:0;margin:0;border:0;border-radius:8px;background:none;color:var(--v4-muted);font-size:16px;opacity:1}
 html[data-cw-v4] body #chat .mes_buttons .mc3-hidden{display:none!important}
+
+/* Formal 2.0.148/2.0.154: custom native chat width scales the desktop composer, welcome composer and title. */
+html[data-cw-v4][data-claude-layout="pc"] body{--cw-column:var(--cw-composer-column,847px)}
+html[data-cw-v4][data-claude-layout="pc"][data-cw-custom-width] .cw-v4-chat-head{max-width:var(--cw-title-column);margin-inline:auto}
+html[data-cw-v4][data-claude-layout="pc"][data-cw-custom-width] body.clawd-welcome #form_sheld #send_form#send_form{width:var(--cw-welcome-column)!important;max-width:min(var(--cw-welcome-column),calc(100vw - var(--cl-rail) - 48px))!important;margin-left:calc((100vw - var(--cl-rail) - min(var(--cw-welcome-column),100vw - var(--cl-rail) - 48px)) / 2)!important}

@@ -13,7 +13,7 @@ import { installDisplayState } from './display-state.js?v=2.0.345';
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
  */
-export function installOfficialLayout(win = window) {
+export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = {}) {
   const doc = win.document, root = doc.documentElement;
   root.setAttribute("data-cw-settings-unified", "");
   const ids = [
@@ -1192,6 +1192,34 @@ export function installOfficialLayout(win = window) {
   }
   disposers.push(()=>{for(const s of layoutStyles.values())s.remove();layoutStyles.clear();layoutBox?.closest('dialog')?._cwShut?.();});
 
+  // Formal 2.0.148/2.0.154: the desktop chat column follows the native chat width slider, scaled from CW defaults.
+  let chatWidthKey="";
+  function syncChatWidth() {
+    const value=Number(win.SillyTavern?.getContext?.().powerUserSettings?.chat_width);
+    const key=value+'|'+win.innerWidth+'|'+root.dataset.claudeLayout;
+    if(key===chatWidthKey)return;chatWidthKey=key;
+    const custom=Number.isFinite(value)&&value>0&&value!==Number(defaultChatWidth);
+    if(!custom){
+      for(const name of ['--cw-user-column','--cw-composer-column','--cw-welcome-column','--cw-title-column'])root.style.removeProperty(name);
+      root.removeAttribute('data-cw-custom-width');
+      return;
+    }
+    const ratio=Number.isFinite(value)&&value>0?value/Number(defaultChatWidth):1;
+    // Preserve each approved default: message 826, composer 847, welcome 706.
+    // The title spans its existing rail-to-window area and caps at that area.
+    for(const [name,base] of [['--cw-user-column',826],['--cw-composer-column',847],['--cw-welcome-column',706]]){
+      // Existing parent widths and CSS max-width retain their responsive gutters.
+      const next=`${base*ratio}px`;
+      if(root.style.getPropertyValue(name)!==next)root.style.setProperty(name,next);
+    }
+    const title=`min(calc(100vw - var(--cl-rail, 0px)), calc((100vw - var(--cl-rail, 0px)) * ${ratio}))`;
+    if(root.style.getPropertyValue('--cw-title-column')!==title)root.style.setProperty('--cw-title-column',title);
+    if(root.hasAttribute('data-cw-custom-width')!==custom)root.toggleAttribute('data-cw-custom-width',custom);
+  }
+  disposers.push(()=>{for(const name of ['--cw-user-column','--cw-composer-column','--cw-welcome-column','--cw-title-column'])root.style.removeProperty(name);root.removeAttribute('data-cw-custom-width');});
+  let chatWidthTimer=0;
+  function deferChatWidth(){win.clearTimeout(chatWidthTimer);chatWidthTimer=win.setTimeout(()=>{chatWidthTimer=0;syncChatWidth();},0);}
+  disposers.push(()=>win.clearTimeout(chatWidthTimer));
   // Formal 2.0.148: respect QR Assistant auto-shrink (it marks itself with a style tag).
   function syncQrAutoShrink() {
     const active=!!doc.getElementById('qrq-auto-shrink-style-tag');
@@ -1208,6 +1236,7 @@ export function installOfficialLayout(win = window) {
     raf = 0; if (destroyed) return;
     displayState.rescan();
     syncQrBar();
+    syncChatWidth();
     applyLayouts();
     syncComposerLines();
     root.toggleAttribute('data-cw-v4', enabled());
@@ -1295,8 +1324,10 @@ export function installOfficialLayout(win = window) {
     const chat = doc.getElementById('chat'); if (chat) observe(chat, schedule, {childList:true,subtree:true});
     // Typing only changes the filled state. syncChat() walks every assistant message and
     // reads layout, so it stays on the chat observer / schedule() path instead of every keystroke.
-    on(doc,'input', e => { if (e.target.id === 'send_textarea') setBodyClass('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
-    on(doc,'change', e => { if (e.target.id === 'ui_language_select') schedule(); });
+    on(doc,'input', e => { if (['chat_width_slider','chat_width_slider_counter'].includes(e.target.id)) deferChatWidth(); if (e.target.id === 'send_textarea') setBodyClass('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
+    on(doc,'change', e => { if (['chat_width_slider','chat_width_slider_counter'].includes(e.target.id)) deferChatWidth(); if (e.target.id === 'ui_language_select') schedule(); });
+    on(doc,'focusout', e=>{if(e.target.id==='chat_width_slider_counter')deferChatWidth();});
+    on(doc,'mouseup', e=>{if(e.target.id==='chat_width_slider_counter')deferChatWidth();});
     // Switching pages from the Claude sidebar: SillyTavern closes the open drawer, waits animation_duration, then
     // opens the new one, so for that wait the old page shows half-closed over the sidebar. Close it synchronously
     // first (same as activate()), so SillyTavern opens the new page in the same click.
