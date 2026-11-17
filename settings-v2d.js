@@ -71,7 +71,16 @@ export function createV2dPages(h) {
     // 「取消连接」是原生 .api_loading 的委托点击，对所有接口都有效，保留。
     const NATIVE={kobold:'api_button',novel:'api_button_novel',textgenerationwebui:'api_button_textgenerationwebui'};
     const conn=controls&&connect?created(ps,make('button','menu_button cw-v4-as-btn cw-v4-primary cw2-conn')):null;
-    if(conn){conn.type='button';conn.append(make('span','cw-v4-action-label',L('连接')));conn.addEventListener('click',()=>{const id=NATIVE[main.value];if(id)get(id)?.click();});connect.after(conn);}
+    if(conn){
+      conn.type='button';
+      conn.append(make('span','cw-v4-action-label',L('连接')));
+      conn.addEventListener('click',()=>{
+        const id=NATIVE[main.value],native=id&&get(id);
+        // The host sets this class in startStatusLoading and clears it after cancel or completion.
+        if(native&&!native.classList.contains('disabled'))native.click();
+      });
+      connect.after(conn);
+    }
     const oaiOnly=[connect,test,...[...statusRow.querySelectorAll('.cw-v4-more-item')].filter(n=>/OpenRouter/.test(n.textContent))].filter(Boolean);
     // 四种接口左卡底部的原生「连接 / 取消」和状态行：节点留在原位，只是不显示（文本补全那排还有 OpenRouter「授权」，只藏连接和取消）。
     const nativeOff=[get('api_button')?.parentElement,get('api_button_novel')?.parentElement,get('api_button_textgenerationwebui'),get('api_button_textgenerationwebui')?.parentElement?.querySelector(':scope>.api_loading'),
