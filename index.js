@@ -1155,13 +1155,56 @@ if (CLAUDE_ENABLED) {
   let foreignCss = [];
   try { const saved = JSON.parse(hostWindow.localStorage.getItem(FOREIGN_CSS_KEY) || '[]'); if (Array.isArray(saved)) foreignCss = saved.filter(x => typeof x === 'string').slice(-24); } catch { /* private storage */ }
   const WATCHDOG_KEY = '__claudeIntegratedThemeWatchdog';
-  const HOST_DELETE_MODE_STYLESHEET_SUFFIX = '/css/toggle-dependent.css';
-  const HOST_DELETE_MODE_SELECTOR_MARKS = [
-    'body.documentstyle',
-    '#chat',
-    '.last_mes:has(',
-    '.del_checkbox[style',
-    '.mes_text',
+  /* 要中和的 ST 核心高开销规则。每项：来源文件怎么认、选择器靠哪些稳定标记认，
+     以及（可选）删掉后换上的等价写法。replacement 放在 CW 自己的 <style> 里，
+     紧跟原样式表之后，CW 销毁时和原规则的恢复一起撤掉。 */
+  const HOST_REPLACEMENT_STYLE_ID = 'claude-host-rule-replacements';
+  const HOST_NEUTRALIZED_RULE_SPECS = [
+    {
+      /* css/toggle-dependent.css 的删除模式选择器，见 isHostNeutralizedRule 上方说明。 */
+      id: 'delete-mode',
+      matchesSource: pathname => pathname.endsWith('/css/toggle-dependent.css'),
+      marks: [
+        'body.documentstyle',
+        '#chat',
+        '.last_mes:has(',
+        '.del_checkbox[style',
+        '.mes_text',
+      ],
+    },
+    {
+      /* ST 核心 public/style.css（1.14 :502、1.18 :504）：
+           #chat:not([data-show-hidden-reasoning="true"]):not(:has(.reasoning_edit_textarea))
+             .mes:has(.mes_reasoning:empty) .mes_reasoning_details { display: none; }
+         以 #chat 为 :has 锚点，聊天区里任何增删（每段流式字）都让整个聊天区重算样式，
+         CW 每条消息元素多、每个元素匹配贵，被放大（iOS出字卡顿-20261117 测量：
+         Chromium 4× 30 楼每段约 47% 的主线程成本）。
+         只认 ST 核心那一份 style.css：扩展目录里也常有叫 style.css 的文件，不能碰。
+         换成只看当前这条消息的写法；和原规则唯一的差别是「聊天里别处在编辑推理时，
+         其他空推理不再跟着显示」，已接受。特异性同为 (1,6,0)。 */
+      id: 'chat-reasoning-has',
+      matchesSource: pathname => {
+        if (!pathname.endsWith('/style.css')) return false;
+        try { return pathname === new URL('style.css', hostDocument.baseURI).pathname; } catch { return false; }
+      },
+      marks: ['#chat', 'reasoning_edit_textarea', 'mes_reasoning_details', ':has('],
+      /* ST 1.19 上游已改成 #chat:not([…]) .mes_reasoning_details:not([data-has-content])
+         :not(:has(.reasoning_edit_textarea))，:has 挂在每条推理自己身上，四个标记它也全含，
+         但不贵，不能删。所以还要求 :has( 落在 #chat 自己那一段（第一个后代空格之前）。 */
+      test: selector => {
+        const text = selector.trim();
+        if (!text.startsWith('#chat')) return false;
+        let depth = 0;
+        for (let index = 0; index < text.length; index += 1) {
+          const char = text[index];
+          if (char === '(' || char === '[') depth += 1;
+          else if (char === ')' || char === ']') depth -= 1;
+          else if (depth === 0 && /[\s>+~,]/.test(char)) return text.slice(0, index).includes(':has(');
+        }
+        return false;
+      },
+      replacement: '#chat:not([data-show-hidden-reasoning="true"]) .mes:not(:has(.reasoning_edit_textarea)):has(.mes_reasoning:empty) .mes_reasoning_details { display: none; }',
+    },
   ];
   const INSTANCE_TOKEN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   let destroyed = false;
@@ -1467,18 +1510,23 @@ if (CLAUDE_ENABLED) {
      Keep the performance workaround, but only for SillyTavern's own
      css/toggle-dependent.css and only for the known delete-mode selector.
      CSSOM serialization may change quotes/spacing, so match stable structural
-     marks instead of the attribute value while still requiring the core URL. */
-  function isHostDeleteModeRule(rule, source) {
+     marks instead of the attribute value while still requiring the core URL.
+
+     测试线 345 之后（2026-11-17）判定扩成 HOST_NEUTRALIZED_RULE_SPECS 一张表（删除模式这一项行为不变），
+     删除、日志、恢复共用下面这一套。 */
+  function hostNeutralizedRuleSpec(rule, source) {
     let pathname = '';
-    try { pathname = new URL(source, hostDocument.baseURI).pathname; } catch { return false; }
-    if (!pathname.endsWith(HOST_DELETE_MODE_STYLESHEET_SUFFIX)) return false;
+    try { pathname = new URL(source, hostDocument.baseURI).pathname; } catch { return null; }
     const selector = typeof rule?.selectorText === 'string'
       ? rule.selectorText
       : (rule?.cssText || '').split('{')[0];
-    return HOST_DELETE_MODE_SELECTOR_MARKS.every(mark => selector.includes(mark));
+    if (!selector) return null;
+    return HOST_NEUTRALIZED_RULE_SPECS.find(spec => spec.matchesSource(pathname)
+      && spec.marks.every(mark => selector.includes(mark))
+      && (!spec.test || spec.test(selector))) || null;
   }
 
-  function collectStyleAttributeRules(parent, source, removed) {
+  function collectStyleAttributeRules(parent, source, removed, sheet = parent) {
     let rules;
     try { rules = parent.cssRules; } catch { return; }
     if (!rules) return;
@@ -1489,11 +1537,12 @@ if (CLAUDE_ENABLED) {
          property's existence therefore misclassified every normal selector
          as a grouping rule and skipped it in 2.0.59/2.0.60. Test the selector
          before descending, and recurse only when child rules actually exist. */
-      if (isHostDeleteModeRule(rule, source)) {
+      const spec = hostNeutralizedRuleSpec(rule, source);
+      if (spec) {
         const cssText = rule.cssText;
         try {
           parent.deleteRule(index);
-          removed.push({ parent, index, cssText, source });
+          removed.push({ parent, index, cssText, source, spec, sheet });
         } catch {
           // A read-only sheet is harmless; leave it intact and continue.
         }
@@ -1502,8 +1551,28 @@ if (CLAUDE_ENABLED) {
       let childRules = null;
       try { childRules = rule.cssRules; } catch { childRules = null; }
       if (childRules?.length) {
-        collectStyleAttributeRules(rule, source, removed);
+        collectStyleAttributeRules(rule, source, removed, sheet);
       }
+    }
+  }
+
+  /* 替代写法单独放一个 CW 的 <style>，插在原样式表节点后面，层叠位置和原规则基本一致
+     （之后的主题 / 扩展 / 自定义 CSS 仍然能覆盖它）。按 id 复用，反复中和不会重复插。 */
+  function syncHostRuleReplacements() {
+    const entries = neutralizedHostRules.filter(entry => entry.spec?.replacement);
+    let node = hostDocument.getElementById(HOST_REPLACEMENT_STYLE_ID);
+    if (!entries.length) { node?.remove(); return; }
+    const text = [...new Set(entries.map(entry => entry.spec.replacement))].join('\n');
+    if (!node) {
+      node = hostDocument.createElement('style');
+      node.id = HOST_REPLACEMENT_STYLE_ID;
+    }
+    if (node.textContent !== text) node.textContent = text;
+    const anchor = entries[0].sheet?.ownerNode;
+    if (anchor?.isConnected && anchor.parentNode) {
+      if (anchor.nextSibling !== node) anchor.after(node);
+    } else if (!node.isConnected) {
+      hostDocument.head.append(node);
     }
   }
 
@@ -1514,9 +1583,13 @@ if (CLAUDE_ENABLED) {
     }
     if (!removed.length) return 0;
     neutralizedHostRules.push(...removed);
+    syncHostRuleReplacements();
+    /* 聊天消息数一并记下：Chromium 对 #chat 的「受 :has 影响」标记是粘着的，
+       聊天渲染过之后再删 chat-reasoning-has 那条，同一页里不生效，要刷新。 */
     console.info(
-      '[Claude Web] 已中和 ' + removed.length + ' 条 ST 核心删除模式高开销选择器：',
-      removed.map(entry => ({ source: entry.source, rule: entry.cssText })),
+      '[Claude Web] 已中和 ' + removed.length + ' 条 ST 核心高开销选择器：',
+      removed.map(entry => ({ id: entry.spec.id, source: entry.source, rule: entry.cssText })),
+      { chatMessages: hostDocument.querySelectorAll('#chat > .mes').length },
     );
     return removed.length;
   }
@@ -1526,6 +1599,7 @@ if (CLAUDE_ENABLED) {
       try { entry.parent.insertRule(entry.cssText, entry.index); } catch { /* detached/read-only sheet */ }
     }
     neutralizedHostRules = [];
+    hostDocument.getElementById(HOST_REPLACEMENT_STYLE_ID)?.remove();
   }
 
   function valuesMatch(left, right) {
