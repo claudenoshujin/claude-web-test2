@@ -3785,3 +3785,16 @@ html[data-cw-v4] body.documentstyle #chat#chat>.mes[is_user=true] .mes_text{back
   html[data-cw-v4] body.bubblechat #chat#chat>.mes[is_user=false] .mes_block{padding:16px 18px!important;max-width:100%!important}
   html[data-cw-v4] body.documentstyle #chat#chat>.mes[is_user=false] .mes_block{padding:20px!important}
 }
+
+/* 智绘姬旧版按 API 按钮高度定位；带滚动按钮的新版已自行对齐顶栏。 */
+html[data-cw-v4][data-claude-layout="mobile"]:not([data-claude-mode="compat"]) #st-chatu8-settings #ch-settings-modal > .st-chatu8-modal-content:not(:has(> .st-chatu8-settings-layout > #ch-scroll-top)) {
+  --cw-chatu8-top: max(calc(54px + env(safe-area-inset-top, 0px)), var(--cl-mobile-top, 0px));
+  align-self: start;
+  margin-top: var(--cw-chatu8-top) !important;
+  max-height: max(0px, calc(
+    min(var(--cl-mobile-viewport-height, 100dvh), 100dvh - env(keyboard-inset-height, 0px))
+    - var(--cw-chatu8-top)
+    - var(--cl-mobile-composer-height, calc(132px + env(safe-area-inset-bottom, 0px)))
+    - max(10px, env(safe-area-inset-bottom, 0px)) - 5px
+  )) !important;
+}
