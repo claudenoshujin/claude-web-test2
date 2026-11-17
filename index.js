@@ -1,3 +1,4 @@
+import { parseRecentTime } from './recent-time.js?v=2.0.345';
 import { officialIcons as recentBadgeIcons } from './official-icons.js?v=2.0.345';
 import { installRecentFavorites } from './recent-favorites.js?v=2.0.345';
 import { preferencesFor } from './preferences.js?v=2.0.345';
@@ -8015,14 +8016,16 @@ if (CLAUDE_ENABLED) {
        表现出来就是"发了消息侧栏完全没反应"——其实数据是新的，只是排错了位置。
        解析成时间戳再比。"11:36am" 中间没空格，Date.parse 认不出来，先补一个。
        解析不出来的记 0 排到最后，并退回字符串比较做兜底，保证顺序稳定。 */
-    const timeOf = value => {
-      const text = String(value ?? '').replace(/(\d)\s*(am|pm)\b/i, '$1 $2');
-      const parsed = Date.parse(text);
-      return Number.isFinite(parsed) ? parsed : 0;
+    // Formal 2.0.155: one timestamp policy (recent-time.js) also reads numeric last_mes; unparsable dates sort last.
+    const timeOf = parseRecentTime;
+    const compareAge = (a, b) => {
+      const left = timeOf(a.dateText), right = timeOf(b.dateText);
+      if (left === null || right === null) return left === right ? 0 : left === null ? 1 : -1;
+      return right - left;
     };
     entries.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      const diff = timeOf(b.dateText) - timeOf(a.dateText);
+      const diff = compareAge(a, b);
       if (diff) return diff;
         return String(b.dateText).localeCompare(String(a.dateText));
       });
@@ -8055,10 +8058,8 @@ if (CLAUDE_ENABLED) {
      Date.parse 认不出来，先补一个。
      解析不出来就原样返回 —— 宁可显示得难看，也不编一个看起来很像的时间出来。 */
   function recentDateLabel(value) {
-    const raw = String(value ?? '');
-    if (!raw) return '';
-    const parsed = Date.parse(raw.replace(/(\d)\s*(am|pm)\b/i, '$1 $2'));
-    if (!Number.isFinite(parsed)) return raw;
+    const parsed = parseRecentTime(value);
+    if (parsed === null) return '';
     const d = new Date(parsed);
     const now = new Date();
     const sameDay = d.getFullYear() === now.getFullYear()

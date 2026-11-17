@@ -1655,7 +1655,8 @@ export function installOfficialLayout(win = window) {
     const markRepeats = () => {
       paintRecentsFilter();
       let prev = null;
-      for (const r of doc.querySelectorAll('#top-settings-holder .clawd-rail-recents .recentChat')) {
+      for (const r of doc.querySelectorAll('#top-settings-holder .clawd-rail-recents .recentChatList > *')) {
+        if (r.classList.contains('cw-web-date') || !r.classList.contains('recentChat')) { prev = null; continue; }
         const key = (r.dataset.avatar || '') + '|' + (r.dataset.group || '');
         const rep = key !== '|' && key === prev;
         if (r.classList.contains('cw-rec-rep') !== rep) r.classList.toggle('cw-rec-rep', rep);
