@@ -3821,3 +3821,9 @@ html[data-cw-v4] body dialog.cwx-popup.cwx-popup{min-height:0!important}
 html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-more-list[data-cwx-chat-menu]{position:fixed!important;inset:auto!important;right:auto!important;margin:0!important;border:0!important;box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important}
 html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-more-list[popover]:not(:popover-open){display:none!important}
 html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-card:has(.cwx-more-menu[open]>.cwx-more-list[data-cwx-chat-menu]:not([popover])){overflow:visible!important;position:relative!important;z-index:21!important}
+
+/* Formal 2.0.148: respect QR Assistant auto-shrink and bridge the 8px gap for pointer travel. */
+@media(min-width:701px){
+html[data-cw-v4][data-cw-qr-auto-shrink] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar{height:0!important;overflow:hidden!important}
+html[data-cw-v4][data-cw-qr-auto-shrink] body:not(.clawd-welcome) #form_sheld #send_form#send_form:hover>#qr--bar{height:auto!important;overflow:visible!important;bottom:100%!important;padding-bottom:8px!important}
+}

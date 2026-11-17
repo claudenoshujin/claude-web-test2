@@ -1192,7 +1192,14 @@ export function installOfficialLayout(win = window) {
   }
   disposers.push(()=>{for(const s of layoutStyles.values())s.remove();layoutStyles.clear();layoutBox?.closest('dialog')?._cwShut?.();});
 
+  // Formal 2.0.148: respect QR Assistant auto-shrink (it marks itself with a style tag).
+  function syncQrAutoShrink() {
+    const active=!!doc.getElementById('qrq-auto-shrink-style-tag');
+    if(root.hasAttribute('data-cw-qr-auto-shrink')!==active)root.toggleAttribute('data-cw-qr-auto-shrink',active);
+  }
+  disposers.push(()=>root.removeAttribute('data-cw-qr-auto-shrink'));
   function syncQrBar() {
+    syncQrAutoShrink();
     const q = doc.getElementById('qr--bar');
     if (q !== qrBar) { if (qrBar) qrRo?.unobserve(qrBar); qrBar = q; if (q) qrRo?.observe(q); }
     paintQrHeight();
@@ -1278,6 +1285,7 @@ export function installOfficialLayout(win = window) {
     };
     keepStyleAfterTheme();
     observe(doc.head,keepStyleAfterTheme,{childList:true});
+    observe(doc.head,syncQrAutoShrink,{childList:true});
     sync();
     on(doc,'input',e=>{if(e.target.id==='send_textarea')syncComposerLines(true);});
     on(win,'resize',()=>syncComposerLines(true));
