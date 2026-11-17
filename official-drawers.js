@@ -21,7 +21,7 @@ export function actionLabel(node,t){
   for(const [key,cn,en] of [['delete','删除','Delete'],['restore','恢复默认','Restore defaults'],['rename','改名','Rename'],['import','导入','Import'],['export','导出','Export'],['new','另存为新的','Save as new'],['create','新建','Create'],['edit','编辑','Edit'],['update','保存','Save']])if(node.id?.includes(key)||[...node.attributes].some(a=>a.name===`data-preset-manager-${key}`))return t(cn,en);
   return (node.getAttribute('aria-label')||node.title||node.textContent||'').trim().split(/[\n.。]/)[0].slice(0,32);
 }
-export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment,bindRowMenu}) {
+export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSettings,openSelMenu,mountNativeSegment,bindRowMenu,rememberTTMove=()=>{}}) {
   const doc=win.document, states=new Map();
   const extensionSettings=createExtensionSettings({win,t,L,make,button,icon,openEditor});
   const extensionPanel=createExtensionPanel({win,t,make,button,icon,settings:extensionSettings,openEditor});
@@ -68,7 +68,7 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
   // menu park) must be returned in the reverse of the global order, or it lands
   // in the first state's removed row.
   let moveSeq=0;
-  function move(s,node,host,before){if(!node||node===host||node.contains(host))return;if(!before)host=sectionHost(host);const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;for(const counter of node.matches?.('input[data-for]')?[node]:node.querySelectorAll?.('input[data-for]')||[]){const undoRange=retainRangeCounter(counter);if(undoRange)cleanup(s,undoRange);}if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark,++moveSeq]);}if(before)host.insertBefore(node,before);else host.append(node);if(companion)move(s,companion,host);}
+  function move(s,node,host,before){if(!node||node===host||node.contains(host))return;if(!before)host=sectionHost(host);const companion=node.matches?.('select.select2-hidden-accessible')&&node.nextElementSibling?.matches('.select2-container')?node.nextElementSibling:null;for(const counter of node.matches?.('input[data-for]')?[node]:node.querySelectorAll?.('input[data-for]')||[]){const undoRange=retainRangeCounter(counter);if(undoRange)cleanup(s,undoRange);}if(node.parentNode){const mark=doc.createComment('cw-drawer-return');node.before(mark);s.moves.push([node,mark,++moveSeq]);}if(before)host.insertBefore(node,before);else host.append(node);rememberTTMove(node);if(companion)move(s,companion,host);}
   const created=(s,n)=>{s.created.push(n);return n;};
   const cleanup=(s,f)=>{(s.cleanups||=[]).push(f);};
   function section(page,title){const n=make('section','cw-v4-section');if(title)n.append(make('h2','',L(title)));n.append(make('div','cw-v4-card'));page.append(n);return n;}
