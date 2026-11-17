@@ -12979,7 +12979,8 @@ if (CLAUDE_ENABLED) {
     panel.querySelector('#claude-web-layout').closest('.claude-web-field').after(composerField);
     const composerSlider=composerField.querySelector('input'),composerValue=composerField.querySelector('#claude-web-composer-lines-value');
     const composerMobile=()=>document.documentElement.dataset.claudeLayout==='mobile'||window.innerWidth<=700;
-    const syncComposerSlider=()=>{const phone=composerMobile(),max=phone?6:8;composerSlider.max=String(max);composerSlider.value=read('composer-lines-'+(phone?'mobile':'pc'),Array.from({length:max},(_,i)=>String(i+1)),phone?'2':'1');composerValue.textContent=composerSlider.value+' 行';};
+    // resize 很频繁：值没变就不写，免得每次都改属性、换文本节点，带出一轮样式重算。
+    const syncComposerSlider=()=>{const phone=composerMobile(),max=phone?6:8;if(composerSlider.max!==String(max))composerSlider.max=String(max);const lines=read('composer-lines-'+(phone?'mobile':'pc'),Array.from({length:max},(_,i)=>String(i+1)),phone?'2':'1');if(composerSlider.value!==lines)composerSlider.value=lines;const label=composerSlider.value+' 行';if(composerValue.textContent!==label)composerValue.textContent=label;};
     composerSlider.addEventListener('input',()=>{const key='composer-lines-'+(composerMobile()?'mobile':'pc');if(!write(key,composerSlider.value))return;composerValue.textContent=composerSlider.value+' 行';window.__claudeOfficialLayout?.refresh?.();});
     window.addEventListener('resize',syncComposerSlider);
     const composerLayoutWatch=new MutationObserver(syncComposerSlider);composerLayoutWatch.observe(document.documentElement,{attributes:true,attributeFilter:['data-claude-layout']});
