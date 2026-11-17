@@ -3843,3 +3843,10 @@ html[data-cw-v4] body #chat .mes_buttons .mc3-hidden{display:none!important}
 html[data-cw-v4][data-claude-layout="pc"] body{--cw-column:var(--cw-composer-column,847px)}
 html[data-cw-v4][data-claude-layout="pc"][data-cw-custom-width] .cw-v4-chat-head{max-width:var(--cw-title-column);margin-inline:auto}
 html[data-cw-v4][data-claude-layout="pc"][data-cw-custom-width] body.clawd-welcome #form_sheld #send_form#send_form{width:var(--cw-welcome-column)!important;max-width:min(var(--cw-welcome-column),calc(100vw - var(--cl-rail) - 48px))!important;margin-left:calc((100vw - var(--cl-rail) - min(var(--cw-welcome-column),100vw - var(--cl-rail) - 48px)) / 2)!important}
+
+/* Formal 2.0.146: crop templates exist in every native Popup: require the explicitly visible crop area.
+   Mobile only; establish available height before Cropper measures its parent. */
+html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.popup.popup.popup.popup.popup.popup.popup:has(.popup-crop-wrap[style*="display: block"]){height:calc(var(--cl-mobile-viewport-height,100dvh) - 48px)!important;max-height:calc(var(--cl-mobile-viewport-height,100dvh) - 48px)!important}
+html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.popup.popup.popup.popup.popup.popup.popup:has(.popup-crop-wrap[style*="display: block"])>.popup-body{display:flex!important;flex-direction:column!important;min-height:0!important;max-height:100%!important;overflow-y:auto!important}
+html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.popup.popup.popup.popup.popup.popup.popup:has(.popup-crop-wrap[style*="display: block"])>.popup-body>:not(.popup-crop-wrap){flex:0 0 auto!important}
+html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.popup.popup.popup.popup.popup.popup.popup:has(.popup-crop-wrap[style*="display: block"]) .popup-crop-wrap{flex:1 1 0px!important;min-height:0!important;max-height:none!important;width:100%!important}
