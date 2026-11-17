@@ -40,7 +40,8 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
   let closeChatMenu = null;
   function enhanceChatMenu(s, menu, list, summary) {
     list.dataset.cwxChatMenu = '';
-    const popover = typeof list.showPopover === 'function';
+    const canPopover = typeof list.showPopover === 'function';
+    let popover = canPopover;
     if (popover) list.setAttribute('popover', 'manual');
     let stop = null;
     const close = () => {
@@ -53,6 +54,10 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
       if (!menu.open || !menu.isConnected) { close(); return; }
       if (closeChatMenu === close) return;
       closeChatMenu?.(); closeChatMenu = close;
+      // Inside a native modal (e.g. the Chromium 138 sheet fallback) a descendant popover is painted
+      // under the dialog content there; use the in-dialog positioning instead.
+      popover = canPopover && !list.closest('dialog:modal');
+      if (popover) { list.setAttribute('popover', 'manual'); list.style.removeProperty('position'); } else list.removeAttribute('popover');
       if (popover) list.showPopover();
       const a = summary.getBoundingClientRect(), b = list.getBoundingClientRect();
       const width = win.innerWidth, height = win.innerHeight;
@@ -71,8 +76,14 @@ export function createExtensionSettings({win,t,L,make,button,icon,openEditor}) {
       const outside = e => { if (!menu.contains(e.target)) close(); };
       const key = e => { if (e.key === 'Escape') { close(); summary.focus({preventScroll:true}); e.preventDefault(); e.stopImmediatePropagation(); } };
       const scroll = e => { if (!list.contains(e.target)) close(); };
-      const watch = new win.MutationObserver(() => { if (!menu.isConnected) close(); });
+      const watch = new win.MutationObserver(() => {
+        if (!menu.isConnected) { close(); return; }
+        // The owner sheet may fall back to a native modal after the menu opened; reopen in that mode.
+        if (popover && list.closest('dialog:modal')) { close(); menu.open = true; }
+      });
       watch.observe(doc.body, {childList:true, subtree:true});
+      const owner = list.closest('dialog');
+      if (owner) watch.observe(owner, {attributes:true, attributeFilter:['data-cw-lifted','popover','open']});
       doc.addEventListener('pointerdown', outside, true);
       doc.addEventListener('keydown', key, true);
       doc.addEventListener('scroll', scroll, true);
