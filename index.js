@@ -9421,6 +9421,13 @@ if (CLAUDE_ENABLED) {
      侧栏里点设置入口：新页先在右边露出的那条里原地换上（official-layout 的 activate 先关旧页再开新页，
      酒馆就不会在两页之间空等 animation_duration、露出首页），等新页画出一帧，再收侧栏，新页往左滑回盖住侧栏。 */
   function showPanelFromRail(panel) {
+    // Formal 2.0.148: a third-party drawer CW has no page for opens through its own native toggle.
+    const layout = hostWindow.__claudeOfficialLayout;
+    if (!layout?.has?.(panel.id)) {
+      panel.parentElement?.querySelector(':scope > .drawer-toggle')?.click();
+      hostWindow.setTimeout(closeMobileMenu, 0);
+      return;
+    }
     const token = mobileMenuCloseToken;
     let raf = 0, shownFrames = 0, frames = 0;
     const cleanup = () => {
@@ -9554,6 +9561,14 @@ if (CLAUDE_ENABLED) {
     scrim.addEventListener('click', closeMobileMenu);
     /* 酒馆在 html 上监听 touchstart / mousedown：点在任何打开的抽屉外面就关掉所有抽屉。
        侧栏盖在设置页上时点外面只该收起侧栏、设置页原样保留，所以这两个事件不从 scrim 往上传。 */
+    // Formal 2.0.148: with an external drawer open, the menu tap must not reach ST's outside-close handler.
+    const keepExternalDrawer = event => {
+      if (!hostDocument.documentElement.hasAttribute('data-cw-v4')) return;
+      const external = [...hostDocument.querySelectorAll('#top-settings-holder > .drawer > .drawer-content.openDrawer')].some(panel => !hostWindow.__claudeOfficialLayout?.has?.(panel.id));
+      if (external) event.stopPropagation();
+    };
+    menu.addEventListener('touchstart', keepExternalDrawer, { passive: true });
+    menu.addEventListener('mousedown', keepExternalDrawer);
     const keepDrawers = event => event.stopPropagation();
     scrim.addEventListener('touchstart', keepDrawers, { passive: true });
     scrim.addEventListener('mousedown', keepDrawers);
@@ -9572,6 +9587,8 @@ if (CLAUDE_ENABLED) {
         if (!isMobileMenuOpen() || event.button > 0) return;
         const toggle = event.target?.closest?.('.drawer-toggle');
         if (!toggle || isTauriTavernHost() || !hostDocument.documentElement.hasAttribute('data-cw-v4')) return;
+        const panel = toggle.parentElement?.querySelector(':scope > .drawer-content');
+        if (!hostWindow.__claudeOfficialLayout?.has?.(panel?.id) && !panel?.classList.contains('openDrawer')) return;
         // Keep ST's outside-pointer handler from closing the old page before click.
         event.stopPropagation();
       };
@@ -9587,6 +9604,11 @@ if (CLAUDE_ENABLED) {
         if (!drawerToggle && !target.closest('.recentChat, .clawd-mobile-new-chat, .character_select')) return;
         const panel = drawerToggle?.parentElement?.querySelector(':scope > .drawer-content');
         if (panel && hostDocument.documentElement.hasAttribute('data-cw-v4')) {
+          if (!hostWindow.__claudeOfficialLayout?.has?.(panel.id)) {
+            // Let the native drawer handler finish before hiding the rail.
+            if (isMobileMenuOpen()) hostWindow.setTimeout(closeMobileMenu, 0);
+            return;
+          }
           // Synthetic clicks also implement native Close/Escape. Let those close
           // an open drawer; only a real tap on the current entry means "show this page".
           if (!event.isTrusted && panel.classList.contains('openDrawer')) return;

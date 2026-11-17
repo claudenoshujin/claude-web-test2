@@ -1194,6 +1194,38 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   }
   disposers.push(()=>{for(const s of layoutStyles.values())s.remove();layoutStyles.clear();layoutBox?.closest('dialog')?._cwShut?.();});
 
+  // Formal 2.0.148: phone header (menu / close) for third-party top drawers CW has no page for.
+  const externalDrawers=new Map();
+  function clearExternalDrawer(panel) {
+    const state=externalDrawers.get(panel);if(!state)return;
+    state.head.remove();panel.classList.remove('cw-v4-external-drawer');
+    externalDrawers.delete(panel);
+  }
+  function syncExternalDrawers() {
+    const eligible=enabled()&&mobile()&&!doc.body.classList.contains('clawd-tauritavern-host')&&!win.__TAURITAVERN__&&!win.__TAURI_INTERNALS__;
+    for(const panel of externalDrawers.keys())if(!eligible||!panel.isConnected)clearExternalDrawer(panel);
+    const externalOpen=eligible&&[...externalDrawers.keys()].some(isOpen);
+    if(root.hasAttribute('data-cw-external-open')!==externalOpen)root.toggleAttribute('data-cw-external-open',externalOpen);
+    if(!eligible)return;
+    for(const panel of doc.querySelectorAll('#top-settings-holder > .drawer > .drawer-content')){
+      if(ids.some(([id])=>id===panel.id)||!isOpen(panel))continue;
+      const state=externalDrawers.get(panel);
+      if(state){
+        if(state.head.parentElement!==panel)panel.prepend(state.head);
+        continue;
+      }
+      const toggle=nativeToggle(panel),glyph=toggle?.querySelector('.drawer-icon');
+      let title=(glyph?.getAttribute('title')||glyph?.getAttribute('data-tip')||panel.querySelector('h1,h2,h3,[class*="header-title"]')?.textContent||toggle?.textContent||panel.id).trim();
+      title=title.replace(/^(?:Open|打开)\s*/i,'').replace(/\s*(?:panel|面板)$/i,'').trim();
+      const head=make('header','cw-v4-external-head');
+      const nav=button('',e=>{e.stopPropagation();if(!doc.body.hasAttribute('data-clawd-menu'))doc.querySelector('.clawd-mobile-menu-button')?.click();},'cw-v4-external-nav');nav.append(icon('menu'));nav.setAttribute('aria-label',L('设置导航'));
+      const close=button('',e=>{e.stopPropagation();if(isOpen(panel))nativeToggle(panel)?.click();},'cw-v4-external-close');close.append(icon('close'));close.setAttribute('aria-label',L('关闭'));
+      head.append(nav,make('h1','cw-v4-external-title',title),close);
+      for(const type of ['mousedown','touchstart'])head.addEventListener(type,e=>e.stopPropagation(),{passive:true});
+      panel.classList.add('cw-v4-external-drawer');panel.prepend(head);externalDrawers.set(panel,{head});
+    }
+  }
+  disposers.push(()=>{for(const panel of externalDrawers.keys())clearExternalDrawer(panel);root.removeAttribute('data-cw-external-open');});
   // Formal 2.0.148/2.0.154: the desktop chat column follows the native chat width slider, scaled from CW defaults.
   let chatWidthKey="";
   function syncChatWidth() {
@@ -1239,6 +1271,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     displayState.rescan();
     syncQrBar();
     syncChatWidth();
+    syncExternalDrawers();
     applyLayouts();
     syncComposerLines();
     root.toggleAttribute('data-cw-v4', enabled());
@@ -1317,6 +1350,29 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     keepStyleAfterTheme();
     observe(doc.head,keepStyleAfterTheme,{childList:true});
     observe(doc.head,syncQrAutoShrink,{childList:true});
+    // Formal 2.0.148: notice third-party drawers being added or opened (structure only, not their content).
+    const drawerHolder=doc.getElementById('top-settings-holder');
+    if(drawerHolder){
+      // Watch structural boundaries, never class churn inside plugin/settings content.
+      const drawerWatchers=new Map();
+      const watchDrawers=()=>{
+        const drawers=[...drawerHolder.children].filter(n=>n.matches('.drawer'));
+        const contents=drawers.flatMap(n=>[...n.children].filter(c=>c.matches('.drawer-content')));
+        const targets=new Set([...drawers,...contents]);
+        for(const [node,mo] of drawerWatchers)if(!targets.has(node)){mo.disconnect();drawerWatchers.delete(node);}
+        for(const node of targets)if(!drawerWatchers.has(node)){
+          const mo=new win.MutationObserver(records=>{
+            if(node.matches('.drawer')&&records.some(r=>r.type==='childList'))watchDrawers();
+            schedule();
+          });
+          mo.observe(node,node.matches('.drawer-content')?{childList:true,attributes:true,attributeFilter:['class','data-tt-assistant']}:{childList:true});
+          drawerWatchers.set(node,mo);
+        }
+      };
+      observe(drawerHolder,()=>{watchDrawers();schedule();},{childList:true});
+      watchDrawers();
+      disposers.push(()=>{for(const mo of drawerWatchers.values())mo.disconnect();drawerWatchers.clear();});
+    }
     sync();
     on(doc,'input',e=>{if(e.target.id==='send_textarea')syncComposerLines(true);});
     on(win,'resize',()=>syncComposerLines(true));
@@ -2575,7 +2631,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   if (doc.readyState === 'loading') on(doc,'DOMContentLoaded',start,{once:true}); else start();
   // 电脑端设置窗口等比缩放（settings-scale.js）。
   const settingsScale = createSettingsScale({win, mobile, t}); disposers.push(() => settingsScale.destroy());
-  return { refresh: sync, activate, editLayout:openLayoutEditor, setExternalModals, destroy() {
+  return { refresh: sync, activate, has: id => panels.has(id), editLayout:openLayoutEditor, setExternalModals, destroy() {
     if (destroyed) return;
     destroyed = true;
     for (const d of yieldedSheets) if (d.hasAttribute('data-cw-sheet-yielded-native')) restoreYieldedNative(d);

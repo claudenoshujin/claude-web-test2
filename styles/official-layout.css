@@ -3850,3 +3850,19 @@ html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.po
 html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.popup.popup.popup.popup.popup.popup.popup:has(.popup-crop-wrap[style*="display: block"])>.popup-body{display:flex!important;flex-direction:column!important;min-height:0!important;max-height:100%!important;overflow-y:auto!important}
 html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.popup.popup.popup.popup.popup.popup.popup:has(.popup-crop-wrap[style*="display: block"])>.popup-body>:not(.popup-crop-wrap){flex:0 0 auto!important}
 html[data-cw-v4][data-claude-layout="mobile"] body :is(dialog,#cw-spec).popup.popup.popup.popup.popup.popup.popup.popup:has(.popup-crop-wrap[style*="display: block"]) .popup-crop-wrap{flex:1 1 0px!important;min-height:0!important;max-height:none!important;width:100%!important}
+
+/* Formal 2.0.148: third-party top drawers (no CW page) keep the mobile navigation and get a header. */
+html[data-cw-v4][data-claude-top-drawer-open]:not([data-cw-v4-settings]) body .clawd-mobile-menu-button{z-index:10080!important}
+html[data-cw-v4] body[data-clawd-menu] #top-settings-holder>.drawer>.drawer-content.openDrawer:not(.cw-v4-panel){visibility:hidden!important;pointer-events:none!important}
+html[data-cw-v4] body #top-settings-holder>.drawer>.cw-v4-external-drawer{display:flex!important;flex-direction:column!important;padding:52px 0 0!important;box-sizing:border-box!important;overflow:hidden!important}
+html[data-cw-v4] body #top-settings-holder>.drawer>.cw-v4-external-drawer>:not(.cw-v4-external-head):not(style):not(script){flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow:auto}
+html[data-cw-v4] .cw-v4-external-head{position:absolute;top:0;left:0;right:0;height:52px;display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:center;padding:0 4px;background:var(--m-page,var(--v4-panel,#f9f9f7));color:var(--v4-text,#141413);font-family:var(--cw-v4-font);z-index:2}
+html[data-cw-v4] .cw-v4-external-title{display:block!important;text-align:center;font:600 18px/1.3 var(--cw-v4-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;padding:0}
+html[data-cw-v4] .cw-v4-external-head>button{display:grid;place-items:center;justify-self:center;width:44px;height:44px;border:0;background:none;color:inherit;padding:0;cursor:pointer}
+html[data-cw-v4] .cw-v4-external-head svg{width:20px;height:20px;display:block}
+html[data-cw-v4] body #top-settings-holder>.drawer>.cw-v4-external-drawer.closedDrawer{display:none!important}
+html[data-cw-v4] body .clawd-mobile-menu-button{visibility:visible}
+html[data-cw-v4] .cw-v4-external-head>button{border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:0!important}
+html[data-cw-v4] .cw-v4-external-title{font:600 18px/1.3 var(--cw-v4-font)!important}
+html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.cw-v4-external-drawer>.cw-v4-external-head>button{border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:0!important;color:var(--v4-text)!important}
+html[data-cw-v4][data-cw-external-open] body:not([data-clawd-menu])>.clawd-mobile-chrome>.clawd-mobile-menu-button{visibility:hidden!important}
