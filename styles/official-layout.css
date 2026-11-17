@@ -677,6 +677,9 @@ html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-pref-btn small, h
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-pref-btn .cw-v4-icon svg{width:17px;height:17px;display:block}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-pref-btn.cw-v4-icononly>:not(.cw-v4-icon){display:none!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-pref-btn[style*="display: none"]{display:none!important}
+/* 原生用内联 display:none 藏起的偏好页按钮（账户功能没开时的管理员面板、登出），display-state.js 镜像成 data-cw-off。
+   手机按行类型排版的 nav / actions 规则特异度更高，会把它们重新显示出来，这里要压过它们。 */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder .cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel.cw-v4-panel .cw-v4-pref-btn[data-cw-off]{display:none!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-version{font-size:13px!important;color:var(--v4-muted)!important}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-linkish{display:inline!important;border:0!important;background:none!important;padding:0!important;margin:0 0 0 4px!important;width:auto!important;height:auto!important;min-height:0!important;font-size:0!important;cursor:pointer}
 html[data-cw-v4] body #top-settings-holder .cw-v4-panel .cw-v4-linkish::before{content:attr(data-cw-label)!important;font:400 13px var(--cw-v4-font)!important;color:var(--v4-muted);text-decoration:underline;text-underline-offset:3px}

@@ -8,6 +8,7 @@
  * 维护范围（和 styles/*.css 里用到 [data-cw-off] 的规则一一对应）：
  *   - 固定节点自己：#rm_characters_block、#rm_ch_create_block、#rm_group_chats_block、
  *     #create_button_label、#rm_group_submit、#openai_api、#prompt_post_processing_form、
+ *     #admin_button、#logout_button（账户功能没开时原生用内联 display:none 藏起），
  *     .reverse_proxy_warning，以及宿主 toggle-dependent.css 里 #adaptive_p_block 那条
  *     用到的 [data-tg-samplers="adaptive_target"] / [data-tg-samplers="adaptive_decay"]。
  *     各自只观察自己的 style 属性。
@@ -17,7 +18,7 @@
  * 宿主那条规则用 CSSOM 换成判断 data-cw-off 的同义规则，卸载时换回原文。 */
 
 const ATTR = 'data-cw-off';
-const SELF_IDS = ['rm_characters_block', 'rm_ch_create_block', 'rm_group_chats_block', 'create_button_label', 'rm_group_submit', 'openai_api', 'prompt_post_processing_form'];
+const SELF_IDS = ['rm_characters_block', 'rm_ch_create_block', 'rm_group_chats_block', 'create_button_label', 'rm_group_submit', 'openai_api', 'prompt_post_processing_form', 'admin_button', 'logout_button'];
 const SELF_SELECTOR = '.reverse_proxy_warning,#adaptive_p_block [data-tg-samplers="adaptive_target"],#adaptive_p_block [data-tg-samplers="adaptive_decay"]';
 const HOST_SHEET_SUFFIX = '/css/toggle-dependent.css';
 const HOST_MARKS = ['#adaptive_p_block', ':has(', 'adaptive_target', 'adaptive_decay', '[style*='];
