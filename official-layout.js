@@ -2572,10 +2572,12 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     let rootResetRaf = 0, keyboardViewportSmall = false, keyboardViewportFullHeight = win.visualViewport?.height || win.innerHeight;
     const textFocused = () => doc.activeElement?.matches('textarea,input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]):not([type=range]),[contenteditable]:not([contenteditable=false])');
     const resetRoot = (keyboardClosed = false) => {
+      // Formal 2.0.145: the iOS mobile layout owns its bounded root-reset policy.
+      if (doc.documentElement.hasAttribute('data-cw-ios-viewport')) return;
       if (rootResetRaf || !enabled() || (!keyboardClosed && textFocused())) return;
       rootResetRaf = win.requestAnimationFrame(() => {
         rootResetRaf = 0;
-        if (enabled() && (keyboardClosed || !textFocused()) && (win.scrollX || win.scrollY)) win.scrollTo({left:0,top:0,behavior:'instant'});
+        if (!doc.documentElement.hasAttribute('data-cw-ios-viewport') && enabled() && (keyboardClosed || !textFocused()) && (win.scrollX || win.scrollY)) win.scrollTo({left:0,top:0,behavior:'instant'});
       });
     };
     on(win, 'scroll', () => resetRoot(), {passive:true});

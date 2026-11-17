@@ -1,3 +1,5 @@
+import { installIOSKeyboardScroll } from './ios-keyboard-scroll.js?v=2.0.345';
+import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.345';
 import { parseRecentTime } from './recent-time.js?v=2.0.345';
 import { officialIcons as recentBadgeIcons } from './official-icons.js?v=2.0.345';
 import { installRecentFavorites } from './recent-favorites.js?v=2.0.345';
@@ -7058,14 +7060,59 @@ if (CLAUDE_ENABLED) {
     }, 1500);
   }
 
+  // Formal 2.0.145: iOS keyboard viewport handling for the phone layout (visual-viewport coordinates,
+  // first-tap focus without scroll, keyboard-time scroll guard, bounded root reset).
+  let iosKeyboardScroll = null;
+  let stopIOSComposerFocus = null;
+  let iosRootResetBudget = 1;
+  let iosKeyboardClosing = false;
+  function resetIOSRoot(afterGesture = false) {
+    if (!afterGesture && iosKeyboardScroll?.active()) { iosKeyboardScroll.scheduleRecovery(); return; }
+    if (iosKeyboardScroll?.isTouching()) return;
+    if (!iosRootResetBudget || (!hostWindow.scrollX && !hostWindow.scrollY && !(Math.abs(hostWindow.visualViewport?.offsetTop || 0) > 1))) return;
+    iosRootResetBudget -= 1;
+    hostWindow.scrollTo({left:0, top:0, behavior:'instant'});
+  }
+  function handleIOSRootScroll() {
+    if (!destroyed && usesIOSVisualViewport()) resetIOSRoot();
+  }
+  function mobileVisibleHeight(viewport) {
+    const visible = Math.max(1, viewport?.height || hostWindow.innerHeight || 1);
+    const client = hostDocument.documentElement.clientHeight;
+    return Math.abs(client - visible) <= 2 ? Math.max(Math.ceil(visible), client) : Math.ceil(visible);
+  }
+  function usesIOSVisualViewport() {
+    const nav = hostWindow.navigator;
+    return isMobileLayout() && !!hostWindow.visualViewport && (/iP(?:hone|ad|od)/.test(nav?.userAgent || '') || nav?.platform === 'MacIntel' && nav?.maxTouchPoints > 1);
+  }
   function applyMobileViewportMetrics() {
     const root = hostDocument.documentElement;
     if (!isMobileLayout()) {
+      root.removeAttribute('data-cw-ios-viewport');
+      root.removeAttribute('data-cw-ios-viewport-mode');
       root.style.removeProperty(MOBILE_VIEWPORT_HEIGHT_PROPERTY);
       root.style.removeProperty(MOBILE_VIEWPORT_TOP_PROPERTY);
       root.style.removeProperty(MOBILE_POPUP_HEIGHT_PROPERTY);
       return;
     }
+    if (usesIOSVisualViewport()) {
+      const viewport = hostWindow.visualViewport;
+      root.setAttribute('data-cw-ios-viewport', '');
+      root.dataset.cwIosViewportMode = 'reset';
+      mobileViewportMetricsDirty = !1;
+      clearMobileViewportRecheck();
+      if (Math.abs(root.clientHeight - viewport.height) <= 2) iosKeyboardClosing = false;
+      // Safari can report the old visual height until its close animation ends.
+      // Once focus leaves the keyboard, fill the already-restored layout viewport.
+      const height = iosKeyboardClosing ? Math.max(mobileVisibleHeight(viewport), Math.ceil(hostWindow.innerHeight || 1)) : mobileVisibleHeight(viewport);
+      root.style.setProperty('--cl-mobile-viewport-height', height + 'px');
+      root.style.setProperty('--cl-mobile-viewport-top', '0px');
+      root.style.setProperty('--cl-mobile-popup-height', height + 'px');
+      resetIOSRoot();
+      return;
+    }
+    root.removeAttribute('data-cw-ios-viewport');
+    root.removeAttribute('data-cw-ios-viewport-mode');
     /* baseline 诊断包：根视口变量保持 CSS 兜底值，JS 一个字也不写。 */
     if (keyboardBaselineMode) return;
     // 键盘开合时根节点指标保持在键盘出现前的稳定值；输入框另走 transform。
@@ -7159,6 +7206,11 @@ if (CLAUDE_ENABLED) {
       shell.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);
       return;
     }
+    if (usesIOSVisualViewport()) {
+      mobileKeyboardRecoveryActive = false;
+      shell.style.removeProperty(MOBILE_COMPOSER_TRANSLATE_PROPERTY);
+      return;
+    }
     if (usesNativeAndroidKeyboardLayout()) {
       mobileKeyboardRecoveryActive = false;
       mobileStableLayoutHeight = Math.max(
@@ -7231,11 +7283,18 @@ if (CLAUDE_ENABLED) {
     applyMobileComposerTranslate();
   }
 
+  function handleViewportScroll() {
+    if (!usesIOSVisualViewport()) { handleViewportChange(); return; }
+    if (destroyed) return;
+    mobileViewportMetricsDirty = true;
+    scheduleMobileViewportMetrics();
+    scheduleMobileComposerTranslate();
+  }
   function handleViewportChange() {
     if (destroyed) return;
     clawdReadingGate.reset();
     mobileViewportMetricsDirty = true;
-    scheduleMobileViewportMetrics();
+    if (usesIOSVisualViewport()) applyMobileViewportMetrics(); else scheduleMobileViewportMetrics();
     scheduleMobileComposerTranslate();
 
     /* Android 键盘动画有时连 visualViewport.width 也会抖 1~数 px。旧逻辑把它
@@ -7321,6 +7380,13 @@ if (CLAUDE_ENABLED) {
   }
 
   function scheduleMobileViewportSettle() {
+    if (usesIOSVisualViewport()) {
+      mobileKeyboardSettlingUntil = 0;
+      clearMobileViewportSettleTimers();
+      mobileViewportMetricsDirty = true;
+      scheduleMobileViewportMetrics();
+      return;
+    }
     if (!isMobileLayout() || keyboardBaselineMode) return;
     clearMobileViewportSettleTimers();
     /* 现场最慢约 5～6 秒才恢复 Layout Viewport，因此兜底窗口不能再按普通键盘
@@ -9993,6 +10059,11 @@ if (CLAUDE_ENABLED) {
     if (event.target?.closest?.('#send_textarea')) releaseMobileChatAutofocus();
   };
   const handleFocusIn = event => {
+    if (usesIOSVisualViewport() && isSoftKeyboardTarget(event.target)) {
+      iosRootResetBudget = 3;
+      iosKeyboardClosing = false;
+      applyMobileViewportMetrics();
+    }
     if (event.target === mobileChatAutofocusTarget) {
       event.target.blur();
       return;
@@ -10033,6 +10104,11 @@ if (CLAUDE_ENABLED) {
        正好在键盘弹出的关键帧冻结数秒。键盘避让不依赖这段装饰动画。 */
   };
   const handleFocusOut = event => {
+    if (usesIOSVisualViewport() && isSoftKeyboardTarget(event.target)) {
+      iosRootResetBudget = 1;
+      iosKeyboardClosing = !isSoftKeyboardTarget(event.relatedTarget);
+      applyMobileViewportMetrics();
+    }
     if (event.target === mobileChatAutofocusTarget) return;
     if (isMobileLayout() && isSoftKeyboardTarget(event.target)) scheduleMobileViewportSettle();
     if (event.target?.id !== 'send_textarea') return;
@@ -11595,7 +11671,12 @@ if (CLAUDE_ENABLED) {
     hostDocument.addEventListener('focusin', handleFocusIn, true);
     hostDocument.addEventListener('focusout', handleFocusOut, true);
     hostWindow.visualViewport?.addEventListener('resize', handleViewportChange, { passive: true });
-    hostWindow.visualViewport?.addEventListener('scroll', handleViewportChange, { passive: true });
+    hostWindow.visualViewport?.addEventListener('scroll', handleViewportScroll, { passive: true });
+    if (usesIOSVisualViewport()) {
+      hostWindow.addEventListener('scroll', handleIOSRootScroll, { passive: true });
+      iosKeyboardScroll = installIOSKeyboardScroll({ win: hostWindow, enabled: () => !destroyed && usesIOSVisualViewport(), keyboardTarget: isSoftKeyboardTarget, reset: () => resetIOSRoot(true) });
+      stopIOSComposerFocus = installIOSComposerFocus({ win: hostWindow, enabled: () => !destroyed && usesIOSVisualViewport(), prepare: releaseMobileChatAutofocus });
+    }
     keyboardDiagnostics = !CLAUDE_KBD_DIAG_ENABLED ? null : installKeyboardDiagnostics({
       window: hostWindow,
       document: hostDocument,
@@ -11852,7 +11933,12 @@ if (CLAUDE_ENABLED) {
     typingExitGhosts.clear();
     if (lookRaf) hostWindow.cancelAnimationFrame(lookRaf);
     hostWindow.visualViewport?.removeEventListener('resize', handleViewportChange);
-    hostWindow.visualViewport?.removeEventListener('scroll', handleViewportChange);
+    hostWindow.visualViewport?.removeEventListener('scroll', handleViewportScroll);
+    hostWindow.removeEventListener('scroll', handleIOSRootScroll);
+    stopIOSComposerFocus?.(); stopIOSComposerFocus = null;
+    iosKeyboardScroll?.destroy(); iosKeyboardScroll = null;
+    hostDocument.documentElement.removeAttribute('data-cw-ios-viewport');
+    hostDocument.documentElement.removeAttribute('data-cw-ios-viewport-mode');
     if (mobileComposerTranslateRaf) hostWindow.cancelAnimationFrame(mobileComposerTranslateRaf);
     mobileComposerTranslateRaf = 0;
     if (viewportSettleTimer) hostWindow.clearTimeout(viewportSettleTimer);

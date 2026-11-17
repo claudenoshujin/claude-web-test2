@@ -3866,3 +3866,9 @@ html[data-cw-v4] .cw-v4-external-head>button{border:0!important;background:trans
 html[data-cw-v4] .cw-v4-external-title{font:600 18px/1.3 var(--cw-v4-font)!important}
 html[data-cw-v4] body #top-settings-holder#top-settings-holder>.drawer>.cw-v4-external-drawer>.cw-v4-external-head>button{border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:0!important;color:var(--v4-text)!important}
 html[data-cw-v4][data-cw-external-open] body:not([data-clawd-menu])>.clawd-mobile-chrome>.clawd-mobile-menu-button{visibility:hidden!important}
+
+/* Formal 2.0.145: iOS mobile layout: one visual-viewport coordinate system for chat and composer. */
+html[data-cw-ios-viewport] body #sheld{top:var(--cl-mobile-viewport-top,0px)!important;height:var(--cl-mobile-viewport-height)!important;min-height:var(--cl-mobile-viewport-height)!important;max-height:var(--cl-mobile-viewport-height)!important}
+html[data-cw-ios-viewport] body #top-bar,html[data-cw-ios-viewport] body .clawd-mobile-chrome{top:var(--cl-mobile-viewport-top,0px)!important}
+html[data-cw-v4][data-cw-ios-viewport] body #form_sheld#form_sheld{top:calc(var(--cl-mobile-viewport-top,0px) + var(--cl-mobile-viewport-height) - var(--cl-mobile-composer-height,132px))!important;bottom:auto!important;transform:none!important}
+html[data-cw-v4][data-cw-ios-viewport] body #chat#chat{height:calc(var(--cl-mobile-viewport-height) - var(--cl-mobile-top) - var(--cl-mobile-composer-height,132px))!important;min-height:0!important;max-height:calc(var(--cl-mobile-viewport-height) - var(--cl-mobile-top) - var(--cl-mobile-composer-height,132px))!important}
