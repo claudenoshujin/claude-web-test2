@@ -3827,3 +3827,7 @@ html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-
 html[data-cw-v4][data-cw-qr-auto-shrink] body:not(.clawd-welcome) #form_sheld #send_form#send_form>#qr--bar{height:0!important;overflow:hidden!important}
 html[data-cw-v4][data-cw-qr-auto-shrink] body:not(.clawd-welcome) #form_sheld #send_form#send_form:hover>#qr--bar{height:auto!important;overflow:visible!important;bottom:100%!important;padding-bottom:8px!important}
 }
+
+/* Formal 2.0.148: plugin message actions stay visible next to the native ones; Menu Cleaner may still hide them. */
+html[data-cw-v4] body #chat .mes .mes_buttons>.mes_button:not(.mc3-hidden):not(.mes_bookmark):not(.mes_copy):not(.mes_narrate):not(.mes_edit):not(.extraMesButtonsHint){display:inline-flex!important;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;padding:0;margin:0;border:0;border-radius:8px;background:none;color:var(--v4-muted);font-size:16px;opacity:1}
+html[data-cw-v4] body #chat .mes_buttons .mc3-hidden{display:none!important}
