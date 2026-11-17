@@ -82,7 +82,10 @@ export function installOfficialLayout(win = window) {
         addClass(doc.getElementById('ui-preset-delete-button'),'cw-v4-danger');const file=take('ui_preset_import_file');if(file&&r2)pm(file,r2);return [r1,r2];}],
       ['显示样式',()=>[R.sel('avatar_style'),R.sel('chat_display'),R.sel('media_display'),R.sel('toastr_position'),R.tog('waifuMode')]],
       ['尺寸',()=>[R.range('chat_width_slider','chat_width_slider_counter'),R.range('font_scale','font_scale_counter'),R.range('blur_strength','blur_strength_counter'),R.range('shadow_width','shadow_width_counter')]],
-      ['颜色',()=>['main-text-color-picker','italics-color-picker','underline-color-picker','quote-color-picker','shadow-color-picker','chat-tint-color-picker','blur-tint-color-picker','border-color-picker','user-mes-blur-tint-color-picker','bot-mes-blur-tint-color-picker'].map(id=>R.color(id))],
+      ['颜色',()=>{const rows=['main-text-color-picker','italics-color-picker','underline-color-picker','quote-color-picker','shadow-color-picker','chat-tint-color-picker','blur-tint-color-picker','border-color-picker','user-mes-blur-tint-color-picker','bot-mes-blur-tint-color-picker'].map(id=>R.color(id));
+        // 用户在 CW 下改的颜色按日 / 夜分开保留；这里只清当前这一套（主题运行时在 index.js）。
+        if(rows.some(Boolean))rows.push(prow(t('恢复默认颜色','Restore default colors'),t('只恢复当前日间或夜间这一套','Only the current day or night set'),[button(t('恢复默认','Restore defaults'),()=>win.__claudeIntegratedTheme?.resetUserColors?.(),'cw-v4-button cw-color-reset')]));
+        return rows;}],
     ]},
     {key:'ui',title:'界面',icon:'window',group:'偏好设置',lede:'动效、消息上显示的信息、交互方式',sections:[
       ['性能与效果',()=>['reduced_motion','fast_ui_mode','noShadowsmode'].map(i=>R.tog(i))],

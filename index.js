@@ -1128,6 +1128,26 @@ if (CLAUDE_ENABLED) {
   );
   const RESTORE_KEY = 'claude-integrated-theme-restore:v2';
   const FOREIGN_CSS_KEY = 'claude-web:foreign-theme-css:v1';
+  /* 用户在 CW 下用「颜色」组的原生取色器改过的颜色，按日 / 夜分开存：
+     { day: { main_text_color: 'rgba(…)' }, night: { … } }。
+     只记用户亲手改的（取色器上刚有指针或键盘操作），程序写取色器属性、
+     别的主题套色、CW 自己切日夜都会触发同一个 change，不能算。 */
+  const USER_COLORS_KEY = 'claude-web:user-colors:v1';
+  const USER_COLOR_PICKERS = {
+    'main-text-color-picker': 'main_text_color',
+    'italics-color-picker': 'italics_text_color',
+    'underline-color-picker': 'underline_text_color',
+    'quote-color-picker': 'quote_text_color',
+    'shadow-color-picker': 'shadow_color',
+    'chat-tint-color-picker': 'chat_tint_color',
+    'blur-tint-color-picker': 'blur_tint_color',
+    'border-color-picker': 'border_color',
+    'user-mes-blur-tint-color-picker': 'user_mes_blur_tint_color',
+    'bot-mes-blur-tint-color-picker': 'bot_mes_blur_tint_color',
+  };
+  const USER_COLOR_KEYS = new Set(Object.values(USER_COLOR_PICKERS));
+  const pickerGestures = new Map();
+  let writingPickers = false;
   let themeChoiceTimer = 0, nativeThemeChosen = false;
   let foreignCss = [];
   try { const saved = JSON.parse(hostWindow.localStorage.getItem(FOREIGN_CSS_KEY) || '[]'); if (Array.isArray(saved)) foreignCss = saved.filter(x => typeof x === 'string').slice(-24); } catch { /* private storage */ }
@@ -1196,6 +1216,81 @@ if (CLAUDE_ENABLED) {
         applyThemeValuesFor(variant, true);
       } else persistFullTheme({ resetTheme: true });
     }, 0);
+  }
+
+  function readUserColorStore() {
+    try {
+      const saved = JSON.parse(hostWindow.localStorage.getItem(USER_COLORS_KEY) || '{}');
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function userColorsFor(variant, store = readUserColorStore()) {
+    const set = store[variant];
+    if (!set || typeof set !== 'object') return {};
+    return Object.fromEntries(Object.entries(set).filter(([key, value]) => USER_COLOR_KEYS.has(key) && typeof value === 'string' && value));
+  }
+
+  function writeUserColors(variant, colors) {
+    const store = readUserColorStore();
+    if (Object.keys(colors).length) store[variant] = colors; else delete store[variant];
+    try { hostWindow.localStorage.setItem(USER_COLORS_KEY, JSON.stringify(store)); } catch { /* private storage */ }
+  }
+
+  function liveVariant() {
+    const variant = hostDocument.documentElement.dataset.claudeIntegratedTheme;
+    return CLAUDE_THEMES[variant] ? variant : CLAUDE_THEME_VARIANT;
+  }
+
+  function colorPickerIn(event) {
+    for (const node of event.composedPath?.() ?? []) {
+      if (node instanceof hostWindow.Element && node.localName === 'toolcool-color-picker' && USER_COLOR_PICKERS[node.id]) return node;
+    }
+    return null;
+  }
+
+  function onPickerGesture(event) {
+    if (event.type === 'pointermove' && !event.buttons) return;
+    const picker = colorPickerIn(event);
+    if (picker) pickerGestures.set(picker.id, Date.now());
+  }
+
+  function onPickerChange(event) {
+    const picker = event.target, key = USER_COLOR_PICKERS[picker?.id];
+    if (!key || writingPickers || picker.localName !== 'toolcool-color-picker') return;
+    if (Date.now() - (pickerGestures.get(picker.id) || 0) > 2000) return;
+    const settings = getContext()?.powerUserSettings, value = event.detail?.rgba;
+    if (!settings || !isClaudeThemeName(settings.theme) || typeof value !== 'string' || !value) return;
+    const variant = liveVariant();
+    writeUserColors(variant, { ...userColorsFor(variant), [key]: value });
+  }
+
+  // 取色器的色块要跟实际套上的颜色一致（切日夜、恢复默认后），否则用户看到的是上一套。
+  function syncColorPickers(settings) {
+    writingPickers = true;
+    try {
+      for (const [id, key] of Object.entries(USER_COLOR_PICKERS)) {
+        // 用户在弹层里改色不会改 color 属性，要按取色器当前实际颜色比。
+        const picker = hostDocument.getElementById(id), value = settings[key];
+        if (!picker || typeof value !== 'string' || !value) continue;
+        let shown = '';
+        try { shown = picker.rgba || picker.getAttribute('color') || ''; } catch { shown = picker.getAttribute('color') || ''; }
+        if (String(shown).replace(/\s+/g, '') !== value.replace(/\s+/g, '')) picker.setAttribute('color', value);
+      }
+    } finally {
+      writingPickers = false;
+    }
+  }
+
+  // 「恢复默认颜色」：只清当前日或夜那一套，立刻按主题默认重套。
+  function resetUserColors(variant = liveVariant()) {
+    writeUserColors(variant, {});
+    const settings = getContext()?.powerUserSettings, theme = CLAUDE_THEMES[variant];
+    if (!settings || !theme || !isClaudeThemeName(settings.theme)) return false;
+    for (const key of USER_COLOR_KEYS) if (Object.hasOwn(theme, key)) settings[key] = theme[key];
+    return applyThemeValuesFor(variant);
   }
 
   function readRestorePoint() {
@@ -1568,10 +1663,14 @@ if (CLAUDE_ENABLED) {
     }
   }
 
-  function valuesWithPreservedQuote(settings, values, resetTheme = false) {
+  function valuesWithPreservedQuote(settings, values, resetTheme = false, variant = CLAUDE_THEME_VARIANT) {
     const next = { ...values };
+    /* 用户颜色按日 / 夜各自的存档套上；选回 CW 主题（resetTheme）也照样套，
+       它们独立存在 CW 自己的设置里，不会是别的主题带来的。 */
+    const colorStore = readUserColorStore(), userColors = userColorsFor(variant, colorStore);
+    for (const [key, value] of Object.entries(userColors)) if (Object.hasOwn(next, key)) next[key] = value;
     if (!resetTheme && isClaudeThemeName(settings?.theme)) {
-      // Keep the established non-color user overrides; color policy is unchanged.
+      // Keep the established non-color user overrides; colors come from the per-variant store above.
       for (const key of ['font_scale', 'chat_width', 'timer_enabled', 'timestamps_enabled', 'timestamp_model_icon', 'mesIDDisplay_enabled', 'message_token_count_enabled', 'hideChatAvatars_enabled', 'expand_message_actions', 'show_swipe_num_all_messages', 'click_to_edit', 'reasoning_auto_expand', 'compact_input_area', 'hotswap_enabled', 'enableZenSliders', 'enableLabMode', 'reduced_motion', 'media_display', 'toastr_position']) {
         if (Object.hasOwn(settings, key) && Object.hasOwn(next, key)) next[key] = settings[key];
       }
@@ -1582,16 +1681,21 @@ if (CLAUDE_ENABLED) {
         next.custom_css = base ? String(values.custom_css ?? '') + css.slice(base.custom_css.length) : css;
       }
     }
+    /* 引号颜色的先后：「引号用正文颜色」开着时这条规则优先（跟随正文，含用户改的正文色）；
+       关着时用户在这一套里存的引号色优先；都没有时沿用旧规则——保留当前不是 CW 默认的引号色，
+       但另一套（日 / 夜）存的用户引号色不跨过来。 */
     if (hostDocument.documentElement.dataset.claudeQuoteBodyColor !== 'off') {
       next.quote_text_color = next.main_text_color ?? values.quote_text_color;
       return next;
     }
+    if (userColors.quote_text_color) return next;
     const current = settings?.quote_text_color;
     const defaults = typeof CLAUDE_THEMES !== 'undefined'
       ? Object.values(CLAUDE_THEMES).map(theme => theme?.quote_text_color).filter(Boolean)
       : [values.quote_text_color].filter(Boolean);
     const isClaudeDefault = defaults.some(value => valuesMatch(current, value));
-    if (current != null && current !== '' && !isClaudeDefault) next.quote_text_color = current;
+    const fromOtherSet = Object.values(colorStore).some(set => set && valuesMatch(set.quote_text_color, current));
+    if (current != null && current !== '' && !isClaudeDefault && !fromOtherSet) next.quote_text_color = current;
     return next;
   }
 
@@ -1610,6 +1714,7 @@ if (CLAUDE_ENABLED) {
     applyCssVariables(settings);
     applyUiState(settings);
     syncControls(settings, previousName);
+    syncColorPickers(settings);
     context.saveSettingsDebounced?.();
     return changed;
   }
@@ -1637,12 +1742,14 @@ if (CLAUDE_ENABLED) {
       settings,
       Object.fromEntries(Object.entries(theme).filter(([key]) => key !== 'name')),
       resetTheme,
+      variant,
     );
     Object.assign(settings, values);
     settings.theme = theme.name;
     applyCssVariables(settings);
     applyUiState(settings);
     syncControls(settings, previousName);
+    syncColorPickers(settings);
     context.saveSettingsDebounced?.();
     return true;
   }
@@ -1894,6 +2001,8 @@ if (CLAUDE_ENABLED) {
     if (destroyed) return;
     hostWindow.clearTimeout(themeChoiceTimer);
     hostDocument.removeEventListener('change', onNativeThemeChange, true);
+    hostDocument.removeEventListener('change', onPickerChange, true);
+    for (const type of PICKER_GESTURES) hostDocument.removeEventListener(type, onPickerGesture, true);
     compatibilityStyleOrderObserver?.disconnect();
     compatibilityStyleOrderObserver = null;
     restoreCompatibilityLayers();
@@ -1960,9 +2069,15 @@ if (CLAUDE_ENABLED) {
     destroy,
     apply: compatibilityMode ? () => false : persistFullTheme,
     applyVariant: compatibilityMode ? () => false : applyThemeValuesFor,
+    resetUserColors: compatibilityMode ? () => false : resetUserColors,
   };
   hostWindow[INSTANCE_KEY] = api;
-  if (!compatibilityMode) hostDocument.addEventListener('change', onNativeThemeChange, true);
+  const PICKER_GESTURES = ['pointerdown', 'pointermove', 'pointerup', 'keydown', 'wheel'];
+  if (!compatibilityMode) {
+    hostDocument.addEventListener('change', onNativeThemeChange, true);
+    hostDocument.addEventListener('change', onPickerChange, true);
+    for (const type of PICKER_GESTURES) hostDocument.addEventListener(type, onPickerGesture, { capture: true, passive: true });
+  }
   hostWindow.addEventListener('beforeunload', markHostPageUnloading, true);
   hostWindow.addEventListener('pagehide', markHostPageUnloading, true);
   watchRunnerPresence();
