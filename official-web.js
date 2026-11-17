@@ -1,3 +1,4 @@
+import { preferencesFor } from './preferences.js?v=2.0.345';
 import { parseRecentTime } from './recent-time.js?v=2.0.345';
 /* 2.0.315（Lulu 2026-10-11 定，预览 Claude outputs/design-web-v1/design-web-v3.html）：
  * 电脑端从 Claude Desktop 的样子改成照 claude.ai 网页版。只在 rail + classic 的电脑布局里生效，
@@ -57,13 +58,13 @@ export function installOfficialWeb(win = window) {
   // 「更多」：收起时 CSS 把背景、扩展两行压成 0 高（不 display:none 整个 .drawer——它们的设置页是 fixed 的、挂在里面，
   // 开着的页不能跟着消失）。展开 / 收起记住。
   const MORE_KEY = 'claude-web:web-more';
-  const moreOpen = () => { try { return win.localStorage.getItem(MORE_KEY) === 'open'; } catch { return false; } };
+  const moreOpen = () => { try { return preferencesFor(win).getItem(MORE_KEY) === 'open'; } catch { return false; } };
   const syncMore = () => {
     const open = moreOpen();
     if ((root.dataset.cwWebMore === 'open') !== open) { if (open) root.dataset.cwWebMore = 'open'; else delete root.dataset.cwWebMore; }
     const m = doc.querySelector('#top-settings-holder > .cw-web-more'); if (m && m.getAttribute('aria-expanded') !== String(open)) m.setAttribute('aria-expanded', String(open));
   };
-  const toggleMore = () => { try { win.localStorage.setItem(MORE_KEY, moreOpen() ? 'closed' : 'open'); } catch {} syncMore(); };
+  const toggleMore = () => { try { preferencesFor(win).setItem(MORE_KEY, moreOpen() ? 'closed' : 'open'); } catch {} syncMore(); };
 
   // 最近对话按日期分组（正式 2.0.155）：每一条非收藏对话都按自己的日期分组，同角色连续的几条跨天也拆开。
   // 时间解析和侧栏排序、会话日期共用 recent-time.js：认 ISO、旧版「October 12, 2026 9:01am」、数字时间戳和「2026-10-12@09h01m」。

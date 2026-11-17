@@ -119,7 +119,7 @@ const CLAUDE_THEMES = {
 
 function claudeReadSetting(key, allowed, fallback) {
   try {
-    const raw = window.localStorage.getItem('claude-web:' + key);
+    const raw = (key === 'enabled' ? window.localStorage.getItem('claude-web:' + key) : preferencesFor(window).getItem('claude-web:' + key));
     return allowed.includes(raw) ? raw : fallback;
   } catch {
     return fallback;
@@ -181,7 +181,7 @@ const CLAUDE_QUOTE_BODY_COLOR_ENABLED = claudeReadSetting('quoteBodyColor', ['on
    bgBlur/bgTransparent 开关控制，用户要的是"不管开不开，抽屉始终是磨砂"。 */
 const CLAUDE_BG_BLUR_OPACITY = (() => {
   let raw = null;
-  try { raw = window.localStorage.getItem('claude-web:bgBlurOpacity'); } catch { /* 无痕/被禁用时用默认值 */ }
+  try { raw = preferencesFor(window).getItem('claude-web:bgBlurOpacity'); } catch { /* 无痕/被禁用时用默认值 */ }
   const num = Number(raw);
   if (!Number.isFinite(num)) return 22;
   return Math.min(60, Math.max(8, Math.round(num)));
@@ -220,7 +220,7 @@ const CLAUDE_NAV_TINT_OPACITY = Math.max(58, CLAUDE_BG_BLUR_OPACITY);
 const CLAUDE_BG_IMAGE_BLUR_ENABLED = claudeReadSetting('bgImageBlur', ['on', 'off'], 'off') !== 'off';
 function claudeReadNumberSetting(key, fallback, min, max) {
   let raw = null;
-  try { raw = window.localStorage.getItem('claude-web:' + key); } catch { /* 无痕或被禁用 */ }
+  try { raw = preferencesFor(window).getItem('claude-web:' + key); } catch { /* 无痕或被禁用 */ }
   const num = Number(raw);
   if (!Number.isFinite(num)) return fallback;
   return Math.min(max, Math.max(min, Math.round(num)));
@@ -253,11 +253,11 @@ document.documentElement.dataset.claudeRecents = claudeReadSetting('recents-size
 document.documentElement.dataset.claudeSideSwipe = claudeReadSetting('side-swipe', ['on','off'], 'on');
 document.documentElement.dataset.claudeSkin = claudeReadSetting('skin', ['classic'], 'classic');
 try {
-  const cf = window.localStorage.getItem('claude-web:fontCustom');
+  const cf = preferencesFor(window).getItem('claude-web:fontCustom');
   if (cf) document.documentElement.style.setProperty('--cw-font-custom', cf);
 } catch { /* 无痕或被禁用 */ }
 // Apply saved weight offsets before styles and settings mount.
-try { const value=Number(window.localStorage.getItem('claude-web:font-weight-offset')||0);const offset=[-100,-50,0,50,100,150,200].includes(value)?value:0;const all=window.localStorage.getItem('claude-web:font-weight-scope')==='all';document.documentElement.style.setProperty('--cw-weight-offset',String(offset));document.documentElement.style.setProperty('--cw-ui-weight-offset',String(all?offset:0));document.documentElement.dataset.cwWeightScope=all?'all':'chat';}catch{}
+try { const value=Number(preferencesFor(window).getItem('claude-web:font-weight-offset')||0);const offset=[-100,-50,0,50,100,150,200].includes(value)?value:0;const all=preferencesFor(window).getItem('claude-web:font-weight-scope')==='all';document.documentElement.style.setProperty('--cw-weight-offset',String(offset));document.documentElement.style.setProperty('--cw-ui-weight-offset',String(all?offset:0));document.documentElement.dataset.cwWeightScope=all?'all':'chat';}catch{}
 
 document.documentElement.dataset.claudeBgImageBlur = CLAUDE_BG_IMAGE_BLUR_ENABLED ? 'on' : 'off';
 document.documentElement.style.setProperty('--claude-bg-image-blur', `${CLAUDE_BG_IMAGE_BLUR}px`);
@@ -265,7 +265,7 @@ document.documentElement.style.setProperty('--claude-bg-image-dim', String(CLAUD
 
 function claudeReadClockSetting(key, fallback) {
   try {
-    const value = window.localStorage.getItem('claude-web:' + key);
+    const value = preferencesFor(window).getItem('claude-web:' + key);
     return /^([01]\d|2[0-3]):[0-5]\d$/.test(value || '') ? value : fallback;
   } catch {
     return fallback;
@@ -303,7 +303,7 @@ const CLAUDE_THEME_VARIANT = claudeResolveThemeVariant();
    resolved automatic value there too, so startup cannot pair night CSS with
    the day palette (or vice versa) before the settings panel mounts. */
 if (claudeReadSetting('theme-auto', ['manual', 'system', 'time'], 'manual') !== 'manual') {
-  try { window.localStorage.setItem('claude-web:variant', CLAUDE_THEME_VARIANT); } catch { /* storage may be blocked */ }
+  try { preferencesFor(window).setItem('claude-web:variant', CLAUDE_THEME_VARIANT); } catch { /* storage may be blocked */ }
 }
 
 const CLAUDE_LAYOUT_CHOICE = claudeReadSetting('layout', ['auto', 'pc', 'mobile'], 'auto');
@@ -829,7 +829,7 @@ if (CLAUDE_ENABLED) {
   function currentScheme() {
     let variant = null;
     try {
-      variant = window.localStorage.getItem('claude-web:variant');
+      variant = preferencesFor(window).getItem('claude-web:variant');
     } catch {
       variant = null;
     }
@@ -885,7 +885,7 @@ if (CLAUDE_ENABLED) {
 
   function readJson(key) {
     try {
-      const raw = window.localStorage.getItem(key);
+      const raw = preferencesFor(window).getItem(key);
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -894,7 +894,7 @@ if (CLAUDE_ENABLED) {
 
   function currentPresetId() {
     try {
-      return window.localStorage.getItem(STORAGE_PRESET) || '';
+      return preferencesFor(window).getItem(STORAGE_PRESET) || '';
     } catch {
       return '';
     }
@@ -913,7 +913,7 @@ if (CLAUDE_ENABLED) {
      于是「显示的」和「生效的」对不上。 */
   function currentFamilyId() {
     let stored = null;
-    try { stored = window.localStorage.getItem('claude-web:family'); } catch { /* 无痕 */ }
+    try { stored = preferencesFor(window).getItem('claude-web:family'); } catch { /* 无痕 */ }
     if (stored === CUSTOM_ID) return stored;
     return FAMILIES.some(f => f.id === stored) ? stored : FAMILIES[0].id;
   }
@@ -921,7 +921,7 @@ if (CLAUDE_ENABLED) {
   /* ---------- 自定义配色 ---------- */
 
   function writeJson(key, value) {
-    try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* 无痕 */ }
+    try { preferencesFor(window).setItem(key, JSON.stringify(value)); } catch { /* 无痕 */ }
   }
 
   /* 读出 {light, dark}。旧的扁平格式迁移到当前明暗那一半 —— 当初就是一套值，
@@ -947,7 +947,7 @@ if (CLAUDE_ENABLED) {
   /* 自定义的取值起点：用户最后看过的内置家族。 */
   function baseFamily() {
     let id = null;
-    try { id = window.localStorage.getItem(STORAGE_BASE); } catch { id = null; }
+    try { id = preferencesFor(window).getItem(STORAGE_BASE); } catch { id = null; }
     return FAMILIES.find(item => item.id === id) ?? FAMILIES[0];
   }
 
@@ -992,7 +992,7 @@ if (CLAUDE_ENABLED) {
     const scheme = currentScheme();
     if (familyId === CUSTOM_ID) {
       if (persist) {
-        try { window.localStorage.setItem('claude-web:family', CUSTOM_ID); } catch { /* 无痕 */ }
+        try { preferencesFor(window).setItem('claude-web:family', CUSTOM_ID); } catch { /* 无痕 */ }
       }
       const preset = customPreset(scheme);
       apply(resolve(preset));
@@ -1001,9 +1001,9 @@ if (CLAUDE_ENABLED) {
     const family = FAMILIES.find(item => item.id === familyId) ?? FAMILIES[0];
     if (persist) {
       try {
-        window.localStorage.setItem('claude-web:family', family.id);
+        preferencesFor(window).setItem('claude-web:family', family.id);
         /* 同时记成自定义的起点：下次点进调色就是从这套色开始改。 */
-        window.localStorage.setItem(STORAGE_BASE, family.id);
+        preferencesFor(window).setItem(STORAGE_BASE, family.id);
       } catch { /* 无痕 */ }
     }
     return activate(family[scheme].id, { persist: false });
@@ -1031,7 +1031,7 @@ if (CLAUDE_ENABLED) {
        否则调过一次色之后切风格就几乎看不出变化。 */
     apply(resolve(preset), preset.id);
     if (persist) {
-      try { window.localStorage.setItem(STORAGE_PRESET, preset.id); } catch { /* 无痕模式 */ }
+      try { preferencesFor(window).setItem(STORAGE_PRESET, preset.id); } catch { /* 无痕模式 */ }
     }
     return preset;
   }
@@ -1081,7 +1081,7 @@ if (CLAUDE_ENABLED) {
 
   /* 清掉自定义，回到起点家族。两半一起清 —— 只清一半会留下日夜不成套的方案。 */
   function clearCustom() {
-    try { window.localStorage.removeItem(STORAGE_CUSTOM); } catch { /* 无痕模式 */ }
+    try { preferencesFor(window).removeItem(STORAGE_CUSTOM); } catch { /* 无痕模式 */ }
     return activateFamily(baseFamily().id);
   }
 
@@ -9076,14 +9076,14 @@ if (CLAUDE_ENABLED) {
   function rememberCharacterName(name) {
     const value = String(name || '').trim();
     if (!value) return;
-    try { hostWindow.localStorage.setItem(LAST_CHARACTER_KEY, value); } catch (error) { /* 隐私模式 */ }
+    try { preferencesFor(hostWindow).setItem(LAST_CHARACTER_KEY, value); } catch (error) { /* 隐私模式 */ }
   }
 
   function rememberedCharacterName(characters) {
     /* 第一次安装还没有本地记忆时，从 Recents 第一条的 avatar 反查角色名；
        以后每次真实选择都会覆盖 localStorage。 */
     try {
-      const saved = hostWindow.localStorage.getItem(LAST_CHARACTER_KEY) || '';
+      const saved = preferencesFor(hostWindow).getItem(LAST_CHARACTER_KEY) || '';
       if (saved) return saved;
     } catch (error) { /* 隐私模式 */ }
     const recent = hostDocument.querySelector('.' + RAIL_RECENTS_CLASS + ' .recentChat[data-avatar]');
@@ -9712,7 +9712,7 @@ if (CLAUDE_ENABLED) {
       dragging = false;
       hostDocument.body.classList.remove('clawd-rail-resizing');
       const now = hostDocument.documentElement.style.getPropertyValue('--cl-rail');
-      try { hostWindow.localStorage.setItem(RAIL_KEY, now); } catch (error) { /* 隐私模式下会抛，忽略 */ }
+      try { preferencesFor(hostWindow).setItem(RAIL_KEY, now); } catch (error) { /* 隐私模式下会抛，忽略 */ }
       hostDocument.removeEventListener('mousemove', move);
       hostDocument.removeEventListener('mouseup', up);
     };
@@ -9725,7 +9725,7 @@ if (CLAUDE_ENABLED) {
     });
 
     try {
-      const saved = hostWindow.localStorage.getItem(RAIL_KEY);
+      const saved = preferencesFor(hostWindow).getItem(RAIL_KEY);
       if (saved) {
         const parsed = parseInt(saved, 10) || RAIL_MIN;
         /* 288px 是旧版默认值而非用户刻意调出的常见宽度；迁移到官网复标后的 280px。
@@ -12037,7 +12037,7 @@ if (CLAUDE_ENABLED) {
 
   function read(key, allowed, fallback) {
     try {
-      const raw = window.localStorage.getItem(KEY_PREFIX + key);
+      const raw = (key === 'enabled' ? window.localStorage.getItem(KEY_PREFIX + key) : preferencesFor(window).getItem(KEY_PREFIX + key));
       return allowed.includes(raw) ? raw : fallback;
     } catch {
       return fallback;
@@ -12046,7 +12046,7 @@ if (CLAUDE_ENABLED) {
 
   function write(key, value) {
     try {
-      window.localStorage.setItem(KEY_PREFIX + key, value);
+      if (key === 'enabled') window.localStorage.setItem(KEY_PREFIX + key, value); else preferencesFor(window).setItem(KEY_PREFIX + key, value);
       return true;
     } catch (error) {
       console.warn('[Claude Web] 设置写入失败：', error);
@@ -12056,7 +12056,7 @@ if (CLAUDE_ENABLED) {
 
   function readClock(key, fallback) {
     try {
-      const value = window.localStorage.getItem(KEY_PREFIX + key);
+      const value = preferencesFor(window).getItem(KEY_PREFIX + key);
       return /^([01]\d|2[0-3]):[0-5]\d$/.test(value || '') ? value : fallback;
     } catch {
       return fallback;
@@ -12070,7 +12070,7 @@ if (CLAUDE_ENABLED) {
      的安全读取函数，读不到就退回默认值，不让存储受限变成整个面板挂不上。 */
   function readNumber(key, fallback, min, max) {
     try {
-      const value = Number(window.localStorage.getItem(KEY_PREFIX + key));
+      const value = Number(preferencesFor(window).getItem(KEY_PREFIX + key));
       if (!Number.isFinite(value)) return fallback;
       return Math.min(max, Math.max(min, value));
     } catch {
@@ -12110,11 +12110,11 @@ if (CLAUDE_ENABLED) {
     delete root.dataset.claudeArchive;
     delete root.dataset.claudeArchiveGhost;
     try {
-      if (window.localStorage.getItem(KEY_PREFIX + 'family') === 'archive') {
-        window.localStorage.setItem(KEY_PREFIX + 'family', 'anthropic');
+      if (preferencesFor(window).getItem(KEY_PREFIX + 'family') === 'archive') {
+        preferencesFor(window).setItem(KEY_PREFIX + 'family', 'anthropic');
       }
-      window.localStorage.removeItem(KEY_PREFIX + 'style');
-      window.localStorage.removeItem(KEY_PREFIX + 'ghost');
+      preferencesFor(window).removeItem(KEY_PREFIX + 'style');
+      preferencesFor(window).removeItem(KEY_PREFIX + 'ghost');
     } catch {
       /* 无痕模式或受限宿主里清不掉也不影响：CSS 已经不再包含档案版式。 */
     }
@@ -13101,7 +13101,7 @@ if (CLAUDE_ENABLED) {
     const fontCustom = panel.querySelector('#claude-web-font-custom');
     const syncCustomBox = () => { fontCustom.style.display = fontSelect.value === 'custom' ? '' : 'none'; };
     fillSelect(fontSelect, FONTS, read('font', FONT_VALUES, 'follow'));
-    try { fontCustom.value = window.localStorage.getItem('claude-web:fontCustom') || ''; } catch { /* 无痕 */ }
+    try { fontCustom.value = preferencesFor(window).getItem('claude-web:fontCustom') || ''; } catch { /* 无痕 */ }
     syncCustomBox();
     fontSelect.addEventListener('change', () => {
       if (!write('font', fontSelect.value)) return;
@@ -13113,7 +13113,7 @@ if (CLAUDE_ENABLED) {
     });
     fontCustom.addEventListener('input', () => {
       const v = fontCustom.value.trim();
-      try { window.localStorage.setItem('claude-web:fontCustom', v); } catch { /* 无痕 */ }
+      try { preferencesFor(window).setItem('claude-web:fontCustom', v); } catch { /* 无痕 */ }
       if (v) document.documentElement.style.setProperty('--cw-font-custom', v);
       else document.documentElement.style.removeProperty('--cw-font-custom');
     });
