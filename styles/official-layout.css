@@ -3801,3 +3801,10 @@ html[data-cw-v4][data-claude-layout="mobile"]:not([data-claude-mode="compat"]) #
     - max(10px, env(safe-area-inset-bottom, 0px)) - 5px
   )) !important;
 }
+
+/* Formal 2.0.138: CW-owned editors must shrink below ST popup fit-content on older Chromium. */
+html[data-cw-v4] body #top-settings-holder#top-settings-holder dialog.cw-v4-editor.cw-v4-editor,
+html[data-cw-v4] body dialog.cw-v4-editor.cw-v4-editor,
+html[data-cw-v4] body dialog.popup.popup.cw-st-sheet,
+html[data-cw-v4] body>.cw-pm-host.cw-pm-host,
+html[data-cw-v4] body dialog.cwx-popup.cwx-popup{min-height:0!important}
