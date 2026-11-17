@@ -162,8 +162,8 @@ html[data-cw-settings-unified]:not([data-claude-layout="mobile"]) .cw-v4-shell .
 html[data-cw-settings-unified]:not([data-claude-layout="mobile"]) .cw-v4-panel.openDrawer:not(.closedDrawer) {left:calc(var(--cw-v4-x) + 214px) !important;top:var(--cw-v4-y) !important;width:calc(var(--cw-v4-w) - 214px) !important;height:var(--cw-v4-h) !important;padding:26px 58px 40px 34px !important;background:var(--cwus-desktop) !important;border-radius:0px 16px 16px 0px !important}
 }
 @media (max-width: 700px) {
-html[data-cw-settings-unified] #user-settings-block.cw-v4-panel.openDrawer:not(.closedDrawer) {top:112px !important;height:calc(100dvh - 112px) !important}
-html[data-cw-settings-unified] .cw-v4-panel.openDrawer:not(.closedDrawer) {padding:16px 16px 40px !important;background:var(--cwus-canvas) !important;top:52px !important;height:calc(100dvh - 52px) !important}
+html[data-cw-settings-unified] #user-settings-block.cw-v4-panel.openDrawer:not(.closedDrawer) {top:calc(var(--cw-v4-y, 0px) + 112px) !important;height:calc(var(--cw-v4-h, 100dvh) - 112px) !important}
+html[data-cw-settings-unified] .cw-v4-panel.openDrawer:not(.closedDrawer) {padding:16px 16px 40px !important;background:var(--cwus-canvas) !important;top:calc(var(--cw-v4-y, 0px) + 52px) !important;height:calc(var(--cw-v4-h, 100dvh) - 52px) !important}
 html[data-cw-settings-unified] .cw-v4-panel .cw-v4-card, html[data-cw-settings-unified] .cw-v4-panel .cwr-card {border-color:transparent !important}
 html[data-cw-settings-unified][data-claude-integrated-theme="night"] .cw-v4-panel .cw-v4-card, html[data-cw-settings-unified][data-claude-integrated-theme="night"] .cw-v4-panel .cwr-card {border-color:var(--cwus-soft) !important}
 html[data-cw-settings-unified] .cw-v4-shell .cw-v4-head {height:52px !important;min-height:52px !important;background:var(--cwus-canvas) !important}
