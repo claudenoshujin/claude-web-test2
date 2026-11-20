@@ -145,6 +145,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   let prefPage = 'look', searchQuery = '', prefPanel = null;
   const prefMoves = [], prefParts = [], prefClasses = [];
   const chatMoves=[];
+  const messageInfoMoves = new Map();
   const prefRangeUndos=[];
   const prefSegmentUndos=[];
   const segmentIds=['stscript_autocomplete_state','stscript_matching','claude-web-theme-auto','claude-web-variant','send_on_enter'];
@@ -258,6 +259,10 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   function restoreAdaptedContainers() {
     doc.querySelectorAll('.cw-v4-swipes,.cw-v4-model').forEach(n=>n.remove());
     for(const [node,mark] of chatMoves.splice(0).reverse())if(mark.parentNode)mark.replaceWith(node);
+    for (const [node, mark] of [...messageInfoMoves].reverse()) if (mark.parentNode) mark.replaceWith(node);
+    messageInfoMoves.clear();
+    doc.querySelectorAll('[data-cw-info-icon]').forEach(n => n.remove());
+    doc.querySelectorAll('.cw-v4-message-info').forEach(n => n.remove());
     drawerLayouts.restore();
     restorePrefs();
     for (const panel of panels.values()) {
@@ -931,23 +936,69 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   const shortModel = id => String(id).split('/').pop().replace(/[-_@](?:\d{8}|\d{4}-\d{2}-\d{2})$/, '');
   function syncModelNames(chat, ctx) {
     chat.querySelectorAll('.mes[is_user="false"]:not([is_system="true"])').forEach(mes => {
-      const time = mes.querySelector('.ch_name .timestamp'); if (!time) return;
+      const time = mes.querySelector('.cw-v4-message-info .timestamp,.ch_name .timestamp'); if (!time) return;
       const model = ctx?.chat?.[Number(mes.getAttribute('mesid'))]?.extra?.model || '';
       let tag = mes.querySelector('.cw-v4-model');
       if (!model) { tag?.remove(); return; }
       if (!tag) { tag = make('span', 'cw-v4-model'); }
-      if (tag.previousElementSibling !== time) time.after(tag);
+      const row = mes.querySelector('.cw-v4-message-info');
+      if (row) { if (tag.parentNode !== row || row.lastElementChild !== tag) row.append(tag); }
+      else if (tag.previousElementSibling !== time) time.after(tag);
       const text = shortModel(model);
       if (tag.textContent !== text) tag.textContent = text;
       if (tag.title !== model) tag.title = model;
     });
+  }
+  function syncMessageInfo(chat, ctx) {
+    for (const [node, mark] of messageInfoMoves) if (!node.isConnected) { mark.remove(); messageInfoMoves.delete(node); }
+    const settings = ctx?.powerUserSettings || {};
+    for (const mes of chat.querySelectorAll(':scope>.mes:not([is_system="true"]):not(.claude-welcome-prompt):not([type="welcome_prompt"])')) {
+      const head = mes.querySelector('.ch_name'); if (!head) continue;
+      let row = mes.querySelector('.cw-v4-message-info');
+      if (!row) { row = make('div','cw-v4-message-info'); head.after(row); }
+      // ST only creates its provider icon if the preference was already on
+      // when that message was rendered. Supply the same asset for older rows.
+      const extra = ctx?.chat?.[Number(mes.getAttribute('mesid'))]?.extra;
+      if (settings.timestamp_model_icon && !mes.querySelector('.timestamp-icon') && /^[a-zA-Z0-9_-]+$/.test(extra?.api || '')) {
+        const image = make('img','timestamp-icon icon-svg');
+        image.dataset.cwInfoIcon = ''; image.alt = ''; image.title = [extra.api,extra.model].filter(Boolean).join(' - ');
+        image.onload = () => { if (image.isConnected) win.SVGInject?.(image); };
+        image.onerror = () => { image.hidden = true; };
+        image.src = '/img/' + encodeURIComponent(extra.api) + '.svg';
+        row.append(image);
+      }
+      const selectors = ['.mesIDDisplay','.timestamp','.timestamp-icon','.mes_timer','.tokenCounterDisplay','.cw-v4-model'];
+      const nodes = selectors.flatMap(selector => [...mes.querySelectorAll(selector)]);
+      for (const node of nodes) {
+        if (node.classList.contains('cw-v4-model') || node.hasAttribute('data-cw-info-icon') || messageInfoMoves.has(node)) continue;
+        const mark = doc.createComment('cw-v4-message-info-return');
+        if (node.parentNode !== row) node.before(mark);
+        else {
+          // ST may replace the provider icon asynchronously, next to the time.
+          const time = mes.querySelector('.timestamp'), timeMark = messageInfoMoves.get(time);
+          if (node.classList.contains('timestamp-icon') && timeMark?.parentNode) timeMark.after(mark);
+          else (mes.querySelector('.mesAvatarWrapper') || head).append(mark);
+        }
+        messageInfoMoves.set(node,mark);
+      }
+      if (nodes.some((node,i) => row.children[i] !== node) || row.children.length !== nodes.length) row.append(...nodes);
+      const shown = nodes.some(node => {
+        const key = node.matches('.mesIDDisplay') ? 'mesIDDisplay_enabled' : node.matches('.timestamp') ? 'timestamps_enabled' : node.matches('.mes_timer') ? 'timer_enabled' : node.matches('.tokenCounterDisplay') ? 'message_token_count_enabled' : 'timestamp_model_icon';
+        return settings[key] && (node.matches('.timestamp-icon') || node.textContent.trim());
+      });
+      if (row.hidden === shown) row.hidden = !shown;
+    }
   }
   // classList.toggle rewrites the class attribute even when nothing changes; SillyTavern's keyboard.js then
   // rescans the whole page for interactables. Only touch body classes on a real change.
   const setBodyClass = (name, on) => { if (doc.body.classList.contains(name) !== Boolean(on)) doc.body.classList.toggle(name, Boolean(on)); };
   function syncChat() {
     const chat = doc.querySelector('#chat'); if (!chat) return;
-    if (enabled()) syncModelNames(chat, win.SillyTavern?.getContext?.());
+    if (enabled()) {
+      const ctx = win.SillyTavern?.getContext?.();
+      syncModelNames(chat, ctx);
+      syncMessageInfo(chat, ctx);
+    }
     if(enabled())chat.querySelectorAll('.mes[is_user="false"] .mes_buttons').forEach(bar=>{
       for(const selector of ['.mes_copy','.mes_narrate']){const n=bar.querySelector(selector);if(n&&n.parentElement!==bar){const mark=doc.createComment('cw-v4-chat-return');n.before(mark);chatMoves.push([n,mark]);bar.append(n);}}
       const message=bar.closest('.mes'),source=message.querySelector('.swipes-counter');
