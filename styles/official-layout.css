@@ -2932,21 +2932,30 @@ html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes .mes_buttons>.extraM
   html[data-cw-v4] body:not(.expandMessageActions) #chat>.mes:not([bookmark_link='']) .mes_buttons>.extraMesButtons.visible.visible>.mes_create_branch{margin-top:6px!important;box-shadow:0 -6px 0 0 rgba(0,0,0,.06)!important}
 }
 
-/* ---------- 编辑消息：原地一张白卡片，右下「取消 · 保存」，其余收进左下 ⋯ ---------- */
+/* ---------- 编辑消息：原地一张白卡片，右下「取消 · 保存」，左下平铺编辑动作 ---------- */
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_block{position:relative!important}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_text{padding:12px 14px 58px!important;border-radius:14px!important;background:var(--v4-panel)!important;box-shadow:0 0 0 1px var(--v4-line)!important}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) #curEditTextarea{display:block!important;width:100%!important;min-height:4.5em!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;outline:0!important;color:var(--v4-text)!important;font:inherit!important;line-height:1.6!important;resize:none!important}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons{position:absolute!important;left:14px!important;right:14px!important;top:var(--cw-edit-top,auto)!important;bottom:auto!important;z-index:5!important;display:flex!important;align-items:center!important;gap:8px!important;width:auto!important;height:auto!important;margin:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;opacity:1!important}
-html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.cw-edit-more{order:0;display:grid!important;place-items:center!important;width:30px!important;height:30px!important;margin:0 auto 0 0!important;padding:0!important;border:0!important;border-radius:7px!important;background:none!important;color:var(--v4-muted)!important;cursor:pointer}
-html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.cw-edit-more svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}
-html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons.cw-edit-open>.cw-edit-more,html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.cw-edit-more:hover{background:var(--v4-hover)!important;color:var(--v4-text)!important}
+html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons{gap:4px!important}
+html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.cw-edit-actions{display:flex;align-items:center;gap:2px;margin-right:auto;min-width:0}
+html[data-cw-v4] body #chat .cw-edit-action{display:grid;place-items:center;flex:none;width:28px;height:30px;margin:0;padding:0;border:0;border-radius:7px;background:none;color:var(--v4-muted);cursor:pointer}
+html[data-cw-v4] body #chat .cw-edit-action[hidden]{display:none!important}
+html[data-cw-v4] body #chat .cw-edit-action svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6}
+html[data-cw-v4] body #chat .cw-edit-action:hover{background:var(--v4-hover);color:var(--v4-text)}
+html[data-cw-v4] body #chat .cw-edit-action.cw-edit-danger{margin-left:8px;border-left:1px solid var(--v4-line);border-radius:0 7px 7px 0;color:#c8534b}
+@media(max-width:420px){
+  html[data-cw-v4] body #chat .cw-edit-action{width:24px}
+  html[data-cw-v4] body #chat .cw-edit-action.cw-edit-danger{margin-left:2px}
+  html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>:is(.mes_edit_cancel,.mes_edit_done){padding-inline:8px!important}
+}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_cancel, html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_done{order:2;display:inline-flex!important;align-items:center!important;flex:none!important;white-space:nowrap!important;writing-mode:horizontal-tb!important;width:auto!important;min-width:max-content!important;height:32px!important;margin:0!important;padding:0 14px!important;border-radius:8px!important;font:500 14px/1 var(--cw-v4-font)!important;opacity:1!important;filter:none!important;cursor:pointer}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_cancel::before, html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_done::before{content:""!important;display:block!important;width:17px!important;height:17px!important;background:currentColor!important;-webkit-mask:var(--e-i) center/contain no-repeat!important;mask:var(--e-i) center/contain no-repeat!important;font-size:0!important}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_cancel{--e-i:var(--cw-v4-icon-close)}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_done{--e-i:var(--cw-v4-icon-check)}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_cancel{border:1px solid var(--v4-line)!important;background:var(--v4-panel)!important;color:var(--v4-text)!important}
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_done{order:3;border:0!important;background:var(--v4-text)!important;color:var(--v4-panel)!important}
-/* 其余五个：原按钮藏着；左下 ⋯ 打开 .cw-edit-menu（JS 造的，代点原按钮） */
+/* 其余五个：保留宿主按钮和事件，左侧图标代理转发点击 */
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_copy, html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_add_reasoning, html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_up, html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_down, html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_edit_buttons>.mes_edit_delete{display:none!important}
 /* 编辑时消息下面的附件 / 偏置这些先收起，按钮条才能贴在卡片底部 */
 html[data-cw-v4] body #chat>.mes:has(#curEditTextarea) .mes_block>.mes_text~*{display:none!important}

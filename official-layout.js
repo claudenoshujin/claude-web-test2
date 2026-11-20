@@ -1932,37 +1932,62 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
         vs ? {icon: 'sun', label: L('主题'), value: vs.disabled ? L('跟随时间') : (variant === 'night' ? L('夜间') : L('日间')), sub: vs.disabled ? null : themeItems, disabled: vs.disabled} : null,
       ].filter(Boolean).filter(it => !(it.sub === null && it.disabled === undefined)), {up: true, cls: 'cw-acct'});
     }, true);
-    // 2.0.268 编辑消息（design-small-menus-v1）：酒馆的 ✓ / ✕ 画成「保存 / 取消」，其余五个收进左边一个 ⋯ 下拉。
-    // 按钮都是酒馆原来的（事件不动），只加 data-cw-label 和一个 ⋯；CSS 在 ㊵。
-    const editMore = () => {
+    // 编辑消息：保留酒馆的保存/取消，五个已有动作在左侧按原顺序平铺。
+    // 图标代理只调用原生按钮；标签与原生不可用状态保持同步。
+    let activeEditBar;
+    const nativeActionsObserver = new win.MutationObserver(() => syncEditActions());
+    const syncEditActions = () => {
       if (!enabled()) return;
-      for (const bar of doc.querySelectorAll('#chat .mes .mes_edit_buttons')) {
+      const bar = doc.getElementById('curEditTextarea')?.closest('.mes')?.querySelector('.mes_edit_buttons');
+      if (bar !== activeEditBar) {
+        nativeActionsObserver.disconnect();
+        activeEditBar = bar;
+        if (bar) for (const name of Object.keys(EDIT_LABELS)) {
+          const native = bar.querySelector(':scope>.' + name);
+          if (native) nativeActionsObserver.observe(native, {attributes:true, attributeFilter:['style','class','disabled','aria-disabled']});
+        }
+      }
+      if (bar) {
         labelMenu(bar, EDIT_LABELS);
-        if (bar.querySelector(':scope>.cw-edit-more')) continue;
+        const existing = bar.querySelector(':scope>.cw-edit-actions');
+        if (existing) {
+          for (const proxy of existing.children) {
+            const native = bar.querySelector(':scope>.' + proxy.dataset.cwNative);
+            const hidden = !native || win.getComputedStyle(native).visibility === 'hidden' || native.style.display === 'none';
+            const disabled = Boolean(native?.disabled || native?.getAttribute('aria-disabled') === 'true');
+            if (proxy.hidden !== hidden) proxy.hidden = hidden;
+            if (proxy.disabled !== disabled) proxy.disabled = disabled;
+          }
+          return;
+        }
         // 按钮条贴在卡片（.mes_text）底边里面：量出 .mes_text 底边相对按钮条定位容器的位置（消息块下面还有别的留白，不能用 bottom）。
         const text = bar.closest('.mes')?.querySelector('.mes_text'), ta = text?.querySelector('textarea');
         const place = () => { if (!bar.isConnected || !text) return; const box = bar.offsetParent?.getBoundingClientRect(), r = text.getBoundingClientRect(); if (!box) return; const top = Math.round(r.bottom - box.top - 44) + 'px'; if (bar.style.getPropertyValue('--cw-edit-top') !== top) bar.style.setProperty('--cw-edit-top', top); };
         place(); win.requestAnimationFrame(place); ta?.addEventListener('input', place);
         if (text && win.ResizeObserver) { const ro = new win.ResizeObserver(place); ro.observe(text); const stop = new win.MutationObserver(() => { if (!bar.isConnected) { ro.disconnect(); stop.disconnect(); } }); stop.observe(doc.getElementById('chat') || doc.body, {childList: true, subtree: true}); }
-        // 2.0.270（Lulu：下拉被消息外层截断）：⋯ 打开通用小菜单（挂在 body 上），每一项代点酒馆原来的按钮。
-        const more = button('', e => {
-          e.stopPropagation(); place();
-          if (cwMenu?.classList.contains('cw-editmenu')) { closeCwMenu(); return; }
-          const items = [];
-          for (const [cls, ic, sep] of [['mes_edit_copy','copy'],['mes_edit_add_reasoning','bulb'],['mes_edit_up','chevu',1],['mes_edit_down','chevd'],['mes_edit_delete','trash',1]]) {
-            const native = bar.querySelector(':scope>.' + cls); if (!native || win.getComputedStyle(native).visibility === 'hidden') continue;
-            if (sep && items.length) items.push({sep: 1});
-            items.push({icon: ic, label: native.dataset.cwLabel || '', danger: cls === 'mes_edit_delete', run: () => native.click()});
-          }
-          if (cwMenu?._cwAnchor === more) { closeCwMenu(); return; } // 再点一下 ⋯ 收起
-          popMenu(more, items, {cls: 'cw-editmenu'});
-        }, 'cw-edit-more');
-        more.append(icon('dots')); more.setAttribute('aria-label', L('更多')); bar.prepend(more);
+        const actions = make('div', 'cw-edit-actions');
+        for (const [cls, ic] of [['mes_edit_copy','copy'],['mes_edit_add_reasoning','bulb'],['mes_edit_up','chevu'],['mes_edit_down','chevd'],['mes_edit_delete','trash']]) {
+          const native = bar.querySelector(':scope>.' + cls); if (!native) continue;
+          const proxy = button('', e => { e.stopPropagation(); place(); native.click(); }, cls === 'mes_edit_delete' ? 'cw-edit-action cw-edit-danger' : 'cw-edit-action');
+          proxy.dataset.cwNative = cls;
+          proxy.title = native.dataset.cwLabel || native.title || '';
+          proxy.setAttribute('aria-label', proxy.title);
+          proxy.hidden = win.getComputedStyle(native).visibility === 'hidden' || native.style.display === 'none';
+          proxy.disabled = Boolean(native.disabled || native.getAttribute('aria-disabled') === 'true');
+          proxy.append(icon(ic)); actions.append(proxy);
+        }
+        bar.prepend(actions);
       }
     };
-    const editObs = new win.MutationObserver(list => { if (cwMenu?.classList.contains('cw-editmenu') && !doc.getElementById('curEditTextarea')) closeCwMenu(); if (list.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.id === 'curEditTextarea' || n.querySelector?.('#curEditTextarea'))))) editMore(); });
-    const chatEl = doc.getElementById('chat'); if (chatEl) editObs.observe(chatEl, {childList: true, subtree: true});
-    disposers.push(() => { editObs.disconnect(); doc.querySelectorAll('.cw-edit-more').forEach(n => n.remove()); doc.querySelectorAll('.cw-edit-open').forEach(n => n.classList.remove('cw-edit-open')); });
+    const editObs = new win.MutationObserver(() => {
+      if (!!doc.getElementById('curEditTextarea') || activeEditBar) syncEditActions();
+    });
+    const chatEl = doc.getElementById('chat');
+    if (chatEl) editObs.observe(chatEl, {childList:true, subtree:true});
+    disposers.push(() => {
+      editObs.disconnect(); nativeActionsObserver.disconnect();
+      doc.querySelectorAll('.cw-edit-actions').forEach(n => n.remove());
+    });
     // Input menus (+ and ≡, 2026-09-29): ST pins each to its own button with Popper
     // (top-start) and sizes it to its own text, so they open 40px apart with different
     // widths. On either button click (before ST shows the menu), measure both menus'
