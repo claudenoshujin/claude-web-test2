@@ -263,6 +263,8 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     messageInfoMoves.clear();
     doc.querySelectorAll('[data-cw-info-icon]').forEach(n => n.remove());
     doc.querySelectorAll('.cw-v4-message-info').forEach(n => n.remove());
+    doc.querySelectorAll('.cw-ruby-scroll').forEach(n => n.replaceWith(...n.childNodes));
+    rubyDirty.clear(); rubyFullMeasure = true;
     drawerLayouts.restore();
     restorePrefs();
     for (const panel of panels.values()) {
@@ -989,6 +991,77 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       if (row.hidden === shown) row.hidden = !shown;
     }
   }
+  const rubyDirty = new Set();
+  let rubyFullMeasure = true, rubyOwnMoves = new WeakSet();
+  function markRubyChanges(records) {
+    let needsSync = false;
+    for (const record of records) {
+      const moved = record.type === 'childList' ? [...record.addedNodes, ...record.removedNodes] : [];
+      if (record.type === 'childList' && moved.length && moved.every(n => rubyOwnMoves.has(n))) continue;
+      const element = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+      const text = element?.closest('.mes_text');
+      if (text && (text.querySelector('ruby') || text.querySelector('.cw-ruby-scroll'))) {
+        const mes = text.closest('.mes');
+        if (mes) { rubyDirty.add(mes); needsSync = true; }
+      }
+      if (record.type === 'childList' || element?.closest('.cw-v4-message-info')) needsSync = true;
+      for (const node of record.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        if (node.querySelector('ruby') && (node.matches('.mes,.mes_text') || node.querySelector('.mes_text'))) {
+          const mes = node.closest('.mes'); if (mes) rubyDirty.add(mes);
+          node.querySelectorAll('.mes').forEach(m => rubyDirty.add(m));
+        }
+      }
+    }
+    rubyOwnMoves = new WeakSet();
+    if (needsSync) schedule();
+  }
+  function syncRubyScroll(chat, ctx) {
+    if (!rubyFullMeasure && !rubyDirty.size) return;
+    if (rubyFullMeasure) {
+      for (const ruby of chat.querySelectorAll('.mes_text ruby')) {
+        const mes = ruby.closest('.mes');
+        if (mes) rubyDirty.add(mes);
+      }
+      rubyFullMeasure = false;
+    }
+    const generating = ctx?.isGenerating?.() || doc.body.classList.contains('claude-generation-active');
+    const last = generating ? chat.querySelector(':scope > .mes.last_mes') : null;
+    const measurements = [], blockWidths = new Map();
+    for (const mes of [...rubyDirty]) {
+      if (!chat.contains(mes)) { rubyDirty.delete(mes); continue; }
+      if (last && mes !== last) continue;
+      rubyDirty.delete(mes);
+      for (const ruby of mes.querySelectorAll('.mes_text ruby')) {
+        if (ruby.parentElement?.closest('ruby')) continue;
+        const wrap = ruby.parentElement?.classList.contains('cw-ruby-scroll') ? ruby.parentElement : null;
+        const block = (wrap || ruby).parentElement?.closest('p,li,blockquote,td,div.mes_text');
+        if (!block) continue;
+        if (!blockWidths.has(block)) {
+          const style = win.getComputedStyle(block);
+          blockWidths.set(block, block.clientWidth - parseFloat(style.paddingLeft || 0) - parseFloat(style.paddingRight || 0));
+        }
+        const available = blockWidths.get(block);
+        // Native messages can be inserted while their container is still hidden.
+        // Keep them pending until the next visibility / chat update can measure them.
+        if (available <= 0) { rubyDirty.add(mes); continue; }
+        const overflowing = Math.max(ruby.getBoundingClientRect().width, ruby.scrollWidth) > available + 1;
+        measurements.push({ ruby, wrap, overflowing });
+      }
+    }
+    // Read all affected geometry before moving nodes, so one wrapper cannot
+    // force layout again while measuring the next ruby in the same frame.
+    for (const { ruby, wrap, overflowing } of measurements) {
+      if (overflowing && !wrap) {
+        const scroller = make('span','cw-ruby-scroll');
+        scroller.tabIndex = 0; scroller.setAttribute('role','region'); scroller.setAttribute('aria-label',t('长注音，可横向滚动','Long ruby text, scroll horizontally'));
+        rubyOwnMoves.add(ruby); rubyOwnMoves.add(scroller);
+        ruby.before(scroller); scroller.append(ruby);
+      } else if (!overflowing && wrap) {
+        rubyOwnMoves.add(ruby); rubyOwnMoves.add(wrap); wrap.replaceWith(ruby);
+      }
+    }
+  }
   // classList.toggle rewrites the class attribute even when nothing changes; SillyTavern's keyboard.js then
   // rescans the whole page for interactables. Only touch body classes on a real change.
   const setBodyClass = (name, on) => { if (doc.body.classList.contains(name) !== Boolean(on)) doc.body.classList.toggle(name, Boolean(on)); };
@@ -998,6 +1071,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       const ctx = win.SillyTavern?.getContext?.();
       syncModelNames(chat, ctx);
       syncMessageInfo(chat, ctx);
+      syncRubyScroll(chat, ctx);
     }
     if(enabled())chat.querySelectorAll('.mes[is_user="false"] .mes_buttons').forEach(bar=>{
       for(const selector of ['.mes_copy','.mes_narrate']){const n=bar.querySelector(selector);if(n&&n.parentElement!==bar){const mark=doc.createComment('cw-v4-chat-return');n.before(mark);chatMoves.push([n,mark]);bar.append(n);}}
@@ -1440,7 +1514,18 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     observe(doc.body,()=>syncComposerLines(),{attributes:true,attributeFilter:['class']});
     observe(root, schedule, {attributes:true,attributeFilter:['data-claude-structure','data-claude-skin','data-cw-halloween','data-claude-ui','data-claude-layout','data-cw-v4-landscape','data-cw-v4-kb']});
     observe(doc.body, schedule, {attributes:true,attributeFilter:['class','data-clawd-menu']});
-    const chat = doc.getElementById('chat'); if (chat) observe(chat, schedule, {childList:true,subtree:true});
+    const chat = doc.getElementById('chat');
+    if (chat) observe(chat, markRubyChanges, {childList:true,subtree:true,characterData:true});
+    if (chat && win.ResizeObserver) {
+      let width = -1;
+      const ro = new win.ResizeObserver(([entry]) => {
+        const next = entry.contentRect.width;
+        if (next === width) return;
+        width = next; rubyFullMeasure = true; schedule();
+      });
+      ro.observe(chat);
+      disposers.push(() => ro.disconnect());
+    }
     // Typing only changes the filled state. syncChat() walks every assistant message and
     // reads layout, so it stays on the chat observer / schedule() path instead of every keystroke.
     on(doc,'input', e => { if (['chat_width_slider','chat_width_slider_counter'].includes(e.target.id)) deferChatWidth(); if (e.target.id === 'send_textarea') setBodyClass('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
