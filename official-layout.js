@@ -1,3 +1,4 @@
+import { createBackgroundFilters } from './background-filters.js?v=2.0.345';
 import { createTTPanelRuntime } from './official-tt-panel-runtime.js?v=2.0.345';
 import { dropAfter, clearDropLine, showDropLine, guardSortDrag } from './settings-drop-target.js?v=2.0.345';
 import { watchTokens, tokenText } from './token-count.js?v=2.0.345';
@@ -33,6 +34,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   for (const [name,path] of Object.entries(officialIcons)) root.style.setProperty('--cw-v4-icon-'+name,`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`)}")`);
   const installedIconValues = new Map(iconProperties.map(([key]) => [key, root.style.getPropertyValue(key)]));
   const enabled = () => !destroyed && root.dataset.claudeEnabled !== 'off' && root.dataset.claudeStructure === 'rail' && root.dataset.claudeSkin === 'classic';
+  const backgroundFilters = createBackgroundFilters({win, enabled});
   // The mobile skin can also run in a wide desktop window. Match the CSS
   // breakpoint rather than treating the skin preference as viewport size.
   // Phones use the phone layout at any width (the stylesheets are pinned the
@@ -1401,6 +1403,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     paintQrHeight();
   }
   function sync() {
+    backgroundFilters.sync();
     raf = 0; if (destroyed) return;
     displayState.rescan();
     syncQrBar();
@@ -2807,6 +2810,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   // 电脑端设置窗口等比缩放（settings-scale.js）。
   const settingsScale = createSettingsScale({win, mobile, t}); disposers.push(() => settingsScale.destroy());
   return { refresh: sync, activate, has: id => panels.has(id), editLayout:openLayoutEditor, setExternalModals, destroy() {
+    backgroundFilters.destroy();
     if (destroyed) return;
     destroyed = true;
     ttPanels.destroy();
