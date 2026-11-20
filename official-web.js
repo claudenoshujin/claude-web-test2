@@ -263,7 +263,8 @@ export function installOfficialWeb(win = window) {
     const want = []; let last = null;
     for (const r of list.children) {
       if (!r.classList.contains('recentChat')) continue;
-      const g = dayLabel(r.querySelector('.chatDate')?.title || '') || 'Unknown date'; if (g === last) continue;
+      const g = r.dataset.cwFavorite === '1' ? t('已收藏','Starred') : (dayLabel(r.querySelector('.chatDate')?.title || '') || 'Unknown date');
+      if (g === last) continue;
       last = g; want.push([r, g]);
     }
     const filter=win.__claudeClawdInteraction?.recentsFilter?.();

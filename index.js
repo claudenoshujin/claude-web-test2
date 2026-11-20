@@ -2,7 +2,7 @@ import { installIOSKeyboardScroll } from './ios-keyboard-scroll.js?v=2.0.345';
 import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.345';
 import { parseRecentTime } from './recent-time.js?v=2.0.345';
 import { officialIcons as recentBadgeIcons } from './official-icons.js?v=2.0.345';
-import { installRecentFavorites } from './recent-favorites.js?v=2.0.345';
+import { installChatTools } from './chat-tools.js?v=2.0.345';
 import { preferencesFor } from './preferences.js?v=2.0.345';
 /* Claude Web 2.0 —— SillyTavern 扩展形态入口。
  *
@@ -8166,7 +8166,9 @@ if (CLAUDE_ENABLED) {
       if (left === null || right === null) return left === right ? 0 : left === null ? 1 : -1;
       return right - left;
     };
+    const starred = new Set(entries.filter(entry => chatTools?.isFavorite(entry.record)));
     entries.sort((a, b) => {
+      if (starred.has(a) !== starred.has(b)) return starred.has(a) ? -1 : 1;
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       const diff = compareAge(a, b);
       if (diff) return diff;
@@ -8365,6 +8367,7 @@ if (CLAUDE_ENABLED) {
     list.textContent = '';
     for (const entry of entries) {
       const row = buildRecentRow(entry);
+      if (chatTools?.isFavorite(entry.record)) row.dataset.cwFavorite = '1';
       /* 监听器绑在自己造的节点上，不依赖酒馆的任何绑定时机。
          行整体点击 = 打开；删除键单独处理并阻止冒泡，免得删完顺手把它打开。 */
       row.addEventListener('click', event => {
@@ -11681,7 +11684,12 @@ if (CLAUDE_ENABLED) {
     void installAutoCompleteResizeGuard();
     installStyle();
     installClawdRigStyle();
-    chatTools=installRecentFavorites({win:hostWindow,doc:hostDocument,getContext,enabled:()=>!destroyed&&hostDocument.documentElement.dataset.claudeEnabled!=='off',onChange:()=>{recentSignature=null;recentDataVersion++;refreshRailRecents({force:true});}});
+    chatTools = installChatTools({
+      win: hostWindow, doc: hostDocument, getContext,
+      enabled: () => !destroyed && hostDocument.documentElement.dataset.claudeEnabled !== 'off',
+      follow: () => streamFollow, openChat: openRecentChat,
+      onFavoritesChange: () => { recentSignature = null; recentDataVersion++; refreshRailRecents({force:true}); },
+    });
     halloween = installHalloween({win:hostWindow, getContext, setRig:switchHalloweenRig, refresh:scheduleRefresh, getClawdState:()=>({x:A2.x,y:A2.fy,held:A2.held,dragging:A2.dragging,airborne:halloweenAirborne})});
     halloween.sync();
     mountClawdDebugMenu();
