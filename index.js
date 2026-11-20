@@ -24,6 +24,7 @@ import { installKeyboardDiagnostics } from "./keyboard-diagnostics.js?v=2.0.345"
 import { installOfficialLayout } from "./official-layout.js?v=2.0.345";
 import { installHalloween } from "./halloween.js?v=2.0.345";
 import { buildClawdRig } from "./clawd-rig.js?v=2.0.345";
+import { installClawdRhythm } from "./clawd-rhythm.js?v=2.0.345";
 import { createClawdPile } from "./clawd-pile.js?v=2.0.345";
 
 const CLAUDE_EXTENSION_MODE = true;
@@ -4573,7 +4574,9 @@ if (CLAUDE_ENABLED) {
     if (!value && clawdTracks.B === 'idle') syncClawdBState();
   }
 
+  let clawdRhythm = null;
   function clawdOnMessageSent(){
+    clawdRhythm?.freezeCompose();
     if(!halloween?.enabled||!clawdEnabled()||hostDocument.documentElement.dataset.claudeMotion==='off'||clawdPrefersReducedMotion()||A2.floor||halloweenSendClip)return;
     if(!halloweenSendPending&&!/^compose(-m)?$/.test(composerClawd()?.dataset.clawdClip||''))return;
     halloweenSendPending=false;halloweenSendClip=clawdPile.riderCount()?'writeSendQuiet':'writeSend';setClawdA('think');
@@ -11291,6 +11294,14 @@ if (CLAUDE_ENABLED) {
     previousTypingActive = typingActive;
     setBodyClass(GENERATING_CLASS, typingActive);
     ensureComposerClawd();
+    if (composerClawd()) {
+      clawdRhythm ??= installClawdRhythm({
+        doc: hostDocument, win: hostWindow, button: composerClawd,
+        enabled: clawdEnabled, reducedMotion: clawdPrefersReducedMotion,
+        suspended: () => clawdDebugTimers.length > 0,
+      });
+      clawdRhythm.sync();
+    }
     refreshCompatibilitySurfaceBackings();
     /* A1：typing indicator 只保留酒馆自己的生成提示，不再承载第二只 Clawd。 */
     if (mobileViewportMetricsDirty) applyMobileViewportMetrics();
@@ -11857,6 +11868,8 @@ if (CLAUDE_ENABLED) {
     reconcileTimer = 0;
     if (destroyed) return;
     destroyed = true;
+    clawdRhythm?.destroy();
+    clawdRhythm = null;
     refreshRailUser.avatar?.cleanup();
     chatTools?.destroy();chatTools=null;
     halloween?.destroy(); halloween = null;
