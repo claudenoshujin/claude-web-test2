@@ -945,8 +945,8 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       let tag = mes.querySelector('.cw-v4-model');
       if (!model) { tag?.remove(); return; }
       if (!tag) { tag = make('span', 'cw-v4-model'); }
-      const row = mes.querySelector('.cw-v4-message-info');
-      if (row) { if (tag.parentNode !== row || row.lastElementChild !== tag) row.append(tag); }
+      const modelGroup = mes.querySelector('.cw-v4-message-model');
+      if (modelGroup) { if (tag.parentNode !== modelGroup) modelGroup.append(tag); }
       else if (tag.previousElementSibling !== time) time.after(tag);
       const text = shortModel(model);
       if (tag.textContent !== text) tag.textContent = text;
@@ -971,12 +971,16 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
         image.src = '/img/' + encodeURIComponent(extra.api) + '.svg';
         row.append(image);
       }
-      const selectors = ['.mesIDDisplay','.timestamp','.timestamp-icon','.mes_timer','.tokenCounterDisplay','.cw-v4-model'];
+      const nativeIcon = mes.querySelector('.timestamp-icon:not([data-cw-info-icon])');
+      if (nativeIcon) row.querySelector('[data-cw-info-icon]')?.remove();
+      let modelGroup = row.querySelector('.cw-v4-message-model');
+      if (!modelGroup) modelGroup = make('span', 'cw-v4-message-model');
+      const selectors = ['.mesIDDisplay','.timestamp','.mes_timer','.tokenCounterDisplay','.timestamp-icon','.cw-v4-model'];
       const nodes = selectors.flatMap(selector => [...mes.querySelectorAll(selector)]);
       for (const node of nodes) {
         if (node.classList.contains('cw-v4-model') || node.hasAttribute('data-cw-info-icon') || messageInfoMoves.has(node)) continue;
         const mark = doc.createComment('cw-v4-message-info-return');
-        if (node.parentNode !== row) node.before(mark);
+        if (!row.contains(node)) node.before(mark);
         else {
           // ST may replace the provider icon asynchronously, next to the time.
           const time = mes.querySelector('.timestamp'), timeMark = messageInfoMoves.get(time);
@@ -985,7 +989,11 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
         }
         messageInfoMoves.set(node,mark);
       }
-      if (nodes.some((node,i) => row.children[i] !== node) || row.children.length !== nodes.length) row.append(...nodes);
+      const modelNodes = nodes.filter(node => node.matches('.timestamp-icon,.cw-v4-model'));
+      const fields = nodes.filter(node => !modelNodes.includes(node));
+      if (modelNodes.length) fields.push(modelGroup);
+      if (fields.length !== row.children.length || fields.some((node, i) => row.children[i] !== node)) row.replaceChildren(...fields);
+      if (modelNodes.length !== modelGroup.children.length || modelNodes.some((node, i) => modelGroup.children[i] !== node)) modelGroup.replaceChildren(...modelNodes);
       const shown = nodes.some(node => {
         const key = node.matches('.mesIDDisplay') ? 'mesIDDisplay_enabled' : node.matches('.timestamp') ? 'timestamps_enabled' : node.matches('.mes_timer') ? 'timer_enabled' : node.matches('.tokenCounterDisplay') ? 'message_token_count_enabled' : 'timestamp_model_icon';
         return settings[key] && (node.matches('.timestamp-icon') || node.textContent.trim());
