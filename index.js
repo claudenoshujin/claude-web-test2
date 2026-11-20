@@ -12627,6 +12627,16 @@ if (CLAUDE_ENABLED) {
               </div>
             </details>
 
+            <details class="claude-web-section" id="claude-web-section-components">
+              <summary><span>组件开关</span></summary>
+              <div class="claude-web-section-body">
+                <label class="checkbox_label claude-web-check">
+                  <input id="claude-web-ai-disclaimer" type="checkbox">
+                  <span>显示 AI 可能出错的提示</span>
+                </label>
+              </div>
+            </details>
+
             <details class="claude-web-section" id="claude-web-section-background">
               <summary>
                 <span>背景</span>
@@ -13319,6 +13329,12 @@ if (CLAUDE_ENABLED) {
       window.setTimeout(() => window.location.reload(), 120);
     });
 
+    const disclaimerBox = panel.querySelector('#claude-web-ai-disclaimer');
+    disclaimerBox.checked = read('ai-disclaimer', ['on', 'off'], 'on') === 'on';
+    disclaimerBox.addEventListener('change', () => {
+      write('ai-disclaimer', disclaimerBox.checked ? 'on' : 'off');
+      window.__claudeOfficialLayout?.refresh();
+    });
     const motionBox = panel.querySelector('#claude-web-motion');
     const decorationsBox = panel.querySelector('#claude-web-decorations');
     motionBox.checked = read('motion', ['on', 'off'], 'on') !== 'off';
@@ -13479,6 +13495,7 @@ if (CLAUDE_ENABLED) {
       }
       layoutSection.hidden = compatibilityMode;
       backgroundSection.hidden = compatibilityMode;
+      panel.querySelector('#claude-web-section-components').hidden = compatibilityMode;
     }
 
     syncPanelPresentationRef = syncPanelPresentation;

@@ -1003,7 +1003,9 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     if (!last || doc.body.classList.contains('clawd-welcome') || !enabled()) { setChatNote(''); setFormNote(''); return; }
     const name = last.querySelector('.name_text')?.textContent.trim() || ctx?.name2 || 'AI';
     const text = `${name} is AI and can make ${root.dataset.cwHalloween === "on" ? "mischief" : "mistakes"}.`;
-    if (!mobile()) { setChatNote(''); setFormNote(text); }
+    if (preferencesFor(win).getItem('claude-web:ai-disclaimer') === 'off') {
+      setChatNote(''); setFormNote('');
+    } else if (!mobile()) { setChatNote(''); setFormNote(text); }
     else {
       setFormNote('');
       setChatNote(text);
