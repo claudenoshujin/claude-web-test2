@@ -3,7 +3,8 @@ import { installIOSComposerFocus } from './ios-composer-focus.js?v=2.0.345';
 import { parseRecentTime } from './recent-time.js?v=2.0.345';
 import { officialIcons as recentBadgeIcons } from './official-icons.js?v=2.0.345';
 import { installChatTools } from './chat-tools.js?v=2.0.345';
-import { preferencesFor } from './preferences.js?v=2.0.345';
+import { preferencesFor, RELOAD_STORAGE_HINT } from './preferences.js?v=2.0.345';
+import { tr } from './official-i18n.js?v=2.0.345';
 /* Claude Web 2.0 —— SillyTavern 扩展形态入口。
  *
  * 【2026-08-10 更正】这个文件现在就是源码，直接改它。
@@ -158,6 +159,8 @@ let CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off'
 /* 框架兼容模式保留 Claude Web 的桌面外壳：左侧栏、内容区让位和输入框。
    外部主题继续负责配色、字体、背景、欢迎页和消息内容。 */
 const CLAUDE_COMPAT_REQUESTED = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
+const CLAUDE_UI_STYLE = claudeReadSetting('ui-style', ['web', 'classic'], 'web');
+document.documentElement.dataset.claudeUi = CLAUDE_UI_STYLE;
 const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
 /* Via 输入框几何诊断器（右上角那个「诊断」胶囊）。默认关。
    它自己的守卫是「只在手机布局出现」，而手机端兼容模式到 2.0.101 才第一次真正
@@ -482,12 +485,18 @@ function removeOptionalChineseFonts() {
 }
 document.documentElement.dataset.claudeEnabled = CLAUDE_ENABLED ? 'on' : 'off';
 const refinementStyle=document.createElement('link');refinementStyle.rel='stylesheet';refinementStyle.href=new URL('styles/interface-refinements.css?v=2.0.345',import.meta.url).href;if(CLAUDE_ENABLED)document.head.append(refinementStyle);
-if (CLAUDE_ENABLED) document.head.append(localFontStyle, officialStyle);
+if (CLAUDE_ENABLED) {
+  document.head.append(localFontStyle);
+  if (CLAUDE_UI_STYLE === 'web') document.head.append(officialStyle);
+}
 const startOfficialLayout = () => {
   if (!CLAUDE_ENABLED) return;
-  document.head.append(officialStyle);
   window.__claudeOfficialLayout?.destroy();
-  window.__claudeOfficialLayout = installOfficialLayout(window, { defaultChatWidth: CLAUDE_THEME.chat_width });
+  delete window.__claudeOfficialLayout;
+  if (CLAUDE_UI_STYLE === 'web') {
+    document.head.append(officialStyle);
+    window.__claudeOfficialLayout = installOfficialLayout(window, { defaultChatWidth: CLAUDE_THEME.chat_width });
+  }
   // Fetch optional CJK faces after the initial page load, outside the layout stylesheets.
   loadOptionalChineseFonts();
 };
@@ -12543,6 +12552,12 @@ if (CLAUDE_ENABLED) {
                   <select id="claude-web-preset" class="text_pole"></select>
                 </div>
 
+                <div class="claude-web-field" id="claude-web-ui-style-field">
+                  <label for="claude-web-ui-style">界面样式</label>
+                  <select id="claude-web-ui-style" class="text_pole"></select>
+                  <div id="claude-web-ui-style-pending" class="claude-web-help" hidden><span></span> <button id="claude-web-ui-style-reload" type="button" class="menu_button"></button></div>
+                </div>
+
                 <div class="claude-web-field claude-web-auto-theme">
                   <label for="claude-web-theme-auto"><b>主题切换</b></label>
                   <select id="claude-web-theme-auto" class="text_pole"></select>
@@ -13356,6 +13371,24 @@ if (CLAUDE_ENABLED) {
       write('ai-disclaimer', disclaimerBox.checked ? 'on' : 'off');
       window.__claudeOfficialLayout?.refresh();
     });
+    const uiStyleSelect = panel.querySelector('#claude-web-ui-style');
+    const uiPending = panel.querySelector('#claude-web-ui-style-pending');
+    const syncUiPending = () => { const saved = preferencesFor(window).isSaved('claude-web:ui-style'); uiPending.hidden = saved && uiStyleSelect.value === document.documentElement.dataset.claudeUi; uiPending.querySelector('span').textContent = saved ? tr((document.querySelector('#ui_language_select')?.value || navigator.language || 'en').startsWith('zh'), '已保存，刷新页面后生效。请先保存正在编辑的内容。') : RELOAD_STORAGE_HINT; uiPending.querySelector('button').disabled = !saved; };
+    panel.querySelector('#claude-web-ui-style-reload').addEventListener('click', () => window.location.reload());
+    const syncUiStyleLabels = () => {
+      const zh = (document.querySelector('#ui_language_select')?.value || window.localStorage.getItem('language') || navigator.language || 'en').startsWith('zh');
+      panel.querySelector('label[for="claude-web-ui-style"]').textContent = tr(zh, '界面样式');
+      uiPending.querySelector('span').textContent = tr(zh, '已保存，刷新页面后生效。请先保存正在编辑的内容。');
+      uiPending.querySelector('button').textContent = tr(zh, '刷新页面');
+      fillSelect(uiStyleSelect, [{value:'web',label:tr(zh,'新版（当前）')},{value:'classic',label:tr(zh,'旧版')}], read('ui-style',['web','classic'],'web'));
+      syncUiPending();
+    };
+    syncUiStyleLabels();
+    document.addEventListener('change', e => { if (e.target.id === 'ui_language_select') syncUiStyleLabels(); });
+    uiStyleSelect.addEventListener('change', () => {
+      if (!write('ui-style', uiStyleSelect.value)) { syncUiStyleLabels(); return; }
+      syncUiPending();
+    });
     const motionBox = panel.querySelector('#claude-web-motion');
     const decorationsBox = panel.querySelector('#claude-web-decorations');
     motionBox.checked = read('motion', ['on', 'off'], 'on') !== 'off';
@@ -13512,7 +13545,7 @@ if (CLAUDE_ENABLED) {
       const variantField = variantSelect.closest('.claude-web-field');
       fullAppearance.hidden = false;
       for (const child of fullAppearance.children) {
-        child.hidden = compatibilityMode && child !== variantField;
+        child.hidden = compatibilityMode && child !== variantField && child.id !== 'claude-web-ui-style-field';
       }
       layoutSection.hidden = compatibilityMode;
       backgroundSection.hidden = compatibilityMode;
