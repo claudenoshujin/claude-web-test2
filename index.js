@@ -13153,6 +13153,7 @@ if (CLAUDE_ENABLED) {
     const panel = buildPanel();
     host.append(panel);
 
+    document.dispatchEvent(new Event('cw-settings-mounted'));
     mountEnabled(panel);
 
     const modeSelect = panel.querySelector('#claude-web-mode');
