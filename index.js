@@ -5030,32 +5030,58 @@ if (CLAUDE_ENABLED) {
     if (on) root.dataset.cwGenerating = '1'; else delete root.dataset.cwGenerating;
   }
 
-    let nativeGenerationSeen = !1;
-    function finishClawdGeneration(outcome) {
-      generationEventActive = !1;
-      nativeGenerationSeen = !1;
-      setGeneratingFlag(!1);
-      setBodyClass(GENERATING_CLASS, !1);
-      stopGenTimer();
-      const replied = !!clawdGenSnapshot && clawdReplyArrived(clawdGenSnapshot);
-      settleClawdGeneration(outcome === "done" && clawdGenSnapshot && !replied ? "error" : outcome, outcome === "done" && replied);
-      clawdGenSnapshot = null;
-      scheduleRefresh();
+  let nativeGenerationSeen = false;
+  let nativeStartTimer = 0;
+  let delayedGeneration = null;
+
+  function clearNativeStartTimer() {
+    hostWindow.clearTimeout(nativeStartTimer);
+    nativeStartTimer = 0;
+  }
+
+  function finishClawdGeneration(outcome) {
+    clearNativeStartTimer();
+    delayedGeneration = null;
+    generationEventActive = false;
+    nativeGenerationSeen = false;
+    setGeneratingFlag(false);
+    setBodyClass(GENERATING_CLASS, false);
+    stopGenTimer();
+    const replied = !!clawdGenSnapshot && clawdReplyArrived(clawdGenSnapshot);
+    settleClawdGeneration(outcome === "done" && clawdGenSnapshot && !replied ? "error" : outcome, outcome === "done" && replied);
+    clawdGenSnapshot = null;
+    scheduleRefresh();
+  }
+
+  function startClawdGeneration(type, snapshot = snapshotChatForClawd(type)) {
+    const wasActive = generationEventActive;
+    generationEventActive = true;
+    setGeneratingFlag(type !== 'quiet');
+    startGenTimer();
+    if (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound) {
+      beginClawdGeneration(type);
+      clawdGenSnapshot = snapshot;
     }
-    function syncNativeGeneration() {
-      if (!generationEventActive) return;
-      const stop = hostDocument.getElementById("mes_stop");
-      // CW styles can override computed visibility. Read ST's own inline state
-      // and data-generating marker, which activateSendButtons clears together.
-      const active = hostDocument.body?.dataset.generating === "true" || stop?.style.display === "flex";
-      if (active) {
-        nativeGenerationSeen = !0;
-      } else if (nativeGenerationSeen && stop?.style.display === "none") {
-        finishClawdGeneration("done");
+    scheduleRefresh();
+  }
+
+  function syncNativeGeneration() {
+    if (!generationEventActive && !delayedGeneration) return;
+    // Theme CSS overrides stop-button visibility. Read the native markers.
+    const stop = hostDocument.getElementById('mes_stop');
+    const active = hostDocument.body?.dataset.generating === 'true' || stop?.style.display === 'flex';
+    if (active) {
+      clearNativeStartTimer();
+      nativeGenerationSeen = true;
+      if (delayedGeneration) {
+        const { type, snapshot } = delayedGeneration;
+        delayedGeneration = null;
+        startClawdGeneration(type, snapshot);
       }
-      // GENERATION_STARTED precedes prompt preparation / native activation.
-      // An initially hidden stop button must never end that new round.
+    } else if (nativeGenerationSeen) {
+      finishClawdGeneration('done');
     }
+  }
   function watchGenerationEvents() {
     if (generationSubscriptions.length || destroyed) return;
     const context = getContext();
@@ -5076,16 +5102,20 @@ if (CLAUDE_ENABLED) {
         const active = outcome === 'start';
         if (active && args[2] === true) return;
         if (!active) { finishClawdGeneration(outcome); return; }
+        clearNativeStartTimer();
         nativeGenerationSeen = false;
-        const wasActive = generationEventActive;
-        generationEventActive = true;
-        setGeneratingFlag(String(args[0] ?? '') !== 'quiet');
-        startGenTimer();
-        if (!wasActive || clawdTracks.settledRound === clawdTracks.activeRound) {
-          beginClawdGeneration(String(args[0] ?? 'normal'));
-          clawdGenSnapshot = snapshotChatForClawd(args[0]);
-        }
-        scheduleRefresh();
+        delayedGeneration = null;
+        const type = String(args[0] ?? 'normal');
+        startClawdGeneration(type);
+        syncNativeGeneration();
+        if (!nativeGenerationSeen) nativeStartTimer = hostWindow.setTimeout(() => {
+          syncNativeGeneration();
+          if (!generationEventActive || nativeGenerationSeen) return;
+          // ST may return early or still be awaiting a planning extension.
+          const snapshot = clawdGenSnapshot;
+          finishClawdGeneration('stopped');
+          delayedGeneration = { type, snapshot };
+        }, 1000);
       };
       source.on(type, handler);
       generationSubscriptions.push({ source, type, handler });
@@ -11938,6 +11968,8 @@ if (CLAUDE_ENABLED) {
     deleteAnchor?.destroy();
     deleteAnchor = null;
     generationSubscriptions.length = 0;
+    clearNativeStartTimer();
+    delayedGeneration = null;
     generationEventActive = false;
     nativeGenerationSeen = false;
     setGeneratingFlag(false);
