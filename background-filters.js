@@ -1,5 +1,5 @@
-import { preferencesFor } from './preferences.js?v=2.0.345';
-import { processBackground } from './background-pixels.js?v=2.0.345';
+import { preferencesFor } from './preferences.js?v=2.0.346';
+import { processBackground } from './background-pixels.js?v=2.0.346';
 
 // Own a foreground image inside native background layers; never replace ST's
 // background URL, style, selection handlers, or any chat attachment.
