@@ -275,16 +275,23 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
     const previews=new Map();
     function clearPreview(action){
       if(!previews.has(action))return;
-      win.clearTimeout(previews.get(action));
+      win.clearTimeout(previews.get(action).timer);
       previews.delete(action);
       action.classList.remove('cw-pm-toggle-preview-on','cw-pm-toggle-preview-off');
     }
     function clearPreviews(){for(const action of previews.keys())clearPreview(action);}
-    function previewToggle(action){
-      const on=previews.has(action)?action.classList.contains('cw-pm-toggle-preview-on'):action.classList.contains('fa-toggle-on');
+    function previewToggle(action,identifier){
+      const desired=!(previews.get(action)?.desired??action.classList.contains('fa-toggle-on'));
       clearPreview(action);
-      action.classList.add(on?'cw-pm-toggle-preview-off':'cw-pm-toggle-preview-on');
-      previews.set(action,win.setTimeout(()=>clearPreview(action),1500));
+      action.classList.add(desired?'cw-pm-toggle-preview-on':'cw-pm-toggle-preview-off');
+      const timer=win.setTimeout(()=>{
+        const pm=u.nativePM;
+        const native=pm?.getPromptOrderForCharacter?.(pm.activeCharacter)?.find(entry=>entry.identifier===identifier);
+        // PromptManager updates the order before rebuilding the list. Keep the
+        // acknowledged color on the old row until the native control catches up.
+        if(!manager.contains(action)||native?.enabled!==desired||action.classList.contains('fa-toggle-on')===desired)clearPreview(action);
+      },1500);
+      previews.set(action,{desired,timer});
     }
     u.dispose.push(clearPreviews);
     const listen=(node,type,fn,options)=>{node.addEventListener(type,fn,options);u.dispose.push(()=>node.removeEventListener(type,fn,options));};
@@ -301,7 +308,7 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
       if(u.busy){e.preventDefault();e.stopImmediatePropagation();return;}
       if(u.multi){if(!e.target.matches('.cw-pm-select'))e.preventDefault();e.stopImmediatePropagation();select(r,e.shiftKey);return;}
       const action=e.target.closest('.prompt-manager-toggle-action');
-      if(action&&u.tab==='prompts'&&!r.closest('.bai-bai-preset-vue-list-host'))previewToggle(action);
+      if(action&&u.tab==='prompts'&&allowed(r)&&!r.closest('.bai-bai-preset-vue-list-host'))previewToggle(action,id(r));
       // The native inspect action is also invoked by the row's More menu.
       // Let that explicit programmatic action reach its original listener.
       if(!e.isTrusted&&e.target.matches('.prompt-manager-inspect-action'))return;
