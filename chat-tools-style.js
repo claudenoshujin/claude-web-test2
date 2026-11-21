@@ -2,10 +2,12 @@ export const CHAT_TOOLS_CSS = `
 html[data-cw-v4-settings="open"] :is(.cw-b34-toolbar,.cw-b34-menu,.cw-b34-panel,.cw-b34-selection){display:none!important}
 
 
-.cw-b34-toolbar{position:fixed!important;top:8px!important;right:210px!important;display:flex!important;align-items:center;gap:8px;z-index:3001!important;background:var(--b34-bg);border-radius:8px}
+html[data-cw-chat-tools="on"] body:not(.clawd-welcome)>.cw-desk-win,html[data-cw-chat-tools="on"] body :is(.cw-v4-chat-more,.cw-v4-more-top){display:none!important}
+.cw-b34-toolbar{position:fixed!important;top:8px!important;right:14px!important;display:flex!important;align-items:center;gap:8px;z-index:3001!important;background:var(--b34-bg);border-radius:8px}
 .cw-b34-toolbar button{display:flex!important;align-items:center;justify-content:center;width:34px!important;height:34px!important;padding:0!important;border:0!important;border-radius:7px!important;background:transparent;color:var(--b34-ink)!important}
 .cw-b34-toolbar .cw-b34-font-button{font-family:Georgia,serif!important;font-size:19px!important}.cw-b34-toolbar .cw-b34-paper-button svg{width:22px!important;height:22px!important}
-[data-claude-layout="mobile"] .cw-b34-toolbar{top:calc(env(safe-area-inset-top,0px) + 8px)!important;right:99px!important;z-index:4055!important}
+[data-claude-layout="mobile"] .cw-b34-toolbar{top:calc(env(safe-area-inset-top,0px) + 8px)!important;right:8px!important;z-index:4055!important}
+html[data-cw-chat-tools="on"][data-claude-layout="mobile"] body:not(.clawd-welcome) .cw-v4-newchat-top{right:94px!important}
 .cw-b34-draft{margin:12px 15px 0;padding:12px;border:1px solid var(--b34-line);border-radius:10px;background:var(--b34-hover)}.cw-b34-draft[hidden]{display:none!important}.cw-b34-draft p{margin:0 0 10px;font-size:13px;line-height:1.8;max-height:110px;overflow:auto;white-space:pre-wrap}.cw-b34-save-selection{border:1px solid var(--b34-line)!important;border-radius:6px!important;padding:7px 10px!important;background:var(--b34-bg)!important}
 
 

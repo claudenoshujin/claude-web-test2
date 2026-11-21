@@ -32,7 +32,6 @@ export function installOfficialWeb(win = window) {
     chev: '<path d="m9 4.6 7.4 7.4L9 19.4"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
     filter: '<path d="M7 4v6M7 14v6M17 4v2M17 10v10"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="8" r="2"/>',
-    file: '<path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5"/>',
     apps: '<circle cx="7.5" cy="7.5" r="2.6"/><circle cx="16.5" cy="7.5" r="2.6"/><circle cx="7.5" cy="16.5" r="2.6"/><path d="M16.5 13.5v6M13.5 16.5h6"/>',
   };
   const zh = () => (doc.querySelector('#ui_language_select')?.value || win.localStorage.getItem('language') || win.navigator.language || 'en').startsWith('zh');
@@ -362,7 +361,6 @@ export function installOfficialWeb(win = window) {
     if (persona && !persona.querySelector('.cw-web-apps')) persona.append(deco(make('span', 'cw-web-apps cw-web-x', SV(P.apps))));
     const form = doc.getElementById('send_form');
     if (form && !form.querySelector(':scope > .cw-web-proj')) form.append(deco(make('div', 'cw-web-proj cw-web-x', `<span>${t('项目', 'Project')}</span>` + SV(P.down))));
-    if (!doc.querySelector('body > .cw-web-share')) doc.body.append(deco(make('div', 'cw-web-share cw-web-x', SV(P.file) + `<b>${t('分享', 'Share')}</b>`)));
   };
 
   if (!doc.getElementById('cw-web-style')) {

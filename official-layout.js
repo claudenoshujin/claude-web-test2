@@ -1117,12 +1117,13 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       }, 'cw-v4-temporary');
       temp.setAttribute('aria-label',t('临时聊天','Temporary chat'));temp.title=t('临时聊天','Temporary chat');
       temp.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d=\"M3.6 20.3V12.05a8.45 8.45 0 0 1 16.9 0V20.3Q17.64 16.1 14.83 20.3 12.02 16.1 9.22 20.3 6.41 16.1 3.6 20.3Z\"/><circle cx=\"8.15\" cy=\"11.9\" r=\"1.25\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"15.9\" cy=\"11.9\" r=\"1.25\" fill=\"currentColor\" stroke=\"none\"/></svg>';
-      /* 2.0.286（design-flavor-v3，Lulu 定）：照 Claude App，对话页右上角换成「新建对话」气泡 + ⋯（⋯ 纯装饰）；欢迎页仍是幽灵。
+      /* 对话页右上角是「新建对话」气泡和原生聊天操作入口；欢迎页仍是幽灵。
          显隐交给 CSS 看 body.clawd-welcome。气泡点了等于侧栏底部「+ 新对话」。 */
       const fresh = button('', () => doc.querySelector('.clawd-mobile-new-chat')?.click(), 'cw-v4-newchat-top');
       fresh.setAttribute('aria-label',t('新对话','New chat'));fresh.title=t('新对话','New chat');
       fresh.innerHTML='<svg viewBox="0 0 24 24" fill="none"><path d="M12 3.6c-4.75 0-8.6 3.35-8.6 7.5 0 2.15 1.03 4.08 2.7 5.45l-.75 3.85 4.05-2.05c.83.2 1.7.3 2.6.3 4.75 0 8.6-3.35 8.6-7.55S16.75 3.6 12 3.6Z" fill="currentColor"/><path d="M12 7.9v6.4M8.8 11.1h6.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
-      const more = make('span', 'cw-v4-more-top'); more.setAttribute('aria-hidden','true');
+      const more = button('', () => doc.getElementById('options_button')?.click(), 'cw-v4-more-top');
+      more.setAttribute('aria-label', t('聊天操作','Chat options'));
       more.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
       chrome.append(fresh, more);
       chrome.append(temp);
@@ -1886,7 +1887,6 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       search: '<circle cx="10.8" cy="10.8" r="6"/><path d="m15.3 15.3 4.2 4.2"/>',
       filter: '<path d="M8.5 4v2.6M8.5 11.4V20M15.5 4v8.6M15.5 17.4V20"/><circle cx="8.5" cy="9" r="2.4"/><circle cx="15.5" cy="15" r="2.4"/>',
       /* 2.0.289：对话页右上角照 Claude Desktop 换成分享（装饰），放在最后、CSS order 排到最前，不打乱 —□✕ 的 nth-child */
-      share: '<path d="M12 4v10.5M8 8l4-4 4 4"/><path d="M5.5 12.5V18a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-5.5"/>',
       ghost: '<path d="M3.6 20.3V12.05a8.45 8.45 0 0 1 16.9 0V20.3Q17.64 16.1 14.83 20.3 12.02 16.1 9.22 20.3 6.41 16.1 3.6 20.3Z"/><circle cx="8.15" cy="11.9" r="1.25" fill="currentColor" stroke="none"/><circle cx="15.9" cy="11.9" r="1.25" fill="currentColor" stroke="none"/>',
       min: '<path d="M6 12h12"/>', max: '<rect x="6" y="6" width="12" height="12" rx="1"/>', close: '<path d="M6 6l12 12M18 6 6 18"/>',
     };
@@ -1943,7 +1943,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
         railToggleRo?.disconnect();railToggleRo=win.ResizeObserver?new win.ResizeObserver(placeRailToggle):null;railToggleRo?.observe(tool);
       }
       syncRailCollapsed();placeRailToggle();
-      if (!doc.querySelector('body>.cw-desk-win')) doc.body.append(deco('cw-desk-win', SV(P.ghost, 'cw-ghost') + SV(P.min) + SV(P.max) + SV(P.close) + SV(P.share, 'cw-share')));
+      if (!doc.querySelector('body>.cw-desk-win')) doc.body.append(deco('cw-desk-win', SV(P.ghost, 'cw-ghost') + SV(P.min) + SV(P.max) + SV(P.close)));
       const lab = holder?.querySelector('.clawd-rail-recents-label');
       if (lab && !lab.querySelector(':scope>.cw-rec-search')) lab.append(deco('cw-rec-search', SV(P.search)), deco('cw-rec-search cw-rec-filter', SV(P.filter)));
       const slot = holder?.querySelector('.clawd-rail-recents');

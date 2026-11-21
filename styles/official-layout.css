@@ -2629,13 +2629,11 @@ html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder
 html[data-cw-v4][data-claude-integrated-theme="night"] body #top-settings-holder#top-settings-holder>.cw-desk-tool .cw-desk-seg>span.cw-on{background:#3a3936;box-shadow:0 0 0 .5px rgba(255,255,255,.06)}
 
 /* ㊻ 2.0.289（design-flavor-v5，Lulu：都按推荐 + 手机 ⋯ 菜单也窄一点）。放在 ㊴ 前面。
-   电脑对话页右上角分享（装饰）代替幽灵、夜间对话页顶栏和页面同色；夜间分段选择选中格变亮、按钮 / 下拉统一 #30302e + 淡边、
+   夜间对话页顶栏和页面同色；夜间分段选择选中格变亮、按钮 / 下拉统一 #30302e + 淡边、
    用户角色页三个开关和提示词开关夜间关着改深灰（bug）；最近 ⋯ 菜单照 Claude Code（电脑不放图标、行矮、跟字宽，手机 190 宽）；
    对话页角色头像 34、名字 16、时间 12.5。 */
-.cw-desk-win>svg.cw-share{display:none}
 @media(min-width:701px){
   html[data-cw-v4] body:not(.clawd-welcome) .cw-desk-win>svg.cw-ghost{display:none!important}
-  html[data-cw-v4] body:not(.clawd-welcome) .cw-desk-win>svg.cw-share.cw-share{display:block;order:-1;box-sizing:content-box;width:24px!important;height:24px!important;padding:6px 10px 6px 0!important;stroke-width:1.25!important}
   html[data-cw-v4][data-claude-integrated-theme="night"]:not([data-claude-bg-transparent="on"]) body #sheld>.cw-v4-chat-head.cw-v4-chat-head{background:#141413!important}
   html[data-cw-v4] .cw-menu.cw-recent-menu-list.cw-recent-menu-list{min-width:0!important;width:max-content!important;padding:4px!important;border-radius:10px!important}
   html[data-cw-v4] .cw-menu.cw-recent-menu-list .cw-recent-ic{display:none!important}
@@ -3036,8 +3034,6 @@ html[data-cw-v4] .cw-menu-item.cw-disabled{opacity:.5!important;cursor:default!i
 }
 
 /* ---------- 2.0.269 Lulu 反馈 ---------- */
-/* 聊天页右上角 ⋯：原来点了打开输入框的 ≡ 菜单，功能重复，去掉 */
-html[data-cw-v4] body .cw-v4-chat-more{display:none!important}
 /* P1 侧栏左下的用户行大一点（电脑） */
 @media(min-width:701px){
   html[data-cw-v4] body #persona-management-button .clawd-user-face.clawd-user-face{flex:0 0 34px!important;width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;max-height:34px!important}

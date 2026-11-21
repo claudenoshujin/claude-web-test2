@@ -111,10 +111,6 @@ html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-apps svg { width: 18px; 
 
 /* 右上角：只留幽灵；对话页换成 文件图标 +「分享」 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-desk-win > svg:not(.cw-ghost) { display: none !important; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-share { position: fixed; top: 9px; right: 14px; z-index: 50; display: flex; align-items: center; gap: 10px; pointer-events: none; }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-share svg { width: 18px; height: 18px; color: var(--w-text); }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) .cw-web-share b { font-weight: 400; font-size: 14.5px; color: var(--w-text); border: 1px solid var(--w-sbd); border-radius: 9px; padding: 4px 11px; background: var(--w-btn); }
-html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) body.clawd-welcome > .cw-web-share { display: none; }
 
 /* 输入框：细边、大圆角；框下一行 左「项目 ⌄」/ 右角色和档位，对齐框的内边距 */
 html[data-cw-web]:not(#cw1):not(#cw2):not(#cw3) #send_form { background: var(--w-cbg) !important; border: 1px solid var(--w-cbd) !important; border-radius: 18px !important; box-shadow: var(--w-shadow) !important; overflow: visible !important; }
