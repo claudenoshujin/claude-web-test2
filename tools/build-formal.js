@@ -9,8 +9,9 @@ const { execFileSync } = require('node:child_process');
 const name = 'Claude Web 2.0';
 const homePage = 'https://github.com/claudenoshujin/claude-web';
 const loaderPattern = /^loader-2\.0\.\d+\.js$/;
+const safetyModules = new Set(['emergency.js', 'native-theme.js', 'theme-restore.js']);
 const legal = /^(?:README\.md|LICENSE(?:\.[a-z]+)?|fonts\/(?:OFL|[a-z-]+-OFL)\.txt)$/i;
-const banned = /playbill|\barena\b|are\.na|kbdprobe|data-claude-structure=["']linear["']|claude-web-test2|\(Test\)|claudekbddiag|keyboard-diagnostics|claude-clawd-debug-menu|cw-halloween-effects-menu|cw-hw-preview|a2Trace/i;
+const banned = /playbill|\barena\b|are\.na|kbdprobe|data-claude-structure=["']linear["']|claude-web-test2|\(Test\)|claudekbddiag|keyboard-diagnostics|claude-clawd-debug-menu|Clawd 动作调试|cw-halloween-effects-menu|cw-hw-preview|a2Trace/i;
 const bannedComment = /ensureAside|stampMessages|第四列|四栏|三轨|剧场主题/;
 
 function check(condition, message) {
@@ -33,10 +34,32 @@ function cut(text, start, end) {
 function formalRuntime(file, text, sourceVersion, version, parse) {
   text = text.replaceAll(sourceVersion, version);
   if (file === 'index.js') {
+    const localEnabled = "claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off'";
+    text = replaceOnce(text, `let CLAUDE_ENABLED = ${localEnabled};`,
+      `let CLAUDE_ENABLED = window.__claudeSafety?.state?.enabled ?? (${localEnabled});`);
+    const master = "    box.addEventListener('change', async () => {\n      if (!write('enabled', box.checked ? 'on' : 'off')) {";
+    text = replaceOnce(text, master, `    box.addEventListener('change', async () => {
+      const safety = window.__claudeSafety;
+      if (safety) {
+        if (safety.busy) {
+          box.checked = safety.state?.enabled ?? enabled;
+          hint.textContent = '安全操作正在进行，请等待当前操作结束。';
+          return;
+        }
+        try { await (box.checked ? safety.enable() : safety.disable()); }
+        catch (error) {
+          hint.textContent = '操作尚未完成：' + error.message;
+          safety.notify(hint.textContent);
+        }
+        box.checked = safety.state?.enabled ?? enabled;
+        return;
+      }
+      if (!write('enabled', box.checked ? 'on' : 'off')) {`);
     check(text.match(/claude-web-test2/g)?.length === 3, 'Review test installation identity');
     text = text.replaceAll('claude-web-test2', 'claude-web');
     text = cut(text, '/* Via 输入框几何诊断器', 'const CLAUDE_DECORATIONS_ENABLED');
     text = cut(text, '  /* ===== 临时：Clawd 动作调试菜单', '  /* 打断：B 轨');
+    text = replaceOnce(text, '        suspended: () => clawdDebugTimers.length > 0,\n');
     text = cut(text, '  /* ===== A2 诊断埋点', '  function a2Locked()');
     text = text.replace(/^\s*a2Trace(?:Mark\(|Frame\(|Start,|Stop,|:)[^\n]*\n/gm, '');
     text = cut(text, '  /* \x60?kbdprobe=1', '  function scheduleMobileViewportMetrics()');
@@ -46,6 +69,11 @@ function formalRuntime(file, text, sourceVersion, version, parse) {
     text = replaceOnce(text, ' && now >= clawdDebugUntil');
     text = replaceOnce(text, 'isTypingActive()\n      || (clawdDebugNoAmbient && clawdDebugOpen)\n      || now < clawdDebugUntil;', 'isTypingActive();');
     text = text.replace(/^.*(?:installKeyboardDiagnostics|claudekbddiag|keyboardDiagnostics|diagnosticRefreshPaused|diagnosticIsolationMode|DIAGNOSTIC_COMPOSITOR_STYLE_ID|clawd-keyboard-diagnostics|mountClawdDebugMenu)\b.*\n/gmi, '');
+  }
+  if (file === 'official-web.js') {
+    // The safety gate may finish after the rail CSS is mounted.
+    text = replaceOnce(text, 'doc.head.append(link);',
+      "doc.head.insertBefore(link, doc.getElementById('cw-rail-layout-style'));");
   }
   if (file === 'halloween.js') {
     text = cut(text, '  async function preview(effect)', '  function subscribe()');
@@ -107,7 +135,9 @@ function jsReferences(file, text, ast, add) {
     const [target, base] = node.arguments;
     const value = literal(target);
     const local = moduleBase(excerpt(base));
-    if (value !== undefined && (local || required)) {
+    if (file === 'index.js' && value === 'style.css' && excerpt(base) === 'hostDocument.baseURI') {
+      add('/style.css', 'url');
+    } else if (value !== undefined && (local || required)) {
       if (value !== '.') add(value, 'url');
     } else if (local && file === 'index.js' && themeSources.includes(excerpt(target))) {
       for (const theme of themes) add(theme, 'url');
@@ -175,12 +205,20 @@ function build(options) {
   check(Number(version.split('.')[2]) > Number(baseline.version.split('.')[2]), 'Version must follow the formal baseline');
   check(!fs.existsSync(dest), 'Destination already exists: ' + dest);
   const manifest = { ...current, display_name: name, loading_order: baseline.loading_order, js: 'loader-' + version + '.js', version, homePage };
-  const sourceLoader = fs.readFileSync(path.join(project, current.js), 'utf8');
-  const loader = '// Claude Web ' + version + '\n' + sourceLoader.replace(/^\/\/[^\n]*\n/, '').replaceAll(current.version, version);
+  const testEntry = parse(fs.readFileSync(path.join(project, current.js), 'utf8'), current.js);
+  const testImports = testEntry.body.filter(node => node.type === 'ImportDeclaration').map(node => node.source.value);
+  const mainImport = "./index.js?v=" + version;
+  const webImport = "./official-web.js?v=" + version;
+  check(testImports.join('\n') === ['./index.js?v=' + current.version, './official-web.js?v=' + current.version].join('\n'),
+    'Review the current test entry modules');
+  const loader = replaceOnce(blob(baseline.js).toString('utf8').replaceAll(baseline.version, version),
+    "await import('" + mainImport + "');",
+    "await import('" + mainImport + "');\n    await import('" + webImport + "');");
   const historical = new Set([...oldFiles].filter(file => loaderPattern.test(file)));
   check(historical.has(baseline.js) && !historical.has(manifest.js), 'Unexpected formal loader set');
   const legalFiles = new Set([...oldFiles, ...fs.readdirSync(project), ...fs.readdirSync(path.join(project, 'fonts')).map(file => 'fonts/' + file)].filter(file => legal.test(file)));
-  const roots = [manifest.js, 'manifest.json', ...(manifest.css ? [manifest.css] : []), ...historical, ...legalFiles];
+  // An older cached index.js can still import this compatibility entry directly.
+  const roots = [manifest.js, 'manifest.json', 'recent-favorites.js', ...(manifest.css ? [manifest.css] : []), ...historical, ...legalFiles];
   const host = new Set();
 
   function graph(read) {
@@ -197,7 +235,7 @@ function build(options) {
         if (reference.startsWith('data:') || reference.startsWith('#')) return;
         check(reference && !reference.includes('\\'), file + ': invalid reference ' + reference);
         const target = decodeURIComponent(reference.split(/[?#]/, 1)[0]);
-        if (['script.js', '/script.js', '../../../../script.js'].includes(target) || /^\/(?:scripts|img)\//.test(target)
+        if (['script.js', '/script.js', '../../../../script.js', '/style.css'].includes(target) || /^\/(?:scripts|img)\//.test(target)
             || (kind === 'url' && /^https:\/\//.test(target))) {
           host.add(target);
           return;
@@ -213,6 +251,16 @@ function build(options) {
     for (const file of roots) visit(file, 'entry');
     const result = JSON.parse(files.get('manifest.json'));
     check(JSON.stringify(result) === JSON.stringify(manifest) && files.has('index.js'), 'Manifest or entry mismatch');
+    const entry = files.get(result.js).toString('utf8');
+    const ordered = [`import('./emergency.js?v=${version}')`, 'await installSafety()',
+      'if (!await safety.shouldStart()) return;', "await import('" + mainImport + "')",
+      "await import('" + webImport + "')", 'safety.notify('];
+    let cursor = -1;
+    for (const stage of ordered) {
+      cursor = entry.indexOf(stage, cursor + 1);
+      check(cursor >= 0, 'Formal entry does not use the safety gate: ' + stage);
+    }
+    for (const file of safetyModules) check(files.has(file), 'Missing formal safety module: ' + file);
     return files;
   }
 
@@ -220,8 +268,8 @@ function build(options) {
     if (file === 'manifest.json') return Buffer.from(JSON.stringify(manifest, null, 2) + '\n');
     if (file === manifest.js) return Buffer.from(loader);
     if (file === 'README.md' && oldFiles.has(file)) return blob(file);
-    if (historical.has(file) || (file === 'emergency.js' && historical.has(origin))
-        || (['native-theme.js', 'theme-restore.js'].includes(file) && origin === 'emergency.js')) return blob(file);
+    if (historical.has(file)) return blob(file);
+    if (safetyModules.has(file)) return Buffer.from(blob(file).toString('utf8').replaceAll(baseline.version, version));
     const local = path.join(project, file);
     if (fs.existsSync(local) && fs.statSync(local).isFile()) {
       const data = fs.readFileSync(local);
@@ -245,10 +293,11 @@ function build(options) {
     const actual = fs.readdirSync(stage, { recursive: true, withFileTypes: true }).filter(entry => entry.isFile());
     check(actual.length === staged.size && actual.every(entry =>
       staged.has(path.relative(stage, path.join(entry.parentPath ?? entry.path, entry.name)).replaceAll('\\', '/'))), 'Unreachable file in output');
-    for (const file of historical) check(staged.get(file).equals(files.get(file)), 'Changed historical loader: ' + file);
+    for (const file of historical) check(staged.get(file).equals(blob(file)), 'Changed historical loader: ' + file);
     check(!fs.existsSync(dest), 'Destination already exists: ' + dest);
     fs.renameSync(stage, dest);
-    console.log(JSON.stringify({ dest, version, formalRef: ref, files: files.size, historicalLoaders: historical.size, hostReferences: [...host].sort() }, null, 2));
+    console.log(JSON.stringify({ dest, version, formalRef: ref, files: files.size, historicalLoaders: historical.size,
+      safetyEntry: true, safetyModules: [...safetyModules], hostReferences: [...host].sort() }, null, 2));
   } finally {
     if (fs.existsSync(stage)) {
       check(path.dirname(path.resolve(stage)) === path.dirname(dest) && path.basename(stage).startsWith('.formal-build-'), 'Unexpected staging path');
