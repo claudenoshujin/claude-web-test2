@@ -682,10 +682,11 @@ export function createWorldPage(h) {
     es.content=content;es.cm=cm;es.counter=counter;es.contentHost=cf;es.menu=emenu;es.title=titleText;text(etH,titleText());
     ui.view='entry';ui.panel.dataset.cwwView='entry';for(const [k,n]of Object.entries(ui.views))setHidden(n,k!=='entry');ui.panel.scrollTop=0;
     paintMobileHead();
-    if(cm)measureCM(content);
+    watchContentEditor(es);
   }
   function closeEntry(){
-    const es=ui?.editing;if(!es)return;closeBig();ui.editing=null;
+    const es=ui?.editing;if(!es)return;closeBig();es.stopEditorCheck?.();ui.editing=null;
+    resetFallbackEditor(es);
     const editor=contentEditor(es.content);
     if(editor?.contains(doc.activeElement)||doc.activeElement===es.content)doc.activeElement.blur();
     // Select2 attaches its open results to the document, outside the entry.
@@ -703,6 +704,7 @@ export function createWorldPage(h) {
     for(const [node,mark]of es.moves.splice(0).reverse())if(mark.parentNode)mark.replaceWith(node);
     // TT can mount the editor after openEntry has already moved the textarea.
     if(editor&&editor!==es.cm&&es.content.isConnected)es.content.after(editor);
+    if(es.content)delete es.content.dataset.cwwNativeContent;
     for(const n of es.created)n.remove();
     ui.entryHost.replaceChildren();
     // Moved select2 companions are re-laid out by ST on next open; repaint the row.
@@ -712,8 +714,60 @@ export function createWorldPage(h) {
     const sibling=content?.nextElementSibling;
     return sibling?.matches('.tt-codemirror-editor')?sibling:null;
   }
-  let cmModule=null;
-  function measureCM(content){win.requestAnimationFrame(()=>{if(cmModule)cmModule.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();else import(new URL('/scripts/tauri/codemirror-editor.js',win.location.href).href).then(m=>{cmModule=m;m.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();}).catch(()=>{});});}
+  let cmModule=null,cmLoading=null;
+  function loadCM(){
+    return cmLoading??=import(new URL('/scripts/tauri/codemirror-editor.js',win.location.href).href)
+      .then(module=>cmModule=module).catch(()=>null);
+  }
+  function measureCM(content){win.requestAnimationFrame(async()=>{
+    const module=cmModule||await loadCM();
+    module?.getMountedCodeMirrorEditor?.(content)?.requestMeasure?.();
+  });}
+  function resetFallbackEditor(es){
+    if(es?.content?.hasAttribute('data-cww-native-content'))cmModule?.getMountedCodeMirrorEditor?.(es.content)?.reset?.();
+  }
+  function editorHasText(editor){
+    const body=editor.querySelector('.cm-content[contenteditable="true"]');
+    if(!body?.getBoundingClientRect().height)return false;
+    return [...body.querySelectorAll('.cm-line')].some(line=>line.textContent.trim()&&line.getBoundingClientRect().height>0
+      && win.getComputedStyle(line).visibility==='visible');
+  }
+  function watchContentEditor(es){
+    es.stopEditorCheck?.();
+    const content=es.content;
+    if(!content||content.hasAttribute('data-cww-native-content'))return;
+    if(!contentEditor(content)&&!doc.body.classList.contains('clawd-tauritavern-host'))return;
+    let editor=null,timer=0,active=true;
+    const current=candidate=>active&&ui?.editing===es&&candidate===contentEditor(content)&&candidate.isConnected;
+    const check=async candidate=>{
+      if(!current(candidate)||!content.value.trim()||editorHasText(candidate))return;
+      const module=cmModule||await loadCM();
+      if(!current(candidate))return;
+      const handle=module?.getMountedCodeMirrorEditor?.(content);
+      if(typeof handle?.reset!=='function'||handle.wrapper!==candidate)return;
+      handle.requestMeasure?.();
+      timer=win.setTimeout(()=>{
+        if(!current(candidate)||!content.value.trim()||editorHasText(candidate))return;
+        const focused=candidate.contains(doc.activeElement);
+        // Seed CM from the native value before hiding it. TT may flush on blur.
+        handle.reset();
+        content.dataset.cwwNativeContent='';
+        if(focused)content.focus({preventScroll:true});
+      },250);
+    };
+    const mounted=()=>{
+      const next=contentEditor(content);
+      if(next===editor)return;
+      win.clearTimeout(timer);editor=next;
+      if(!editor)return;
+      measureCM(content);
+      timer=win.setTimeout(check,800,editor);
+    };
+    const observer=new win.MutationObserver(mounted);
+    observer.observe(content.parentElement,{childList:true});
+    es.stopEditorCheck=()=>{active=false;win.clearTimeout(timer);observer.disconnect();};
+    mounted();
+  }
   /* ---------- 内容放大：整块面板变成编辑区，只有一条头 ---------- */
   function openBig(){
     const es=ui?.editing;if(!es?.content||ui.big)return;
@@ -722,22 +776,24 @@ export function createWorldPage(h) {
     bh.append(btn(t('收起','Collapse'),()=>closeBig(),'cwr-btn cww-shrink',ICON.shrink()),title,tok);big.append(bh);
     const marks=[];const take=n=>{if(!n)return;const m=doc.createComment('cww-big-return');n.before(m);marks.push([n,m]);};
     const editor=contentEditor(es.content);
+    resetFallbackEditor(es);
     take(es.content);take(editor);take(es.counter);
     big.append(es.content);if(editor)big.append(editor);if(es.counter){tok.append(es.counter);es.paintCounter();}else text(tok,t(`约 ${Math.round(es.content.value.length/1.6)} Token`,`~${Math.round(es.content.value.length/1.6)} tokens`));
     host.append(big);ui.big={big,marks};ui.panel.classList.add('cww-big-open');host.classList.add('cww-big-host');
     const esc=e=>{if(e.key==='Escape'&&!doc.querySelector('.select2-container--open')){e.preventDefault();e.stopImmediatePropagation();closeBig();}};win.addEventListener('keydown',esc,true);ui.big.esc=esc;
-    const target=editor?.querySelector('.cm-content[contenteditable="true"]')||es.content;
-    target.focus({preventScroll:true});if(editor)measureCM(es.content);
+    const target=es.content.hasAttribute('data-cww-native-content')?es.content:editor?.querySelector('.cm-content[contenteditable="true"]')||es.content;
+    target.focus({preventScroll:true});watchContentEditor(es);
   }
   function closeBig(){
     const b=ui?.big;if(!b)return;ui.big=null;win.removeEventListener('keydown',b.esc,true);
-    const content=ui.editing?.content,editor=contentEditor(content);
+    const es=ui.editing,content=es?.content,editor=contentEditor(content);
+    resetFallbackEditor(es);
     const mountedInBig=editor&&!b.marks.some(([node])=>node===editor);
     for(const [n,m]of b.marks.reverse())if(m.parentNode)m.replaceWith(n);
     if(mountedInBig&&content.isConnected)content.after(editor);
     ui.editing?.paintCounter?.();
     b.big.remove();ui.panel.classList.remove('cww-big-open');doc.getElementById('cw-v4-settings')?.classList.remove('cww-big-host');
-    if(editor)measureCM(content);
+    if(es)watchContentEditor(es);
   }
 
   /* ---------- 激活设置：扫描（两列）、递归、匹配 ---------- */

@@ -763,6 +763,8 @@ html[data-cw-settings-unified] .cww-big>.tt-codemirror-editor{flex:1 1 0!importa
 /* Older TT can hide the native textarea before its CodeMirror input is available. */
 html[data-cw-settings-unified] body.clawd-tauritavern-host #WorldInfo .cww-content-field>.cww-ctl:not(:has(>.tt-codemirror-editor .cm-content[contenteditable=true]))>textarea[name=content],
 html[data-cw-settings-unified] body.clawd-tauritavern-host .cww-big:not(:has(>.tt-codemirror-editor .cm-content[contenteditable=true]))>textarea[name=content]{display:block!important}
+html[data-cw-settings-unified] :is(#WorldInfo .cww-content-field>.cww-ctl,.cww-big)>textarea[data-cww-native-content]{display:block!important}
+html[data-cw-settings-unified] :is(#WorldInfo .cww-content-field>.cww-ctl,.cww-big)>textarea[data-cww-native-content]+.tt-codemirror-editor{display:none!important}
 }
 @media(max-width:700px){@layer cw-settings-spec{
 html[data-cw-settings-unified] #WorldInfo .cww-phone-only{display:block!important}
