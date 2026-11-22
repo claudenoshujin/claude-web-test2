@@ -8677,7 +8677,7 @@ if (CLAUDE_ENABLED) {
   function hostModuleRoot() {
     const mainScript = [...hostDocument.scripts].find(script => /(?:^|\/)script\.js(?:[?#].*)?$/.test(script.src));
     return {
-      main: mainScript?.src || new hostWindow.URL('script.js?v=2.0.347', hostDocument.baseURI).href,
+      main: mainScript?.src || new hostWindow.URL('script.js', hostDocument.baseURI).href,
       root: new hostWindow.URL('.', mainScript?.src || hostDocument.baseURI),
     };
   }
@@ -8686,7 +8686,7 @@ if (CLAUDE_ENABLED) {
     const urls = hostModuleRoot();
     /* 主模块必须保留页面实际使用的 ?v=... 等查询参数。
        去掉它再 import 会被浏览器当成另一份模块，可能把 SillyTavern 主程序重复执行一次。 */
-    if (relativePath === 'script.js?v=2.0.347') return urls.main;
+    if (relativePath === 'script.js') return urls.main;
     return new hostWindow.URL(relativePath, urls.root).href;
   }
 
@@ -8710,9 +8710,9 @@ if (CLAUDE_ENABLED) {
 
   function injectHostModuleLoader() {
     const urls = {
-      main: resolveHostModule('script.js?v=2.0.347'),
-      groups: resolveHostModule('scripts/group-chats.js?v=2.0.347'),
-      popup: resolveHostModule('scripts/popup.js?v=2.0.347'),
+      main: resolveHostModule('script.js'),
+      groups: resolveHostModule('scripts/group-chats.js'),
+      popup: resolveHostModule('scripts/popup.js'),
     };
     /* 模块说明符写成绝对地址：blob 兜底那条路的 baseURI 是 blob:，
        相对路径在那里解析不出来。 */
@@ -11638,7 +11638,7 @@ if (CLAUDE_ENABLED) {
 
     const token = {};
     autoCompleteResizeGuardToken = token;
-    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js?v=2.0.347');
+    const moduleUrl = resolveHostModule('scripts/autocomplete/AutoComplete.js');
 
     try {
       const previous = hostWindow[AUTOCOMPLETE_RESIZE_GUARD_KEY];

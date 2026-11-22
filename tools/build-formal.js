@@ -161,7 +161,7 @@ function jsReferences(file, text, ast, add) {
       else if (file === 'emergency.js' && expression.operator === '+' && expression.right?.name === 'VERSION'
         && /^\.\/(?:native-theme|theme-restore)\.js\?v=$/.test(literal(expression.left))
         && /const VERSION\s*=\s*['"]2\.0\.\d+['"]/.test(text)) add(literal(expression.left), 'import');
-      else if (file === 'index.js' && excerpt(expression) === 'moduleUrl' && /const moduleUrl = resolveHostModule\('scripts\/autocomplete\/AutoComplete\.js\?v=\d+\.\d+\.\d+'\);/.test(text)) add('/scripts/autocomplete/AutoComplete.js', 'import');
+      else if (file === 'index.js' && excerpt(expression) === 'moduleUrl' && /const moduleUrl = resolveHostModule\('scripts\/autocomplete\/AutoComplete\.js(?:\?v=\d+\.\d+\.\d+)?'\);/.test(text)) add('/scripts/autocomplete/AutoComplete.js', 'import');
       else if (file === 'official-world.js' && excerpt(expression) === 'WI_URL()' && text.includes("const WI_URL=()=>new URL('/scripts/world-info.js',win.location.href).href;")) add('/scripts/world-info.js', 'import');
       else throw new Error(file + ': unresolved import(' + excerpt(expression) + ')');
     } else if (isURL(node)) {
