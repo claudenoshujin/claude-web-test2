@@ -37,7 +37,7 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
   async function post(e,endpoint,extra={}){if(e.type==='global'&&['update','switch'].includes(endpoint))await requireAdmin();const r=await win.fetch('/api/extensions/'+endpoint,{method:'POST',headers:headers(),body:JSON.stringify({extensionName:external(e),global:e.type==='global',...extra})});if(!r.ok)throw Error('HTTP '+r.status);return r.json();}
   function badge(e){const n=make('span','cwex-icon');n.setAttribute('aria-hidden','true');if(third(e)){let h=0;for(const c of e.id)h=(h*31+c.codePointAt(0))>>>0;const colors=['#b6593c','#4a68bc','#a26934','#378162','#7960a6','#34788e'];n.style.backgroundColor=colors[h%colors.length];n.textContent=Array.from(e.label)[0]?.toLocaleUpperCase()||'?';}else{n.classList.add('cwex-system-icon');n.append(icon('puzzle'));}return n;}
   function switchButton(e,isVisibility=false){const b=action('',()=>isVisibility?visibility(e,!hidden(e)):toggle(e),'cwex-switch');b.setAttribute('role','switch');b.setAttribute('aria-label',(isVisibility?t('在列表里显示 ','Show in list '):t('启用 ','Enable '))+e.label);b.dataset.switchFor=e.id;if(isVisibility)b.dataset.visibility='1';return b;}
-  function metadata(e,n){const signature=JSON.stringify([e.version,e.update?.kind,e.update?.remote,enabled(e),hidden(e)]);if(n._cwexMeta===signature)return;n._cwexMeta=signature;const parts=[];if(e.version)parts.push('v'+e.version);else if(e.type==='ui')parts.push(t('没认出属于哪个扩展','Extension could not be identified'));else if(!third(e))parts.push(groupLabels.builtin);set(n,parts.join(' · '));if(e.update?.kind==='available'){const p=make('span','cwex-pill',e.update.remote?t('可更新到 ','Update to ')+e.update.remote:t('有更新','Update available'));n.append(p);}if(!enabled(e))n.append(make('span','cwex-pill cwex-muted',t('已停用','Disabled')));if(hidden(e))n.append(make('span','cwex-pill cwex-muted',t('已隐藏','Hidden')));if(e.update?.kind==='error')n.append(make('span','cwex-muted',t('检查失败','Check failed')));}
+  function metadata(e,n){const signature=JSON.stringify([e.version,e.update?.kind,e.update?.remote,enabled(e),hidden(e),e.roots.length]);if(n._cwexMeta===signature)return;n._cwexMeta=signature;const parts=[];if(e.version)parts.push('v'+e.version);else if(e.type==='ui')parts.push(t('没认出属于哪个扩展','Extension could not be identified'));else if(!third(e))parts.push(groupLabels.builtin);if(!e.roots.length)parts.push(t('没有设置页','No settings page'));set(n,parts.join(' · '));if(e.update?.kind==='available'){const p=make('span','cwex-pill',e.update.remote?t('可更新到 ','Update to ')+e.update.remote:t('有更新','Update available'));n.append(p);}if(!enabled(e))n.append(make('span','cwex-pill cwex-muted',t('已停用','Disabled')));if(hidden(e))n.append(make('span','cwex-pill cwex-muted',t('已隐藏','Hidden')));if(e.update?.kind==='error')n.append(make('span','cwex-muted',t('检查失败','Check failed')));}
   function requestPaint(){if(!frame&&!disposed)frame=win.requestAnimationFrame(()=>{frame=0;paint();});}
   function visibility(e,isHidden){if(e.id===own)return;const r=records();r.find(r=>r.id===e.id).place=isHidden?'hidden':'show';save(r);}
   async function toggle(e){if(e.busy)return;e.busy=true;paint();try{
@@ -99,11 +99,30 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
     const previousReturn=returnRoot;returnRoot=()=>{ownRows.forEach(n=>n.classList.remove('cw-v4-setting-row'));if(content){if(nativeDisplay)content.style.setProperty('display',nativeDisplay,nativePriority);else content.style.removeProperty('display');}root.classList.remove('cw-v4-editing','cwex-editing');path.forEach(n=>n.classList.remove('cwex-active-branch'));if(display)root.style.setProperty('display',display,priority);else root.style.removeProperty('display');opts.onClose?.();previousReturn?.();if(ownsContainer){container.classList.remove('cwex-detail-container');if(held.mark.parentNode)held.mark.replaceWith(container);heldContainers.delete(container);}};
     drawer?.dispatchEvent(new win.CustomEvent('inline-drawer-toggle',{bubbles:true,detail:{open:true}}));content?.style.setProperty('display','block','important');
   }
+  function noSettings(e){
+    const tokenLabel=doc.getElementById('token_counter')?.textContent.trim()
+      || t(doc.body.classList.contains('clawd-tauritavern-host')?'词符计数器':'Token 计数器','Token Counter');
+    const locations={
+      'connection-manager':t('在「API 连接」页的「连接配置」里使用。','Use Connection Profiles on the API Connections page.'),
+      'token-counter':t('点聊天输入框旁的「＋」，选择「'+tokenLabel+'」。','Choose “Token Counter” from the + menu by the chat input.'),
+      attachments:t('点聊天输入框旁的「＋」，选择「打开数据库」。','Choose “Open Data Bank” from the + menu by the chat input.'),
+      gallery:t('点聊天输入框旁的「＋」，选择「展示图库」。','Choose “Show Gallery” from the + menu by the chat input.'),
+      'in-app-agent':t('在「格式化」页顶部打开「应用助手」。','Open In-App Assistant at the top of the Formatting page.'),
+    };
+    const row=make('div','cwex-row cwex-no-settings'),copy=make('div','cwex-text');
+    copy.append(make('div','cwex-name',t('这个扩展没有自己的设置页。','This extension has no settings page of its own.')),
+      make('div','cwex-meta cwex-wrap',locations[e.id]||t('它的功能在别的地方使用，比如聊天输入框的菜单或聊天界面里。','Use this extension elsewhere, such as from the chat input menu or in the chat itself.')));
+    row.append(copy);
+    return row;
+  }
+  function renderSettings(e,native){
+    const roots=e.roots.filter(r=>r.isConnected);if(e.id.split('/').at(-1)==='st-chatu8'&&(doc.getElementById('option_toggle_AN88')||typeof win.showChatuSettingsPanel==='function')){native.append(action(t('打开 st-chatu8 的设置','Open st-chatu8 settings'),()=>{const trigger=doc.getElementById('option_toggle_AN88');if(trigger)trigger.click();else win.showChatuSettingsPanel();}));}else if(roots.length){for(const r of roots)settings.open(r,e.label,{openEditor:present,preserve:!!r.querySelector('.littlewhitebox.settings-grid')||/柏宝箱|酒馆助手|QR助手|st-chatu8|菜单精简器|Tavern Helper/i.test(e.label)});}else native.append(noSettings(e));
+  }
   function open(e){back();active=e;detail.replaceChildren();const backButton=action('',back,'cwex-back');backButton.append(icon('chevl'),make('span','cwex-btn-label',t('扩展','Extensions')));const head=make('div','cwex-detail-head'),text=make('div','cwex-detail-text');text.append(make('h2','',e.label),make('div','cwex-meta'));head.append(badge(e),text);detail.append(backButton);const reload=make('div','cwex-reload');reload.append(make('span','',t('改动刷新后生效','Reload to apply changes')),action(t('现在刷新','Reload now'),()=>win.location.reload()));detail.append(reload,head);
     const actions=make('div','cwex-actions');if(third(e)){const checkButton=iconAction('retry','',()=>e.update?.kind==='available'?update(e):check(e,true));checkButton.dataset.detailUpdate='1';actions.append(checkButton,iconAction('branch',t('切换分支','Switch branch'),()=>branch(e)));const home=iconAction('external',t('项目主页','Project home'),()=>homepage(e));home.dataset.homepage='1';actions.append(home);}detail.append(actions);
     const card=make('div','cwex-card');for(const [title,desc,control]of [[t('启用这个扩展','Enable this extension'),t('改动刷新酒馆后生效','Reload to apply changes'),switchButton(e)],[t('在扩展列表里显示','Show in extension list'),t('关掉只是不显示，扩展照常运行','Hidden extensions keep running'),switchButton(e,true)]]){const r=make('div','cwex-row'),info=make('div','cwex-text');info.append(make('div','cwex-name',title),make('div','cwex-meta',desc));r.append(info,control);card.append(r);}detail.append(card,make('h3','cwex-section-title',e.label+' '+t('自己的设置','settings')));
     const native=make('div','cwex-native-settings');detail.append(native);show('detail');
-    const roots=e.roots.filter(r=>r.isConnected);if(e.id.split('/').at(-1)==='st-chatu8'&&(doc.getElementById('option_toggle_AN88')||typeof win.showChatuSettingsPanel==='function')){native.append(action(t('打开 st-chatu8 的设置','Open st-chatu8 settings'),()=>{const trigger=doc.getElementById('option_toggle_AN88');if(trigger)trigger.click();else win.showChatuSettingsPanel();}));}else if(roots.length){for(const r of roots)settings.open(r,e.label,{openEditor:present,preserve:/柏宝箱|酒馆助手|QR助手|st-chatu8|菜单精简器|Tavern Helper/i.test(e.label)});}else native.append(make('p','cwex-empty',enabled(e)?t('这个扩展没有独立设置页。','This extension has no separate settings page.'):t('扩展已停用，启用并刷新后可查看设置。','Enable and reload to view this extension’s settings.')));
+    renderSettings(e,native);
     if(third(e)){detail.append(make('h3','cwex-section-title',t('移除','Remove')));const danger=make('div','cwex-card cwex-danger-zone'),del=actionRow('trash',t('删除这个扩展','Delete this extension'),t('会删掉扩展文件夹；它保存的设置不一定一起删除','Deletes the extension folder; saved settings may remain'),()=>remove(e),'cwex-delete');danger.append(del);detail.append(danger);}v2dDetail(e);paint();
   }
   function ordered(){const r=records(),rank=new Map(r.map((v,i)=>[v.id,i]));return [...entries.values()].filter(e=>!e.deleted).sort((a,b)=>(rank.get(a.id)??1e6)-(rank.get(b.id)??1e6));}
@@ -288,6 +307,9 @@ export function createExtensionPanel({win,t,make,button,icon,settings,openEditor
       }
     }
     for(const [id,e] of entries)if(e.type==='ui'&&!e.roots.length&&e!==active)entries.delete(id);
+    // TT can mount a plugin's drawer after its catalog entry has opened.
+    const pending=active?.roots.length&&detail.querySelector('.cwex-native-settings>.cwex-no-settings');
+    if(pending){const native=pending.parentElement;pending.remove();renderSettings(active,native);}
     paint();
   }
   function paint(){if(!page||disposed)return;const all=ordered(),available=all.filter(e=>e.update?.kind==='available');for(const reload of page.querySelectorAll('.cwex-reload'))hide(reload,!needsReload);const updates=list.querySelector('.cwex-updates');hide(updates,!available.length);const copy=updates.querySelector('.cwex-update-copy');const updateText=t(available.length+' 个扩展有新版本',available.length+' extension updates');set(copy.querySelector('.cwex-update-title'),updateText);set(copy.querySelector('.cwex-update-names'),available.map(e=>e.label).join('、'));
