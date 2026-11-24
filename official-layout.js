@@ -1,16 +1,16 @@
-import { createBackgroundFilters } from './background-filters.js?v=2.0.349';
-import { createTTPanelRuntime } from './official-tt-panel-runtime.js?v=2.0.349';
-import { dropAfter, clearDropLine, showDropLine, guardSortDrag } from './settings-drop-target.js?v=2.0.349';
-import { watchTokens, tokenText } from './token-count.js?v=2.0.349';
-import { createSettingsScale } from './settings-scale.js?v=2.0.349';
-import { createFontWeightControl } from './font-weight.js?v=2.0.349';
-import { preferencesFor } from './preferences.js?v=2.0.349';
-import { officialIcons } from './official-icons.js?v=2.0.349';
-import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.349';
-import { retainRangeCounter } from './official-extension-settings.js?v=2.0.349';
-import { tr } from './official-i18n.js?v=2.0.349';
-import { normalizeSettingsSections } from './settings-sections.js?v=2.0.349';
-import { installDisplayState } from './display-state.js?v=2.0.349';
+import { createBackgroundFilters } from './background-filters.js?v=2.0.350';
+import { createTTPanelRuntime } from './official-tt-panel-runtime.js?v=2.0.350';
+import { dropAfter, clearDropLine, showDropLine, guardSortDrag } from './settings-drop-target.js?v=2.0.350';
+import { watchTokens, tokenText } from './token-count.js?v=2.0.350';
+import { createSettingsScale } from './settings-scale.js?v=2.0.350';
+import { createFontWeightControl } from './font-weight.js?v=2.0.350';
+import { preferencesFor } from './preferences.js?v=2.0.350';
+import { officialIcons } from './official-icons.js?v=2.0.350';
+import { createDrawerLayouts, actionLabel } from './official-drawers.js?v=2.0.350';
+import { retainRangeCounter } from './official-extension-settings.js?v=2.0.350';
+import { tr } from './official-i18n.js?v=2.0.350';
+import { normalizeSettingsSections } from './settings-sections.js?v=2.0.350';
+import { installDisplayState } from './display-state.js?v=2.0.350';
 /* Live adaptation of design-v4. Native drawers stay beneath their toggles:
  * ST resolves toggle.parent().find('.drawer-content'), and plugins delegate to
  * their original containers. Never import the preview's snapshots or fake data.
