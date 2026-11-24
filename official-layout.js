@@ -1229,7 +1229,8 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   let extensionLayoutCatalog=[],extensionHost=null,extensionLoading=null;
   const extensionRowsSeen=new WeakSet(),extensionNativeOrder=new Map();
   const extensionMetadata=new Map(),extensionAliases={assets_container:'assets',expressions_container:'expressions',sd_container:'stable-diffusion',tts_container:'tts',qr_container:'quick-reply',translation_container:'translate',caption_container:'caption',summarize_container:'memory',regex_container:'regex',vectors_container:'vectors'};
-  const ownLayoutExtension='third-party/'+decodeURIComponent(new URL('.',import.meta.url).pathname.replace(/\/$/,'').split('/').pop());
+  // 作为正式仓 preview/ 里的前瞻版运行时，扩展身份（文件夹名、manifest）以根目录为准。
+  const ownLayoutExtension='third-party/'+decodeURIComponent(new URL(globalThis.__cwPreview?.root||new URL('.',import.meta.url)).pathname.replace(/\/$/,'').split('/').pop());
   const protectedLayout=(kind,id)=>kind==='rail'?id==='user-settings-button':id===ownLayoutExtension||extensionLayoutCatalog.some(i=>i.id===id&&i.protected);
   const extensionNorm=value=>String(value||'').normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
   let unknownExtensionRows=[];

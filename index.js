@@ -159,7 +159,8 @@ let CLAUDE_ENABLED = claudeReadSetting('enabled', ['on', 'off'], 'on') !== 'off'
 /* 框架兼容模式保留 Claude Web 的桌面外壳：左侧栏、内容区让位和输入框。
    外部主题继续负责配色、字体、背景、欢迎页和消息内容。 */
 const CLAUDE_COMPAT_REQUESTED = claudeReadSetting('mode', ['full', 'compat'], 'full') === 'compat';
-const CLAUDE_UI_STYLE = claudeReadSetting('ui-style', ['web', 'classic'], 'web');
+// 前瞻版（正式仓 preview/）一律用新版界面；用户保存的选择不改，关掉前瞻后照旧生效。
+const CLAUDE_UI_STYLE = globalThis.__cwPreview ? 'web' : claudeReadSetting('ui-style', ['web', 'classic'], 'web');
 document.documentElement.dataset.claudeUi = CLAUDE_UI_STYLE;
 const CLAUDE_MOTION_ENABLED = claudeReadSetting('motion', ['on', 'off'], 'on') !== 'off';
 /* Via 输入框几何诊断器（右上角那个「诊断」胶囊）。默认关。
@@ -12590,6 +12591,10 @@ if (CLAUDE_ENABLED) {
                   <div id="claude-web-ui-style-pending" class="claude-web-help" hidden><span></span> <button id="claude-web-ui-style-reload" type="button" class="menu_button"></button></div>
                 </div>
 
+                <label class="checkbox_label claude-web-check claude-web-field" id="claude-web-preview-row"><input id="claude-web-preview" type="checkbox"><span></span></label>
+                <div id="claude-web-preview-help" class="claude-web-help"></div>
+                <div id="claude-web-preview-pending" class="claude-web-help" hidden><span></span> <button id="claude-web-preview-reload" type="button" class="menu_button"></button></div>
+
                 <div class="claude-web-field claude-web-auto-theme">
                   <label for="claude-web-theme-auto"><b>主题切换</b></label>
                   <select id="claude-web-theme-auto" class="text_pole"></select>
@@ -12783,9 +12788,10 @@ if (CLAUDE_ENABLED) {
 
   function folderName() {
     try {
-      const base = typeof CLAUDE_EXTENSION_BASE !== 'undefined'
+      // 作为正式仓 preview/ 里的前瞻版运行时，检查更新、重装都针对根目录这个扩展。
+      const base = globalThis.__cwPreview?.root || (typeof CLAUDE_EXTENSION_BASE !== 'undefined'
         ? CLAUDE_EXTENSION_BASE
-        : new URL('.', import.meta.url).href;
+        : new URL('.', import.meta.url).href);
       return decodeURIComponent(new URL(base).pathname.replace(/\/+$/, '').split('/').pop() || '');
     } catch {
       return 'claude-web-test2';
@@ -13422,6 +13428,35 @@ if (CLAUDE_ENABLED) {
       if (!write('ui-style', uiStyleSelect.value)) { syncUiStyleLabels(); return; }
       syncUiPending();
     });
+    // 前瞻版开关：扩展根目录是正式版，preview/ 是前瞻版；启动时 emergency.js 按 claude-web:preview 分流。
+    // __cwPreview 由根目录的 emergency.js 在加载前瞻版之前设好。
+    const previewBox = panel.querySelector('#claude-web-preview');
+    const previewPending = panel.querySelector('#claude-web-preview-pending');
+    const previewRunning = !!globalThis.__cwPreview;
+    const syncPreview = () => {
+      const zh = (document.querySelector('#ui_language_select')?.value || window.localStorage.getItem('language') || navigator.language || 'en').startsWith('zh');
+      panel.querySelector('#claude-web-preview-row span').textContent = tr(zh, '前瞻版');
+      panel.querySelector('#claude-web-preview-help').textContent = tr(zh, '试用下一版的界面和修复。打开后一律使用新版界面，关掉后回到原来的设置。');
+      const saved = preferencesFor(window).isSaved('claude-web:preview');
+      previewPending.hidden = saved && previewBox.checked === previewRunning;
+      previewPending.querySelector('span').textContent = saved ? tr(zh, '已保存，刷新页面后生效。请先保存正在编辑的内容。') : RELOAD_STORAGE_HINT;
+      previewPending.querySelector('button').textContent = tr(zh, '刷新页面');
+      previewPending.querySelector('button').disabled = !saved;
+      // 前瞻版一律用新版界面；旧版选项留着给关掉前瞻后用，这里只读。
+      if (previewRunning) {
+        uiStyleSelect.value = 'web'; uiStyleSelect.disabled = true; uiPending.hidden = true;
+        const help = panel.querySelector('#claude-web-ui-style-preview') || Object.assign(document.createElement('div'), {id: 'claude-web-ui-style-preview', className: 'claude-web-help'});
+        help.textContent = tr(zh, '前瞻版只有新版界面。');
+        if (!help.isConnected) uiPending.after(help);
+      }
+    };
+    previewBox.checked = previewRunning || read('preview', ['on', 'off'], 'off') === 'on';
+    previewBox.addEventListener('change', () => { write('preview', previewBox.checked ? 'on' : 'off'); syncPreview(); });
+    panel.querySelector('#claude-web-preview-reload').addEventListener('click', () => window.location.reload());
+    syncPreview();
+    document.addEventListener('change', e => { if (e.target.id === 'ui_language_select') syncPreview(); });
+    // 测试仓单独安装时没有正式版可切，这一行不显示。
+    if (!previewRunning) for (const id of ['claude-web-preview-row', 'claude-web-preview-help', 'claude-web-preview-pending']) panel.querySelector('#' + id).hidden = true;
     const motionBox = panel.querySelector('#claude-web-motion');
     const decorationsBox = panel.querySelector('#claude-web-decorations');
     motionBox.checked = read('motion', ['on', 'off'], 'on') !== 'off';
