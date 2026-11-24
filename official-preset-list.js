@@ -75,6 +75,9 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
     }
     const bottomHost=phone?ui.column:ui.dock;
     if(ui.bottom.parentNode!==bottomHost)bottomHost.append(ui.bottom);
+    // 插件晚到（如 SPreset 网络加载完才插按钮）会落进列表栏，统一收进插件栏，放在最上面。
+    {const {plugins,manager}=ui;for(const n of [...column.children])if(n!==plugins&&n!==tools&&n!==manager&&n!==ui.bottom&&!n.contains(manager)){ui.late.add(n);plugins.append(n);}
+      if(column.firstElementChild!==plugins)column.prepend(plugins);hidden(plugins,!plugins.childElementCount);}
     if(!ui.manager.contains(ui.empty))ui.manager.append(ui.empty);
     {const list=ui.manager.querySelector('#completion_prompt_manager_list');if(list&&!list.closest('.bai-bai-preset-vue-list-host')&&list.nextElementSibling!==ui.addRow)list.after(ui.addRow);}
     const active=doc.getElementById('main_api')?.value==='openai';hidden(ui.tabBar,!active);
@@ -130,7 +133,9 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
     for(const n of [ui.search,ui.filterLine,ui.more])hidden(n,ui.multi);
     const nativeList=ui.manager.querySelector('#completion_prompt_manager_list');
     const nativeReady=!!nativeList?.querySelector(ROW)||!!ui.manager.querySelector('#prompt-manager-reset-character')&&all.length===0;
-    hidden(ui.selectionLine,!ui.multi);hidden(ui.addRow,ui.multi||!!ui.manager.querySelector('.bai-bai-preset-vue-list-host'));hidden(ui.batch,!ui.multi||(phone&&!ui.selected.size));hidden(ui.empty,!nativeReady||visible.length!==0);
+    hidden(ui.selectionLine,!ui.multi);hidden(ui.addRow,ui.multi||!!ui.manager.querySelector('.bai-bai-preset-vue-list-host'));
+    // ⋯ 里的新建跟底部新建行同一条件；菜单项的 display 有 !important，只能用行内 !important 藏。
+    {const bai=!!ui.manager.querySelector('.bai-bai-preset-vue-list-host');if(bai!==(ui.newItem.style.getPropertyValue('display')==='none')){if(bai)ui.newItem.style.setProperty('display','none','important');else ui.newItem.style.removeProperty('display');}}hidden(ui.batch,!ui.multi||(phone&&!ui.selected.size));hidden(ui.empty,!nativeReady||visible.length!==0);
     const hasFeedback=!!(ui.message.textContent||ui.undo||ui.busy);
     hidden(ui.feedback,!hasFeedback);
     flag(ui.dock,'cwp-dock-feedback',hasFeedback);
@@ -212,7 +217,7 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
   const keyContext=()=>key();
   function mount(panel){
     const manager=panel.querySelector('#completion_prompt_manager');if(!manager)return;
-    if(ui?.manager===manager){paint();return;}destroy();
+    if(ui?.manager===manager){paint();return;}const carried=destroy()||[];
     const tabBar=make('div','cw-pm-tabs'),tools=make('div','cw-pm-tools'),filters=make('details','cw-v4-more cwr-pop cw-pm-filters'),selectionLine=make('div','cw-pm-selection-line'),batch=make('div','cw-pm-batch'),feedback=make('div','cw-pm-feedback'),bottom=make('div','cw-pm-bottom');
     tabBar.setAttribute('role','tablist');tabBar.setAttribute('aria-label',t('预设内容','Preset content'));
     const search=make('input','cw-pm-search');search.type='search';search.placeholder=t('搜索提示词名称','Search prompt names');search.setAttribute('aria-label',search.placeholder);
@@ -227,7 +232,11 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
     // 原生只提供整个提示词列表的导入导出。
     const popItem=(ico,label,run,cls='')=>{const b=button('',()=>{more.open=false;run();},'cw-v4-more-item'+(cls?' '+cls:''));b.append(svgIcon(ico),make('span','',label));menu.append(b);return b;};
     const popHr=cls=>{const h=make('hr','cwr-pop-hr'+(cls?' '+cls:''));menu.append(h);};
+    // 新建走原生 PromptManager 的「新建提示词」按钮；列表底部的新建行也调这一个。
+    const addRun=()=>{const n=manager.querySelector('.fa-plus-square,.fa-square-plus');(n?.closest('.menu_button')||n)?.click();};
     popItem('multi',t('多选','Select'),()=>multiButton.click());
+    // 反馈：长列表要滚到底才看得到新建行，⋯ 里也放一个。
+    const newItem=popItem('plus',t('新建提示词','New prompt'),addRun);
     popItem('ins',t('插入已有提示词…','Insert an existing prompt…'),()=>manager.querySelector('.fa-chain,.fa-link')?.cwOpenPicker?.());popHr();
     popItem('imp',t('导入整个提示词列表','Import prompt list'),()=>doc.getElementById('prompt-manager-import')?.click());popItem('exp',t('导出整个提示词列表','Export prompt list'),()=>doc.getElementById('prompt-manager-export')?.click());popHr();
     popItem('reload',t('重置当前角色的列表','Reset this character\'s list'),()=>doc.getElementById('prompt-manager-reset-character')?.click(),'cw-v4-danger');
@@ -235,10 +244,13 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
     const countPicked=make('span','cw-pm-selection');
     const column=make('div','cwp-list-column'),dock=make('div','cwp-dock'),sticky=make('div','cwp-sticky');
     const preset=panel.querySelector('#respective-presets-block');
+    // 插件（如 SPreset Editor）插在原生提示词列表前后的内容。drawers 搬页时已把它们
+    // 放进这一栏并留了还原锚点；没有这一栏时自己建一个。放在搜索栏上方。
+    const ownPlugins=!panel.querySelector('.cw-pm-plugins'),plugins=panel.querySelector('.cw-pm-plugins')||make('div','cw-pm-plugins');
     // PromptManager replaces its own children on every render. Keep CW tools
     // and open menus in the column, outside the subtree ST owns.
     manager.before(column,dock);
-    column.append(tools,manager);
+    column.append(plugins,tools,manager);
     const emptyEdit=make('p','cwp-dock-empty',t('选择一条提示词进行编辑','Select a prompt to edit'));
     dock.append(emptyEdit);
     tools.append(search,filters,more,selectionLine);
@@ -252,9 +264,9 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
     bottom.append(batch,feedback);
     const empty=make('p','cw-pm-empty',t('没有匹配的提示词','No matching prompts'));
     empty.hidden=true;
-    const addRow=make('div','cw-pm-addrow');addRow.tabIndex=0;addRow.setAttribute('role','button');const addIco=make('span','cw-pm-number cw-pm-add-ico');addIco.append(svgIcon('plus'));addRow.append(addIco,make('span','cw-pm-add-label',t('新建提示词','New prompt')));const addRun=()=>{const n=manager.querySelector('.fa-plus-square,.fa-square-plus');(n?.closest('.menu_button')||n)?.click();};addRow.addEventListener('click',addRun);addRow.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();addRun();}});
-    ui={addRow,panel,manager,tabBar,tools,filterLine:filters,more,column,dock,sticky,preset,done,search,multiButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,autoSelect:true,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
-    const u=ui;
+    const addRow=make('div','cw-pm-addrow');addRow.tabIndex=0;addRow.setAttribute('role','button');const addIco=make('span','cw-pm-number cw-pm-add-ico');addIco.append(svgIcon('plus'));addRow.append(addIco,make('span','cw-pm-add-label',t('新建提示词','New prompt')));addRow.addEventListener('click',addRun);addRow.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();addRun();}});
+    ui={addRow,newItem,plugins,ownPlugins,late:new Set(),panel,manager,tabBar,tools,filterLine:filters,more,column,dock,sticky,preset,done,search,multiButton,selectionLine,batch,feedback,bottom,empty,selection,message,remove,allButton,clear,enable,disable,undoButton,filters:[],selected:new Set(),lastStates:new Map(),filter:'all',multi:false,autoSelect:true,busy:false,undo:null,frozen:null,anchor:null,context:key(),epoch:0,dispose:[],tab:'prompts',positions:{prompts:0,params:0},sortables:new Map(),expanded:new Map(),expanding:new Set(),hidden:new WeakMap(),hiddenRefs:new Set(),rangeVisible:[],nativePM:null,dragging:false};
+    const u=ui;for(const n of carried)if(plugins.contains(n))u.late.add(n);
     u.autoFrame=0;
     const cancelAuto=()=>{u.autoSelect=false;win.cancelAnimationFrame(u.autoFrame);u.autoFrame=0;};
     u.dispose.push(cancelAuto);
@@ -336,6 +348,8 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
     // Native row events are installed by PromptManager before our existing adapter.
     let pruneTimer,paintFrame=0;
     const queuePaint=()=>{if(paintFrame||ui!==u)return;paintFrame=win.requestAnimationFrame(()=>{paintFrame=0;if(ui===u)paint();});};
+    // 只看列表栏的直接子节点：插件晚插进来时收进插件栏。paint 自己的挪动只会多排一次，不会循环。
+    {const columnObserver=new win.MutationObserver(queuePaint);columnObserver.observe(column,{childList:true});u.dispose.push(()=>columnObserver.disconnect());}
     let panelActive=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');const panelObserver=new win.MutationObserver(()=>{const active=panel.classList.contains('openDrawer')&&!panel.classList.contains('cw-v4-inactive');if(active!==panelActive){panelActive=active;if(active){u.autoSelect=true;queuePaint();}else{cancelAuto();clearPreviews();onLeave();hideFloating(u);delete panel.dataset.cwPresetTab;}}});panelObserver.observe(panel,{attributes:true,attributeFilter:['class']});u.dispose.push(()=>panelObserver.disconnect());
     const owned=n=>{const e=n.nodeType===1?n:n.parentElement;return !!e&&(u.addRow.contains(e)||u.tools.contains(e)||u.filterLine.contains(e)||u.selectionLine.contains(e)||u.bottom.contains(e)||e.matches('.cw-pm-select')||!!e.closest('.cw-pm-description'));};
     const ownMutation=r=>{if(r.type==='attributes'){const old=new Set((r.oldValue||'').split(/\s+/).filter(Boolean)),now=new Set(r.target.classList);const changed=[...[...old].filter(k=>!now.has(k)),...[...now].filter(k=>!old.has(k))];return changed.every(k=>k.startsWith('cw-pm-'));}return owned(r.target)||[...r.addedNodes,...r.removedNodes].every(owned);};
@@ -344,12 +358,16 @@ export function createPresetList({win,make,button,t,phoneWide,onLeave,onEdit,can
   }
   function destroy(){if(!ui)return;onLeave();const u=ui;hideFloating(u);clearBaiControls(u);ui=null;u.epoch++;u.dispose.forEach(f=>f());
     restoreGroups(u);for(const e of u.sortables.values())restoreSort(e);
-    u.column.replaceWith(u.manager);
+    // drawers 建的插件栏留在列表前面：其中原有的插件节点由 drawers 的还原锚点搬回，重新挂载时也能找回。
+    // 晚到的节点没有原位，先放回列表前面，再交给调用方在整页还原后放一次。
+    const late=[...u.late].filter(n=>u.plugins.contains(n));
+    if(u.ownPlugins){u.column.replaceWith(u.manager);if(late.length)u.manager.before(...late);}else u.column.replaceWith(u.plugins,u.manager);
     for(const n of [u.tabBar,u.bottom,u.empty,u.addRow,u.dock,u.sticky])n.remove();u.manager.removeAttribute('aria-busy');
     delete u.panel.dataset.cwPresetTab;u.panel.classList.remove('cwp-phone');u.manager.classList.remove('cw-pm-list','cw-pm-multi','cw-pm-sort','cw-pm-busy','cw-pm-filtering','cw-pm-long');
     // Restore live nodes even while native TT holds them outside the manager.
     for(const r of hiddenNodes(u)){if(u.hidden.has(r))r.hidden=u.hidden.get(r);if(!r.matches('.cw-pm-row'))continue;r.classList.remove('cw-pm-selected','cw-pm-current','cw-pm-row','cw-pm-native-row');r.querySelectorAll('.cw-pm-select,.cw-pm-description').forEach(n=>n.remove());const name=r.querySelector('.completion_prompt_manager_prompt_name');name?.removeAttribute('role');name?.removeAttribute('tabindex');}
     for(const ref of u.hiddenRefs)u.hiddenFinalizer.unregister(ref);u.hiddenRefs.clear();
+    return late;
   }
   return {mount,destroy,refresh:paint};
 }

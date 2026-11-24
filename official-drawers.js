@@ -281,7 +281,12 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
     }
     const advanced=get('openai_settings'),manager=get('completion_prompt_manager');
     if(advanced&&manager){const as=begin(advanced);if(as){const st=as.s,target=as.page;
-      const prompts=section(target,'提示词');prompts.classList.add('cw-v4-prompts','cw-v4-entries');move(st,manager,prompts);
+      const prompts=section(target,'提示词');prompts.classList.add('cw-v4-prompts','cw-v4-entries');
+      // 原生列表的外层 .range-block 里只有列表本身；其余节点是插件插的（如 SPreset Editor 插在列表前）。
+      // 只搬列表会把它们留进「其他设置」，这里一起搬进插件栏，presetList 把插件栏放在搜索栏上方。
+      const pmHost=manager.parentElement,pmExtras=pmHost?[...pmHost.children].filter(n=>n!==manager&&!n.matches('script,style,template,link')):[];
+      move(st,manager,prompts);
+      const pmPlugins=created(st,make('div','cw-pm-plugins'));sectionHost(prompts).append(pmPlugins);for(const n of pmExtras)move(st,n,pmPlugins);
       const quick=ranges?.querySelector('.cw-v4-quick');if(quick)move(st,quick,target);
       const adv=section(target,'其他');
       dialogRow(st,adv,'功能提示词','扮演、世界书格式、新聊天、续写等 10 条','功能提示词',box=>{const x=section(box,'');for(const [id,label,desc] of [['impersonation_prompt_textarea','扮演提示词','让 AI 代你写一条消息时用'],['wi_format_textarea','世界书格式','用 {0} 标出内容插入的位置'],['scenario_format_textarea','场景格式'],['personality_format_textarea','性格格式'],['group_nudge_prompt_textarea','群聊提示'],['newchat_prompt_textarea','新聊天'],['newgroupchat_prompt_textarea','新群聊'],['newexamplechat_prompt_textarea','新示例对话'],['continue_nudge_prompt_textarea','续写提示'],['send_if_empty_textarea','空消息时发送','输入框为空时代替发送的文字']])textRow(st,x,get(id),label,desc);});
@@ -1228,6 +1233,6 @@ export function createDrawerLayouts({win,t,L,make,button,icon,openEditor,closeSe
       for(const f of paints)f();
     },
     closeCharacterExport(){if(!exportSession)return false;const anchor=exportSession.anchor;stopCharacterExport(true);anchor.focus({preventScroll:true});return true;},
-    restore(){stopCharacterExport(true);exportStyle?.remove();exportStyle=null;presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();presetList.destroy();presetEdit.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;const all=[...states.values()].reverse();all.forEach(prepareRestore);restoreMoves(all);all.forEach(finishRestore);states.clear();},
+    restore(){stopCharacterExport(true);exportStyle?.remove();exportStyle=null;presetManagerPage.destroy();refinements.destroy();extensionPanel.destroy();versionDisposed=true;doc.removeEventListener('click',cancelOwnVersionCheck,true);if(versionDelay)win.clearTimeout(versionDelay);finishVersionDelay?.();versionCard?.remove();for(const r of versionRows)r.querySelector(".cw-update-status")?.remove();versionRows.clear();const pmLate=presetList.destroy()||[];presetEdit.destroy();promptScroll?.destroy();promptScroll=null;extensionSettings.restore();paints.length=0;ctxCache.at=0;const all=[...states.values()].reverse();all.forEach(prepareRestore);restoreMoves(all);all.forEach(finishRestore);states.clear();if(pmLate.length)get('completion_prompt_manager')?.before(...pmLate);},
   };
 }
