@@ -1565,6 +1565,39 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       ro.observe(chat);
       disposers.push(() => ro.disconnect());
     }
+    // 11-24 玉子手机（st-yuzi-phone）「底部可视化」按 #sheld 的位置给底栏和面板定宽；CW 的 #sheld 铺满整窗
+    // （看得见的那一栏靠内边距留出来），底栏就横跨整个窗口。它挂在 body 下的 .yuzi-bottom-root 里（「随聊天滚动」时
+    // 导航在 #chat 末尾的 .yuzi-bottom-anchor 里）：量输入框——看得见的那一栏——写成 --cw-col-left / --cw-col-width，
+    // CSS 把它们收进这一栏。侧栏折叠、改聊天宽度会让输入框变位，所以也盯 #form_sheld / #send_form 的尺寸。
+    {
+      let yuziFrame = 0;
+      const syncYuzi = () => {
+        yuziFrame = 0;
+        const hosts = [...doc.querySelectorAll('body>.yuzi-bottom-root,#chat>.yuzi-bottom-anchor')];
+        if (!hosts.length) return;
+        const r = doc.getElementById('send_form')?.getBoundingClientRect();
+        if (!r || r.width < 40) return;
+        const left = Math.round(r.left) + 'px', width = Math.round(r.width) + 'px';
+        for (const el of hosts) {
+          if (el.style.getPropertyValue('--cw-col-left') !== left) el.style.setProperty('--cw-col-left', left);
+          if (el.style.getPropertyValue('--cw-col-width') !== width) el.style.setProperty('--cw-col-width', width);
+        }
+      };
+      const scheduleYuzi = () => { if (!yuziFrame && !destroyed) yuziFrame = win.requestAnimationFrame(syncYuzi); };
+      observe(doc.body, scheduleYuzi, {childList:true});
+      if (chat) observe(chat, () => { if (chat.lastElementChild?.classList.contains('yuzi-bottom-anchor')) scheduleYuzi(); }, {childList:true});
+      on(win, 'resize', scheduleYuzi);
+      if (win.ResizeObserver) {
+        const yuziRo = new win.ResizeObserver(scheduleYuzi);
+        for (const id of ['form_sheld', 'send_form']) { const n = doc.getElementById(id); if (n) yuziRo.observe(n); }
+        disposers.push(() => yuziRo.disconnect());
+      }
+      disposers.push(() => {
+        if (yuziFrame) win.cancelAnimationFrame(yuziFrame);
+        for (const el of doc.querySelectorAll('.yuzi-bottom-root,.yuzi-bottom-anchor')) { el.style.removeProperty('--cw-col-left'); el.style.removeProperty('--cw-col-width'); }
+      });
+      scheduleYuzi();
+    }
     // Typing only changes the filled state. syncChat() walks every assistant message and
     // reads layout, so it stays on the chat observer / schedule() path instead of every keystroke.
     on(doc,'input', e => { if (['chat_width_slider','chat_width_slider_counter'].includes(e.target.id)) deferChatWidth(); if (e.target.id === 'send_textarea') setBodyClass('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
