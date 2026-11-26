@@ -1598,6 +1598,57 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       });
       scheduleYuzi();
     }
+    // 11-26 玉子手机的表格面板点开看不到：插件把 #top-bar 的底边当成面板最高能到哪。CW 电脑布局里 #top-bar 是左边
+    // 整窗高的侧栏，底边就是窗口底，面板高度就算成 0，或者被 clip-path 整块裁掉（手机上 #top-bar 是顶栏，插件算得对）。
+    // 面板开着、而且插件用的上沿比聊天区真正露出来的顶（CW 标题栏下沿）低时，CW 按插件同样的规则重算：高度和朝上/朝下
+    // 在打开、换表、插件重排、窗口变化时定；「随聊天滚动」时面板只跟着导航挪，并按聊天区上下沿裁切，和插件一样。
+    // 结果写成 root 上的 --cw-yuzi-top / --cw-yuzi-h / --cw-yuzi-clip，CSS 用 !important 盖过插件写在面板上的几何。
+    {
+      const VARS = ['--cw-yuzi-top', '--cw-yuzi-h', '--cw-yuzi-clip'];
+      let frame = 0, decideNext = true, plan = null, lastScroll = NaN, watched = null;
+      const clear = rootEl => { plan = null; if (rootEl) for (const k of VARS) rootEl.style.removeProperty(k); };
+      const syncYuziPanel = () => {
+        frame = 0;
+        const decide = decideNext; decideNext = false;
+        const rootEl = doc.querySelector('body>.yuzi-bottom-root');
+        const panel = rootEl?.querySelector(':scope>.yuzi-bottom-panel');
+        const dock = rootEl && doc.querySelector('.yuzi-bottom-dock');
+        if (!panel || panel.hidden || !dock || !chat || rootEl.dataset.position === 'edge' || !['chat', 'viewport'].includes(panel.dataset.region)) { clear(rootEl); return; }
+        const vv = win.visualViewport, vTop = vv?.offsetTop || 0, vBottom = vTop + (vv?.height || win.innerHeight);
+        const chatRect = chat.getBoundingClientRect();
+        const head = doc.querySelector('#sheld>.cw-v4-chat-head')?.getBoundingClientRect();
+        const min = Math.max(vTop, chatRect.top, head?.height ? head.bottom : 0);
+        if (Math.max(vTop, doc.getElementById('top-bar')?.getBoundingClientRect().bottom || 0) <= min + 1) { clear(rootEl); return; }
+        const base = Math.min(vBottom, doc.getElementById('form_sheld')?.getBoundingClientRect().top || chatRect.bottom, chatRect.bottom);
+        const d = dock.getBoundingClientRect(), flow = rootEl.dataset.position === 'flow';
+        if (decide || !plan) {
+          const pct = Number(win.SillyTavern?.getContext?.()?.extensionSettings?.YuziPhone?.bottomVisualization?.height) || 60;
+          const requested = win.innerHeight * Math.max(25, Math.min(85, pct)) / 100;
+          const above = Math.max(0, d.top - min - 8), below = Math.max(0, base - d.bottom - 8);
+          const downward = flow && above < Math.min(requested, 160) && below > above;
+          plan = { downward, height: Math.min(requested, downward ? below : above) };
+        }
+        lastScroll = chat.scrollTop;
+        const y = plan.downward ? d.bottom + 8 : d.top - plan.height - 8;
+        const values = [Math.round(y) + 'px', Math.round(plan.height) + 'px', `inset(${Math.round(Math.max(0, min - y))}px 0 ${Math.round(Math.max(0, y + plan.height - base))}px 0)`];
+        VARS.forEach((k, i) => { if (rootEl.style.getPropertyValue(k) !== values[i]) rootEl.style.setProperty(k, values[i]); });
+      };
+      const scheduleYuziPanel = decide => { if (decide) decideNext = true; if (!frame && !destroyed) frame = win.requestAnimationFrame(syncYuziPanel); };
+      // 插件的 followScroll 在聊天滚动时改面板的 transform/clip-path：这种只挪；打开/关闭、换区域、插件重排就重定高度。
+      const panelMo = new win.MutationObserver(records => scheduleYuziPanel(records.some(r => r.attributeName !== 'style') || !chat || chat.scrollTop === lastScroll));
+      const watchYuziPanel = () => {
+        const panel = doc.querySelector('body>.yuzi-bottom-root>.yuzi-bottom-panel');
+        if (panel === watched) return;
+        panelMo.disconnect(); watched = panel;
+        if (panel) { panelMo.observe(panel, {attributes:true, attributeFilter:['hidden', 'style', 'data-region']}); scheduleYuziPanel(true); }
+      };
+      observe(doc.body, watchYuziPanel, {childList:true});
+      if (chat) on(chat, 'scroll', () => { if (plan) scheduleYuziPanel(false); }, {passive:true});
+      on(win, 'resize', () => scheduleYuziPanel(true));
+      if (win.visualViewport) on(win.visualViewport, 'resize', () => scheduleYuziPanel(true));
+      disposers.push(() => { panelMo.disconnect(); if (frame) win.cancelAnimationFrame(frame); clear(doc.querySelector('body>.yuzi-bottom-root')); });
+      watchYuziPanel();
+    }
     // Typing only changes the filled state. syncChat() walks every assistant message and
     // reads layout, so it stays on the chat observer / schedule() path instead of every keystroke.
     on(doc,'input', e => { if (['chat_width_slider','chat_width_slider_counter'].includes(e.target.id)) deferChatWidth(); if (e.target.id === 'send_textarea') setBodyClass('cw-v4-filled', Boolean(e.target.value.trim())); else if (e.target.type === 'range' && e.target.closest?.('.cw-v4-panel,.cw-v4-editor')) fill(e.target); });
