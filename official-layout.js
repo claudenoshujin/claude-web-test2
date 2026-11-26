@@ -678,6 +678,10 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     closeSelMenu();
     const m = make('div', 'cw-v4-selmenu'), list = make('div', 'cw-v4-selmenu-list');
     m.setAttribute('popover', 'manual'); list.setAttribute('role', 'listbox');
+    // 11-26 data-popper-placement 是 Popper 一类浮动菜单的通用标记：「悬浮窗收纳」之类的酒馆助手脚本靠它（和 role=listbox/menu）
+    // 认出「点了才弹出的菜单」不去收。外层这个容器没有 role（里面有搜索框，不能整个当 listbox；role=dialog 又会被 CW 当成
+    // 外部弹窗让位），不打标记的话，收纳脚本把它记成悬浮窗以后，每次打开下拉不到一秒就被它裁掉——API 下拉「自己缩回去」。
+    m.setAttribute('data-popper-placement', 'bottom-end');
     // 2.0.241：列表挂在 body 上，不在 .openDrawer 里；酒馆 script.js 的 html touchstart/mousedown 会把它当成「点了抽屉外面」，
     // 选一项就把整个设置关掉。按下事件在列表这里截住，不再冒泡到 html（选项靠 click 生效，不受影响）。
     for (const t of ['mousedown', 'touchstart']) m.addEventListener(t, e => e.stopPropagation(), {passive: true});
@@ -738,6 +742,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     const b = m.getBoundingClientRect();
     m.style.left = Math.round(Math.min(vw - b.width - 8, Math.max(8, r.right - b.width))) + 'px';
     m.style.top = Math.round(down ? r.bottom + 6 : r.top - 6 - b.height) + 'px';
+    if (!down) m.setAttribute('data-popper-placement', 'top-end');
     markCurrent();
     if (!mobile()) {
       search?.focus({preventScroll: true});
