@@ -9727,6 +9727,8 @@ if (CLAUDE_ENABLED) {
 
     const root = hostDocument.createElement('div');
     root.className = 'clawd-mobile-chrome';
+    // 11-26 「悬浮窗收纳」会把 ≡、新对话这些小按钮当悬浮球收走（手机上 ≡ 是打开侧栏的唯一入口）；打上它认得的浮层标记，整块跳过。
+    root.setAttribute('data-popper-placement', 'bottom');
     const menu = hostDocument.createElement('button');
     menu.type = 'button';
     menu.className = 'clawd-mobile-menu-button';

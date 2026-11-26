@@ -454,6 +454,8 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
   }
   function buildShell() {
     shell = make('div', 'cw-v4-shell'); shell.id = 'cw-v4-settings'; shell.hidden = true;
+    // 11-26 外壳是不接点击的定位层，「悬浮窗收纳」找不到框住 × 的面板，会把 × 当悬浮球收走；打上它认得的标记整块跳过（见 openSelMenu）。
+    shell.setAttribute('data-popper-placement', 'bottom');
     on(shell, 'mousedown', e => e.stopPropagation());
     on(shell, 'touchstart', e => e.stopPropagation(), {passive:true});
     shell.setAttribute('role', 'dialog'); shell.setAttribute('aria-label', t('偏好设置', 'Preferences'));
