@@ -1647,17 +1647,17 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
         const panel = doc.querySelector('body>.yuzi-bottom-root>.yuzi-bottom-panel');
         if (panel === watched) return;
         panelMo.disconnect(); watched = panel;
-        if (panel) { panelMo.observe(panel, {attributes:true, attributeFilter:['hidden', 'style', 'data-region']}); scheduleYuziPanel(true); }
+        if (panel) {
+          panelMo.observe(panel, {attributes:true, attributeFilter:['hidden', 'style', 'data-region']});
+          // Yuzi leaves its resizing state only after saving the height.
+          panelMo.observe(panel.parentElement, {attributes:true, attributeFilter:['class']});
+          scheduleYuziPanel(true);
+        }
       };
       observe(doc.body, watchYuziPanel, {childList:true});
       if (chat) on(chat, 'scroll', () => { if (plan) scheduleYuziPanel(false); }, {passive:true});
-      // Yuzi saves the new height when the handle is released, even if its inline geometry has stayed clipped.
-      const resizeHandle = event => event.target.closest?.('.yuzi-bottom-panel [data-action="resize"]');
-      for (const type of ['pointerup', 'pointercancel']) {
-        on(doc, type, event => { if (resizeHandle(event)) scheduleYuziPanel(true); }, true);
-      }
       on(doc, 'keydown', event => {
-        if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && resizeHandle(event)) scheduleYuziPanel(true);
+        if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && event.target.closest?.('.yuzi-bottom-panel [data-action="resize"]')) scheduleYuziPanel(true);
       }, true);
       on(win, 'resize', () => scheduleYuziPanel(true));
       if (win.visualViewport) on(win.visualViewport, 'resize', () => scheduleYuziPanel(true));
