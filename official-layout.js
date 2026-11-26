@@ -1651,6 +1651,14 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       };
       observe(doc.body, watchYuziPanel, {childList:true});
       if (chat) on(chat, 'scroll', () => { if (plan) scheduleYuziPanel(false); }, {passive:true});
+      // Yuzi saves the new height when the handle is released, even if its inline geometry has stayed clipped.
+      const resizeHandle = event => event.target.closest?.('.yuzi-bottom-panel [data-action="resize"]');
+      for (const type of ['pointerup', 'pointercancel']) {
+        on(doc, type, event => { if (resizeHandle(event)) scheduleYuziPanel(true); }, true);
+      }
+      on(doc, 'keydown', event => {
+        if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && resizeHandle(event)) scheduleYuziPanel(true);
+      }, true);
       on(win, 'resize', () => scheduleYuziPanel(true));
       if (win.visualViewport) on(win.visualViewport, 'resize', () => scheduleYuziPanel(true));
       disposers.push(() => { panelMo.disconnect(); if (frame) win.cancelAnimationFrame(frame); clear(doc.querySelector('body>.yuzi-bottom-root')); });
