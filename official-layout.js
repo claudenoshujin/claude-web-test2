@@ -1613,6 +1613,18 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     {
       const VARS = ['--cw-yuzi-top', '--cw-yuzi-h', '--cw-yuzi-clip'];
       let frame = 0, decideNext = true, plan = null, lastScroll = NaN, watched = null;
+      // 调高度（11-26 Codex 验收：拖完松手，面板停在旧高度）：插件拖动时只改它内存里的高度，设置里的新值要到松手后约
+      // 300ms 才出现；这期间它按自己那套几何重排，面板样式一点不变，CW 收不到信号。所以拖动时 CW 照插件的算法自己算
+      // （按下时的高度 + 竖向位移 / 窗口高 × 100，限 25–85 取整），实时跟着变；松手、键盘 ↑↓ 之后先沿用这个值，
+      // 等设置里真的写进去（最多 1.5 秒）再改回读设置。
+      let drag = null, heldPct = null, heldUntil = 0;
+      const settingPct = () => Number(win.SillyTavern?.getContext?.()?.extensionSettings?.YuziPhone?.bottomVisualization?.height) || 60;
+      const clampPct = v => Math.max(25, Math.min(85, Math.round(v)));
+      const currentPct = () => {
+        const saved = settingPct();
+        if (heldPct != null && (saved === heldPct || win.performance.now() > heldUntil)) heldPct = null;
+        return heldPct ?? saved;
+      };
       const clear = rootEl => { plan = null; if (rootEl) for (const k of VARS) rootEl.style.removeProperty(k); };
       const syncYuziPanel = () => {
         frame = 0;
@@ -1629,8 +1641,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
         const base = Math.min(vBottom, doc.getElementById('form_sheld')?.getBoundingClientRect().top || chatRect.bottom, chatRect.bottom);
         const d = dock.getBoundingClientRect(), flow = rootEl.dataset.position === 'flow';
         if (decide || !plan) {
-          const pct = Number(win.SillyTavern?.getContext?.()?.extensionSettings?.YuziPhone?.bottomVisualization?.height) || 60;
-          const requested = win.innerHeight * Math.max(25, Math.min(85, pct)) / 100;
+          const requested = win.innerHeight * clampPct(currentPct()) / 100;
           const above = Math.max(0, d.top - min - 8), below = Math.max(0, base - d.bottom - 8);
           const downward = flow && above < Math.min(requested, 160) && below > above;
           plan = { downward, height: Math.min(requested, downward ? below : above) };
@@ -1656,8 +1667,18 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
       };
       observe(doc.body, watchYuziPanel, {childList:true});
       if (chat) on(chat, 'scroll', () => { if (plan) scheduleYuziPanel(false); }, {passive:true});
+      const resizeHandle = event => event.target?.closest?.('.yuzi-bottom-panel [data-action="resize"]');
+      const hold = (pct, until) => { if (pct !== heldPct || until !== heldUntil) { heldPct = pct; heldUntil = until; scheduleYuziPanel(true); } };
+      on(doc, 'pointerdown', event => { if (event.button === 0 && resizeHandle(event)) drag = { y: event.clientY, pct: currentPct() }; }, true);
+      on(doc, 'pointermove', event => {
+        // 插件按住 350ms 才进入调高度（root 加 is-resizing），之前的移动不算。
+        if (drag && doc.querySelector('body>.yuzi-bottom-root.is-resizing')) hold(clampPct(drag.pct + (drag.y - event.clientY) / win.innerHeight * 100), Infinity);
+      }, {capture:true, passive:true});
+      const endDrag = () => { if (!drag) return; drag = null; if (heldPct != null) hold(heldPct, win.performance.now() + 1500); };
+      on(doc, 'pointerup', endDrag, true);
+      on(doc, 'pointercancel', endDrag, true);
       on(doc, 'keydown', event => {
-        if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && event.target.closest?.('.yuzi-bottom-panel [data-action="resize"]')) scheduleYuziPanel(true);
+        if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && resizeHandle(event)) hold(clampPct(currentPct() + (event.key === 'ArrowUp' ? 5 : -5)), win.performance.now() + 1500);
       }, true);
       on(win, 'resize', () => scheduleYuziPanel(true));
       if (win.visualViewport) on(win.visualViewport, 'resize', () => scheduleYuziPanel(true));
