@@ -1743,7 +1743,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     // 下拉、⋯ 菜单、提示词编辑页、酒馆自己的弹窗开着时不接，让它们自己处理。
     on(win,'keydown', e => {
       if (e.key !== 'Escape' || e.defaultPrevented || mobile() || !current || e.target.matches?.('.cwr-persona-name')) return;
-      if (doc.querySelector('.select2-container--open,.cw-v4-more[open],.cwx-chats .cwx-more-menu[open],#completion_prompt_manager_popup.openDrawer,dialog[open]:not(.cw-v4-editor)')) return;
+      if (doc.querySelector('.select2-container--open,.cw-v4-more[open],.cwx-more-menu[open]>.cwx-more-list[data-cwx-chat-menu],#completion_prompt_manager_popup.openDrawer,dialog[open]:not(.cw-v4-editor)')) return;
       const top = [...dialogs].filter(d => d.open).at(-1);
       if(top?.classList.contains("cw-v4-wi-expanded"))return;
       e.preventDefault(); e.stopImmediatePropagation();
@@ -2817,7 +2817,7 @@ export function installOfficialLayout(win = window, { defaultChatWidth = 55 } = 
     d.addEventListener('close', onClose, {once: true});
   }
   function onSheetEscape(e) {
-    if (externalModalOpen || e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('dialog:modal,.select2-container--open,.cwx-chats .cwx-more-menu[open]')) return;
+    if (externalModalOpen || e.key !== 'Escape' || e.defaultPrevented || doc.querySelector('dialog:modal,.select2-container--open,.cwx-more-menu[open]>.cwx-more-list[data-cwx-chat-menu]')) return;
     const top = openSheetLayers().reverse().find(el => el.matches?.('dialog[data-cw-lifted][open]'));
     if (!top) return;
     e.preventDefault(); e.stopImmediatePropagation();
