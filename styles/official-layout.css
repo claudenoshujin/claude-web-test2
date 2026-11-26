@@ -3051,6 +3051,12 @@ html[data-cw-v4] .cw-menu .cw-menu-back{color:var(--v4-muted)!important}
   /* P4 快速回复按钮（Kemini、防截断……）挪到输入框外面上方 */
   html[data-cw-v4] body #send_form>#qr--bar,html[data-cw-v4] body #send_form #qr--bar{position:absolute!important;left:0!important;right:0!important;bottom:calc(100% + 8px)!important;top:auto!important;margin:0!important;justify-content:center!important;background:none!important;border:0!important;box-shadow:none!important;z-index:3!important}
   html[data-cw-v4] .cw-menu .cw-menu-back{padding-left:12px!important}
+  /* 11-26（花小碎鴨：快捷回复整条盖住最后一条回复的 ✎ 那排，点不到，关掉 QR 才好）：手机上这条栏也脱离了文档流，
+     却没让位置，叠在聊天底部；整条又接点击，空白处也挡。和电脑（㉘）一样：输入区按 official-layout.js 量的 --cw-qr-h 往上让，
+     栏本身不接点击，只有按钮接。7px 是 day/night-mobile.css 原来给 #form_sheld 的上内边距。 */
+  html[data-cw-v4] body:not(.clawd-welcome) #form_sheld#form_sheld{padding-top:calc(7px + var(--cw-qr-h,0px))!important}
+  html[data-cw-v4] body #send_form>#qr--bar{pointer-events:none!important}
+  html[data-cw-v4] body #send_form>#qr--bar *{pointer-events:auto}
 }
 
 /* ---------- 2.0.270 Lulu 反馈 ---------- */
@@ -3829,10 +3835,11 @@ html[data-cw-v4] body dialog.cwx-popup.cwx-popup{min-height:0!important}
  html[data-cw-v4] body #chat::-webkit-scrollbar-thumb:hover{background:var(--cw-scrollbar-hover,#87867f)!important}
 }
 
-/* Formal 2.0.146: chat actions escape short cards without moving native action controls. */
-html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-more-list[data-cwx-chat-menu]{position:fixed!important;inset:auto!important;right:auto!important;margin:0!important;border:0!important;box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important}
-html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-more-list[popover]:not(:popover-open){display:none!important}
-html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page.cwx-chats .cwx-card:has(.cwx-more-menu[open]>.cwx-more-list[data-cwx-chat-menu]:not([popover])){overflow:visible!important;position:relative!important;z-index:21!important}
+/* Formal 2.0.146: chat actions escape short cards without moving native action controls.
+   11-26: the Quick Reply set rows (“正在用的集合”) use the same lifted ⋯ menu. */
+html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page:is(.cwx-chats,.cwx-qr) .cwx-more-list[data-cwx-chat-menu]{position:fixed!important;inset:auto!important;right:auto!important;margin:0!important;border:0!important;box-sizing:border-box!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 16px)!important;overflow-y:auto!important}
+html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page:is(.cwx-chats,.cwx-qr) .cwx-more-list[popover]:not(:popover-open){display:none!important}
+html[data-cw-v4] body :is(#top-settings-holder#top-settings-holder#top-settings-holder#top-settings-holder,dialog.popup.popup.popup.popup) .cwx-page.cwx-page:is(.cwx-chats,.cwx-qr) .cwx-card:has(.cwx-more-menu[open]>.cwx-more-list[data-cwx-chat-menu]:not([popover])){overflow:visible!important;position:relative!important;z-index:21!important}
 
 /* Formal 2.0.148: respect QR Assistant auto-shrink and bridge the 8px gap for pointer travel. */
 @media(min-width:701px){
