@@ -3056,7 +3056,7 @@ html[data-cw-v4] .cw-menu .cw-menu-back{color:var(--v4-muted)!important}
      栏本身不接点击，只有按钮接。7px 是 day/night-mobile.css 原来给 #form_sheld 的上内边距。 */
   html[data-cw-v4] body:not(.clawd-welcome) #form_sheld#form_sheld{padding-top:calc(7px + var(--cw-qr-h,0px))!important}
   html[data-cw-v4] body #send_form>#qr--bar{pointer-events:none!important}
-  html[data-cw-v4] body #send_form>#qr--bar *{pointer-events:auto}
+  html[data-cw-v4] body #send_form>#qr--bar :is(.qr--button,#qr--popoutTrigger,.menu_button,.interactable,button,a[href],input,select,[role="button"]){pointer-events:auto}
 }
 
 /* ---------- 2.0.270 Lulu 反馈 ---------- */
